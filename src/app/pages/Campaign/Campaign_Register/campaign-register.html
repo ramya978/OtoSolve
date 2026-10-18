@@ -1,0 +1,356 @@
+<!-- =====================================================================================================
+     CAMPAIGN REGISTER - list view
+     Heading with Export / Create · status tabs with live counts · search + owner dropdown (custom) ·
+     table (fixed layout - wraps, never scrolls sideways; on narrower screens Timeline, Owner,
+     Progress and Status hide in that order and a compact status line appears under the name) with avatar tiles, a status label with a
+     lifecycle stage track, a progress ring with caption, owner avatars and a launch → end
+     timeline · row actions that depend on the status (draft: view/edit/duplicate/delete · submitted:
+     view/duplicate/readiness · scheduled: view/edit/duplicate/launch · active: view/edit/duplicate ·
+     closing/closed: view/duplicate), each with its own hover animation · bulk bar · pager.
+     ===================================================================================================== -->
+<div class="pagehead">
+  <div>
+    <span class="cr-eyebrow">Fundraising</span>
+    <h1>All campaigns</h1>
+    <p>Fundraising campaigns across the workspace, with their status, progress and dates.</p>
+  </div>
+  <div class="cr-headactions">
+    <button type="button" class="btn-secondary pf-hbtn">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
+      Export
+    </button>
+    <button type="button" class="btn-primary pf-hbtn">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
+      Create
+    </button>
+  </div>
+</div>
+
+<!-- register -->
+<section class="card cr-card mb" aria-labelledby="cr-reg-title">
+
+  <!-- title row: name + count, search, owner dropdown -->
+  <div class="cr-bar">
+    <div class="cr-bar-title">
+      <h2 id="cr-reg-title">Campaigns</h2>
+      <span class="cr-count">{{ total }}</span>
+    </div>
+
+    <div class="cr-tools">
+      <label class="cr-search">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.55"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('search')" /></svg>
+        <input type="search" placeholder="Search name or code" aria-label="Search campaigns"
+               [value]="query()" (input)="setQuery($any($event.target).value)" />
+      </label>
+
+      <!-- owner: custom dropdown -->
+      <div class="cr-dd" [class.is-open]="openMenu() === 'owner'">
+        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'owner'"
+                (click)="toggleMenu('owner', $event)">
+          <span class="cr-dd-key">Owner</span>
+          <span class="cr-dd-val">{{ ownerLabel() }}</span>
+          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+        </button>
+        @if (openMenu() === 'owner') {
+          <ul class="cr-dd-menu" role="listbox" aria-label="Owner" (click)="$event.stopPropagation()">
+            <li role="option" [attr.aria-selected]="ownerFilter() === 'all'" [class.is-on]="ownerFilter() === 'all'"
+                tabindex="0" (click)="setOwner('all')" (keydown.enter)="setOwner('all')">
+              All owners
+              @if (ownerFilter() === 'all') {
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+              }
+            </li>
+            @for (o of owners; track o) {
+              <li role="option" [attr.aria-selected]="ownerFilter() === o" [class.is-on]="ownerFilter() === o"
+                  tabindex="0" (click)="setOwner(o)" (keydown.enter)="setOwner(o)">
+                <span class="cr-dd-avatar" aria-hidden="true">{{ initials(o) }}</span>{{ o }}
+                @if (ownerFilter() === o) {
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      @if (hasFilters()) {
+        <button type="button" class="cr-reset" (click)="resetFilters()">Reset</button>
+      }
+    </div>
+  </div>
+
+  <!-- status tabs with counts -->
+  <div class="cr-tabs" role="tablist" aria-label="Filter by status">
+    <button type="button" role="tab" class="cr-tab" [class.is-on]="statusFilter() === 'all'"
+            [attr.aria-selected]="statusFilter() === 'all'" (click)="setStatus('all')">
+      All <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
+    </button>
+    @for (s of statusOrder; track s) {
+      <button type="button" role="tab" [class]="'cr-tab tone-' + statusTone(s)" [class.is-on]="statusFilter() === s"
+              [attr.aria-selected]="statusFilter() === s" (click)="setStatus(s)">
+        <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(s) }} <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
+      </button>
+    }
+  </div>
+
+  <!-- bulk bar when rows are ticked -->
+  @if (checked().size) {
+    <div class="cr-bulk" role="status">
+      <strong>{{ checked().size }} selected</strong>
+      <button type="button" class="cr-bulk-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
+        Export selected
+      </button>
+      <button type="button" class="cr-bulk-clear" (click)="clearChecked()">Clear selection</button>
+    </div>
+  }
+
+  <div class="cr-tablewrap">
+    <table class="cr-table">
+      <colgroup>
+        <col class="cr-c-check" />
+        <col class="cr-c-camp" />
+        <col class="cr-c-status" />
+        <col class="cr-c-progress" />
+        <col class="cr-c-owner" />
+        <col class="cr-c-when" />
+        <col class="cr-c-actions" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="cr-checkcol">
+            <input type="checkbox" [checked]="allChecked()" (change)="toggleCheckAll()" aria-label="Select all rows" />
+          </th>
+          <th (click)="toggleSort('name')" class="is-sort cr-h-camp" [attr.aria-sort]="ariaSort('name')">Campaign <span class="cr-arrow">{{ sortMark('name') }}</span></th>
+          <th (click)="toggleSort('status')" class="is-sort cr-h-status" [attr.aria-sort]="ariaSort('status')">Status <span class="cr-arrow">{{ sortMark('status') }}</span></th>
+          <th (click)="toggleSort('progress')" class="is-sort cr-h-progress" [attr.aria-sort]="ariaSort('progress')">Progress <span class="cr-arrow">{{ sortMark('progress') }}</span></th>
+          <th (click)="toggleSort('owner')" class="is-sort cr-h-owner" [attr.aria-sort]="ariaSort('owner')">Owner <span class="cr-arrow">{{ sortMark('owner') }}</span></th>
+          <th (click)="toggleSort('launch')" class="is-sort cr-h-when" [attr.aria-sort]="ariaSort('launch')">Timeline <span class="cr-arrow">{{ sortMark('launch') }}</span></th>
+          <th class="cr-actionscol">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of pageRows(); track r.id) {
+          <tr [class.is-checked]="checked().has(r.id)" [class]="'tone-' + statusTone(r.status)">
+            <td class="cr-checkcol">
+              <input type="checkbox" [checked]="checked().has(r.id)" (change)="toggleCheck(r.id)"
+                     [attr.aria-label]="'Select ' + r.name" />
+            </td>
+            <td>
+              <div class="cr-camp">
+                <span class="cr-tile" aria-hidden="true">{{ initials(r.name) }}</span>
+                <span class="cr-camp-text">
+                  <button type="button" class="cr-camp-name" (click)="selected.set(r)">{{ r.name }}</button>
+                  <span class="cr-camp-code">{{ r.code }}</span>
+                  <!-- compact status + progress: only visible once those columns are hidden -->
+                  <span [class]="'cr-camp-meta tone-' + statusTone(r.status)">
+                    <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}
+                    <span class="cr-meta-sep" aria-hidden="true">·</span>{{ r.progress }}%
+                  </span>
+                </span>
+              </div>
+            </td>
+            <td class="cr-h-status">
+              <!-- status: label + lifecycle stage track (draft → closed) -->
+              <div [class]="'cr-stage tone-' + statusTone(r.status)">
+                <span class="cr-stage-label"><i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}</span>
+                <span class="cr-stage-track" aria-hidden="true">
+                  @for (s of statusOrder; track s; let i = $index) {
+                    <i [class.is-on]="i <= stageIndex(r.status)" [class.is-now]="i === stageIndex(r.status)"></i>
+                  }
+                </span>
+              </div>
+            </td>
+            <td class="cr-h-progress">
+              <!-- progress: ring + percentage + caption -->
+              <div class="cr-ring" [class.is-done]="r.progress >= 100" [class.is-zero]="r.progress === 0"
+                   role="img" [attr.aria-label]="r.progress + '% progress'">
+                <svg viewBox="0 0 36 36" aria-hidden="true">
+                  <circle class="cr-ring-bg" cx="18" cy="18" r="15" />
+                  <circle class="cr-ring-fg" cx="18" cy="18" r="15" pathLength="100"
+                          [attr.stroke-dasharray]="r.progress + ' 100'" />
+                </svg>
+                <span class="cr-ring-text">
+                  <strong>{{ r.progress }}%</strong>
+                  <small>{{ progressNote(r) }}</small>
+                </span>
+              </div>
+            </td>
+            <td class="cr-h-owner">
+              <div class="cr-owner">
+                <span class="cr-avatar" aria-hidden="true">{{ initials(r.owner) }}</span>
+                <span>{{ ownerName(r.owner) }}</span>
+                @if (ownerExtra(r.owner); as extra) { <span class="cr-extra">{{ extra }}</span> }
+              </div>
+            </td>
+            <td class="cr-h-when">
+              <div class="cr-when">
+                <span class="cr-when-dates">{{ r.launch }} <span class="cr-when-arrow" aria-hidden="true">→</span> {{ r.ends }}</span>
+                <span class="cr-when-len">{{ duration(r) }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="cr-actions">
+                @for (a of actionsFor(r); track a) {
+                  @switch (a) {
+                    @case ('view') {
+                      <!-- view: the eye blinks and the pupil looks around -->
+                      <button type="button" class="cr-act act-view" data-tip="View" [attr.aria-label]="'View ' + r.name"
+                              (click)="selected.set(r)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <g class="eye-lid"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /></g>
+                          <g class="eye-pupil"><circle cx="12" cy="12" r="3" /></g>
+                        </svg>
+                      </button>
+                    }
+                    @case ('edit') {
+                      <!-- edit: the pencil writes and the line draws under it -->
+                      <button type="button" class="cr-act act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <g class="pen"><path d="M4 18h3.5L18 7.5a2.1 2.1 0 0 0-3-3L4.5 15V18z M13.5 6l3 3" /></g>
+                          <path class="pen-line" d="M11 21h9" />
+                        </svg>
+                      </button>
+                    }
+                    @case ('duplicate') {
+                      <!-- duplicate: the sheets slide apart and the tick redraws -->
+                      <button type="button" class="cr-act act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path class="sheet-back" d="M9 6V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H18" />
+                          <g class="sheet-front">
+                            <rect x="4" y="9" width="11" height="11" rx="1.5" />
+                            <path class="copy-tick" d="M7 14.5l2.2 2.2L12.5 13" />
+                          </g>
+                        </svg>
+                      </button>
+                    }
+                    @case ('readiness') {
+                      <!-- readiness check: the two ticks draw one after the other -->
+                      <button type="button" class="cr-act act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path class="tick-1" d="M2 12.5l4.5 4.5L15 8.5" />
+                          <path class="tick-2" d="M10.5 16l1 1L20 8.5" />
+                        </svg>
+                      </button>
+                    }
+                    @case ('launch') {
+                      <!-- launch: the ring pulses and the play arrow nudges forward -->
+                      <button type="button" class="cr-act act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <circle class="launch-ring" cx="12" cy="12" r="9" />
+                          <path class="launch-play" d="M10.2 8.6v6.8l5.6-3.4z" />
+                        </svg>
+                      </button>
+                    }
+                    @case ('delete') {
+                      <!-- delete: the lid opens and drops fall into the bin -->
+                      <button type="button" class="cr-act act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <g class="bin-drops">
+                            <circle class="drop d1" cx="9.5" cy="10" r=".9" />
+                            <circle class="drop d2" cx="12" cy="10" r=".9" />
+                            <circle class="drop d3" cx="14.5" cy="10" r=".9" />
+                          </g>
+                          <g class="bin-lid"><path d="M4 7h16 M9 7V4.5A.5.5 0 0 1 9.5 4h5a.5.5 0 0 1 .5.5V7" /></g>
+                          <path class="bin-body" d="M6 7v12.5A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V7 M10 11v6 M14 11v6" />
+                        </svg>
+                      </button>
+                    }
+                  }
+                }
+              </div>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="7" class="empty">
+              No campaigns match this filter. Try a different search term or status.
+              @if (hasFilters()) { <button type="button" class="cr-reset" (click)="resetFilters()">Reset filters</button> }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card-foot cr-foot">
+    <div class="cr-foot-left">
+      <span class="muted">Showing <strong>{{ from() }}–{{ to() }}</strong> of {{ filtered().length }}</span>
+      <!-- rows per page: custom dropdown (opens upward) -->
+      <div class="cr-dd cr-dd-sm" [class.is-open]="openMenu() === 'rows'">
+        <span class="cr-rows-label">Rows</span>
+        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
+                [attr.aria-expanded]="openMenu() === 'rows'" (click)="toggleMenu('rows', $event)">
+          <span class="cr-dd-val">{{ pageSize() }}</span>
+          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+        </button>
+        @if (openMenu() === 'rows') {
+          <ul class="cr-dd-menu is-up" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
+            @for (n of pageSizes; track n) {
+              <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
+                  (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+    <div class="cr-pager">
+      <button type="button" class="cr-page" [disabled]="page() === 1" (click)="page.set(page() - 1)"
+              aria-label="Previous page">‹</button>
+      @for (p of pages(); track p) {
+        <button type="button" class="cr-page" [class.active]="p === page()"
+                [attr.aria-current]="p === page() ? 'page' : null" (click)="page.set(p)">{{ p }}</button>
+      }
+      <button type="button" class="cr-page" [disabled]="page() === totalPages()"
+              (click)="page.set(page() + 1)" aria-label="Next page">›</button>
+    </div>
+  </div>
+</section>
+
+<!-- view campaign dialog -->
+@if (selected(); as row) {
+  <div class="cr-overlay" (click)="close()">
+    <div class="cr-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-dialog-title"
+         (click)="$event.stopPropagation()">
+      <header [class]="'cr-dialog-head tone-' + statusTone(row.status)">
+        <span class="cr-tile cr-tile-lg" aria-hidden="true">{{ initials(row.name) }}</span>
+        <div>
+          <span class="cr-dialog-eyebrow">{{ row.code }}</span>
+          <h2 id="cr-dialog-title">{{ row.name }}</h2>
+        </div>
+        <button type="button" class="cr-dialog-x" (click)="close()" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
+        </button>
+      </header>
+      <div class="cr-dialog-body">
+        <div class="cr-dialog-progress">
+          <div><span>Progress</span><strong>{{ row.progress }}%</strong></div>
+          <span class="cr-track"><i [style.width.%]="row.progress"></i></span>
+        </div>
+        <dl class="cr-fields">
+          <div class="cr-field"><dt>Status</dt>
+            <dd><span [class]="'cr-status tone-' + statusTone(row.status)"><i class="cr-dot"></i>{{ statusLabel(row.status) }}</span></dd></div>
+          <div class="cr-field"><dt>Owner</dt><dd>{{ row.owner }}</dd></div>
+          <div class="cr-field"><dt>Launch</dt><dd>{{ row.launch }}</dd></div>
+          <div class="cr-field"><dt>Ends</dt><dd>{{ row.ends }}</dd></div>
+          <div class="cr-field"><dt>Duration</dt><dd>{{ duration(row) }}</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+}

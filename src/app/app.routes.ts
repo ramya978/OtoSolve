@@ -4,6 +4,7 @@ import { MenuPage } from './Shared/layout/menu-page';
 import { PaymentsReceipts } from './pages/Donations/Payment_History/payments-receipts';
 import { Profile } from './pages/Auth/Profile/profile';
 import { NewCampaign } from './pages/Campaign/Campaign_Wizard/new-campaign';
+import { CampaignRegister } from './pages/Campaign/Campaign_Register/campaign-register';
 import { LeadProfile } from './pages/Donor & Leads/Lead_Work_Queue/Lead_Profile/lead-profile';
 import { Cities } from './pages/Masters/Cities/cities';
 import { CityForm } from './pages/Masters/Cities/city-form';
@@ -20,7 +21,8 @@ const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item)
 
 const REAL_SCREENS: Record<string, unknown> = {
   'app/donations/payment-event-queue': PaymentsReceipts,
-  'app/fundraising/campaigns/campaign-wizard': NewCampaign
+  'app/fundraising/campaigns/campaign-wizard': NewCampaign,
+  'app/fundraising/campaigns/campaign-register': CampaignRegister
 };
 
 const menuRoutes: Routes = flatten(MENU_DATA)
@@ -36,6 +38,10 @@ const menuRoutes: Routes = flatten(MENU_DATA)
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
+
+
+  // Campaign Routes
+  
     { path: 'app/masters/country', component: Countries, title: 'Countries' },
   { path: 'app/masters/country/new', component: CountryForm, title: 'New country' },
   { path: 'app/masters/country/:id/edit', component: CountryForm, title: 'Edit country' },
