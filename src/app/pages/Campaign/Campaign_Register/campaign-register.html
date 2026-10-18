@@ -20,7 +20,7 @@
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
       Export
     </button>
-    <button type="button" class="btn-primary pf-hbtn">
+    <button type="button" class="btn-primary pf-hbtn" (click)="goCreate()">
       <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
       Create
@@ -147,7 +147,7 @@
               <div class="cr-camp">
                 <span class="cr-tile" aria-hidden="true">{{ initials(r.name) }}</span>
                 <span class="cr-camp-text">
-                  <button type="button" class="cr-camp-name" (click)="selected.set(r)">{{ r.name }}</button>
+                  <button type="button" class="cr-camp-name" (click)="openDetail(r)">{{ r.name }}</button>
                   <span class="cr-camp-code">{{ r.code }}</span>
                   <!-- compact status + progress: only visible once those columns are hidden -->
                   <span [class]="'cr-camp-meta tone-' + statusTone(r.status)">
@@ -203,7 +203,7 @@
                     @case ('view') {
                       <!-- view: the eye blinks and the pupil looks around -->
                       <button type="button" class="cr-act act-view" data-tip="View" [attr.aria-label]="'View ' + r.name"
-                              (click)="selected.set(r)">
+                              (click)="rowAction(r, 'view')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <g class="eye-lid"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /></g>
@@ -213,7 +213,8 @@
                     }
                     @case ('edit') {
                       <!-- edit: the pencil writes and the line draws under it -->
-                      <button type="button" class="cr-act act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name">
+                      <button type="button" class="cr-act act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name"
+                              (click)="rowAction(r, 'edit')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <g class="pen"><path d="M4 18h3.5L18 7.5a2.1 2.1 0 0 0-3-3L4.5 15V18z M13.5 6l3 3" /></g>
@@ -223,7 +224,8 @@
                     }
                     @case ('duplicate') {
                       <!-- duplicate: the sheets slide apart and the tick redraws -->
-                      <button type="button" class="cr-act act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name">
+                      <button type="button" class="cr-act act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name"
+                              (click)="rowAction(r, 'duplicate')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path class="sheet-back" d="M9 6V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H18" />
@@ -236,7 +238,8 @@
                     }
                     @case ('readiness') {
                       <!-- readiness check: the two ticks draw one after the other -->
-                      <button type="button" class="cr-act act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name">
+                      <button type="button" class="cr-act act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name"
+                              (click)="rowAction(r, 'readiness')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path class="tick-1" d="M2 12.5l4.5 4.5L15 8.5" />
@@ -246,7 +249,8 @@
                     }
                     @case ('launch') {
                       <!-- launch: the ring pulses and the play arrow nudges forward -->
-                      <button type="button" class="cr-act act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name">
+                      <button type="button" class="cr-act act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name"
+                              (click)="rowAction(r, 'launch')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <circle class="launch-ring" cx="12" cy="12" r="9" />
@@ -256,7 +260,8 @@
                     }
                     @case ('delete') {
                       <!-- delete: the lid opens and drops fall into the bin -->
-                      <button type="button" class="cr-act act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name">
+                      <button type="button" class="cr-act act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name"
+                              (click)="rowAction(r, 'delete')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <g class="bin-drops">
@@ -321,7 +326,8 @@
   </div>
 </section>
 
-<!-- view campaign dialog -->
+<!-- full-page preview: row click goes straight to the detail page, so keep only
+     an explicit "open detail" footer inside the fallback dialog -->
 @if (selected(); as row) {
   <div class="cr-overlay" (click)="close()">
     <div class="cr-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-dialog-title"
@@ -350,6 +356,9 @@
           <div class="cr-field"><dt>Ends</dt><dd>{{ row.ends }}</dd></div>
           <div class="cr-field"><dt>Duration</dt><dd>{{ duration(row) }}</dd></div>
         </dl>
+        <button type="button" class="btn-primary pf-hbtn" style="margin-top:12px" (click)="openDetail(row)">
+          Open full detail page
+        </button>
       </div>
     </div>
   </div>

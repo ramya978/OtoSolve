@@ -1,0 +1,44 @@
+<!-- breadcrumb + campaign picker -->
+<div class="ph-top">
+  <nav class="ph-crumbs" aria-label="Breadcrumb">
+    <span>Fundraising</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronRight')" /></svg>
+    <span>Campaigns</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronRight')" /></svg>
+    <strong>{{ section() }}</strong>
+  </nav>
+
+</div>
+
+<!-- campaign name + meta + actions -->
+<header class="ph-head">
+  <div class="ph-title">
+    <h1>{{ store.campaign().name }}</h1>
+    <div class="ph-meta">
+      <span class="ph-code">{{ store.campaign().code }}</span>
+      <span [class]="'ph-chip tone-' + lifecycleTone()"><i aria-hidden="true"></i>{{ lifecycleLabel() }}</span>
+      <ng-content select="[meta]" />
+      <span class="ph-meta-item">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>
+        {{ store.campaign().owners.join(', ') }}
+      </span>
+      <span class="ph-meta-item">Updated {{ updated() }}</span>
+    </div>
+  </div>
+  <div class="ph-actions">
+    <ng-content select="[actions]" />
+  </div>
+</header>
+
+
+
+<!-- toast for every campaign page -->
+@if (store.toast(); as t) {
+  <div [class]="'ph-toast is-' + t.tone" role="status" aria-live="polite">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(t.tone === 'ok' ? 'checkCircle' : 'info')" /></svg>
+    {{ t.text }}
+    <button type="button" aria-label="Dismiss" (click)="store.toast.set(null)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+    </button>
+  </div>
+}

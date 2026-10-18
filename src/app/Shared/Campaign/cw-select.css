@@ -1,0 +1,174 @@
+/* Custom dropdown (cw-select) - flat trigger like the page inputs, menu card with optional search. */
+:host {
+  position: relative;
+  display: block;
+  min-width: 0;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+
+.cs-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--muted, #536777) 45%, var(--line, #e2e9ee));
+  border-radius: var(--btn-radius, 8px);
+  background: var(--white, #fff);
+  color: var(--ink, #20364a);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.cs-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--primary, #087e8b) 60%, var(--mix-ink, #000));
+}
+
+.cs-trigger:focus-visible,
+:host(.is-open) .cs-trigger {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary, #087e8b) 60%, var(--mix-ink, #000));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #087e8b) 16%, transparent);
+}
+
+:host(.is-invalid) .cs-trigger {
+  border-color: var(--status-danger, #b42335);
+}
+
+.cs-trigger:disabled {
+  background: var(--chip, #f5f8fa);
+  color: var(--muted, #536777);
+  cursor: not-allowed;
+}
+
+.cs-value,
+.cs-placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-placeholder {
+  color: color-mix(in srgb, var(--muted, #536777) 75%, var(--white, #fff));
+}
+
+.cs-hint {
+  flex: none;
+  color: var(--muted, #536777);
+  font-size: calc(11px * var(--font-scale, 1));
+  letter-spacing: .3px;
+}
+
+.cs-chev,
+.cs-search svg,
+.cs-tick {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cs-chev {
+  color: var(--muted, #536777);
+  transition: transform .18s ease;
+}
+
+:host(.is-open) .cs-chev {
+  transform: rotate(180deg);
+}
+
+.cs-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  min-width: 220px;
+  padding: 5px;
+  border: 1px solid var(--line, #e2e9ee);
+  border-radius: 10px;
+  background: var(--panel, var(--white, #fff));
+  box-shadow: 0 14px 34px #10131c1f;
+  animation: cs-pop .14s ease-out;
+}
+
+.cs-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 5px;
+  padding: 0 9px;
+  border: 1px solid var(--line, #e2e9ee);
+  border-radius: 7px;
+  color: var(--muted, #536777);
+}
+
+.cs-search input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  background: none;
+  color: var(--ink, #20364a);
+  font: inherit;
+  outline: none;
+}
+
+ul {
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.cs-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--ink, #20364a);
+  cursor: pointer;
+}
+
+.cs-opt-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-opt.is-active {
+  background: color-mix(in srgb, var(--primary, #087e8b) 9%, var(--white, #fff));
+}
+
+.cs-opt.is-on {
+  color: color-mix(in srgb, var(--primary, #087e8b) 60%, var(--mix-ink, #000));
+  font-weight: 600;
+}
+
+.cs-tick {
+  color: var(--primary, #087e8b);
+}
+
+.cs-empty {
+  padding: 10px;
+  color: var(--muted, #536777);
+  text-align: center;
+}
+
+@keyframes cs-pop {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}

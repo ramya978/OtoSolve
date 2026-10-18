@@ -1,0 +1,36 @@
+<button type="button" class="cs-trigger" [attr.id]="inputId() || null" [attr.aria-label]="ariaLabel() || null"
+        aria-haspopup="listbox" [attr.aria-expanded]="open()" [disabled]="disabled()"
+        (click)="toggle()" (keydown)="onKey($event)">
+  @if (selected(); as s) {
+    <span class="cs-value">{{ s.label }}</span>
+    @if (s.hint) { <span class="cs-hint">{{ s.hint }}</span> }
+  } @else {
+    <span class="cs-placeholder">{{ placeholder() }}</span>
+  }
+  <svg class="cs-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+</button>
+
+@if (open()) {
+  <div class="cs-menu" (keydown)="onKey($event)">
+    @if (searchable()) {
+      <label class="cs-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11a8 8 0 1 0 16 0 8 8 0 1 0-16 0 M21 21l-4.35-4.35" /></svg>
+        <input type="text" placeholder="Search…" aria-label="Search options" [value]="query()" (input)="setQuery($event)" />
+      </label>
+    }
+    <ul role="listbox" [attr.aria-label]="ariaLabel() || placeholder()">
+      @for (o of shown(); track o.value; let i = $index) {
+        <li role="option" class="cs-opt" [class.is-active]="i === active()" [class.is-on]="o.value === value()"
+            [attr.aria-selected]="o.value === value()" (mouseenter)="active.set(i)" (click)="pick(o)">
+          <span class="cs-opt-label">{{ o.label }}</span>
+          @if (o.hint) { <span class="cs-hint">{{ o.hint }}</span> }
+          @if (o.value === value()) {
+            <svg class="cs-tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+          }
+        </li>
+      } @empty {
+        <li class="cs-empty">No matches</li>
+      }
+    </ul>
+  </div>
+}

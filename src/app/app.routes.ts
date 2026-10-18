@@ -16,6 +16,11 @@ import { StateForm } from './pages/Masters/States/state-form';
 import { States } from './pages/Masters/States/states';
 import { TimeZoneForm } from './pages/Masters/Time_Zones/time-zone-form';
 import { TimeZones } from './pages/Masters/Time_Zones/time-zones';
+import { CampaignDetail } from './pages/Campaign/campaign-detail/campaign-detail';
+import { CampaignLifecycle } from './pages/Campaign/campaign-lifecycle/campaign-lifecycle';
+import { ReadinessChecklist } from './pages/Campaign/readiness-checklist/readiness-checklist';
+import { TrackingAssetForm } from './pages/Campaign/tracking-asset-form/tracking-asset-form';
+import { TrackingAssets } from './pages/Campaign/tracking-assets/tracking-assets';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -41,7 +46,42 @@ export const routes: Routes = [
 
 
   // Campaign Routes
-  
+  {
+    path: 'app/fundraising/campaigns/campaign-detail/:code',
+    component: CampaignDetail,
+    title: 'Campaign Detail',
+    data: { name: 'Campaign Detail', route: '/app/fundraising/campaigns/campaign-detail' }
+  },
+    {
+    path: 'app/fundraising/campaigns/campaign-detail',
+    component: CampaignDetail,
+    title: 'Campaign Detail',
+    data: { name: 'Campaign Detail', route: '/app/fundraising/campaigns/campaign-detail' }
+  },
+  {
+    path: 'app/fundraising/campaigns/campaign-readiness-checklist',
+    component: ReadinessChecklist,
+    title: 'Readiness Checklist',
+    data: { name: 'Readiness Checklist', route: '/app/fundraising/campaigns/campaign-readiness-checklist' }
+  },
+  {
+    path: 'app/fundraising/campaigns/pause-resume-and-close-campaign',
+    component: CampaignLifecycle,
+    title: 'Pause, Resume & Close',
+    data: { name: 'Pause, Resume & Close', route: '/app/fundraising/campaigns/pause-resume-and-close-campaign' }
+  },
+  {
+    path: 'app/fundraising/campaigns/tracking-asset-manager',
+    component: TrackingAssets,
+    title: 'Tracking Asset Manager',
+    data: { name: 'Tracking Asset Manager', route: '/app/fundraising/campaigns/tracking-asset-manager' }
+  },
+  {
+    path: 'app/fundraising/campaigns/tracking-asset-manager/new',
+    component: TrackingAssetForm,
+    title: 'Create tracking asset',
+    data: { name: 'Tracking Asset Manager', route: '/app/fundraising/campaigns/tracking-asset-manager' }
+  },
     { path: 'app/masters/country', component: Countries, title: 'Countries' },
   { path: 'app/masters/country/new', component: CountryForm, title: 'New country' },
   { path: 'app/masters/country/:id/edit', component: CountryForm, title: 'Edit country' },

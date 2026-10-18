@@ -1,0 +1,280 @@
+<!-- =====================================================================================================
+     TRACKING ASSET MANAGER (tracking-assets.ts · tracking-assets.css)
+     Header + section tabs · KPI strip · scope / search / type / status · table · pager · asset drawer.
+     ===================================================================================================== -->
+<cw-page-head section="Tracking asset manager">
+  <a actions class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
+    <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+    Create asset
+  </a>
+</cw-page-head>
+
+<!-- ===== KPI cards (outside the header so they always show) ===== -->
+<section class="ta-kpis" aria-label="Tracking asset figures">
+  <div class="ta-kpi">
+    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+    <div>
+      <span class="ta-kpi-label">Total assets</span>
+      <strong>{{ kpis().total }}</strong>
+      <small>{{ kpis().types }} types · <b class="ta-good">+{{ kpis().drafts }} draft</b></small>
+    </div>
+    <dl class="ta-kpi-side">
+      <div><dt>QR Code</dt><dd>{{ kpis().qr }}</dd></div>
+      <div><dt>Landing Page</dt><dd>{{ kpis().landing }}</dd></div>
+    </dl>
+  </div>
+  <div class="ta-kpi tone-success">
+    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pulse')" /></svg></span>
+    <div>
+      <span class="ta-kpi-label">Active</span>
+      <strong>{{ kpis().active }}</strong>
+      <small>{{ kpis().activePct }}% online</small>
+    </div>
+    <span class="ta-kpi-ring" role="img" [attr.aria-label]="kpis().activePct + '%'">
+      <svg viewBox="0 0 36 36" aria-hidden="true">
+        <circle class="ta-ring-bg" cx="18" cy="18" r="15.5" pathLength="100" />
+        <circle class="ta-ring-fg" cx="18" cy="18" r="15.5" pathLength="100" [attr.stroke-dasharray]="kpis().activePct + ' 100'" />
+      </svg>
+      <span>{{ kpis().activePct }}%</span>
+    </span>
+  </div>
+  <div class="ta-kpi tone-info">
+    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chart')" /></svg></span>
+    <div>
+      <span class="ta-kpi-label">Total usage</span>
+      <strong>{{ kpis().usage.toLocaleString('en-IN') }}</strong>
+      <small>{{ kpis().livePct }}% from live assets</small>
+    </div>
+    <span class="ta-kpi-ring" role="img" [attr.aria-label]="kpis().livePct + '%'">
+      <svg viewBox="0 0 36 36" aria-hidden="true">
+        <circle class="ta-ring-bg" cx="18" cy="18" r="15.5" pathLength="100" />
+        <circle class="ta-ring-fg" cx="18" cy="18" r="15.5" pathLength="100" [attr.stroke-dasharray]="kpis().livePct + ' 100'" />
+      </svg>
+      <span>{{ kpis().livePct }}%</span>
+    </span>
+  </div>
+  <div class="ta-kpi tone-warning">
+    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+    <div>
+      <span class="ta-kpi-label">Pending approval</span>
+      <strong>{{ kpis().pending }}</strong>
+      <small>Awaiting verification</small>
+    </div>
+    <dl class="ta-kpi-side">
+      <div><dt>To go live</dt><dd>{{ kpis().approvals }}</dd></div>
+      <div><dt>To disable</dt><dd>{{ kpis().disables }}</dd></div>
+    </dl>
+  </div>
+</section>
+
+<!-- ===== list ===== -->
+<section class="ta-card" aria-labelledby="ta-title">
+  <header class="ta-head">
+    <div class="ta-title">
+      <h2 id="ta-title">Tracking assets</h2>
+      <p>{{ filtered().length }} assets in view</p>
+    </div>
+    <div class="ta-tools">
+      <label class="ta-search">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+        <input type="search" placeholder="Search reference, destination or campaign" aria-label="Search assets"
+               [value]="query()" (input)="setQuery($event)" />
+      </label>
+      <cw-select class="ta-dd" [options]="typeOptions" [value]="type()" ariaLabel="Asset type" (valueChange)="setType($event)" />
+      <cw-select class="ta-dd" [options]="statusOptions" [value]="status()" ariaLabel="Status" (valueChange)="setStatus($event)" />
+    </div>
+  </header>
+
+  <table class="ta-table">
+    <colgroup>
+      <col class="ta-c-asset" /><col class="ta-c-type" /><col class="ta-c-medium" /><col class="ta-c-dest" />
+      <col class="ta-c-status" /><col class="ta-c-usage" /><col class="ta-c-act" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Asset</th>
+        <th class="ta-h-type">Type</th>
+        <th class="ta-h-medium">Medium</th>
+        <th class="ta-h-dest">Destination / URL</th>
+        <th>Status</th>
+        <th class="ta-h-usage ta-num">Usage</th>
+        <th class="ta-act-col"><span class="ta-sr">Action</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (a of rows(); track a.ref) {
+        <tr (click)="openAsset(a)" [class.is-open]="openRef() === a.ref">
+          <td>
+            <div class="ta-asset">
+              <span [class]="'ta-type-ico is-' + a.type"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.type === 'qr' ? 'qr' : 'page')" /></svg></span>
+              <span class="ta-asset-text">
+                <strong>{{ a.ref }}</strong>
+                <small>{{ campaignName(a.campaign) }} @if (a.place) { · {{ a.place }} }</small>
+              </span>
+            </div>
+          </td>
+          <td class="ta-h-type"><span class="ta-type-name">{{ a.type === 'qr' ? 'QR Code' : 'Landing Page' }}</span></td>
+          <td class="ta-h-medium"><span class="ta-medium">{{ a.medium }}</span></td>
+          <td class="ta-h-dest">
+            @if (a.destination) {
+              <span class="ta-url">
+                <span>{{ shortUrl(a.destination) }}</span>
+                <button type="button" class="ta-copy" aria-label="Copy link" title="Copy link" (click)="$event.stopPropagation(); copy(a.destination)">
+                  <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>
+                </button>
+              </span>
+            } @else { <span class="ta-dash">—</span> }
+          </td>
+          <td><span [class]="'w-pill tone-' + statusTone[a.status]">{{ statusLabel[a.status] }}</span></td>
+          <td class="ta-h-usage ta-num">{{ a.usage.toLocaleString('en-IN') }}</td>
+          <td class="ta-act-col">
+            @if (rowAction(a); as act) {
+              <button type="button" [class]="'ta-act is-' + act" [attr.aria-label]="actionLabel(act) + ' ' + a.ref"
+                      [attr.data-tip]="actionLabel(act)" (click)="$event.stopPropagation(); doAction(a, act)">
+                <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="100" [attr.d]="icon(actionIcon(act))" /></svg>
+              </button>
+            } @else {
+              <button type="button" class="ta-act is-view" [attr.aria-label]="'View ' + a.ref" data-tip="View details"
+                      (click)="$event.stopPropagation(); openAsset(a)">
+                <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+              </button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr class="ta-empty-row">
+          <td colspan="7">
+            <div class="w-empty">
+              <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg>
+              <strong>No tracking assets match</strong>
+              <span>Change the search or filters, or create an asset for this campaign.</span>
+              <button type="button" class="w-link" (click)="clearFilters()">Clear filters</button>
+            </div>
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  <footer class="ta-foot">
+    <span>Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong></span>
+    <nav class="ta-pager" aria-label="Pages">
+      <button type="button" class="ta-page" [disabled]="page() === 1" aria-label="Previous page" (click)="goPage(page() - 1)">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronLeft')" /></svg>
+      </button>
+      @for (p of pages(); track p) {
+        <button type="button" class="ta-page" [class.is-on]="p === page()" [attr.aria-current]="p === page() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+      }
+      <button type="button" class="ta-page" [disabled]="page() === totalPages()" aria-label="Next page" (click)="goPage(page() + 1)">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronRight')" /></svg>
+      </button>
+    </nav>
+  </footer>
+</section>
+
+<!-- ===== asset drawer ===== -->
+@if (open(); as a) {
+  <div class="w-overlay" (click)="openRef.set(null)"></div>
+  <aside class="w-drawer ta-drawer" role="dialog" aria-modal="true" aria-labelledby="ta-d-title">
+    <header class="w-drawer-head">
+      <span [class]="'ta-type-ico ta-type-lg is-' + a.type"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.type === 'qr' ? 'qr' : 'page')" /></svg></span>
+      <div>
+        <span class="w-caption">Tracking asset</span>
+        <h2 id="ta-d-title">{{ a.ref }}</h2>
+        <div class="ta-d-meta">
+          <span [class]="'w-pill tone-' + statusTone[a.status]">{{ statusLabel[a.status] }}</span>
+          <span>{{ a.type === 'qr' ? 'QR Code' : 'Landing Page' }}</span>
+          <span>{{ a.medium }}</span>
+        </div>
+      </div>
+      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="openRef.set(null)">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+      </button>
+    </header>
+
+    @if (a.status === 'disable-requested') {
+      <p class="ta-alert tone-danger">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+        A request to disable this asset is awaiting your approval. Approving stops its scans and clicks.
+      </p>
+    } @else if (a.status === 'submitted') {
+      <p class="ta-alert tone-info">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+        This asset is waiting for approval before it goes live.
+      </p>
+    }
+
+    <div class="w-drawer-body">
+      <!-- code / page preview + link -->
+      <div>
+        <span class="w-caption">{{ a.type === 'qr' ? 'Generated QR code' : 'Landing page' }}</span>
+        <div class="ta-code">
+          @if (a.type === 'qr') {
+            <svg class="ta-qr" viewBox="-2 -2 29 29" role="img" [attr.aria-label]="'QR pattern for ' + a.ref">
+              <rect x="-2" y="-2" width="29" height="29" fill="#fff" />
+              @for (cell of qrCells(); track cell.x + '-' + cell.y) {
+                <rect [attr.x]="cell.x" [attr.y]="cell.y" width="1.02" height="1.02" fill="#111" />
+              }
+            </svg>
+          } @else {
+            <div class="ta-lp">
+              <span class="ta-lp-bar"><i></i><i></i><i></i><em>{{ shortUrl(a.destination).split('/')[0] || 'localhost' }}</em></span>
+              <span class="ta-lp-hero"></span>
+              <strong>{{ campaignName(a.campaign) }}</strong>
+              <span class="ta-lp-line"></span>
+              <span class="ta-lp-btn">Donate now</span>
+            </div>
+          }
+          <div class="ta-link">
+            <span class="w-caption">Encoded link</span>
+            <p>{{ a.destination || 'No destination yet - finish the draft to generate it.' }}</p>
+          </div>
+        </div>
+        <div class="ta-link-actions">
+          <button type="button" class="w-btn w-btn-ghost w-btn-sm" [disabled]="!a.destination" (click)="share(a)">
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('share')" /></svg> Share
+          </button>
+          <button type="button" class="w-btn w-btn-ghost w-btn-sm" [disabled]="!a.destination" (click)="copy(a.destination)">
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(copied() ? 'check' : 'copy')" /></svg> {{ copied() ? 'Copied' : 'Copy' }}
+          </button>
+          <button type="button" class="w-btn w-btn-ghost w-btn-sm" [disabled]="!a.destination" (click)="openLink(a.destination)">
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('external')" /></svg> Open
+          </button>
+        </div>
+      </div>
+
+      <!-- figures -->
+      <div class="ta-figs">
+        <div><span class="w-caption">Usage</span><strong>{{ a.usage.toLocaleString('en-IN') }}</strong><small>scans &amp; clicks</small></div>
+        <div><span class="w-caption">Received</span><strong>{{ inr(a.received) }}</strong><small>attributed total</small></div>
+        <div><span class="w-caption">Live window</span><strong class="ta-fig-date">{{ fmtDate(a.from) }}</strong><small>to {{ fmtDate(a.to) }} · {{ liveText(a) }}</small></div>
+      </div>
+
+      <!-- details -->
+      <div>
+        <span class="w-caption">Details</span>
+        <dl class="w-kv ta-kv">
+          <div><dt>Campaign</dt><dd>{{ campaignName(a.campaign) }} <small class="ta-code-tag">{{ a.campaign }}</small></dd></div>
+          <div><dt>Approval</dt><dd><span [class]="'w-pill ' + (a.approval === 'Approved' ? 'tone-success' : a.approval === 'Pending' ? 'tone-warning' : 'tone-neutral')">{{ a.approval }}</span></dd></div>
+          <div><dt>Destination</dt><dd class="ta-dest">{{ a.destination || '—' }}</dd></div>
+          <div><dt>Medium</dt><dd>{{ a.medium }}</dd></div>
+          <div><dt>Place</dt><dd>{{ a.place || '—' }}</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <footer class="w-drawer-foot">
+      @if (rowAction(a); as act) {
+        <span class="w-help">{{ act === 'requestDisable' ? 'Stops scans and clicks once approved.' : '' }}</span>
+        <span class="w-spacer"></span>
+        <button type="button" [class]="'w-btn ' + (act === 'approveDisable' || act === 'requestDisable' ? 'w-btn-danger' : 'w-btn-primary')"
+                (click)="doAction(a, act)">
+          <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(actionIcon(act))" /></svg>
+          {{ actionLabel(act) }}
+        </button>
+      } @else {
+        <span class="w-help">This asset is disabled. Its history is kept.</span>
+      }
+    </footer>
+  </aside>
+}

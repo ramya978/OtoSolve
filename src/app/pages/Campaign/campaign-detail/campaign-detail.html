@@ -1,0 +1,332 @@
+<cw-page-head section="Campaign detail">
+  <ng-container actions>
+    <button type="button" class="w-btn" (click)="goBack()">
+      <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M11 18l-6-6 6-6" /></svg>
+      All campaigns
+    </button>
+    @if (c().closeRequest) {
+      <button type="button" class="w-btn" (click)="openReject()">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>
+        Reject
+      </button>
+      <button type="button" class="w-btn w-btn-danger" (click)="approveClose()">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>
+        Approve
+      </button>
+    } @else {
+      <a class="w-btn" [routerLink]="paths.lifecycle">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pause')" /></svg>
+        Pause, resume or close
+      </a>
+    }
+  </ng-container>
+</cw-page-head>
+
+<!-- ===== KPI cards ===== -->
+<section class="cd-kpis" aria-label="Campaign figures">
+  <!-- raised: ring + figures -->
+  <div class="cd-kpi cd-kpi-main">
+    <div class="cd-ring" role="img" [attr.aria-label]="raisedPct() + '% of target raised'">
+      <svg viewBox="0 0 36 36" aria-hidden="true">
+        <circle class="cd-ring-bg" cx="18" cy="18" r="15.5" pathLength="100" />
+        <circle class="cd-ring-val" cx="18" cy="18" r="15.5" pathLength="100"
+                [attr.stroke-dasharray]="raisedPct() + ' 100'" />
+      </svg>
+      <span>{{ raisedPct() }}%</span>
+    </div>
+    <div class="cd-kpi-body">
+      <span class="cd-kpi-label">Raised to date</span>
+      <span class="cd-kpi-value">{{ inr(c().raised) }}</span>
+      <span class="cd-kpi-note">of {{ inr(c().target) }} · {{ fmtDate(c().start) }} – {{ fmtDate(c().end) }}</span>
+      <span class="cd-kpi-track" aria-hidden="true"><i [style.width.%]="raisedPct()"></i></span>
+    </div>
+    <!-- fills the right side when the card is wide -->
+    <dl class="cd-kpi-extra">
+      <div>
+        <dt>Still to raise</dt>
+        <dd>{{ inr(c().target > c().raised ? c().target - c().raised : 0) }}</dd>
+      </div>
+      <div>
+        <dt>{{ daysLeft() >= 0 ? 'Days left' : 'Ended' }}</dt>
+        <dd>{{ daysLeft() >= 0 ? daysLeft() : -daysLeft() + ' days ago' }}</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="cd-kpi">
+    <span class="cd-kpi-ico tone-success"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('wallet')" /></svg></span>
+    <div class="cd-kpi-body">
+      <span class="cd-kpi-label">Monthly revenue</span>
+      <span class="cd-kpi-value">{{ inr(c().monthlyRevenue) }}</span>
+      <span [class]="'cd-kpi-note cd-delta is-' + revenueChange().dir">
+        <b>{{ revenueChange().dir === 'down' ? '↓' : revenueChange().dir === 'up' ? '↑' : '–' }} {{ revenueChange().pct }}%</b> vs last month
+      </span>
+    </div>
+  </div>
+  <div class="cd-kpi">
+    <span class="cd-kpi-ico tone-info"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg></span>
+    <div class="cd-kpi-body">
+      <span class="cd-kpi-label">Total donors</span>
+      <span class="cd-kpi-value">{{ c().donors }}</span>
+      <span class="cd-kpi-note">People who gave</span>
+    </div>
+  </div>
+  <div class="cd-kpi">
+    <span class="cd-kpi-ico tone-purple"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('heart')" /></svg></span>
+    <div class="cd-kpi-body">
+      <span class="cd-kpi-label">Donations</span>
+      <span class="cd-kpi-value">{{ c().donations }}</span>
+      <span class="cd-kpi-note">Gifts received</span>
+    </div>
+  </div>
+  <div class="cd-kpi">
+    <span class="cd-kpi-ico tone-warning"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+    <div class="cd-kpi-body">
+      <span class="cd-kpi-label">Tracking assets</span>
+      <span class="cd-kpi-value">{{ assetCount() }}</span>
+      <span class="cd-kpi-note">{{ liveAssets() }} live · <a class="w-link" [routerLink]="paths.assets">Manage</a></span>
+    </div>
+  </div>
+</section>
+
+<div class="cd-grid">
+  <!-- ===== left column ===== -->
+  <div class="cd-col">
+
+    <!-- calendar -->
+    <section class="cd-card" aria-labelledby="cd-cal-title">
+      <header class="cd-card-head">
+        <div>
+          <h2 id="cd-cal-title">Campaign calendar</h2>
+          <p>
+            @if (daysLeft() >= 0) { {{ daysLeft() }} days left in the campaign window }
+            @else { Campaign window ended {{ -daysLeft() }} days ago }
+          </p>
+        </div>
+        <div class="cd-month">
+          <button type="button" class="cd-nav" aria-label="Previous month" (click)="shiftMonth(-1)">
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronLeft')" /></svg>
+          </button>
+          <span class="cd-month-label">{{ monthLabel() }}</span>
+          <button type="button" class="cd-nav" aria-label="Next month" (click)="shiftMonth(1)">
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronRight')" /></svg>
+          </button>
+          <button type="button" class="cd-today" (click)="goToday()">Today</button>
+        </div>
+      </header>
+
+      <div class="cd-cal-body">
+        <div class="cd-cal" role="grid" [attr.aria-label]="monthLabel()">
+          @for (w of weekdays; track w) { <span class="cd-wd" role="columnheader">{{ w }}</span> }
+          @for (d of days(); track d.iso) {
+            <button type="button" role="gridcell" class="cd-day"
+                    [class.is-out]="!d.inMonth" [class.is-today]="d.isToday && d.inMonth"
+                    [class.has-data]="d.isStart || d.isEnd || d.steps || d.gifts"
+                    [class.is-picked]="d.iso === selectedDay()" [attr.aria-selected]="d.iso === selectedDay()"
+                    [attr.aria-label]="fmtDate(d.iso)" (click)="selectedDay.set(d.iso)">
+              <span class="cd-day-top">
+                <span class="cd-num">{{ d.day }}</span>
+                @if (d.isToday && d.inMonth) { <em class="cd-tag">Today</em> }
+              </span>
+              <span class="cd-evs">
+                @if (d.isStart) { <i class="cd-ev is-start" title="Campaign start"><svg viewBox="0 0 24 24"><path [attr.d]="icon('rocket')" /></svg><span class="cd-ev-text">Starts</span></i> }
+                @if (d.isEnd) { <i class="cd-ev is-end" title="Campaign end"><svg viewBox="0 0 24 24"><path [attr.d]="icon('flag')" /></svg><span class="cd-ev-text">Ends</span></i> }
+                @for (k of d.stepIcons; track k.kind) { <i [class]="'cd-ev is-' + k.kind" [title]="k.label"><svg viewBox="0 0 24 24"><path [attr.d]="icon(k.icon)" /></svg><span class="cd-ev-text">{{ k.kind }}</span></i> }
+                @if (d.gifts) { <i class="cd-ev is-gift" [title]="d.gifts + ' donation(s)'"><svg viewBox="0 0 24 24"><path [attr.d]="icon('heart')" /></svg>@if (d.gifts > 1) { <b>{{ d.gifts }}</b> }<span class="cd-ev-text">{{ d.gifts > 1 ? "Gifts" : "Gift" }}</span></i> }
+              </span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <footer class="cd-legend">
+        <div class="cd-legend-group">
+          <span class="cd-legend-label">Events</span>
+          <span title="Campaign start"><i class="cd-ev is-start"><svg viewBox="0 0 24 24"><path [attr.d]="icon('rocket')" /></svg></i>Start</span>
+          <span title="Campaign end"><i class="cd-ev is-end"><svg viewBox="0 0 24 24"><path [attr.d]="icon('flag')" /></svg></i>End</span>
+          <span><i class="cd-ev is-change"><svg viewBox="0 0 24 24"><path [attr.d]="icon('edit')" /></svg></i>Change</span>
+          <span><i class="cd-ev is-approval"><svg viewBox="0 0 24 24"><path [attr.d]="icon('checkCircle')" /></svg></i>Approval</span>
+          <span><i class="cd-ev is-create"><svg viewBox="0 0 24 24"><path [attr.d]="icon('plus')" /></svg></i>Created</span>
+          <span><i class="cd-ev is-pause"><svg viewBox="0 0 24 24"><path [attr.d]="icon('pause')" /></svg></i>Paused</span>
+          <span><i class="cd-ev is-resume"><svg viewBox="0 0 24 24"><path [attr.d]="icon('play')" /></svg></i>Resumed</span>
+          <span><i class="cd-ev is-gift"><svg viewBox="0 0 24 24"><path [attr.d]="icon('heart')" /></svg></i>Donation</span>
+        </div>
+        <div class="cd-legend-group">
+          <span><b class="cd-key is-data"></b>Has records</span>
+          <span><b class="cd-key is-today"></b>Today</span>
+        </div>
+      </footer>
+    </section>
+
+    <!-- records of the picked day -->
+    <section class="cd-card" aria-labelledby="cd-day-title">
+      <header class="cd-card-head">
+        <div>
+          <span class="cd-eyebrow">Records on</span>
+          <h2 id="cd-day-title">{{ dayLabel(selectedDay()) }}</h2>
+        </div>
+      </header>
+      @if (dayRecords().activity.length || dayRecords().gifts.length || dayRecords().isStart || dayRecords().isEnd) {
+        <ul class="cd-records">
+          @if (dayRecords().isStart) {
+            <li><span class="cd-rec-ico tone-success"><svg class="w-ico" viewBox="0 0 24 24"><path [attr.d]="icon('rocket')" /></svg></span>
+              <div><strong>Campaign starts</strong><small>Start of the campaign window</small></div></li>
+          }
+          @if (dayRecords().isEnd) {
+            <li><span class="cd-rec-ico tone-danger"><svg class="w-ico" viewBox="0 0 24 24"><path [attr.d]="icon('flag')" /></svg></span>
+              <div><strong>Campaign ends</strong><small>End of the campaign window</small></div></li>
+          }
+          @for (a of dayRecords().activity; track a.at + a.title) {
+            <li><span class="cd-rec-ico tone-info"><svg class="w-ico" viewBox="0 0 24 24"><path [attr.d]="icon(kindIcon(a))" /></svg></span>
+              <div><strong>{{ a.title }}</strong><small>{{ fmtTime(a.at) }} · {{ a.by }} · {{ a.detail }}</small></div></li>
+          }
+          @for (g of dayRecords().gifts; track g.donor + g.amount) {
+            <li><span class="cd-rec-ico tone-purple"><svg class="w-ico" viewBox="0 0 24 24"><path [attr.d]="icon('heart')" /></svg></span>
+              <div><strong>{{ inr(g.amount) }} from {{ g.donor }}</strong><small>{{ g.channel }} donation</small></div></li>
+          }
+        </ul>
+      } @else {
+        <div class="cd-empty">
+          <span class="cd-empty-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
+          <strong>Nothing recorded</strong>
+          <span>No transactions or events on {{ dayLabel(selectedDay()) }}. Pick a marked day on the calendar.</span>
+        </div>
+      }
+    </section>
+  </div>
+
+  <!-- ===== right column ===== -->
+  <div class="cd-col">
+
+    <!-- overview -->
+    <section class="cd-card" aria-labelledby="cd-ov-title">
+      <header class="cd-card-head"><h2 id="cd-ov-title">Campaign overview</h2></header>
+      <dl class="cd-overview">
+        <div><dt>Campaign owner</dt><dd>{{ c().owners.join(', ') }}</dd></div>
+        <div><dt>Fund or programme</dt><dd>{{ c().fund }}</dd></div>
+        <div><dt>Start date</dt><dd>{{ fmtDate(c().start) }}</dd></div>
+        <div><dt>End date</dt><dd>{{ fmtDate(c().end) }}</dd></div>
+        <div><dt>Location</dt><dd>{{ c().location }}</dd></div>
+        <div><dt>Fundraising target</dt><dd>{{ inr(c().target) }}</dd></div>
+      </dl>
+      <div class="cd-desc">
+        <p>{{ c().description }}</p>
+        <div class="cd-desc-links">
+          <a class="w-link" href="#" (click)="$event.preventDefault()">Public description →</a>
+          <a class="w-link" href="#" (click)="$event.preventDefault()">Terms &amp; notice →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- donations by channel -->
+    <section class="cd-card" aria-labelledby="cd-ch-title">
+      <header class="cd-card-head">
+        <h2 id="cd-ch-title">Donations by channel</h2>
+        <cw-select class="cd-range" [options]="rangeOptions" [value]="range()" ariaLabel="Period"
+                   (valueChange)="range.set($any($event))" />
+      </header>
+      @if (channels().total) {
+        <div class="cd-channels">
+          <div class="cd-donut" role="img" [attr.aria-label]="channels().total + ' donations'">
+            <svg viewBox="0 0 42 42" aria-hidden="true">
+              <circle class="cd-donut-bg" cx="21" cy="21" r="15.915" />
+              @for (r of channels().rows; track r.name) {
+                <circle class="cd-donut-seg" cx="21" cy="21" r="15.915" [attr.stroke]="r.colour"
+                        [attr.stroke-dasharray]="r.dash" [attr.stroke-dashoffset]="r.offset" />
+              }
+            </svg>
+            <span><strong>{{ channels().total }}</strong><small>Donations</small></span>
+          </div>
+          <ul class="cd-ch-list">
+            @for (r of channels().rows; track r.name) {
+              <li>
+                <i [style.background]="r.colour"></i>
+                <span>{{ r.name }}</span>
+                <small>{{ inr(r.amount) }}</small>
+                <strong>{{ r.count }}</strong>
+              </li>
+            }
+            <li class="cd-ch-total"><span>Total donations</span><small>{{ inr(channels().amount) }}</small><strong>{{ channels().total }}</strong></li>
+          </ul>
+        </div>
+        <p class="cd-ch-note">Traced by tracking assets · {{ rangeOptions[range() === '12m' ? 0 : range() === '90d' ? 1 : 2].label }}</p>
+      } @else {
+        <div class="cd-empty">
+          <span class="cd-empty-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chart')" /></svg></span>
+          <strong>No donations yet</strong>
+          <span>Gifts will show here by channel once they arrive.</span>
+        </div>
+      }
+    </section>
+
+    <!-- recent activity -->
+    <section class="cd-card" aria-labelledby="cd-act-title">
+      <header class="cd-card-head">
+        <div>
+          <h2 id="cd-act-title">Recent activity</h2>
+          <p>{{ activity().length }} campaign activities</p>
+        </div>
+      </header>
+      <div class="cd-timeline">
+        <ol>
+          @for (a of activity(); track a.at + a.title) {
+            <li [class]="'is-' + a.kind">
+              <span class="cd-tl-ico">
+                <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(kindIcon(a))" /></svg>
+              </span>
+              <div class="cd-tl-body">
+                <div class="cd-tl-top">
+                  <strong>{{ a.title }}</strong>
+                  <span class="cd-tl-kind">{{ kindLabel(a) }}</span>
+                </div>
+                @if (a.detail) { <p>{{ a.detail }}</p> }
+                <small>{{ fmtDate(a.at) }}, {{ fmtTime(a.at) }} · by {{ a.by }}</small>
+              </div>
+            </li>
+          } @empty {
+            <li class="cd-tl-none"><div class="cd-empty"><strong>No activity yet</strong></div></li>
+          }
+        </ol>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- reject close dialog -->
+@if (rejecting()) {
+  <div class="w-overlay" (click)="rejecting.set(false)"></div>
+  <div class="w-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cd-rej-title">
+    <header class="w-dialog-head">
+      <span class="w-dialog-ico tone-danger"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg></span>
+      <div>
+        <span class="w-caption">High-risk decision</span>
+        <h2 id="cd-rej-title">Reject close</h2>
+      </div>
+      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="rejecting.set(false)">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+      </button>
+    </header>
+    <div class="w-dialog-body">
+      <dl class="w-kv">
+        <div><dt>Campaign</dt><dd>{{ c().code }} · {{ c().name }}</dd></div>
+        <div><dt>Lifecycle</dt><dd>Closing → Active</dd></div>
+        <div><dt>Requested by</dt><dd>{{ c().closeRequest?.by }}</dd></div>
+        <div><dt>Decided by</dt><dd>{{ store.currentUser }}</dd></div>
+      </dl>
+      <div class="w-field">
+        <label class="w-label" for="cd-reason">Reason <span class="w-req">*</span></label>
+        <textarea id="cd-reason" class="w-textarea" maxlength="2000" placeholder="Say why the campaign should stay open"
+                  [value]="reason()" (input)="setReason($event)" (blur)="reasonTouched.set(true)"
+                  [attr.aria-invalid]="(reasonTouched() && !!reasonError()) || null"></textarea>
+        <div class="cd-count">
+          @if (reasonTouched() && reasonError(); as e) { <span class="w-error">{{ e }}</span> } @else { <span class="w-help">Minimum 10 characters</span> }
+          <span class="w-help">{{ reason().length }} / 2000</span>
+        </div>
+      </div>
+    </div>
+    <footer class="w-dialog-foot">
+      <button type="button" class="w-btn" (click)="rejecting.set(false)">Keep request</button>
+      <button type="button" class="w-btn w-btn-danger" (click)="confirmReject()">Reject close</button>
+    </footer>
+  </div>
+}

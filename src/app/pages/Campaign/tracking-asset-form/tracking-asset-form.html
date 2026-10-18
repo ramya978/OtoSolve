@@ -1,0 +1,202 @@
+<!-- =====================================================================================================
+     CREATE TRACKING ASSET (tracking-asset-form.ts · tracking-asset-form.css)
+     Split card: form on the left (type choice, campaign, medium, URL, dates, placement, actions) ·
+     phone-style live preview on a tinted panel on the right · discard confirmation.
+     ===================================================================================================== -->
+<form class="af-split" novalidate (submit)="$event.preventDefault(); save('submitted')">
+  <!-- ===== left: the form ===== -->
+  <div class="af-main">
+    <header class="af-title">
+      <span class="af-crumb">Tracking asset manager</span>
+      <h1>{{ editingRef ? 'Edit draft ' + editingRef : 'Create tracking asset' }}</h1>
+      <p>Fill in the details - the preview on the right updates as you type.</p>
+    </header>
+
+    <div class="af-grid">
+      <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg>Asset</h3>
+      <!-- type first -->
+      <div class="af-full">
+        <span class="w-label" id="af-type">Asset type <span class="w-req">*</span></span>
+        <div class="af-types" role="radiogroup" aria-labelledby="af-type">
+          <button type="button" role="radio" class="af-type" [class.is-on]="draft().type === 'qr'" [attr.aria-checked]="draft().type === 'qr'"
+                  [disabled]="!!editingRef" (click)="set('type', 'qr')">
+            <span class="af-type-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+            <span class="af-type-text"><strong>QR Code</strong><small>Printable code that opens the destination</small></span>
+            <i class="af-type-tick"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></i>
+          </button>
+          <button type="button" role="radio" class="af-type" [class.is-on]="draft().type === 'landing'" [attr.aria-checked]="draft().type === 'landing'"
+                  [disabled]="!!editingRef" (click)="set('type', 'landing')">
+            <span class="af-type-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('page')" /></svg></span>
+            <span class="af-type-text"><strong>Landing Page</strong><small>A dedicated page for this campaign</small></span>
+            <i class="af-type-tick"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></i>
+          </button>
+        </div>
+        @if (err('type'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+
+      <div class="w-field">
+        <label class="w-label" for="af-campaign">Campaign <span class="w-req">*</span><small>{{ campaignHint() }}</small></label>
+        <cw-select inputId="af-campaign" placeholder="Select an eligible campaign in scope…" [options]="campaignOptions()"
+                   [value]="draft().campaign" [invalid]="!!err('campaign')" [disabled]="!!editingRef"
+                   (valueChange)="pickCampaign($event)" />
+        @if (err('campaign'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+      <div class="w-field">
+        <label class="w-label" for="af-medium">Medium <span class="w-req">*</span></label>
+        <cw-select inputId="af-medium" placeholder="Select a medium…" [options]="mediumOptions" [value]="draft().medium"
+                   [invalid]="!!err('medium')" (valueChange)="set('medium', $event)" />
+        @if (err('medium'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+
+      <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('link')" /></svg>Destination</h3>
+      <div class="w-field af-full">
+        <label class="w-label" for="af-url">Destination URL <span class="w-req">*</span>
+          <small class="af-inline-check">
+            <input type="checkbox" [checked]="draft().ownUrl" (change)="toggleOwnUrl($event)" aria-label="Enter my own URL" />
+            Enter my own URL
+          </small>
+        </label>
+        <div class="af-url" [class.is-locked]="!draft().ownUrl" [class.is-bad]="!!err('url')">
+          <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(draft().ownUrl ? 'link' : 'lock')" /></svg>
+          <input id="af-url" type="url" [readOnly]="!draft().ownUrl"
+                 [placeholder]="draft().ownUrl ? 'https://…' : 'Choose a campaign to generate it'"
+                 [value]="draft().ownUrl ? draft().url : destination()" (input)="set('url', text($event))"
+                 [attr.aria-invalid]="!!err('url') || null" />
+        </div>
+        @if (err('url'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+
+      <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>Schedule</h3>
+      <div class="w-field">
+        <label class="w-label" for="af-from">Active from <span class="w-req">*</span></label>
+        <input id="af-from" type="date" class="w-input" [value]="draft().from" (input)="set('from', text($event))"
+               [attr.aria-invalid]="!!err('from') || null" />
+        @if (err('from'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+      <div class="w-field">
+        <label class="w-label" for="af-to">Active to <span class="w-req">*</span></label>
+        <input id="af-to" type="date" class="w-input" [value]="draft().to" [min]="draft().from" (input)="set('to', text($event))"
+               [attr.aria-invalid]="!!err('to') || null" />
+        @if (err('to'); as e) { <span class="w-error">{{ e }}</span> }
+      </div>
+
+      @if (window(); as w) {
+        <div class="af-full af-window">
+          <span class="af-window-days"><strong>{{ w.total }}</strong> days live</span>
+          <span class="af-window-bar"><b [style.width.%]="w.pos"></b></span>
+          <span [class]="'af-window-state ' + w.tone">{{ w.state }}</span>
+        </div>
+      }
+
+      <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg>Placement</h3>
+      <div class="w-field af-full">
+        <label class="w-label" for="af-place">Place <small>Optional · where people will see it</small></label>
+        <input id="af-place" class="w-input" maxlength="140" placeholder="e.g. Neighbourhood pharmacy counters, South Delhi"
+               [value]="draft().place" (input)="set('place', text($event))" />
+      </div>
+    </div>
+
+    <footer class="af-foot">
+      <span class="af-note"><span class="w-req">*</span> Required fields</span>
+      <button type="button" class="w-btn" (click)="cancel()">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel
+      </button>
+      <button type="button" class="w-btn" (click)="save('draft')">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Save draft
+      </button>
+      <button type="submit" class="w-btn w-btn-primary">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Submit for approval
+      </button>
+    </footer>
+  </div>
+
+  <!-- ===== right: preview on a phone ===== -->
+  <aside class="af-stage" aria-label="Live preview">
+    <div class="af-stage-head">
+      <span class="af-live"><i></i>Live preview</span>
+      <span class="af-stage-type">{{ draft().type === 'qr' ? 'QR Code' : draft().type === 'landing' ? 'Landing Page' : 'No type yet' }}</span>
+    </div>
+
+    <div class="af-phone">
+      <span class="af-phone-btn is-power"></span>
+      <span class="af-phone-btn is-vol"></span>
+      <div class="af-phone-screen">
+        <!-- status bar -->
+        <div class="af-phone-status"><b>9:41</b><span class="af-phone-notch"></span><i></i></div>
+
+        @if (draft().type === 'qr') {
+          <div class="af-scr">
+            <div class="af-scr-app">
+              <span class="af-scr-logo">{{ (campaign()?.name || 'C').slice(0, 1) }}</span>
+              <span>{{ campaign()?.name || 'Campaign name' }}</span>
+            </div>
+            <div class="af-scr-qr">
+              <svg class="af-qr" viewBox="-2 -2 29 29" role="img" aria-label="QR pattern preview">
+                <rect x="-2" y="-2" width="29" height="29" fill="#fff" />
+                @for (cell of qrCells(); track cell.x + '-' + cell.y) {
+                  <rect [attr.x]="cell.x" [attr.y]="cell.y" width="1.02" height="1.02" fill="#111" />
+                }
+              </svg>
+            </div>
+            <span class="af-scr-cta">Scan to donate</span>
+            <small class="af-scr-ref">{{ nextRef() || 'Reference after campaign + type' }}</small>
+          </div>
+        } @else if (draft().type === 'landing') {
+          <div class="af-lp">
+            <span class="af-lp-url">
+              <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>
+              {{ destination() ? destination().replace('http://', '').replace('https://', '').split('/')[0] : 'localhost:6700' }}
+            </span>
+            <span class="af-lp-hero"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('heart')" /></svg></span>
+            <strong>{{ campaign()?.name || 'Campaign name' }}</strong>
+            <span class="af-lp-line"></span>
+            <span class="af-lp-line is-short"></span>
+            <div class="af-lp-amounts"><span>₹500</span><span class="is-on">₹1,000</span><span>₹2,500</span></div>
+            <span class="af-lp-btn">Donate now</span>
+          </div>
+        } @else {
+          <div class="af-scr-empty">
+            <span><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+            <p>Pick an asset type</p>
+          </div>
+        }
+        <span class="af-phone-home"></span>
+      </div>
+    </div>
+
+    <dl class="af-ticket">
+      <div class="af-ticket-ref"><dt>Reference</dt><dd>{{ nextRef() || 'After campaign + type' }}</dd></div>
+      <div><dt><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('share')" /></svg>Medium</dt><dd>{{ draft().medium || '—' }}</dd></div>
+      <div><dt><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>Live</dt><dd>{{ draft().from && draft().to ? fmtDate(draft().from) + ' – ' + fmtDate(draft().to) : '—' }}</dd></div>
+      <div><dt><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg>Place</dt><dd>{{ draft().place || '—' }}</dd></div>
+    </dl>
+
+    <!-- what is still missing -->
+    <div class="af-ready">
+      <span class="af-ready-title">Ready to submit</span>
+      <ul>
+        <li [class.is-ok]="!!draft().type"><i></i>Asset type</li>
+        <li [class.is-ok]="!!draft().campaign"><i></i>Campaign</li>
+        <li [class.is-ok]="!!draft().medium"><i></i>Medium</li>
+        <li [class.is-ok]="!!destination() && !err('url')"><i></i>Destination</li>
+        <li [class.is-ok]="!!window()"><i></i>Live dates</li>
+      </ul>
+    </div>
+  </aside>
+</form>
+
+<!-- leave with unsaved changes -->
+@if (confirmLeave()) {
+  <div class="w-overlay" (click)="confirmLeave.set(false)"></div>
+  <div class="w-dialog" role="alertdialog" aria-modal="true" aria-labelledby="af-leave-title">
+    <header class="w-dialog-head">
+      <span class="w-dialog-ico tone-warning"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg></span>
+      <h2 id="af-leave-title">Discard this asset?</h2>
+    </header>
+    <div class="w-dialog-body"><p>The values entered have not been saved. Leaving now discards them - or save them as a draft.</p></div>
+    <footer class="w-dialog-foot">
+      <button type="button" class="w-btn" (click)="confirmLeave.set(false)">Keep editing</button>
+      <button type="button" class="w-btn w-btn-danger" (click)="leave()">Discard and leave</button>
+    </footer>
+  </div>
+}

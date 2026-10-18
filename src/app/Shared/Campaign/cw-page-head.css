@@ -1,0 +1,233 @@
+/* Campaign page header: breadcrumb + picker, name + meta + actions, section tabs, toast. */
+:host {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.ph-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+
+.ph-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--w-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.ph-crumbs svg,
+.ph-meta svg,
+.ph-tabs svg,
+.ph-toast svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ph-crumbs strong {
+  color: var(--w-primary-ink);
+  font-weight: 600;
+}
+
+.ph-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(420px, 100%);
+}
+
+.ph-picker-label {
+  flex: none;
+  color: var(--w-muted);
+  font-size: calc(10px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.ph-picker cw-select {
+  flex: 1;
+}
+
+.ph-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+
+.ph-title {
+  min-width: 0;
+}
+
+.ph-title h1 {
+  color: var(--w-heading);
+  font-family: var(--font-heading, var(--w-font));
+  font-size: calc(clamp(22px, 2vw, 28px) * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.6px;
+  line-height: 1.25;
+}
+
+.ph-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  color: var(--w-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.ph-code {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--w-soft);
+  color: var(--w-ink);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: .4px;
+}
+
+.ph-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--t-bg);
+  color: var(--t-ink);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+.ph-chip i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--t);
+}
+
+.ph-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.ph-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* section tabs */
+.ph-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 18px 0 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--w-line);
+  scrollbar-width: none;
+}
+
+.ph-tabs a {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px 11px;
+  color: var(--w-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 550;
+  text-decoration: none;
+  transition: color .15s;
+}
+
+.ph-tabs a::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--cc-btn, var(--w-primary));
+  transform: scaleX(0);
+  transition: transform .2s ease;
+}
+
+.ph-tabs a:hover {
+  color: var(--w-ink);
+}
+
+.ph-tabs a.is-on {
+  color: var(--w-heading);
+  font-weight: 650;
+}
+
+.ph-tabs a.is-on svg {
+  color: var(--w-primary-ink);
+}
+
+.ph-tabs a.is-on::after {
+  transform: scaleX(1);
+}
+
+/* toast */
+.ph-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(460px, calc(100vw - 32px));
+  padding: 11px 12px 11px 14px;
+  border-radius: 10px;
+  background: var(--inverse-bg, #24364a);
+  color: #fff;
+  font-size: calc(13px * var(--font-scale, 1));
+  box-shadow: 0 14px 40px #10131c40;
+  animation: ph-up .2s ease-out;
+}
+
+.ph-toast.is-ok svg:first-child { color: #7fd6b1; }
+.ph-toast.is-warn svg:first-child { color: #f2c46d; }
+.ph-toast.is-danger svg:first-child { color: #f2a0aa; }
+
+.ph-toast button {
+  display: grid;
+  place-items: center;
+  margin-left: 4px;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: #ffffffb3;
+  cursor: pointer;
+}
+
+.ph-toast button:hover {
+  background: #ffffff1f;
+  color: #fff;
+}
+
+@keyframes ph-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}

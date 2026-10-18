@@ -1,8 +1,9 @@
-import {
-  Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, output, signal, viewChildren
-} from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, signal, viewChildren } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Footer } from '../../../Shared/layout/Footer/footer';
+import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
+import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 
 
 type SectionId = 'basic' | 'location' | 'publication' | 'review';
@@ -202,19 +203,18 @@ const fromIso = (iso: string): Date => {
 
 @Component({
   selector: 'app-new-campaign',
-  imports: [NgTemplateOutlet, Footer],
+  imports: [NgTemplateOutlet, RouterLink, Footer],
   templateUrl: './new-campaign.html',
   styleUrl: './new-campaign.css'
 })
 export class NewCampaign {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(CampaignWorkspaceStore);
 
-  /** Fired with the full campaign once every required detail is valid. */
-  readonly launched = output<CampaignDraft>();
-  /** "Back to campaigns" / Discard. */
-  readonly back = output<void>();
-  readonly discarded = output<void>();
+  protected readonly paths = CW_PATHS;
 
   // ---- static data ----
   protected readonly sections: Section[] = [
@@ -266,6 +266,11 @@ export class NewCampaign {
   private readonly editorText = signal<Record<EditorKey, string>>({ purpose: '', publicDescription: '', terms: '' });
   protected readonly touched = signal<ReadonlySet<FieldKey>>(new Set());
   protected readonly submitted = signal(false);
+
+  /** Campaign code opened for editing (?code=XXX). Null = create mode. */
+  protected readonly editingCode: string | null;
+  /** True when editing an existing campaign instead of creating one. */
+  protected readonly isEdit = signal(false);
 
   // ---- ui state ----
   /** Id of the open dropdown / date picker (only one at a time). */
@@ -408,6 +413,28 @@ export class NewCampaign {
       document.execCommand('styleWithCSS', false, 'false');
     } catch {
       // older browsers - formatting still works
+    }
+
+    // edit mode: /campaign-wizard?code=XXX pre-fills the wizard from the store
+    const code = this.route.snapshot.queryParamMap.get('code');
+    this.editingCode = code;
+    if (code) {
+      const c = this.store.findCampaign(code);
+      if (c) {
+        this.isEdit.set(true);
+        const loc = (c.location ?? '').split('·').map((s) => s.trim());
+        const owner = OWNERS.find((o) => c.owners.includes(o.name)) ?? OWNERS[0];
+        this.form.set({
+          name: c.name, code: c.code, startDate: c.start, endDate: c.end,
+          amount: String(c.target), target: String(c.target), fund: c.fund,
+          ownerId: owner.id, purpose: c.description,
+          country: loc[0] || null, state: loc[1] || null, city: loc[2] || null,
+          zip: loc[3] || '', activation: c.lifecycle === 'active' || c.lifecycle === 'scheduled' ? 'auto' : 'manual',
+          daysBefore: '7', remHour: '10', remMinute: '00', remPeriod: 'AM',
+          publicDescription: c.description, terms: c.description
+        });
+        this.editorText.set({ purpose: c.description, publicDescription: c.description, terms: c.description });
+      }
     }
 
     // left index follows the section in view
@@ -798,18 +825,32 @@ export class NewCampaign {
       return;
     }
 
+    // FULL-PAGE FLOW: save into the workspace store, then open the detail page.
+    // Launch = create draft in store → navigate to detail (launch decisions happen
+    // on the readiness / lifecycle pages, not as a popup here).
     const f = this.form();
-    const h = Number(f.remHour) % 12 + (f.remPeriod === 'PM' ? 12 : 0);
-    this.launched.emit({
-      ...f,
-      amountValue: Number(f.amount),
-      targetValue: Number(f.target),
-      reminderTime: `${String(h).padStart(2, '0')}:${f.remMinute}`
+    const ownerName = OWNERS.find((o) => o.id === f.ownerId)?.name ?? 'Unassigned';
+    const code = this.isEdit() && this.editingCode ? this.editingCode : (f.code || `HAI-${Date.now().toString(36).toUpperCase()}`);
+    const loc = [f.country, f.state, f.city, f.zip.trim()].filter(Boolean).join(' · ');
+    this.store.createCampaign({
+      code,
+      name: f.name.trim(),
+      lifecycle: 'draft',
+      owners: [ownerName],
+      fund: f.fund.trim(),
+      start: f.startDate ?? '',
+      end: f.endDate ?? '',
+      location: loc,
+      target: Number(f.target),
+      raised: 0,
+      monthlyRevenue: 0,
+      monthlyRevenuePrev: 0,
+      donors: 0,
+      donations: 0,
+      description: this.editorText().purpose || f.name.trim(),
+      updatedAt: new Date().toISOString().slice(0, 16)
     });
-    this.showToast(
-      f.activation === 'auto' ? 'Campaign scheduled — it becomes Active on the start date.' : 'Campaign scheduled — activate it when you are ready.',
-      'ok'
-    );
+    this.router.navigate([CW_PATHS.detailFor(code)]);
   }
 
   protected discard(): void {
@@ -822,7 +863,13 @@ export class NewCampaign {
     this.blockLabel.set({ purpose: 'Normal', publicDescription: 'Normal', terms: 'Normal' });
     this.closeMenu();
     this.goTo('basic');
-    this.discarded.emit();
+    // FULL-PAGE FLOW: back to the register list page.
+    this.router.navigate([CW_PATHS.register]);
+  }
+
+  /** Header Back button → register list (full page, no popup). */
+  protected goBack(): void {
+    this.router.navigate([CW_PATHS.register]);
   }
 
   private showToast(text: string, tone: 'ok' | 'warn'): void {

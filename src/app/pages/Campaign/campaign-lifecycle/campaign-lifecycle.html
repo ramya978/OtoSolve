@@ -1,0 +1,152 @@
+<!-- PAUSE, RESUME & CLOSE - TABS design (campaign-lifecycle.ts · campaign-lifecycle.css) -->
+<cw-page-head section="Pause, resume & close" />
+
+<!-- ===== KPI cards ===== -->
+<section class="lc-kpis" aria-label="Campaign figures">
+  <div [class]="'lc-kpi ' + (c().lifecycle === 'paused' ? 'tone-warning' : c().lifecycle === 'closing' || c().lifecycle === 'closed' ? 'tone-danger' : c().lifecycle === 'active' ? 'tone-success' : 'tone-info')">
+    <span class="lc-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c().lifecycle === 'paused' ? 'pause' : c().lifecycle === 'closing' ? 'clock' : c().lifecycle === 'closed' ? 'lock' : 'pulse')" /></svg></span>
+    <div><span class="lc-kpi-label">Current state</span><strong>{{ label[c().lifecycle] }}</strong><small>Step {{ stepIndex() + 1 }} of {{ steps.length }}</small></div>
+  </div>
+  <div class="lc-kpi">
+    <span class="lc-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('wallet')" /></svg></span>
+    <div><span class="lc-kpi-label">Raised to date</span><strong>{{ inr(c().raised) }}</strong><small>{{ raisedPct() }}% of {{ inr(c().target) }}</small></div>
+  </div>
+  <div class="lc-kpi tone-info">
+    <span class="lc-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg></span>
+    <div><span class="lc-kpi-label">Donors</span><strong>{{ c().donors }}</strong><small>{{ c().donations }} donations</small></div>
+  </div>
+  <div class="lc-kpi tone-warning">
+    <span class="lc-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+    <div><span class="lc-kpi-label">Live assets</span><strong>{{ liveAssets() }}</strong><small>{{ daysLeft() >= 0 ? daysLeft() + ' days left' : 'Window ended' }}</small></div>
+  </div>
+</section>
+
+@if (c().closeRequest; as req) {
+  <section class="lc-req" aria-label="Close request">
+    <span class="lc-req-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+    <div>
+      <strong>Close requested by {{ req.by }}</strong> <span class="lc-muted">· {{ fmtDate(req.at) }}, {{ fmtTime(req.at) }}</span>
+      <p>{{ req.reason }}</p>
+    </div>
+  </section>
+}
+
+<!-- ===== one card with tabs ===== -->
+<section class="lc-card" aria-label="Lifecycle">
+  <nav class="lc-tabs" role="tablist">
+    <button type="button" role="tab" [class.is-on]="tab() === 'actions'" [attr.aria-selected]="tab() === 'actions'" (click)="tab.set('actions')">
+      <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Actions <span>{{ actions().length }}</span>
+    </button>
+    <button type="button" role="tab" [class.is-on]="tab() === 'history'" [attr.aria-selected]="tab() === 'history'" (click)="tab.set('history')">
+      <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg> History <span>{{ history().length }}</span>
+    </button>
+    <button type="button" role="tab" [class.is-on]="tab() === 'journey'" [attr.aria-selected]="tab() === 'journey'" (click)="tab.set('journey')">
+      <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg> Journey
+    </button>
+  </nav>
+  <div class="lc-tab-body">
+    @switch (tab()) {
+      @case ('actions') {
+        @if (actions().length) {
+          <div class="lc-tiles">
+            @for (a of actions(); track a.key) {
+              <article [class]="'lc-tile ' + a.tone">
+                <span class="lc-tile-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg></span>
+                <div class="lc-tile-text">
+                  <h3>{{ a.title }}</h3>
+                  <p>{{ a.text }}</p>
+                  <span class="lc-move">{{ label[c().lifecycle] }} → <b>{{ label[a.to] }}</b></span>
+                </div>
+                <button type="button" [class]="a.button" (click)="start(a)">{{ a.title }}</button>
+              </article>
+            }
+          </div>
+        } @else {
+          <div class="lc-empty">
+          <strong>No lifecycle actions right now</strong>
+          <span>{{ noActionText() }}</span>
+          @if (c().lifecycle === 'draft' || c().lifecycle === 'submitted') {
+            <a class="w-link" [routerLink]="paths.readiness">Open the readiness checklist →</a>
+          }
+        </div>
+        }
+        <p class="lc-note">
+          <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+          Pausing or closing stops every live tracking asset of this campaign. Donations already received are kept.
+        </p>
+      }
+      @case ('history') {
+        <ol class="lc-history">
+          @for (h of history(); track h.at + h.title) {
+            <li [class]="'is-' + h.kind">
+              <span class="lc-h-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(historyIcon(h.kind))" /></svg></span>
+              <div class="lc-h-body">
+                <div class="lc-h-top"><strong>{{ h.title }}</strong><time>{{ fmtDate(h.at) }}, {{ fmtTime(h.at) }}</time></div>
+                @if (h.detail) { <p>{{ h.detail }}</p> }
+                <small>by {{ h.by }}</small>
+              </div>
+            </li>
+          } @empty {
+            <li class="lc-h-empty">No pause, resume or close events yet.</li>
+          }
+        </ol>
+      }
+      @case ('journey') {
+        <ol class="lc-hsteps">
+          @for (s of steps; track s; let i = $index) {
+            <li [class.is-done]="i < stepIndex()" [class.is-now]="i === stepIndex()">
+              <span class="lc-vnode">
+                @if (i < stepIndex()) { <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { {{ i + 1 }} }
+              </span>
+              <span class="lc-vlabel">{{ label[s] }}
+                @if (i === stepIndex()) { <em>{{ c().lifecycle === 'paused' ? 'Paused' : 'Now' }}</em> }
+              </span>
+            </li>
+          }
+        </ol>
+      }
+    }
+  </div>
+</section>
+
+<!-- ===== confirmation ===== -->
+@if (pending(); as a) {
+  <div class="w-overlay" (click)="pending.set(null)"></div>
+  <div class="w-dialog" role="alertdialog" aria-modal="true" aria-labelledby="lc-dlg-title">
+    <header class="w-dialog-head">
+      <span [class]="'w-dialog-ico ' + a.tone"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg></span>
+      <div>
+        @if (a.danger) { <span class="w-caption">High-risk decision</span> }
+        <h2 id="lc-dlg-title">{{ a.title }}</h2>
+      </div>
+      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="pending.set(null)">
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+      </button>
+    </header>
+    <div class="w-dialog-body">
+      <dl class="w-kv">
+        <div><dt>Campaign</dt><dd>{{ c().code }} · {{ c().name }}</dd></div>
+        <div><dt>Lifecycle</dt><dd>{{ label[c().lifecycle] }} → {{ label[a.to] }}</dd></div>
+        <div><dt>Live assets</dt><dd>{{ liveAssets() }}</dd></div>
+        <div><dt>Decided by</dt><dd>{{ store.currentUser }}</dd></div>
+      </dl>
+      <p class="lc-dlg-text">{{ a.text }}</p>
+      @if (a.needsReason) {
+        <div class="w-field">
+          <label class="w-label" for="lc-reason">Reason <span class="w-req">*</span></label>
+          <textarea id="lc-reason" class="w-textarea" maxlength="2000" placeholder="Recorded in the campaign history"
+                    [value]="reason()" (input)="setReason($event)" (blur)="touched.set(true)"
+                    [attr.aria-invalid]="(touched() && !!reasonError()) || null"></textarea>
+          <div class="lc-count">
+            @if (touched() && reasonError(); as e) { <span class="w-error">{{ e }}</span> } @else { <span class="w-help">Minimum 10 characters</span> }
+            <span class="w-help">{{ reason().length }} / 2000</span>
+          </div>
+        </div>
+      }
+    </div>
+    <footer class="w-dialog-foot">
+      <button type="button" class="w-btn" (click)="pending.set(null)">Cancel</button>
+      <button type="button" [class]="a.key === 'rejectClose' ? 'w-btn w-btn-danger' : a.button" (click)="confirm()">{{ a.confirm }}</button>
+    </footer>
+  </div>
+}

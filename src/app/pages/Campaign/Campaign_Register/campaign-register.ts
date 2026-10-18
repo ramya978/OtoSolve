@@ -1,4 +1,8 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
+import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
+import { CampaignInfo } from '../../../Shared/Campaign/cw.data';
 
 /** Campaign lifecycle states shown in the Status column. */
 export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'closing' | 'closed';
@@ -99,6 +103,10 @@ const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
   styleUrl: './campaign-register.css'
 })
 export class CampaignRegister {
+  private readonly router = inject(Router);
+  private readonly store = inject(CampaignWorkspaceStore);
+  protected readonly paths = CW_PATHS;
+
   protected readonly campaigns = CAMPAIGNS;
   protected readonly statusOrder = STATUS_ORDER;
 
@@ -294,6 +302,90 @@ export class CampaignRegister {
 
   close(): void {
     this.selected.set(null);
+  }
+
+  // ------------------------------------------------------------------
+  // FULL-PAGE FLOW: list → detail → create (router navigation, no popups)
+  // ------------------------------------------------------------------
+  /** Row / name click → full detail page for that campaign. */
+  openDetail(r: CampaignRow): void {
+    this.store.ensureCampaign(this.toInfo(r));
+    this.store.select(r.code);
+    this.selected.set(null);
+    this.router.navigate([CW_PATHS.detailFor(r.code)]);
+  }
+
+  /** Header Create → full-page wizard. */
+  goCreate(): void {
+    this.router.navigate([CW_PATHS.create]);
+  }
+
+  /** Toolbar action for a row (view / edit / duplicate / delete / readiness / launch). */
+  rowAction(r: CampaignRow, action: RowAction): void {
+    if (action === 'view') return this.openDetail(r);
+    if (action === 'edit') {
+      this.store.ensureCampaign(this.toInfo(r));
+      this.store.select(r.code);
+      this.router.navigate([CW_PATHS.create], { queryParams: { code: r.code } });
+      return;
+    }
+    if (action === 'duplicate') {
+      this.store.ensureCampaign(this.toInfo(r));
+      const next = this.store.duplicateCampaign(r.code);
+      this.router.navigate([CW_PATHS.detailFor(next)]);
+      return;
+    }
+    if (action === 'delete') {
+      this.store.removeCampaign(r.code);
+      this.checked.update((s) => { const n = new Set(s); n.delete(r.id); return n; });
+      return;
+    }
+    if (action === 'readiness') {
+      this.store.ensureCampaign(this.toInfo(r));
+      this.store.select(r.code);
+      this.router.navigate([CW_PATHS.readiness]);
+      return;
+    }
+    if (action === 'launch') {
+      this.store.ensureCampaign(this.toInfo(r));
+      this.store.select(r.code);
+      this.store.approveLaunch(r.code);
+      return;
+    }
+  }
+
+  /** Register row → workspace CampaignInfo (so the detail page can render it). */
+  private toInfo(r: CampaignRow): CampaignInfo {
+    return {
+      code: r.code,
+      name: r.name,
+      lifecycle: r.status,
+      owners: [r.owner.replace(/\s\+\d+$/, '')],
+      fund: 'General Fund',
+      start: this.toIso(r.launch),
+      end: this.toIso(r.ends),
+      location: '',
+      target: 0,
+      raised: 0,
+      monthlyRevenue: 0,
+      monthlyRevenuePrev: 0,
+      donors: 0,
+      donations: 0,
+      description: r.name,
+      updatedAt: new Date().toISOString().slice(0, 16)
+    };
+  }
+
+  /** "01 Feb 2027" → "2027-02-01". */
+  private toIso(display: string): string {
+    const m: Record<string, string> = {
+      Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+      Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12'
+    };
+    const parts = display.trim().split(/\s+/);
+    if (parts.length !== 3) return '';
+    const [dd, mon, yyyy] = parts;
+    return `${yyyy}-${m[mon] ?? '01'}-${dd.padStart(2, '0')}`;
   }
 
   /** Clicking anywhere else closes an open dropdown. */

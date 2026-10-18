@@ -4,7 +4,7 @@
     <h1>Campaigns</h1>
     <p>A campaign groups donations under one fund or programme, with its own target, dates and public wording.</p>
   </div>
-  <button type="button" class="cp-btn btn-secondary" (click)="back.emit()">
+  <button type="button" class="cp-btn btn-secondary" (click)="goBack()">
     <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
   Back
   </button>
@@ -13,13 +13,13 @@
 <!-- ============================== CREATE CARD ============================== -->
 <section class="cp-create">
   <div>
-    <span class="cp-eyebrow">Add campaign record</span>
-    <h2>Create campaign</h2>
+    <span class="cp-eyebrow">{{ isEdit() ? 'Edit campaign record' : 'Add campaign record' }}</span>
+    <h2>{{ isEdit() ? 'Edit campaign' : 'Create campaign' }}</h2>
     <p>A permanent campaign ID is generated when you launch. The campaign code is locked after launch.</p>
   </div>
   <div class="cp-create-actions">
-    <span class="cp-pill">New record</span>
-    <!-- <button type="button" class="cp-btn" (click)="back.emit()">Back to records</button> -->
+    <span class="cp-pill">{{ isEdit() ? 'Editing ' + (editingCode ?? '') : 'New record' }}</span>
+    <a class="cp-btn" [routerLink]="paths.register">Back to records</a>
   </div>
 </section>
 
@@ -103,12 +103,12 @@
             <span class="cp-help" tabindex="0" data-tip="Short unique code used on receipts. Locked after launch.">?</span>
           </div>
           <input id="cp-code" class="cp-input cp-mono" type="text" placeholder="e.g. EDU2025"
-                 [class.is-invalid]="showError('code')" [value]="form().code"
+                 [class.is-invalid]="showError('code')" [value]="form().code" [disabled]="isEdit()"
                  (input)="setCode($event)" (blur)="touch('code')" />
           @if (showError('code'); as err) {
             <p class="cp-error" style="margin-top: 10px;">{{ err }}</p>
           } @else {
-            <p class="cp-hint" style="margin-top: 10px;">Capital letters, numbers and hyphens.</p>
+            <p class="cp-hint" style="margin-top: 10px;">{{ isEdit() ? 'Code is locked while editing.' : 'Capital letters, numbers and hyphens.' }}</p>
           }
         </div>
 
@@ -526,7 +526,7 @@
         </button>
         <button type="button" class="cp-btn btn-primary" (click)="launch()">
           <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-          Launch campaign
+          {{ isEdit() ? 'Save & open detail' : 'Launch campaign' }}
         </button>
       </div>
     </footer>
