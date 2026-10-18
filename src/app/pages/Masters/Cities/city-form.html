@@ -1,314 +1,260 @@
 <!-- =====================================================================================================
-     NEW CITY / EDIT - create page (city-form.ts · city-form.css · config: cities.config.ts)
-     Workspace Kit horizontal register (create-organisation.html): live preview, required progress,
-     section links, numbered sections with left labels and right-hand controls, error summary, actions.
+     NEW CITY / EDIT CITY - create page (city-form.ts · city-form.css · config: cities.config.ts)
+     "Location trail" design (v2): a full-width Country › State › City path of arrow segments that
+     fills in as you type, groups with the heading on the left and soft filled fields on the right,
+     a metro switch, status pills with colour dots, and an action bar that sticks to the bottom.
+     Every class starts with ct- so shared or global stylesheets cannot change this page.
      ===================================================================================================== -->
-<section class="mf-view" aria-labelledby="mf-title-city">
+<section class="ct-page" aria-labelledby="ct-title">
 
   <!-- page heading -->
   <div class="m-heading">
     <div>
-     
       <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="mf-title-city">{{ editing ? 'Edit city' : 'New city' }}</h1>
+      <h1 class="m-title" id="ct-title">{{ editing ? 'Edit city' : 'New city' }}</h1>
       <p class="m-subtitle">Add a city under its state, with postal pattern and map position.</p>
     </div>
     <div class="m-actions">
-     
-      <button type="button" class="m-btn" (click)="cancel()">
+      <button type="button" class="m-btn ct-outline" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
   </div>
 
-  <form class="mf-form" novalidate (submit)="$event.preventDefault(); save()">
+  <form class="ct-sheet" novalidate (submit)="$event.preventDefault(); save()">
 
-    <!-- live preview of the record being entered -->
-    <div class="mf-intro">
-      <div class="mf-intro-id">
-        <span class="mf-mark" aria-hidden="true">{{ preview().mark }}</span>
-        <div class="mf-intro-copy">
-          <span class="mf-intro-label">Preview</span>
-          <strong [class.is-empty]="!dirty() && !editing">{{ preview().title }}</strong>
-          <p>{{ preview().sub }}</p>
-        </div>
+    <!-- ===== location trail: Country › State › City ===== -->
+    <div class="ct-trail" aria-label="Location">
+      <div class="ct-crumb" [class.is-set]="!!countryLabel()">
+        <span class="ct-crumb-ico"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg></span>
+        <span class="ct-crumb-text"><small>Country</small>{{ countryLabel() || 'Not chosen' }}</span>
+        @if (value('country')) { <span class="ct-crumb-code">{{ value('country') }}</span> }
       </div>
-      <dl class="mf-facts">
-        @for (f of preview().facts; track f.label) {
-          <div>
-            <dt>{{ f.label }}</dt>
-            <dd [class]="f.tone ? 'is-' + f.tone : ''">{{ f.value }}</dd>
-          </div>
-        }
-      </dl>
-      <span class="mf-state">{{ editing ? 'Editing' : dirty() ? 'Unsaved entry' : 'New entry' }}</span>
-    </div>
-
-    <!-- register note + readiness -->
-    <div class="mf-meta">
-      <div class="mf-meta-ref">
-        <span>City register</span>
-        <strong>Choose the country, then one of its states. <span class="mf-req" aria-hidden="true">*</span> Required</strong>
+      <div class="ct-crumb" [class.is-set]="!!stateLabel()">
+        <span class="ct-crumb-ico"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('map')" /></svg></span>
+        <span class="ct-crumb-text"><small>State</small>{{ stateLabel() || 'Not chosen' }}</span>
+        @if (value('state')) { <span class="ct-crumb-code">{{ value('state') }}</span> }
       </div>
-      <div class="mf-readiness">
-        <span>{{ filledRequired() }} of {{ requiredFields.length }} required values entered</span>
-        <span class="mf-bar" role="progressbar" aria-label="Required values entered" aria-valuemin="0" aria-valuemax="100"
-              [attr.aria-valuenow]="progress()"><i [style.width.%]="progress()"></i></span>
+      <div class="ct-crumb is-city" [class.is-set]="!!value('name')">
+        <span class="ct-crumb-ico"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pin')" /></svg></span>
+        <span class="ct-crumb-text"><small>City{{ value('metro') === 'yes' ? ' · Metro' : '' }}</small>{{ value('name') || 'City name' }}</span>
+        @if (value('code')) { <span class="ct-crumb-code">{{ value('code') }}</span> }
       </div>
     </div>
 
- 
+    <!-- error summary (after Create) -->
+    @if (submitted() && errorList().length) {
+      <div class="mf-errors ct-errors" tabindex="-1" role="alert">
+        <strong>{{ errorList().length === 1 ? 'One value needs attention' : errorList().length + ' values need attention' }}</strong>
+        <ul>
+          @for (e of errorList(); track e.key) {
+            <li><button type="button" (click)="focusField(e.key)">{{ e.label }}: {{ e.text }}</button></li>
+          }
+        </ul>
+      </div>
+    }
 
- 
-    <div class="m-card mf-ledger">
+    <!-- ===== 1 · Location ===== -->
+    <section class="ct-group" id="mf-sec-city-02" aria-labelledby="ct-h-location">
+      <div class="ct-group-head">
+        <h2 id="ct-h-location"><span>1</span>Where is it?</h2>
+        <p>Choose the country first; the state list follows it.</p>
+      </div>
+      <div class="ct-group-body">
+      <div class="ct-grid">
+        <!-- Country -->
+        <div class="ct-field" data-field="country">
+          <label class="ct-label" for="ct-country">Country <span class="ct-req" aria-hidden="true">*</span></label>
+          <ms-select inputId="ct-country" [options]="optionsFor('country')" [value]="value('country')" [placeholder]="placeholderFor('country')"
+                     [disabled]="isWaiting('country') || isLocked('country')" [invalid]="!!err('country')"
+                     [describedBy]="err('country') ? 'ct-country-err' : null" (valueChange)="pick('country', $event)" />
+          @if (err('country'); as e) { <small class="ct-error" id="ct-country-err">{{ e }}</small> }
+        </div>
+        <!-- State / province -->
+        <div class="ct-field" data-field="state">
+          <label class="ct-label" for="ct-state">State / province <span class="ct-req" aria-hidden="true">*</span></label>
+          <ms-select inputId="ct-state" [options]="optionsFor('state')" [value]="value('state')" [placeholder]="placeholderFor('state')"
+                     [disabled]="isWaiting('state') || isLocked('state')" [invalid]="!!err('state')"
+                     [describedBy]="err('state') ? 'ct-state-err' : null" (valueChange)="pick('state', $event)" />
+          <small>Of the chosen country</small>
+          @if (err('state'); as e) { <small class="ct-error" id="ct-state-err">{{ e }}</small> }
+        </div>
+      </div>
+      </div>
+    </section>
 
-      <!-- 01 Identity -->
-      <section class="mf-section" id="mf-sec-city-01" aria-labelledby="mf-h-city-01">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">01</span>
-            <h2 id="mf-h-city-01">Identity</h2>
-          </div>
-          <p>The short code and the names people see.</p>
+    <!-- ===== 2 · Identity ===== -->
+    <section class="ct-group" id="mf-sec-city-01" aria-labelledby="ct-h-identity">
+      <div class="ct-group-head">
+        <h2 id="ct-h-identity"><span>2</span>What is it called?</h2>
+        <p>The short code and the names people see.</p>
+      </div>
+      <div class="ct-group-body">
+      <div class="ct-grid ct-grid-id">
+        <!-- City code -->
+        <div class="ct-field" data-field="code">
+          <label class="ct-label" for="ct-code">Code <span class="ct-req" aria-hidden="true">*</span></label>
+          <input id="ct-code" type="text" class="ct-code-input" maxlength="6" required autocomplete="off" spellcheck="false" [readOnly]="isLocked('code')"
+                 [value]="value('code')" [placeholder]="placeholderFor('code')"
+                 [attr.aria-invalid]="!!err('code') || null" [attr.aria-describedby]="err('code') ? 'ct-code-err' : null"
+                 (input)="onInput('code', $event)" (blur)="touch('code')" />
+          @if (isLocked('code')) {
+            <small class="ct-note"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg> Locked</small>
+          } @else {
+            <small>2–6 letters</small>
+          }
+          @if (err('code'); as e) { <small class="ct-error" id="ct-code-err">{{ e }}</small> }
         </div>
-        <div class="mf-lanes">
-          <!-- City code -->
-          <div class="mf-field" data-field="code">
-            <label for="mf-city-code">
-              City code <span class="mf-req" aria-hidden="true">*</span>
-              <small>2–6 letters</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-code" type="text" class="is-short" maxlength="6" required autocomplete="off" spellcheck="false" [readOnly]="isLocked('code')"
-                     [value]="value('code')" [placeholder]="placeholderFor('code')"
-                     [attr.aria-invalid]="!!err('code') || null" [attr.aria-describedby]="err('code') ? 'mf-city-code-err' : null"
-                     (input)="onInput('code', $event)" (blur)="touch('code')" />
-              @if (isLocked('code')) {
-                <small class="mf-lock"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg> Locked after creation</small>
-              }
-              @if (err('code'); as e) { <small class="mf-error" id="mf-city-code-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- City name -->
-          <div class="mf-field" data-field="name">
-            <label for="mf-city-name">
-              City name <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-name" type="text" maxlength="80" required autocomplete="off" spellcheck="false"
-                     [value]="value('name')" [placeholder]="placeholderFor('name')"
-                     [attr.aria-invalid]="!!err('name') || null" [attr.aria-describedby]="err('name') ? 'mf-city-name-err' : null"
-                     (input)="onInput('name', $event)" (blur)="touch('name')" />
-              @if (err('name'); as e) { <small class="mf-error" id="mf-city-name-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Display name -->
-          <div class="mf-field" data-field="display">
-            <label for="mf-city-display">
-              Display name
-              <small>Shown in dropdowns</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-display" type="text" maxlength="100" autocomplete="off" spellcheck="false"
-                     [value]="value('display')" [placeholder]="placeholderFor('display')"
-                     [attr.aria-invalid]="!!err('display') || null" [attr.aria-describedby]="err('display') ? 'mf-city-display-err' : null"
-                     (input)="onInput('display', $event)" (blur)="touch('display')" />
-              @if (err('display'); as e) { <small class="mf-error" id="mf-city-display-err">{{ e }}</small> }
-            </div>
-          </div>
+        <!-- City name -->
+        <div class="ct-field" data-field="name">
+          <label class="ct-label" for="ct-name">City name <span class="ct-req" aria-hidden="true">*</span></label>
+          <input id="ct-name" type="text" maxlength="80" required autocomplete="off" spellcheck="false"
+                 [value]="value('name')" [placeholder]="placeholderFor('name')"
+                 [attr.aria-invalid]="!!err('name') || null" [attr.aria-describedby]="err('name') ? 'ct-name-err' : null"
+                 (input)="onInput('name', $event)" (blur)="touch('name')" />
+          @if (err('name'); as e) { <small class="ct-error" id="ct-name-err">{{ e }}</small> }
         </div>
-      </section>
+        <!-- Display name -->
+        <div class="ct-field" data-field="display">
+          <label class="ct-label" for="ct-display">Display name</label>
+          <input id="ct-display" type="text" maxlength="100" autocomplete="off" spellcheck="false"
+                 [value]="value('display')" [placeholder]="placeholderFor('display')"
+                 [attr.aria-invalid]="!!err('display') || null" [attr.aria-describedby]="err('display') ? 'ct-display-err' : null"
+                 (input)="onInput('display', $event)" (blur)="touch('display')" />
+          <small>Shown in dropdowns</small>
+          @if (err('display'); as e) { <small class="ct-error" id="ct-display-err">{{ e }}</small> }
+        </div>
+      </div>
 
-      <!-- 02 Location -->
-      <section class="mf-section" id="mf-sec-city-02" aria-labelledby="mf-h-city-02">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">02</span>
-            <h2 id="mf-h-city-02">Location</h2>
-          </div>
-          <p>The state list follows the chosen country.</p>
+      <!-- Metro city: a switch -->
+      <div class="ct-switch-row" data-field="metro">
+        <div>
+          <span class="ct-label" id="ct-metro-label">Metro city</span>
+          <small>Used in analytics</small>
         </div>
-        <div class="mf-lanes">
-          <!-- Country -->
-          <div class="mf-field" data-field="country">
-            <label for="mf-city-country">
-              Country <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <ms-select inputId="mf-city-country" [options]="optionsFor('country')" [value]="value('country')" [placeholder]="placeholderFor('country')"
-                         [disabled]="isWaiting('country') || isLocked('country')" [invalid]="!!err('country')"
-                         [describedBy]="err('country') ? 'mf-city-country-err' : null" (valueChange)="pick('country', $event)" />
-              @if (err('country'); as e) { <small class="mf-error" id="mf-city-country-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- State / province -->
-          <div class="mf-field" data-field="state">
-            <label for="mf-city-state">
-              State / province <span class="mf-req" aria-hidden="true">*</span>
-              <small>Of the chosen country</small>
-            </label>
-            <div class="mf-control">
-              <ms-select inputId="mf-city-state" [options]="optionsFor('state')" [value]="value('state')" [placeholder]="placeholderFor('state')"
-                         [disabled]="isWaiting('state') || isLocked('state')" [invalid]="!!err('state')"
-                         [describedBy]="err('state') ? 'mf-city-state-err' : null" (valueChange)="pick('state', $event)" />
-              @if (err('state'); as e) { <small class="mf-error" id="mf-city-state-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Metro city -->
-          <div class="mf-field" data-field="metro">
-            <label id="mf-city-metro-label">
-              Metro city
-              <small>Used in analytics</small>
-            </label>
-            <div class="mf-control">
-              <div class="mf-choices" role="radiogroup" aria-labelledby="mf-city-metro-label" [class.is-invalid]="!!err('metro')"
-                   (keydown)="onChoiceKey('metro', $event)">
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('metro') === 'yes'"
-                        [attr.aria-checked]="value('metro') === 'yes'" [attr.tabindex]="choiceTab('metro', 'yes', true)"
-                        (click)="pick('metro', 'yes')"><i aria-hidden="true"></i>Metro</button>
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('metro') === 'no'"
-                        [attr.aria-checked]="value('metro') === 'no'" [attr.tabindex]="choiceTab('metro', 'no', false)"
-                        (click)="pick('metro', 'no')"><i aria-hidden="true"></i>Not metro</button>
-              </div>
-              @if (err('metro'); as e) { <small class="mf-error" id="mf-city-metro-err">{{ e }}</small> }
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 03 Postal & geography -->
-      <section class="mf-section" id="mf-sec-city-03" aria-labelledby="mf-h-city-03">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">03</span>
-            <h2 id="mf-h-city-03">Postal &amp; geography</h2>
-          </div>
-          <p>A city pattern overrides the state’s postal rule.</p>
-        </div>
-        <div class="mf-lanes">
-          <!-- Postal code pattern -->
-          <div class="mf-field is-wide" data-field="postal">
-            <label for="mf-city-postal">
-              Postal code pattern
-              <small>Overrides the state’s</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-postal" type="text" class="m-mono" maxlength="120" autocomplete="off" spellcheck="false"
-                     [value]="value('postal')" [placeholder]="placeholderFor('postal')"
-                     [attr.aria-invalid]="!!err('postal') || null" [attr.aria-describedby]="err('postal') ? 'mf-city-postal-err' : null"
-                     (input)="onInput('postal', $event)" (blur)="touch('postal')" />
-              @if (err('postal'); as e) { <small class="mf-error" id="mf-city-postal-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Latitude -->
-          <div class="mf-field" data-field="lat">
-            <label for="mf-city-lat">
-              Latitude
-              <small>−90 to 90</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-lat" type="text" class="is-short" inputmode="decimal" autocomplete="off" spellcheck="false"
-                     [value]="value('lat')" [placeholder]="placeholderFor('lat')"
-                     [attr.aria-invalid]="!!err('lat') || null" [attr.aria-describedby]="err('lat') ? 'mf-city-lat-err' : null"
-                     (input)="onInput('lat', $event)" (blur)="touch('lat')" />
-              @if (err('lat'); as e) { <small class="mf-error" id="mf-city-lat-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Longitude -->
-          <div class="mf-field" data-field="lng">
-            <label for="mf-city-lng">
-              Longitude
-              <small>−180 to 180</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-city-lng" type="text" class="is-short" inputmode="decimal" autocomplete="off" spellcheck="false"
-                     [value]="value('lng')" [placeholder]="placeholderFor('lng')"
-                     [attr.aria-invalid]="!!err('lng') || null" [attr.aria-describedby]="err('lng') ? 'mf-city-lng-err' : null"
-                     (input)="onInput('lng', $event)" (blur)="touch('lng')" />
-              @if (err('lng'); as e) { <small class="mf-error" id="mf-city-lng-err">{{ e }}</small> }
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 04 Status & notes -->
-      <section class="mf-section" id="mf-sec-city-04" aria-labelledby="mf-h-city-04">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">04</span>
-            <h2 id="mf-h-city-04">Status &amp; notes</h2>
-          </div>
-          <p>Drafts are saved but not offered in address forms yet.</p>
-        </div>
-        <div class="mf-lanes">
-          <!-- Status -->
-          <div class="mf-field" data-field="status">
-            <label id="mf-city-status-label">
-              Status <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <div class="mf-choices" role="radiogroup" aria-labelledby="mf-city-status-label" [class.is-invalid]="!!err('status')"
-                   (keydown)="onChoiceKey('status', $event)">
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('status') === 'draft'"
-                        [attr.aria-checked]="value('status') === 'draft'" [attr.tabindex]="choiceTab('status', 'draft', true)"
-                        (click)="pick('status', 'draft')"><i aria-hidden="true"></i>Draft</button>
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('status') === 'active'"
-                        [attr.aria-checked]="value('status') === 'active'" [attr.tabindex]="choiceTab('status', 'active', false)"
-                        (click)="pick('status', 'active')"><i aria-hidden="true"></i>Active</button>
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('status') === 'inactive'"
-                        [attr.aria-checked]="value('status') === 'inactive'" [attr.tabindex]="choiceTab('status', 'inactive', false)"
-                        (click)="pick('status', 'inactive')"><i aria-hidden="true"></i>Inactive</button>
-              </div>
-              @if (err('status'); as e) { <small class="mf-error" id="mf-city-status-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Notes -->
-          <div class="mf-field is-wide" data-field="notes">
-            <label for="mf-city-notes">
-              Notes
-              <small>Internal only</small>
-            </label>
-            <div class="mf-control">
-              <textarea id="mf-city-notes" rows="3" maxlength="500" [value]="value('notes')" [placeholder]="placeholderFor('notes')"
-                        [attr.aria-invalid]="!!err('notes') || null" [attr.aria-describedby]="err('notes') ? 'mf-city-notes-err' : null"
-                        (input)="onInput('notes', $event)" (blur)="touch('notes')"></textarea>
-              @if (err('notes'); as e) { <small class="mf-error" id="mf-city-notes-err">{{ e }}</small> }
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
-
- 
-    <!-- action bar -->
-    <div class="mf-footer">
-      <div class="mf-footer-left">
-        <button type="button" class="m-btn" (click)="cancel()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
-          Cancel
-        </button>
-        <button type="button" class="m-text-btn" [disabled]="!dirty()" (click)="reset()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
-          {{ editing ? 'Undo changes' : 'Start new' }}
+        <button type="button" role="switch" class="ct-switch" [class.is-on]="value('metro') === 'yes'"
+                [attr.aria-checked]="value('metro') === 'yes'" aria-labelledby="ct-metro-label"
+                (click)="pick('metro', value('metro') === 'yes' ? 'no' : 'yes')">
+          <span class="ct-switch-track" aria-hidden="true"><i></i></span>
+          {{ value('metro') === 'yes' ? 'Metro' : 'Not metro' }}
         </button>
       </div>
-      <button type="submit" class="m-btn m-btn-primary">
-        <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
-        {{ editing ? 'Save changes' : 'Create city' }}
-      </button>
+      </div>
+    </section>
+
+    <!-- ===== 3 · Postal & map ===== -->
+    <section class="ct-group" id="mf-sec-city-03" aria-labelledby="ct-h-map">
+      <div class="ct-group-head">
+        <h2 id="ct-h-map"><span>3</span>Postal code &amp; map position</h2>
+        <p>A city pattern overrides the state’s postal rule.</p>
+      </div>
+      <div class="ct-group-body">
+      <div class="ct-grid ct-grid-map">
+        <!-- Postal code pattern -->
+        <div class="ct-field" data-field="postal">
+          <label class="ct-label" for="ct-postal">Postal code pattern</label>
+          <input id="ct-postal" type="text" class="ct-mono" maxlength="120" autocomplete="off" spellcheck="false"
+                 [value]="value('postal')" [placeholder]="placeholderFor('postal')"
+                 [attr.aria-invalid]="!!err('postal') || null" [attr.aria-describedby]="err('postal') ? 'ct-postal-err' : null"
+                 (input)="onInput('postal', $event)" (blur)="touch('postal')" />
+          <small>Overrides the state’s rule</small>
+          @if (err('postal'); as e) { <small class="ct-error" id="ct-postal-err">{{ e }}</small> }
+        </div>
+        <!-- Latitude -->
+        <div class="ct-field" data-field="lat">
+          <label class="ct-label" for="ct-lat">Latitude</label>
+          <div class="ct-affix">
+            <input id="ct-lat" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                   [value]="value('lat')" [placeholder]="placeholderFor('lat')"
+                   [attr.aria-invalid]="!!err('lat') || null" [attr.aria-describedby]="err('lat') ? 'ct-lat-err' : null"
+                   (input)="onInput('lat', $event)" (blur)="touch('lat')" />
+            <span aria-hidden="true">°</span>
+          </div>
+          <small>−90 to 90</small>
+          @if (err('lat'); as e) { <small class="ct-error" id="ct-lat-err">{{ e }}</small> }
+        </div>
+        <!-- Longitude -->
+        <div class="ct-field" data-field="lng">
+          <label class="ct-label" for="ct-lng">Longitude</label>
+          <div class="ct-affix">
+            <input id="ct-lng" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                   [value]="value('lng')" [placeholder]="placeholderFor('lng')"
+                   [attr.aria-invalid]="!!err('lng') || null" [attr.aria-describedby]="err('lng') ? 'ct-lng-err' : null"
+                   (input)="onInput('lng', $event)" (blur)="touch('lng')" />
+            <span aria-hidden="true">°</span>
+          </div>
+          <small>−180 to 180</small>
+          @if (err('lng'); as e) { <small class="ct-error" id="ct-lng-err">{{ e }}</small> }
+        </div>
+      </div>
+      @if (position(); as pos) {
+        <p class="ct-position">
+          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pin')" /></svg>
+          {{ pos }}
+        </p>
+      }
+      </div>
+    </section>
+
+    <!-- ===== 4 · Status & notes ===== -->
+    <section class="ct-group" id="mf-sec-city-04" aria-labelledby="ct-h-status">
+      <div class="ct-group-head">
+        <h2 id="ct-h-status"><span>4</span>Status &amp; notes</h2>
+        <p>Drafts are saved but not offered in address forms yet.</p>
+      </div>
+      <div class="ct-group-body">
+      <div class="ct-field" data-field="status">
+        <span class="ct-label" id="ct-status-label">Status <span class="ct-req" aria-hidden="true">*</span></span>
+        <div class="ct-pills" role="radiogroup" aria-labelledby="ct-status-label" (keydown)="onChoiceKey('status', $event)">
+          <button type="button" role="radio" class="is-draft" [class.is-on]="value('status') === 'draft'" [attr.aria-checked]="value('status') === 'draft'"
+                  [attr.tabindex]="choiceTab('status', 'draft', true)" (click)="pick('status', 'draft')"><i aria-hidden="true"></i>Draft</button>
+          <button type="button" role="radio" class="is-active" [class.is-on]="value('status') === 'active'" [attr.aria-checked]="value('status') === 'active'"
+                  [attr.tabindex]="choiceTab('status', 'active', false)" (click)="pick('status', 'active')"><i aria-hidden="true"></i>Active</button>
+          <button type="button" role="radio" class="is-inactive" [class.is-on]="value('status') === 'inactive'" [attr.aria-checked]="value('status') === 'inactive'"
+                  [attr.tabindex]="choiceTab('status', 'inactive', false)" (click)="pick('status', 'inactive')"><i aria-hidden="true"></i>Inactive</button>
+        </div>
+        @if (err('status'); as e) { <small class="ct-error" id="ct-status-err">{{ e }}</small> }
+      </div>
+      <!-- Notes -->
+      <div class="ct-field" data-field="notes">
+        <label class="ct-label" for="ct-notes">Notes <small class="ct-inline">· internal only</small></label>
+        <textarea id="ct-notes" rows="3" maxlength="500" [value]="value('notes')" [placeholder]="placeholderFor('notes')"
+                  [attr.aria-invalid]="!!err('notes') || null" [attr.aria-describedby]="err('notes') ? 'ct-notes-err' : null"
+                  (input)="onInput('notes', $event)" (blur)="touch('notes')"></textarea>
+        @if (err('notes'); as e) { <small class="ct-error" id="ct-notes-err">{{ e }}</small> }
+      </div>
+      </div>
+    </section>
+
+    <!-- ===== action bar ===== -->
+    <div class="ct-bar">
+      <div class="ct-bar-status">
+        <span class="ct-ring" [style.--p]="progress()" aria-hidden="true"></span>
+        <span><strong>{{ filledRequired() }} of {{ requiredFields.length }}</strong> required filled</span>
+      </div>
+      <div class="ct-bar-actions">
+        <button type="button" class="m-text-btn ct-link" [disabled]="!dirty()" (click)="reset()">
+          {{ editing ? 'Undo changes' : 'Clear' }}
+        </button>
+        <button type="button" class="m-btn ct-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
+        <button type="submit" class="m-btn m-btn-primary">
+          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
+          {{ editing ? 'Save' : 'Create' }}
+        </button>
+      </div>
     </div>
   </form>
 </section>
 
 <!-- leave with unsaved changes -->
 @if (confirmLeave()) {
-  <div class="mf-overlay" (click)="confirmLeave.set(false)"></div>
-  <div class="mf-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mf-leave-title-city" aria-describedby="mf-leave-text-city">
-    <h2 id="mf-leave-title-city">Discard this entry?</h2>
-    <p id="mf-leave-text-city">The values entered on this city have not been saved. Leaving now discards them.</p>
-    <div class="mf-dialog-foot">
-      <button type="button" class="m-btn" (click)="confirmLeave.set(false)">Keep editing</button>
+  <div class="ct-overlay" (click)="confirmLeave.set(false)"></div>
+  <div class="ct-dialog" role="alertdialog" aria-modal="true" aria-labelledby="ct-leave-title" aria-describedby="ct-leave-text">
+    <h2 id="ct-leave-title">Discard this entry?</h2>
+    <p id="ct-leave-text">The values entered on this city have not been saved. Leaving now discards them.</p>
+    <div class="ct-dialog-foot">
+      <button type="button" class="m-btn ct-outline" (click)="confirmLeave.set(false)">Keep editing</button>
       <button type="button" class="m-btn m-btn-danger" (click)="leave()">Discard and leave</button>
     </div>
   </div>

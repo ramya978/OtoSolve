@@ -1,5 +1,675 @@
 /* =====================================================================================================
-   NEW CITY - create / edit page styles
-   Shared register styles: app/Shared/Masters/masters-shared.css + app/Shared/Masters/master-form.css.
-   Add rules here that belong to this page only.
+   NEW CITY / EDIT CITY - page styles (city-form.html) - "location trail" design (v2)
+   Full-width sheet (follows the page / Appearance width): a Country › State › City path of three
+   arrow segments on top; each group has its heading + note on the left and soft filled fields on
+   the right; a metro switch; status pills with colour dots; a sticky action bar with a ring.
+   Every rule is scoped under .ct-page with ct- classes, so shared / global CSS cannot reshape it.
+   Tokens (--k-*) and m-btn / m-heading come from masters-shared.css.
+   Typography follows the Workspace Kit: Inter / Segoe UI · 12px labels · 11px hints ·
+   13px inputs · 10px uppercase captions · 14px group titles.
+   Theme roles: PRIMARY = Create, trail city tile, metro switch, focus, ring · SECONDARY = Back / Cancel.
    ===================================================================================================== */
+.ct-page {
+  container: ct-page / inline-size
+}
+
+/* ---------- sheet ---------- */
+.ct-page .ct-sheet {
+  width: 100%;
+  border: 1px solid var(--k-outline);
+  border-radius: 14px;
+  background: var(--white, #fff);
+  box-shadow: var(--shadow, none);
+  container: ct-sheet / inline-size
+}
+
+/* ---------- location trail: three arrow segments across the full width ---------- */
+.ct-page .ct-trail {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--k-line);
+  border-radius: 14px 14px 0 0;
+  background: color-mix(in srgb, var(--k-line) 18%, var(--white, #fff))
+}
+
+.ct-page .ct-crumb {
+  --notch: 16px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  min-height: 54px;
+  padding: 8px calc(var(--notch) + 14px) 8px calc(var(--notch) + 12px);
+  background: var(--chip, #eef2f5);
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%, var(--notch) 50%);
+  transition: background-color 160ms
+}
+
+/* first segment has a straight left edge, rounded */
+.ct-page .ct-crumb:first-child {
+  padding-left: 16px;
+  border-radius: 10px 0 0 10px;
+  clip-path: polygon(0 0, calc(100% - var(--notch)) 0, 100% 50%, calc(100% - var(--notch)) 100%, 0 100%)
+}
+
+.ct-page .ct-crumb.is-set {
+  background: var(--k-tint)
+}
+
+.ct-page .ct-crumb.is-city.is-set {
+  background: var(--cc-btn, var(--k-accent))
+}
+
+.ct-page .ct-crumb-ico {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--white, #fff);
+  color: var(--k-muted)
+}
+
+.ct-page .ct-crumb-ico .m-ico {
+  width: 17px;
+  height: 17px
+}
+
+.ct-page .ct-crumb.is-set .ct-crumb-ico {
+  color: var(--k-accent-ink)
+}
+
+.ct-page .ct-crumb-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--k-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.ct-page .ct-crumb.is-set .ct-crumb-text {
+  color: var(--k-heading);
+  font-weight: 600
+}
+
+.ct-page .ct-crumb-text small {
+  color: var(--k-muted);
+  font-size: calc(10px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase
+}
+
+.ct-page .ct-crumb-code {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--white, #fff);
+  color: var(--k-accent-ink);
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: .5px
+}
+
+/* the filled city segment: text and chips flip to the primary-on colour */
+.ct-page .ct-crumb.is-city.is-set .ct-crumb-text,
+.ct-page .ct-crumb.is-city.is-set .ct-crumb-text small {
+  color: var(--cc-btn-ink, var(--primary-on, #fff))
+}
+
+.ct-page .ct-crumb.is-city.is-set .ct-crumb-text small {
+  opacity: .8
+}
+
+.ct-page .ct-crumb.is-city.is-set .ct-crumb-ico,
+.ct-page .ct-crumb.is-city.is-set .ct-crumb-code {
+  background: color-mix(in srgb, var(--cc-btn-ink, var(--primary-on, #fff)) 20%, transparent);
+  color: var(--cc-btn-ink, var(--primary-on, #fff))
+}
+
+/* ---------- groups: heading + note on the left, fields on the right ---------- */
+.ct-page .ct-group {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 16px 32px;
+  padding: 24px;
+  scroll-margin-top: 90px
+}
+
+.ct-page .ct-group + .ct-group {
+  border-top: 1px solid var(--k-line)
+}
+
+.ct-page .ct-group-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--k-heading);
+  font-family: var(--font-heading, var(--k-font));
+  font-size: calc(14px * var(--font-scale, 1));
+  font-weight: 600;
+  line-height: 1.4
+}
+
+.ct-page .ct-group-head h2 > span {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--k-tint);
+  color: var(--k-accent-ink);
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 600
+}
+
+.ct-page .ct-group-head p {
+  margin: 6px 0 0 34px;
+  color: var(--k-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  line-height: 1.6
+}
+
+.ct-page .ct-group-body {
+  display: grid;
+  gap: 16px;
+  min-width: 0
+}
+
+.ct-page .ct-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: start
+}
+
+.ct-page .ct-grid-id {
+  grid-template-columns: 130px minmax(0, 1.3fr) minmax(0, 1fr)
+}
+
+.ct-page .ct-grid-map {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr)
+}
+
+/* ---------- fields: filled style ---------- */
+.ct-page .ct-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0
+}
+
+.ct-page .ct-label {
+  display: block;
+  color: var(--k-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 550;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none
+}
+
+.ct-page .ct-req {
+  color: var(--status-danger, #a92839)
+}
+
+.ct-page .ct-inline {
+  color: var(--k-muted);
+  font-weight: 400
+}
+
+.ct-page .ct-field small,
+.ct-page .ct-switch-row small {
+  color: var(--k-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  line-height: 1.45
+}
+
+.ct-page .ct-field small.ct-error {
+  color: var(--status-danger-ink, #a12336)
+}
+
+.ct-page .ct-field input,
+.ct-page .ct-field textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--k-line) 80%, var(--white, #fff));
+  border-radius: var(--btn-radius, 8px);
+  background: color-mix(in srgb, var(--k-line) 22%, var(--white, #fff));
+  color: var(--k-ink);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.5;
+  box-shadow: none;
+  outline: none;
+  transition: background-color 140ms, border-color 140ms, box-shadow 140ms
+}
+
+.ct-page .ct-field input {
+  height: 40px
+}
+
+.ct-page .ct-field textarea {
+  min-height: 84px;
+  resize: vertical
+}
+
+.ct-page .ct-field input::placeholder,
+.ct-page .ct-field textarea::placeholder {
+  color: color-mix(in srgb, var(--k-muted) 65%, var(--white, #fff))
+}
+
+.ct-page .ct-field input:hover:not(:read-only),
+.ct-page .ct-field textarea:hover {
+  background: color-mix(in srgb, var(--k-line) 55%, var(--white, #fff))
+}
+
+.ct-page .ct-field input:focus,
+.ct-page .ct-field textarea:focus {
+  outline: none;
+  border-color: var(--k-accent-ink);
+  background: var(--white, #fff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-accent) 14%, transparent)
+}
+
+.ct-page .ct-field input:read-only {
+  color: var(--k-muted);
+  cursor: not-allowed
+}
+
+.ct-page .ct-field [aria-invalid="true"] {
+  border-color: var(--status-danger, #b42335)
+}
+
+.ct-page .ct-code-input {
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  text-transform: uppercase
+}
+
+.ct-page .ct-field input.ct-mono {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: calc(12.5px * var(--font-scale, 1))
+}
+
+.ct-page .ct-field ms-select {
+  display: block;
+  width: 100%
+}
+
+.ct-page .ct-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px
+}
+
+.ct-page .ct-note .m-ico {
+  width: 13px;
+  height: 13px
+}
+
+/* degree suffix inside the coordinate inputs */
+.ct-page .ct-affix {
+  position: relative
+}
+
+.ct-page .ct-affix input {
+  padding-right: 28px
+}
+
+.ct-page .ct-affix span {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: var(--k-muted);
+  font-size: calc(14px * var(--font-scale, 1));
+  transform: translateY(-50%);
+  pointer-events: none
+}
+
+.ct-page .ct-position {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  margin: 0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--k-tint);
+  color: var(--k-accent-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums
+}
+
+.ct-page .ct-position .m-ico {
+  width: 15px;
+  height: 15px
+}
+
+/* ---------- metro switch row ---------- */
+.ct-page .ct-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--k-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--k-line) 12%, var(--white, #fff))
+}
+
+.ct-page .ct-switch-row > div:first-child {
+  display: grid;
+  gap: 2px
+}
+
+.ct-page .ct-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 4px 4px 0;
+  border: 0;
+  background: none;
+  color: var(--k-muted);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 500;
+  cursor: pointer
+}
+
+.ct-page .ct-switch-track {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--k-muted) 35%, var(--k-line));
+  transition: background-color 160ms
+}
+
+.ct-page .ct-switch-track i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--white, #fff);
+  box-shadow: 0 1px 2px #00000033;
+  transition: transform 160ms
+}
+
+.ct-page .ct-switch.is-on {
+  color: var(--k-accent-ink);
+  font-weight: 600
+}
+
+.ct-page .ct-switch.is-on .ct-switch-track {
+  background: var(--cc-btn, var(--k-accent))
+}
+
+.ct-page .ct-switch.is-on .ct-switch-track i {
+  transform: translateX(16px)
+}
+
+.ct-page .ct-switch:focus-visible {
+  outline: 2px solid var(--k-accent-ink);
+  outline-offset: 3px;
+  border-radius: 6px
+}
+
+/* ---------- status pills with colour dots ---------- */
+.ct-page .ct-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px
+}
+
+.ct-page .ct-pills button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 14px;
+  border: 1px solid var(--k-line);
+  border-radius: 999px;
+  background: var(--white, #fff);
+  color: var(--k-muted);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 140ms, background-color 140ms, color 140ms
+}
+
+.ct-page .ct-pills button i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot)
+}
+
+.ct-page .ct-pills .is-draft { --dot: var(--status-warning, #976821); --dot-bg: var(--status-warning-bg, #f5f0e9); --dot-ink: var(--status-warning-ink, #7d561b) }
+.ct-page .ct-pills .is-active { --dot: var(--status-success, #3d7a68); --dot-bg: var(--status-success-bg, #ecf2f0); --dot-ink: var(--status-success-ink, #35695a) }
+.ct-page .ct-pills .is-inactive { --dot: var(--status-neutral, #5a637a); --dot-bg: var(--status-neutral-bg, #eeeff2); --dot-ink: var(--status-neutral-ink, #5a637a) }
+
+.ct-page .ct-pills button:hover {
+  border-color: var(--dot)
+}
+
+.ct-page .ct-pills button.is-on {
+  border-color: var(--dot);
+  background: var(--dot-bg);
+  color: var(--dot-ink);
+  font-weight: 600
+}
+
+/* ---------- error summary ---------- */
+.ct-page .ct-errors {
+  margin: 18px 24px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--status-danger-line, #d68591);
+  border-left: 3px solid var(--status-danger, #b42335);
+  border-radius: 8px;
+  background: var(--status-danger-bg, #fbeef0);
+  color: var(--status-danger-ink, #8d2030);
+  font-size: calc(13px * var(--font-scale, 1));
+  outline: none
+}
+
+.ct-page .ct-errors ul {
+  margin: 6px 0 0;
+  padding-left: 18px
+}
+
+.ct-page .ct-errors button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer
+}
+
+/* ---------- sticky action bar ---------- */
+.ct-page .ct-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--k-line);
+  border-radius: 0 0 14px 14px;
+  background: color-mix(in srgb, var(--white, #fff) 94%, transparent);
+  backdrop-filter: blur(6px)
+}
+
+.ct-page .ct-bar-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--k-muted);
+  font-size: calc(12px * var(--font-scale, 1))
+}
+
+.ct-page .ct-bar-status strong {
+  color: var(--k-ink);
+  font-weight: 600
+}
+
+/* progress ring: --p is 0-100 */
+.ct-page .ct-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background:
+    radial-gradient(closest-side, var(--white, #fff) 64%, transparent 66%),
+    conic-gradient(var(--cc-btn, var(--k-accent)) calc(var(--p, 0) * 1%), color-mix(in srgb, var(--k-accent) 16%, var(--k-line)) 0)
+}
+
+.ct-page .ct-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px
+}
+
+.ct-page .ct-link {
+  color: var(--btn-secondary, var(--secondary, #138879))
+}
+
+.ct-page .ct-link:disabled {
+  opacity: .45;
+  cursor: default;
+  text-decoration: none
+}
+
+/* Back / Cancel / Keep editing: SECONDARY outline */
+.ct-outline {
+  border-color: var(--btn-secondary, var(--secondary, #138879)) !important;
+  background: none !important;
+  color: var(--btn-secondary, var(--secondary, #138879)) !important
+}
+
+.ct-outline:is(:hover, :focus-visible) {
+  border-color: var(--cc-sec-hover, var(--btn-secondary-hover, color-mix(in srgb, var(--secondary, #138879) 88%, #000))) !important;
+  background: var(--cc-sec-hover, var(--btn-secondary-hover, color-mix(in srgb, var(--secondary, #138879) 88%, #000))) !important;
+  color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important
+}
+
+/* ---------- leave dialog ---------- */
+.ct-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: #16324740
+}
+
+.ct-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 901;
+  width: 430px;
+  max-width: calc(100vw - 24px);
+  padding: 24px;
+  border: 1px solid var(--k-line);
+  border-radius: 14px;
+  background: var(--white, #fff);
+  box-shadow: 0 20px 80px #15334826;
+  transform: translate(-50%, -50%)
+}
+
+.ct-dialog h2 {
+  color: var(--k-heading);
+  font-size: calc(19px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.4px
+}
+
+.ct-dialog p {
+  margin-top: 10px;
+  color: var(--k-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.75
+}
+
+.ct-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px
+}
+
+/* ---------- widths ---------- */
+@container ct-sheet (max-width: 900px) {
+  .ct-page .ct-group {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px
+  }
+
+  .ct-page .ct-group-head p {
+    margin-left: 34px
+  }
+}
+
+@container ct-sheet (max-width: 640px) {
+  .ct-page .ct-trail {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .ct-page .ct-crumb,
+  .ct-page .ct-crumb:first-child {
+    padding-inline: 14px;
+    border-radius: 10px;
+    clip-path: none
+  }
+
+  .ct-page .ct-grid,
+  .ct-page .ct-grid-id,
+  .ct-page .ct-grid-map {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+
+  .ct-page .ct-grid-id .ct-field[data-field="name"],
+  .ct-page .ct-grid-map .ct-field[data-field="postal"] {
+    grid-column: 1 / -1
+  }
+
+}
+
+@container ct-sheet (max-width: 440px) {
+  .ct-page .ct-grid,
+  .ct-page .ct-grid-id,
+  .ct-page .ct-grid-map {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .ct-page .ct-trail,
+  .ct-page .ct-group,
+  .ct-page .ct-bar {
+    padding-inline: 16px
+  }
+
+  .ct-page .ct-switch-row {
+    flex-wrap: wrap
+  }
+}

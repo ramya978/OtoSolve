@@ -4,11 +4,7 @@ import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { CITY } from './cities.config';
 
-/**
- * New city / edit city - create page (/app/masters/city/new and /app/masters/city/:id/edit).
- * Values, rules, preview, dependent dropdowns and the action bar come from MasterFormBase;
- * every field is written out in city-form.html and its rules live in cities.config.ts.
- */
+
 @Component({
   selector: 'app-city-form',
   imports: [MsSelect],
@@ -16,8 +12,24 @@ import { CITY } from './cities.config';
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './city-form.css']
 })
 export class CityForm extends MasterFormBase {
-  protected override readonly cfg = CITY;
-
-  /** "Load example" values (fictional, valid against every rule). */
+    protected override readonly cfg = CITY;
+ 
   protected override readonly example: FormValues = { code: 'TRY', name: 'Tiruchirappalli', display: 'Tiruchirappalli (TRY)', country: 'IN', state: 'TN', metro: 'no', postal: '^62[0-9]{4}$', lat: '10.7905', lng: '78.7047', status: 'active', notes: '' };
+ 
+  protected countryLabel(): string {
+    const c = this.value('country');
+    return c ? this.store.lookup.countryName(c) : '';
+  }
+ 
+  protected stateLabel(): string {
+    const st = this.value('state');
+    return st ? this.store.lookup.stateName(`${this.value('country')}|${st}`) : '';
+  }
+ 
+  protected position(): string {
+    const lat = Number(this.value('lat'));
+    const lng = Number(this.value('lng'));
+    if (this.value('lat') === '' || this.value('lng') === '' || !Number.isFinite(lat) || !Number.isFinite(lng)) return '';
+    return `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? 'N' : 'S'} · ${Math.abs(lng).toFixed(4)}° ${lng >= 0 ? 'E' : 'W'}`;
+  }
 }

@@ -1,40 +1,35 @@
 <!-- =====================================================================================================
-     NEW COUNTRY / EDIT - create page (country-form.ts · country-form.css · config: countries.config.ts)
-     Workspace Kit horizontal register (create-organisation.html): live preview, required progress,
-     section links, numbered sections with left labels and right-hand controls, error summary, actions.
+     NEW COUNTRY / EDIT COUNTRY - create page (country-form.ts · country-form.css · config: countries.config.ts)
+     Split card: tinted preview panel on the left (mark, name, facts, progress), all fields on the right
+     in a dense four-column grid with a small divider heading per group, actions under the fields.
+     Every class here starts with cf- so no shared or global stylesheet can change this page.
      ===================================================================================================== -->
-<section class="mf-view" aria-labelledby="mf-title-country">
+<section class="cf-page" aria-labelledby="cf-title">
 
   <!-- page heading -->
   <div class="m-heading">
     <div>
-    
       <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="mf-title-country">{{ editing ? 'Edit country' : 'New country' }}</h1>
+      <h1 class="m-title" id="cf-title">{{ editing ? 'Edit country' : 'New country' }}</h1>
       <p class="m-subtitle">Register a nation with its ISO 3166 codes, dialling prefix and default currency.</p>
     </div>
     <div class="m-actions">
-    
-      <button type="button" class="m-btn" (click)="cancel()">
+      <button type="button" class="m-btn cf-outline" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
   </div>
 
-  <form class="mf-form" novalidate (submit)="$event.preventDefault(); save()">
+  <form class="cf-card" novalidate (submit)="$event.preventDefault(); save()">
 
-    <!-- live preview of the record being entered -->
-    <div class="mf-intro">
-      <div class="mf-intro-id">
-        <span class="mf-mark" aria-hidden="true">{{ preview().mark }}</span>
-        <div class="mf-intro-copy">
-          <span class="mf-intro-label">Preview</span>
-          <strong [class.is-empty]="!dirty() && !editing">{{ preview().title }}</strong>
-          <p>{{ preview().sub }}</p>
-        </div>
-      </div>
-      <dl class="mf-facts">
+    <!-- ===== left: live preview ===== -->
+    <aside class="cf-side" aria-label="Country preview">
+      <span class="cf-mark" aria-hidden="true">{{ preview().mark }}</span>
+      <strong class="cf-name" [class.is-empty]="!dirty() && !editing">{{ preview().title }}</strong>
+      <p class="cf-sub">{{ preview().sub }}</p>
+
+      <dl class="cf-facts">
         @for (f of preview().facts; track f.label) {
           <div>
             <dt>{{ f.label }}</dt>
@@ -42,283 +37,188 @@
           </div>
         }
       </dl>
-      <span class="mf-state">{{ editing ? 'Editing' : dirty() ? 'Unsaved entry' : 'New entry' }}</span>
-    </div>
 
-    <!-- register note + readiness -->
-    <div class="mf-meta">
-      <div class="mf-meta-ref">
-        <span>Country register</span>
-        <strong>Enter the identity, ISO standards and dialling details below. <span class="mf-req" aria-hidden="true">*</span> Required</strong>
-      </div>
-      <div class="mf-readiness">
-        <span>{{ filledRequired() }} of {{ requiredFields.length }} required values entered</span>
-        <span class="mf-bar" role="progressbar" aria-label="Required values entered" aria-valuemin="0" aria-valuemax="100"
+      <div class="cf-progress">
+        <div><span>Required</span><strong>{{ filledRequired() }} / {{ requiredFields.length }}</strong></div>
+        <span class="cf-bar" role="progressbar" aria-label="Required values entered" aria-valuemin="0" aria-valuemax="100"
               [attr.aria-valuenow]="progress()"><i [style.width.%]="progress()"></i></span>
       </div>
-    </div>
+    </aside>
+
+    <!-- ===== right: fields ===== -->
+    <div class="cf-main">
 
 
- 
-    <div class="m-card mf-ledger">
 
-      <!-- 01 Identity -->
-      <section class="mf-section" id="mf-sec-country-01" aria-labelledby="mf-h-country-01">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">01</span>
-            <h2 id="mf-h-country-01">Identity</h2>
-          </div>
-          <p>The familiar name and the formal name used on documents.</p>
+      <!-- Identity -->
+      <h2 class="cf-group" id="mf-sec-country-01"><span>Identity</span></h2>
+      <div class="cf-grid">
+        <!-- Country name -->
+        <div class="cf-field" data-field="name" style="--span: 2">
+          <label class="cf-label" for="cf-name">Country name <span class="cf-req" aria-hidden="true">*</span></label>
+          <input id="cf-name" type="text" maxlength="80" required autocomplete="off" spellcheck="false"
+                 [value]="value('name')" [placeholder]="placeholderFor('name')"
+                 [attr.aria-invalid]="!!err('name') || null" [attr.aria-describedby]="err('name') ? 'cf-name-err' : null"
+                 (input)="onInput('name', $event)" (blur)="touch('name')" />
+          @if (err('name'); as e) { <small class="cf-error" id="cf-name-err">{{ e }}</small> }
         </div>
-        <div class="mf-lanes">
-          <!-- Country name -->
-          <div class="mf-field" data-field="name">
-            <label for="mf-country-name">
-              Country name <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-name" type="text" maxlength="80" required autocomplete="off" spellcheck="false"
-                     [value]="value('name')" [placeholder]="placeholderFor('name')"
-                     [attr.aria-invalid]="!!err('name') || null" [attr.aria-describedby]="err('name') ? 'mf-country-name-err' : null"
-                     (input)="onInput('name', $event)" (blur)="touch('name')" />
-              @if (err('name'); as e) { <small class="mf-error" id="mf-country-name-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Official name -->
-          <div class="mf-field" data-field="official">
-            <label for="mf-country-official">
-              Official name
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-official" type="text" maxlength="120" autocomplete="off" spellcheck="false"
-                     [value]="value('official')" [placeholder]="placeholderFor('official')"
-                     [attr.aria-invalid]="!!err('official') || null" [attr.aria-describedby]="err('official') ? 'mf-country-official-err' : null"
-                     (input)="onInput('official', $event)" (blur)="touch('official')" />
-              @if (err('official'); as e) { <small class="mf-error" id="mf-country-official-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Region -->
-          <div class="mf-field" data-field="region">
-            <label for="mf-country-region">
-              Region <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <ms-select inputId="mf-country-region" [options]="optionsFor('region')" [value]="value('region')" [placeholder]="placeholderFor('region')"
-                         [disabled]="isWaiting('region') || isLocked('region')" [invalid]="!!err('region')"
-                         [describedBy]="err('region') ? 'mf-country-region-err' : null" (valueChange)="pick('region', $event)" />
-              @if (err('region'); as e) { <small class="mf-error" id="mf-country-region-err">{{ e }}</small> }
-            </div>
-          </div>
+        <!-- Official name -->
+        <div class="cf-field" data-field="official" style="--span: 1">
+          <label class="cf-label" for="cf-official">Official name</label>
+          <input id="cf-official" type="text" maxlength="120" autocomplete="off" spellcheck="false"
+                 [value]="value('official')" [placeholder]="placeholderFor('official')"
+                 [attr.aria-invalid]="!!err('official') || null" [attr.aria-describedby]="err('official') ? 'cf-official-err' : null"
+                 (input)="onInput('official', $event)" (blur)="touch('official')" />
+          @if (err('official'); as e) { <small class="cf-error" id="cf-official-err">{{ e }}</small> }
         </div>
-      </section>
+        <!-- Region -->
+        <div class="cf-field" data-field="region" style="--span: 1">
+          <label class="cf-label" for="cf-region">Region <span class="cf-req" aria-hidden="true">*</span></label>
+          <ms-select inputId="cf-region" [options]="optionsFor('region')" [value]="value('region')" [placeholder]="placeholderFor('region')"
+                     [disabled]="isWaiting('region') || isLocked('region')" [invalid]="!!err('region')"
+                     [describedBy]="err('region') ? 'cf-region-err' : null" (valueChange)="pick('region', $event)" />
+          @if (err('region'); as e) { <small class="cf-error" id="cf-region-err">{{ e }}</small> }
+        </div>
+      </div>
 
-      <!-- 02 ISO standards -->
-      <section class="mf-section" id="mf-sec-country-02" aria-labelledby="mf-h-country-02">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">02</span>
-            <h2 id="mf-h-country-02">ISO standards</h2>
-          </div>
-          <p>ISO 3166-1 codes identify the country; ISO 4217 its currency.</p>
+      <!-- ISO standards -->
+      <h2 class="cf-group" id="mf-sec-country-02"><span>ISO standards</span></h2>
+      <div class="cf-grid">
+        <!-- Alpha-2 code -->
+        <div class="cf-field" data-field="alpha2" style="--span: 1">
+          <label class="cf-label" for="cf-alpha2">Alpha-2 code <span class="cf-req" aria-hidden="true">*</span></label>
+          <input id="cf-alpha2" type="text" maxlength="2" required autocomplete="off" spellcheck="false" [readOnly]="isLocked('alpha2')"
+                 [value]="value('alpha2')" [placeholder]="placeholderFor('alpha2')"
+                 [attr.aria-invalid]="!!err('alpha2') || null" [attr.aria-describedby]="err('alpha2') ? 'cf-alpha2-err' : null"
+                 (input)="onInput('alpha2', $event)" (blur)="touch('alpha2')" />
+          <small>ISO 3166-1 · sets the flag tile</small>
+          @if (isLocked('alpha2')) { <small class="cf-note"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg> Locked after creation</small> }
+          @if (err('alpha2'); as e) { <small class="cf-error" id="cf-alpha2-err">{{ e }}</small> }
         </div>
-        <div class="mf-lanes">
-          <!-- Alpha-2 code -->
-          <div class="mf-field" data-field="alpha2">
-            <label for="mf-country-alpha2">
-              Alpha-2 code <span class="mf-req" aria-hidden="true">*</span>
-              <small>ISO 3166-1 · sets the flag tile</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-alpha2" type="text" class="is-short" maxlength="2" required autocomplete="off" spellcheck="false" [readOnly]="isLocked('alpha2')"
-                     [value]="value('alpha2')" [placeholder]="placeholderFor('alpha2')"
-                     [attr.aria-invalid]="!!err('alpha2') || null" [attr.aria-describedby]="err('alpha2') ? 'mf-country-alpha2-err' : null"
-                     (input)="onInput('alpha2', $event)" (blur)="touch('alpha2')" />
-              @if (isLocked('alpha2')) {
-                <small class="mf-lock"><svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg> Locked after creation</small>
-              }
-              @if (err('alpha2'); as e) { <small class="mf-error" id="mf-country-alpha2-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Alpha-3 code -->
-          <div class="mf-field" data-field="alpha3">
-            <label for="mf-country-alpha3">
-              Alpha-3 code <span class="mf-req" aria-hidden="true">*</span>
-              <small>ISO 3166-1</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-alpha3" type="text" class="is-short" maxlength="3" required autocomplete="off" spellcheck="false"
-                     [value]="value('alpha3')" [placeholder]="placeholderFor('alpha3')"
-                     [attr.aria-invalid]="!!err('alpha3') || null" [attr.aria-describedby]="err('alpha3') ? 'mf-country-alpha3-err' : null"
-                     (input)="onInput('alpha3', $event)" (blur)="touch('alpha3')" />
-              @if (err('alpha3'); as e) { <small class="mf-error" id="mf-country-alpha3-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Numeric code -->
-          <div class="mf-field" data-field="numeric">
-            <label for="mf-country-numeric">
-              Numeric code
-              <small>ISO 3166-1 · 3 digits</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-numeric" type="text" class="is-short" maxlength="3" autocomplete="off" spellcheck="false"
-                     [value]="value('numeric')" [placeholder]="placeholderFor('numeric')"
-                     [attr.aria-invalid]="!!err('numeric') || null" [attr.aria-describedby]="err('numeric') ? 'mf-country-numeric-err' : null"
-                     (input)="onInput('numeric', $event)" (blur)="touch('numeric')" />
-              @if (err('numeric'); as e) { <small class="mf-error" id="mf-country-numeric-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Default currency -->
-          <div class="mf-field" data-field="currency">
-            <label for="mf-country-currency">
-              Default currency <span class="mf-req" aria-hidden="true">*</span>
-              <small>ISO 4217</small>
-            </label>
-            <div class="mf-control">
-              <ms-select inputId="mf-country-currency" [options]="optionsFor('currency')" [value]="value('currency')" [placeholder]="placeholderFor('currency')"
-                         [disabled]="isWaiting('currency') || isLocked('currency')" [invalid]="!!err('currency')"
-                         [describedBy]="err('currency') ? 'mf-country-currency-err' : null" (valueChange)="pick('currency', $event)" />
-              @if (err('currency'); as e) { <small class="mf-error" id="mf-country-currency-err">{{ e }}</small> }
-            </div>
-          </div>
+        <!-- Alpha-3 code -->
+        <div class="cf-field" data-field="alpha3" style="--span: 1">
+          <label class="cf-label" for="cf-alpha3">Alpha-3 code <span class="cf-req" aria-hidden="true">*</span></label>
+          <input id="cf-alpha3" type="text" maxlength="3" required autocomplete="off" spellcheck="false"
+                 [value]="value('alpha3')" [placeholder]="placeholderFor('alpha3')"
+                 [attr.aria-invalid]="!!err('alpha3') || null" [attr.aria-describedby]="err('alpha3') ? 'cf-alpha3-err' : null"
+                 (input)="onInput('alpha3', $event)" (blur)="touch('alpha3')" />
+          <small>ISO 3166-1</small>
+          @if (err('alpha3'); as e) { <small class="cf-error" id="cf-alpha3-err">{{ e }}</small> }
         </div>
-      </section>
+        <!-- Numeric code -->
+        <div class="cf-field" data-field="numeric" style="--span: 1">
+          <label class="cf-label" for="cf-numeric">Numeric code</label>
+          <input id="cf-numeric" type="text" maxlength="3" autocomplete="off" spellcheck="false"
+                 [value]="value('numeric')" [placeholder]="placeholderFor('numeric')"
+                 [attr.aria-invalid]="!!err('numeric') || null" [attr.aria-describedby]="err('numeric') ? 'cf-numeric-err' : null"
+                 (input)="onInput('numeric', $event)" (blur)="touch('numeric')" />
+          <small>ISO 3166-1 · 3 digits</small>
+          @if (err('numeric'); as e) { <small class="cf-error" id="cf-numeric-err">{{ e }}</small> }
+        </div>
+        <!-- Default currency -->
+        <div class="cf-field" data-field="currency" style="--span: 1">
+          <label class="cf-label" for="cf-currency">Default currency <span class="cf-req" aria-hidden="true">*</span></label>
+          <ms-select inputId="cf-currency" [options]="optionsFor('currency')" [value]="value('currency')" [placeholder]="placeholderFor('currency')"
+                     [disabled]="isWaiting('currency') || isLocked('currency')" [invalid]="!!err('currency')"
+                     [describedBy]="err('currency') ? 'cf-currency-err' : null" (valueChange)="pick('currency', $event)" />
+          <small>ISO 4217</small>
+          @if (err('currency'); as e) { <small class="cf-error" id="cf-currency-err">{{ e }}</small> }
+        </div>
+      </div>
 
-      <!-- 03 Address & dialling -->
-      <section class="mf-section" id="mf-sec-country-03" aria-labelledby="mf-h-country-03">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">03</span>
-            <h2 id="mf-h-country-03">Address &amp; dialling</h2>
-          </div>
-          <p>Used to check phone numbers and postal codes on entry forms.</p>
+      <!-- Address & dialling -->
+      <h2 class="cf-group" id="mf-sec-country-03"><span>Address &amp; dialling</span></h2>
+      <div class="cf-grid">
+        <!-- Phone code -->
+        <div class="cf-field" data-field="phone" style="--span: 1">
+          <label class="cf-label" for="cf-phone">Phone code</label>
+          <input id="cf-phone" type="text" maxlength="5" autocomplete="off" spellcheck="false"
+                 [value]="value('phone')" [placeholder]="placeholderFor('phone')"
+                 [attr.aria-invalid]="!!err('phone') || null" [attr.aria-describedby]="err('phone') ? 'cf-phone-err' : null"
+                 (input)="onInput('phone', $event)" (blur)="touch('phone')" />
+          <small>Country calling code</small>
+          @if (err('phone'); as e) { <small class="cf-error" id="cf-phone-err">{{ e }}</small> }
         </div>
-        <div class="mf-lanes">
-          <!-- Phone code -->
-          <div class="mf-field" data-field="phone">
-            <label for="mf-country-phone">
-              Phone code
-              <small>Country calling code</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-phone" type="text" class="is-short" maxlength="5" autocomplete="off" spellcheck="false"
-                     [value]="value('phone')" [placeholder]="placeholderFor('phone')"
-                     [attr.aria-invalid]="!!err('phone') || null" [attr.aria-describedby]="err('phone') ? 'mf-country-phone-err' : null"
-                     (input)="onInput('phone', $event)" (blur)="touch('phone')" />
-              @if (err('phone'); as e) { <small class="mf-error" id="mf-country-phone-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Postal code pattern -->
-          <div class="mf-field" data-field="postal">
-            <label for="mf-country-postal">
-              Postal code pattern
-              <small>Regular expression</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-postal" type="text" class="m-mono" maxlength="120" autocomplete="off" spellcheck="false"
-                     [value]="value('postal')" [placeholder]="placeholderFor('postal')"
-                     [attr.aria-invalid]="!!err('postal') || null" [attr.aria-describedby]="err('postal') ? 'mf-country-postal-err' : null"
-                     (input)="onInput('postal', $event)" (blur)="touch('postal')" />
-              @if (err('postal'); as e) { <small class="mf-error" id="mf-country-postal-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- States / provinces -->
-          <div class="mf-field" data-field="subdivisions">
-            <label id="mf-country-subdivisions-label">
-              States / provinces
-            </label>
-            <div class="mf-control">
-              <div class="mf-choices" role="radiogroup" aria-labelledby="mf-country-subdivisions-label" [class.is-invalid]="!!err('subdivisions')"
-                   (keydown)="onChoiceKey('subdivisions', $event)">
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('subdivisions') === 'yes'"
-                        [attr.aria-checked]="value('subdivisions') === 'yes'" [attr.tabindex]="choiceTab('subdivisions', 'yes', true)"
-                        (click)="pick('subdivisions', 'yes')"><i aria-hidden="true"></i>Has subdivisions</button>
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('subdivisions') === 'no'"
-                        [attr.aria-checked]="value('subdivisions') === 'no'" [attr.tabindex]="choiceTab('subdivisions', 'no', false)"
-                        (click)="pick('subdivisions', 'no')"><i aria-hidden="true"></i>None</button>
-              </div>
-              @if (err('subdivisions'); as e) { <small class="mf-error" id="mf-country-subdivisions-err">{{ e }}</small> }
-            </div>
-          </div>
+        <!-- Postal code pattern -->
+        <div class="cf-field" data-field="postal" style="--span: 1">
+          <label class="cf-label" for="cf-postal">Postal code pattern</label>
+          <input id="cf-postal" type="text" class="cf-mono" maxlength="120" autocomplete="off" spellcheck="false"
+                 [value]="value('postal')" [placeholder]="placeholderFor('postal')"
+                 [attr.aria-invalid]="!!err('postal') || null" [attr.aria-describedby]="err('postal') ? 'cf-postal-err' : null"
+                 (input)="onInput('postal', $event)" (blur)="touch('postal')" />
+          <small>Regular expression</small>
+          @if (err('postal'); as e) { <small class="cf-error" id="cf-postal-err">{{ e }}</small> }
         </div>
-      </section>
+        <!-- States / provinces -->
+        <div class="cf-field" data-field="subdivisions" style="--span: 2">
+          <span class="cf-label" id="cf-subdivisions-label">States / provinces</span>
+          <div class="cf-segs" role="radiogroup" aria-labelledby="cf-subdivisions-label" [class.is-invalid]="!!err('subdivisions')"
+               (keydown)="onChoiceKey('subdivisions', $event)">
+            <button type="button" role="radio" class="cf-seg" [class.is-on]="value('subdivisions') === 'yes'"
+                    [attr.aria-checked]="value('subdivisions') === 'yes'" [attr.tabindex]="choiceTab('subdivisions', 'yes', true)"
+                    (click)="pick('subdivisions', 'yes')">Has subdivisions</button>
+            <button type="button" role="radio" class="cf-seg" [class.is-on]="value('subdivisions') === 'no'"
+                    [attr.aria-checked]="value('subdivisions') === 'no'" [attr.tabindex]="choiceTab('subdivisions', 'no', false)"
+                    (click)="pick('subdivisions', 'no')">None</button>
+          </div>
+          @if (err('subdivisions'); as e) { <small class="cf-error" id="cf-subdivisions-err">{{ e }}</small> }
+        </div>
+      </div>
 
-      <!-- 04 Status & order -->
-      <section class="mf-section" id="mf-sec-country-04" aria-labelledby="mf-h-country-04">
-        <div class="mf-section-head">
-          <div class="mf-section-title">
-            <span class="mf-section-no">04</span>
-            <h2 id="mf-h-country-04">Status &amp; order</h2>
+      <!-- Status & order -->
+      <h2 class="cf-group" id="mf-sec-country-04"><span>Status &amp; order</span></h2>
+      <div class="cf-grid">
+        <!-- Status -->
+        <div class="cf-field" data-field="status" style="--span: 2">
+          <span class="cf-label" id="cf-status-label">Status <span class="cf-req" aria-hidden="true">*</span></span>
+          <div class="cf-segs" role="radiogroup" aria-labelledby="cf-status-label" [class.is-invalid]="!!err('status')"
+               (keydown)="onChoiceKey('status', $event)">
+            <button type="button" role="radio" class="cf-seg" [class.is-on]="value('status') === 'active'"
+                    [attr.aria-checked]="value('status') === 'active'" [attr.tabindex]="choiceTab('status', 'active', true)"
+                    (click)="pick('status', 'active')">Active</button>
+            <button type="button" role="radio" class="cf-seg" [class.is-on]="value('status') === 'inactive'"
+                    [attr.aria-checked]="value('status') === 'inactive'" [attr.tabindex]="choiceTab('status', 'inactive', false)"
+                    (click)="pick('status', 'inactive')">Inactive</button>
           </div>
-          <p>Inactive countries stay on existing records but leave the dropdowns.</p>
+          @if (err('status'); as e) { <small class="cf-error" id="cf-status-err">{{ e }}</small> }
         </div>
-        <div class="mf-lanes">
-          <!-- Status -->
-          <div class="mf-field" data-field="status">
-            <label id="mf-country-status-label">
-              Status <span class="mf-req" aria-hidden="true">*</span>
-            </label>
-            <div class="mf-control">
-              <div class="mf-choices" role="radiogroup" aria-labelledby="mf-country-status-label" [class.is-invalid]="!!err('status')"
-                   (keydown)="onChoiceKey('status', $event)">
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('status') === 'active'"
-                        [attr.aria-checked]="value('status') === 'active'" [attr.tabindex]="choiceTab('status', 'active', true)"
-                        (click)="pick('status', 'active')"><i aria-hidden="true"></i>Active</button>
-                <button type="button" role="radio" class="mf-choice" [class.is-on]="value('status') === 'inactive'"
-                        [attr.aria-checked]="value('status') === 'inactive'" [attr.tabindex]="choiceTab('status', 'inactive', false)"
-                        (click)="pick('status', 'inactive')"><i aria-hidden="true"></i>Inactive</button>
-              </div>
-              @if (err('status'); as e) { <small class="mf-error" id="mf-country-status-err">{{ e }}</small> }
-            </div>
-          </div>
-          <!-- Sort order -->
-          <div class="mf-field" data-field="sort">
-            <label for="mf-country-sort">
-              Sort order
-              <small>Lower shows first</small>
-            </label>
-            <div class="mf-control">
-              <input id="mf-country-sort" type="text" class="is-short" inputmode="decimal" autocomplete="off" spellcheck="false"
-                     [value]="value('sort')" [placeholder]="placeholderFor('sort')"
-                     [attr.aria-invalid]="!!err('sort') || null" [attr.aria-describedby]="err('sort') ? 'mf-country-sort-err' : null"
-                     (input)="onInput('sort', $event)" (blur)="touch('sort')" />
-              @if (err('sort'); as e) { <small class="mf-error" id="mf-country-sort-err">{{ e }}</small> }
-            </div>
-          </div>
+        <!-- Sort order -->
+        <div class="cf-field" data-field="sort" style="--span: 1">
+          <label class="cf-label" for="cf-sort">Sort order</label>
+          <input id="cf-sort" type="text" inputmode="decimal" autocomplete="off" spellcheck="false"
+                 [value]="value('sort')" [placeholder]="placeholderFor('sort')"
+                 [attr.aria-invalid]="!!err('sort') || null" [attr.aria-describedby]="err('sort') ? 'cf-sort-err' : null"
+                 (input)="onInput('sort', $event)" (blur)="touch('sort')" />
+          <small>Lower shows first</small>
+          @if (err('sort'); as e) { <small class="cf-error" id="cf-sort-err">{{ e }}</small> }
         </div>
-      </section>
-    </div>
+      </div>
 
-   
-
-    <!-- action bar -->
-    <div class="mf-footer">
-      <div class="mf-footer-left">
-        <button type="button" class="m-btn" (click)="cancel()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
-          Cancel
-        </button>
-        <button type="button" class="m-text-btn" [disabled]="!dirty()" (click)="reset()">
+      <!-- actions -->
+      <div class="cf-actions">
+        <button type="button" class="m-text-btn cf-link" [disabled]="!dirty()" (click)="reset()">
           <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
-          {{ editing ? 'Undo changes' : 'Start new' }}
+          {{ editing ? 'Undo changes' : 'Clear' }}
+        </button>
+        <span class="cf-spacer"></span>
+        <button type="button" class="m-btn cf-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
+        <button type="submit" class="m-btn m-btn-primary">
+          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
+          {{ editing ? 'Save' : 'Create' }}
         </button>
       </div>
-      <button type="submit" class="m-btn m-btn-primary">
-        <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
-        {{ editing ? 'Save changes' : 'Create country' }}
-      </button>
     </div>
   </form>
 </section>
 
 <!-- leave with unsaved changes -->
 @if (confirmLeave()) {
-  <div class="mf-overlay" (click)="confirmLeave.set(false)"></div>
-  <div class="mf-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mf-leave-title-country" aria-describedby="mf-leave-text-country">
-    <h2 id="mf-leave-title-country">Discard this entry?</h2>
-    <p id="mf-leave-text-country">The values entered on this country have not been saved. Leaving now discards them.</p>
-    <div class="mf-dialog-foot">
-      <button type="button" class="m-btn" (click)="confirmLeave.set(false)">Keep editing</button>
+  <div class="cf-overlay" (click)="confirmLeave.set(false)"></div>
+  <div class="cf-dialog" role="alertdialog" aria-modal="true" aria-labelledby="cf-leave-title" aria-describedby="cf-leave-text">
+    <h2 id="cf-leave-title">Discard this entry?</h2>
+    <p id="cf-leave-text">The values entered on this country have not been saved. Leaving now discards them.</p>
+    <div class="cf-dialog-foot">
+      <button type="button" class="m-btn cf-outline" (click)="confirmLeave.set(false)">Keep editing</button>
       <button type="button" class="m-btn m-btn-danger" (click)="leave()">Discard and leave</button>
     </div>
   </div>

@@ -1,5 +1,509 @@
 /* =====================================================================================================
-   NEW COUNTRY - create / edit page styles
-   Shared register styles: app/Shared/Masters/masters-shared.css + app/Shared/Masters/master-form.css.
-   Add rules here that belong to this page only.
+   NEW COUNTRY / EDIT COUNTRY - page styles (country-form.html)
+   Split card: tinted preview panel on the left, all fields on the right in a dense grid
+   (4 columns wide · 2 medium · 1 narrow) with a divider heading per group, actions below.
+   Every rule is scoped under .cf-page with cf- classes, so the shared master-form.css or a global
+   rule cannot reshape this page. Tokens (--k-*) and m-btn / m-heading come from masters-shared.css.
+   Typography follows the Workspace Kit: Inter / Segoe UI · 12px labels · 11px hints · 13px inputs ·
+   10px uppercase captions · 16px name.
+   Theme roles: PRIMARY = Create, mark, selected segment, progress, focus · SECONDARY = Back / Cancel.
    ===================================================================================================== */
+.cf-page {
+  container: cf-page / inline-size
+}
+
+/* ---------- card ---------- */
+.cf-page .cf-card {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  /* max-width: 1180px; */
+  overflow: hidden;
+  border: 1px solid var(--k-outline);
+  border-radius: 12px;
+  background: var(--white, #fff);
+  box-shadow: var(--shadow, none)
+}
+
+/* ---------- left: preview panel ---------- */
+.cf-page .cf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 22px;
+  border-right: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line));
+  background: var(--k-tint)
+}
+
+.cf-page .cf-mark {
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  min-width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  padding: 0 9px;
+  border-radius: 12px;
+  background: var(--cc-btn, var(--k-accent));
+  color: var(--cc-btn-ink, var(--primary-on, #fff));
+  font-size: calc(16px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: .4px;
+  white-space: nowrap
+}
+
+.cf-page .cf-name {
+  display: block;
+  overflow: hidden;
+  color: var(--k-heading);
+  font-size: calc(16px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.2px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.cf-page .cf-name.is-empty {
+  color: color-mix(in srgb, var(--k-muted) 75%, var(--white, #fff));
+  font-style: italic;
+  font-weight: 400
+}
+
+.cf-page .cf-sub {
+  margin: 0;
+  color: var(--k-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.5
+}
+
+.cf-page .cf-facts {
+  display: grid;
+  margin: 18px 0 0
+}
+
+.cf-page .cf-facts > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line))
+}
+
+.cf-page .cf-facts dt {
+  color: var(--k-muted);
+  font-size: calc(10px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase
+}
+
+.cf-page .cf-facts dd {
+  margin: 0;
+  color: var(--k-ink);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap
+}
+
+.cf-page .cf-facts dd.is-ok { color: var(--status-success-ink, #17634e) }
+.cf-page .cf-facts dd.is-warn { color: var(--status-warning-ink, #885000) }
+.cf-page .cf-facts dd.is-muted { color: var(--k-muted) }
+
+.cf-page .cf-progress {
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 18px
+}
+
+.cf-page .cf-progress > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--k-muted);
+  font-size: calc(10px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase
+}
+
+.cf-page .cf-progress strong {
+  color: var(--k-accent-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums
+}
+
+.cf-page .cf-bar {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--k-accent) 16%, var(--k-line))
+}
+
+.cf-page .cf-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cc-btn, var(--k-accent));
+  transition: width 200ms ease
+}
+
+/* ---------- right: fields ---------- */
+.cf-page .cf-main {
+  min-width: 0;
+  padding: 8px 26px 22px;
+  container: cf-main / inline-size
+}
+
+/* group divider: small uppercase title followed by a hairline */
+.cf-page .cf-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 12px;
+  color: var(--k-accent-ink);
+  font-size: calc(10px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  line-height: 1.4;
+  text-transform: uppercase;
+  scroll-margin-top: 90px
+}
+
+.cf-page .cf-group::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--k-line)
+}
+
+.cf-page .cf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: start
+}
+
+.cf-page .cf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  /* grid-column: span var(--span, 1);  */
+  min-width: 0
+}
+
+.cf-page .cf-label {
+  display: block;
+  color: var(--k-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 550;
+  line-height: 1.4;
+  text-align: left;
+  text-transform: none
+}
+
+.cf-page .cf-req {
+  color: var(--status-danger, #a92839)
+}
+
+.cf-page .cf-field input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid #8080806e;
+  border-radius: var(--btn-radius, 7px);
+  background: var(--white, #fff);
+  color: var(--k-ink);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.5;
+  box-shadow: none;
+  transition: border-color 140ms, box-shadow 140ms
+}
+
+.cf-page .cf-field input.cf-mono {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: calc(12.5px * var(--font-scale, 1))
+}
+
+.cf-page .cf-field input::placeholder {
+  color: color-mix(in srgb, var(--k-muted) 65%, var(--white, #fff))
+}
+
+.cf-page .cf-field input:hover:not(:read-only) {
+  border-color: var(--k-accent-ink)
+}
+
+.cf-page .cf-field input:focus {
+  outline: none;
+  border-color: var(--k-accent-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--k-accent) 18%, transparent)
+}
+
+.cf-page .cf-field input:read-only {
+  background: var(--chip, #f5f8fa);
+  color: var(--k-muted);
+  cursor: not-allowed
+}
+
+.cf-page .cf-field input[aria-invalid="true"] {
+  border-color: var(--status-danger, #b42335)
+}
+
+.cf-page .cf-field ms-select {
+  display: block;
+  width: 100%
+}
+
+.cf-page .cf-field small {
+  color: var(--k-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  line-height: 1.45
+}
+
+.cf-page .cf-field small.cf-error {
+  color: var(--status-danger-ink, #a12336)
+}
+
+.cf-page .cf-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px
+}
+
+.cf-page .cf-note .m-ico {
+  width: 13px;
+  height: 13px
+}
+
+/* segmented choice: one row, equal height with the inputs */
+.cf-page .cf-segs {
+  display: flex;
+  gap: 3px;
+  height: 40px;
+  padding: 3px;
+  border: 1px dashed var(--k-field-line);
+  border-radius: var(--btn-radius, 7px);
+  background: var(--white, #fff)
+}
+
+.cf-page .cf-segs.is-invalid {
+  border-color: var(--status-danger, #b42335)
+}
+
+.cf-page .cf-segs .cf-seg {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 0;
+  border-radius: calc(var(--btn-radius, 7px) - 2px);
+  background: transparent;
+  color: var(--k-muted);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 140ms, color 140ms
+}
+
+.cf-page .cf-segs .cf-seg:hover {
+  background: var(--k-hover);
+  color: var(--k-hover-ink)
+}
+
+.cf-page .cf-segs .cf-seg.is-on {
+  background: var(--cc-btn, var(--k-accent));
+  color: var(--cc-btn-ink, var(--primary-on, #fff));
+  font-weight: 550
+}
+
+.cf-page .cf-segs .cf-seg:focus-visible {
+  outline: 2px solid var(--k-accent-ink);
+  outline-offset: 1px
+}
+
+/* ---------- error summary ---------- */
+.cf-page .cf-errors {
+  margin: 18px 0 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--status-danger-line, #d68591);
+  border-left: 3px solid var(--status-danger, #b42335);
+  border-radius: 8px;
+  background: var(--status-danger-bg, #fbeef0);
+  color: var(--status-danger-ink, #8d2030);
+  font-size: calc(13px * var(--font-scale, 1));
+  outline: none
+}
+
+.cf-page .cf-errors ul {
+  margin: 6px 0 0;
+  padding-left: 18px
+}
+
+.cf-page .cf-errors button {
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: calc(12px * var(--font-scale, 1));
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer
+}
+
+/* ---------- actions ---------- */
+.cf-page .cf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--k-line)
+}
+
+.cf-page .cf-spacer {
+  flex: 1
+}
+
+.cf-page .cf-link {
+  color: var(--btn-secondary, var(--secondary, #138879))
+}
+
+.cf-page .cf-link:disabled {
+  opacity: .45;
+  cursor: default;
+  text-decoration: none
+}
+
+/* Back / Cancel / Keep editing: SECONDARY outline */
+.cf-outline {
+  border-color: var(--btn-secondary, var(--secondary, #138879)) !important;
+  background: none !important;
+  color: var(--btn-secondary, var(--secondary, #138879)) !important
+}
+
+.cf-outline:is(:hover, :focus-visible) {
+  border-color: var(--cc-sec-hover, var(--btn-secondary-hover, color-mix(in srgb, var(--secondary, #138879) 88%, #000))) !important;
+  background: var(--cc-sec-hover, var(--btn-secondary-hover, color-mix(in srgb, var(--secondary, #138879) 88%, #000))) !important;
+  color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important
+}
+
+/* ---------- leave dialog ---------- */
+.cf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: #16324740
+}
+
+.cf-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 901;
+  width: 430px;
+  max-width: calc(100vw - 24px);
+  padding: 24px;
+  border: 1px solid var(--k-line);
+  border-radius: 14px;
+  background: var(--white, #fff);
+  box-shadow: 0 20px 80px #15334826;
+  transform: translate(-50%, -50%)
+}
+
+.cf-dialog h2 {
+  color: var(--k-heading);
+  font-size: calc(19px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.4px
+}
+
+.cf-dialog p {
+  margin-top: 10px;
+  color: var(--k-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.75
+}
+
+.cf-dialog-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px
+}
+
+/* ---------- widths ---------- */
+/* medium field area: two columns, wide fields take the full row */
+@container cf-main (max-width: 680px) {
+  .cf-page .cf-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+}
+
+/* narrow page: preview panel becomes a strip above the fields */
+@container cf-page (max-width: 820px) {
+  .cf-page .cf-card {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .cf-page .cf-side {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 14px;
+    padding: 16px 18px;
+    border-right: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line))
+  }
+
+  .cf-page .cf-mark {
+    grid-row: span 2;
+    margin: 0
+  }
+
+  .cf-page .cf-facts,
+  .cf-page .cf-progress {
+    grid-column: 1 / -1
+  }
+
+  .cf-page .cf-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 18px;
+    margin-top: 12px
+  }
+
+  .cf-page .cf-facts > div {
+    gap: 6px;
+    padding: 6px 0;
+    border-top: 0
+  }
+
+  .cf-page .cf-progress {
+    padding-top: 10px
+  }
+
+  .cf-page .cf-main {
+    padding-inline: 18px
+  }
+}
+
+@container cf-main (max-width: 420px) {
+  .cf-page .cf-grid {
+    grid-template-columns: minmax(0, 1fr)
+  }
+
+  .cf-page .cf-field {
+    grid-column: auto
+  }
+}
