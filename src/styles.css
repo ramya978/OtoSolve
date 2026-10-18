@@ -2500,10 +2500,11 @@ html[data-layout="horizontal"] .app.sidebar-collapsed {
    the strip so its own dropdowns (organisation, clock, notifications, profile) open over it.
    The rail toggle is hidden - there is no rail in this layout. */
 /* Content-width fallbacks so Compact / Normal / Wide work even before applyTheme runs.
-   Both vars describe the same content column: --page-max caps the routed page and
-   --content-outer mirrors it as a usable length (Wide = 100%) for header + menu gutters. */
-html[data-width="compact"] { --content-outer: 1080px; --page-max: 1080px; }
-html[data-width="normal"] { --content-outer: 1900px; --page-max: 1900px; }
+   --page-max caps the routed page and --content-outer mirrors it as a usable length
+   (Wide = 100%) for the horizontal menu strip's gutters. The top header never follows
+   the column - it always spans the full screen width. */
+html[data-width="compact"] { --content-outer: 1440px; --page-max: 1440px; }
+html[data-width="normal"] { --content-outer: 2100px; --page-max: 2100px; }
 html[data-width="wide"] { --content-outer: 100%; --page-max: none; }
 
 @media (min-width: 801px) {
@@ -2524,11 +2525,8 @@ html[data-width="wide"] { --content-outer: 100%; --page-max: none; }
     top: 0;
     z-index: 70;
     height: var(--hd-height, 76px);
-    padding-left: max(28px, calc((100% - var(--content-outer, 1900px)) / 2 + 28px));
-    padding-right: max(28px, calc((100% - var(--content-outer, 1900px)) / 2 + 28px));
-  }
-
-  html[data-layout="horizontal"][data-width="wide"] .topbar.hd-bar {
+    /* the header keeps the full screen width regardless of Content Width - only the
+       page (and the menu strip below it) follow the compact / normal column */
     padding-left: 28px;
     padding-right: 28px;
   }
@@ -2538,7 +2536,7 @@ html[data-width="wide"] { --content-outer: 100%; --page-max: none; }
     top: var(--hd-height, 76px);
   }
 
-  /* horizontal strip + header share the page's content column (compact 1080 / normal 1900
+  /* the horizontal strip shares the page's content column (compact 1440 / normal 2100
      via --content-outer, with the strip's 28 px inner padding); Wide stretches full width. */
   html[data-layout="horizontal"] app-sidebar .sidebar {
     padding-left: max(28px, calc((100% - var(--content-outer, 1900px)) / 2 + 28px));
@@ -2575,34 +2573,11 @@ html[data-width="wide"] { --content-outer: 100%; --page-max: none; }
   }
 }
 
-/* Vertical layout: the header follows the Content width column, so the organisation switcher
-   and the right-side icons (clock, fullscreen, bell, profile) sit flush with the page body -
-   Normal = one 1900 px column shared by header, menu and page (--content-outer / --page-max).
-   The gutter maths mirrors .content's own horizontal padding (22 px at <=1250, 30 px, 40 px
-   at >=1800), so the header edge always lands on the same line as the body below. The phone
-   header (<=800 px) keeps its own compact padding. */
-@media (min-width: 801px) {
-  html[data-layout="vertical"] .topbar.hd-bar {
-    padding-left: max(30px, calc((100% - var(--content-outer, 1900px)) / 2 + 30px));
-    padding-right: max(30px, calc((100% - var(--content-outer, 1900px)) / 2 + 30px));
-  }
-}
-
-/* .content switches to 40 px side padding on very wide screens - follow it */
-@media (min-width: 1800px) {
-  html[data-layout="vertical"] .topbar.hd-bar {
-    padding-left: max(40px, calc((100% - var(--content-outer, 1900px)) / 2 + 40px));
-    padding-right: max(40px, calc((100% - var(--content-outer, 1900px)) / 2 + 40px));
-  }
-}
-
-/* .content tightens to 22 px side padding below 1250 - follow it */
-@media (min-width: 801px) and (max-width: 1250px) {
-  html[data-layout="vertical"] .topbar.hd-bar {
-    padding-left: max(22px, calc((100% - var(--content-outer, 1900px)) / 2 + 22px));
-    padding-right: max(22px, calc((100% - var(--content-outer, 1900px)) / 2 + 22px));
-  }
-}
+/* The top header deliberately does NOT follow the Content Width column (Compact / Normal):
+   it stays full width with the base 28 px side padding from app.css, so the organisation
+   switcher and the right-side icons (clock, fullscreen, bell, profile) remain at the screen
+   edges while only the page body (.content / --page-max) centres. The phone header
+   (<=800 px) keeps its own compact padding as before. */
 
 
 .pf-hbtn.primary {

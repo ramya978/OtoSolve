@@ -1,32 +1,9 @@
-/* =====================================================================================================
-   THEME - global hooks for Appearance studio (Profile -> Appearance). Imported once from styles.css.
 
-   applyTheme() (pages/Auth/Profile/theme-settings.ts) writes on <html>:
-     data-mode="light|dark"            System is resolved to light / dark and follows the device live
-     data-width="compact|normal|wide"  + --page-max / --content-outer (1080px / 1900px / none)
-     data-motion="reduce"              while Reduce motion is on
-     data-cc="on"                      while Custom colour controls are on
-     --radius / --btn-radius / --shadow, --font-*, --status-*, --cc-* ...
-
-   Every page stylesheet reads the shared tokens below (--white, --ink, --muted, --line, --panel2,
-   --chip, --heading-color, --status-*), so one change here reaches the whole app.
-   ===================================================================================================== */
-
-/* ---- defaults (applyTheme overrides them inline on <html>) ---- */
 :root {
-  /* the colour "strong" text tones are mixed with: black on light surfaces, white on dark */
   --mix-ink: #000;
-  /* accent as text (eyebrows, links on tints): darker on light, lighter on dark */
   --accent-ink: color-mix(in srgb, var(--accent) 62%, var(--mix-ink));
-
-  /* inverse surface for toasts and tooltips (white text on it in both modes) */
   --inverse-bg: #24364a;
-
-  /* SECONDARY colour (Appearance studio -> Secondary button / palette 2nd tone, set as --teal).
-     Every page uses it for links and for the hover / pressed state of its neutral outline buttons;
-     the primary colour keeps the main buttons, selected tabs and the current menu. */
   --secondary: var(--teal, #138879);
-  /* text ON a primary / secondary fill - applyTheme writes a shade of the same colour */
   --primary-on: #fff;
   --secondary-on: #fff;
   --secondary-ink: color-mix(in srgb, var(--secondary) 62%, var(--mix-ink));
@@ -34,15 +11,8 @@
   --secondary-press: color-mix(in srgb, var(--cc-sec-press, var(--secondary)) 18%, var(--white));
   --secondary-line: color-mix(in srgb, var(--secondary) 38%, var(--line));
 
-  /* Typography -> Font size: every px font size is calc(Npx * var(--font-scale)); 13 px = 1 */
   --font-scale: 1;
-
-  /* content width - Wide (app default): full screen width. Compact 1080 px / Normal 1900 px
-     centre the column; applyTheme writes --page-max inline and html[data-width] in styles.css
-     mirrors it to the header + menu through --content-outer, so everything stays flush */
   --page-max: none;
-
-  /* status colours: base, light wash, readable text shade, hairline */
   --status-info: #3c62a3;
   --status-info-bg: #ecf0f6;
   --status-info-ink: #3c62a3;
@@ -71,7 +41,6 @@ html[data-mode="dark"] {
   --secondary-ink: color-mix(in srgb, var(--secondary) 55%, #fff);
   --inverse-bg: #343c50;
 
-  /* status defaults for dark (applyTheme writes the picked colours over these) */
   --status-info-bg: #222f45;
   --status-info-ink: #9db1d1;
   --status-info-line: #34507a;
@@ -89,11 +58,6 @@ html[data-mode="dark"] {
   --status-neutral-line: #424a5c
 }
 
-/* ---- content width -------------------------------------------------------------------------------
-   .content wraps both the routed page and the studio content (app.html). Compact / Normal centre
-   the page at a max width (Normal = one 1900 px column, shared with the header + menu through
-   --content-outer so everything stays flush); Wide lets it use the full screen.
-   The fallback is Wide - the app default (index.html sets data-width before first paint). */
 .main > .content {
   width: 100%;
   max-width: var(--page-max, none);
@@ -105,9 +69,7 @@ html[data-width="wide"] .main > .content {
   max-width: none
 }
 
-/* the top bar keeps the full width so its controls stay at the screen edges */
 
-/* ---- dark mode: surfaces the legacy rules still paint light ------------------------------------- */
 html[data-mode="dark"] ::selection {
   background: color-mix(in srgb, var(--accent) 45%, #000);
   color: #fff
@@ -136,10 +98,6 @@ html[data-mode="dark"] dialog {
 html[data-mode="dark"] * {
   scrollbar-color: #3a4152 transparent
 }
-
-/* ---- custom colour controls: card outlines on the page components ---------------------------------
-   The component stylesheets are encapsulated ([_ngcontent] = 0,2,0); html[..] .x is 0,2,1, so the
-   picked outline wins without !important. Fills never change - only the hairline. */
 html[data-cc="on"] .pf-card,
 html[data-cc="on"] .pf-hero,
 html[data-cc="on"] .pf-strip,
@@ -156,8 +114,6 @@ html[data-cc="on"] .cp-actionbar {
   border-color: var(--cc-card-outline)
 }
 
-/* ---- Shape -> Shadow: page cards take the same depth as the studio cards ----------------------------
-   (0 = flat; the default 12 is a barely-there 4 % shadow) */
 html .pf-card,
 html .pf-hero,
 html .pf-strip,
@@ -172,7 +128,6 @@ html .cp-rcard {
   box-shadow: var(--shadow)
 }
 
-/* ---- status helpers (usable on any page) ---------------------------------------------------------- */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -204,7 +159,6 @@ html .cp-rcard {
 [data-tone="danger"] { --s-base: var(--status-danger); --s-bg: var(--status-danger-bg); --s-ink: var(--status-danger-ink); --s-line: var(--status-danger-line) }
 [data-tone="neutral"] { --s-base: var(--status-neutral); --s-bg: var(--status-neutral-bg); --s-ink: var(--status-neutral-ink); --s-line: var(--status-neutral-line) }
 
-/* form validation follows the Danger / Success colours */
 input[aria-invalid="true"],
 select[aria-invalid="true"],
 textarea[aria-invalid="true"] {
@@ -221,7 +175,6 @@ textarea[aria-invalid="true"] {
   font-size: 12px
 }
 
-/* ---- reduce motion (app switch) ------------------------------------------------------------------- */
 html[data-motion="reduce"] *,
 html[data-motion="reduce"] *::before,
 html[data-motion="reduce"] *::after {

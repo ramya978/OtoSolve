@@ -329,8 +329,8 @@ export class ThemeSettings {
   ];
 
   protected readonly widthOptions: WidthOption[] = [
-    { id: 'compact', label: 'Compact', note: '1080 px, centred' },
-    { id: 'normal', label: 'Normal', note: '1900 px, centred' },
+    { id: 'compact', label: 'Compact', note: '1440 px, centred' },
+    { id: 'normal', label: 'Normal', note: '2100 px, centred' },
     { id: 'wide', label: 'Wide', note: 'Full screen width' }
   ];
 

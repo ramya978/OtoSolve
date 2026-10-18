@@ -26,7 +26,7 @@ export interface ThemePrefs {
   customHeadingColors: string[];
   palette: string | null;
   navDensity: 'comfortable' | 'compact';
-  /** How wide page content may grow: compact 1080 px, normal 1900 px (header + menu share the column), wide = full width. */
+  /** How wide page content may grow: compact 1440 px, normal 2100 px (page only - the top header stays full width), wide = full width. */
   contentWidth: 'compact' | 'normal' | 'wide';
   /** Switches off decorative animation and transitions across the app. */
   reduceMotion: boolean;
@@ -372,10 +372,11 @@ export const statusInk = (hex: string): string => {
 
 
 /** Content column for each width option (consumed as --page-max in theme.css / styles.css).
-    Header + menu gutters mirror the same column through --content-outer, so all three stay flush. */
+    Only the routed page follows the column; the top header keeps the full screen width.
+    The horizontal menu strip still mirrors the column through --content-outer so it stays flush with the page. */
 export const PAGE_WIDTHS: Record<ThemePrefs['contentWidth'], string> = {
-  compact: '1080px',
-  normal: '1900px',
+  compact: '1440px',
+  normal: '2100px',
   wide: 'none'
 };
 
@@ -547,8 +548,9 @@ export function applyTheme(prefs: ThemePrefs): void {
   el.dataset['layout'] = prefs.layout;
   el.dataset['density'] = prefs.navDensity;
 
-  // page width + motion (rules live in theme.css / styles.css; header + menu gutters follow
-  // the data-width attribute through --content-outer, so only --page-max is set inline here)
+  // page width + motion (rules live in theme.css / styles.css; only the page and the
+  // horizontal menu strip follow --content-outer - the top header stays full width,
+  // so only --page-max is set inline here)
   el.dataset['width'] = prefs.contentWidth;
   set('--page-max', PAGE_WIDTHS[prefs.contentWidth]);
   if (prefs.reduceMotion) el.dataset['motion'] = 'reduce';

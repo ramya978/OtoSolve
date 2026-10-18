@@ -592,9 +592,9 @@
     gap: 18px;
     height: auto;
     min-height: 60px;
-    /* gutters share the page's content column (1080 / 1900 / full via --content-outer)
-       so the strip lines up with the page below */
-    padding: 0 max(28px, calc((100% - var(--content-outer, 1900px)) / 2 + 28px));
+    /* gutters share the page's content column (1440 / 2100 / full via --content-outer)
+       so the strip lines up with the page below (the top header stays full width) */
+    padding: 0 max(28px, calc((100% - var(--content-outer, 2100px)) / 2 + 28px));
     border-right: 0;
     border-bottom: 1px solid var(--line, var(--nav-line));
     overflow: visible

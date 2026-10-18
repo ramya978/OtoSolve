@@ -234,9 +234,7 @@
         <span><strong>{{ filledRequired() }} of {{ requiredFields.length }}</strong> required filled</span>
       </div>
       <div class="ct-bar-actions">
-        <button type="button" class="m-text-btn ct-link" [disabled]="!dirty()" (click)="reset()">
-          {{ editing ? 'Undo changes' : 'Clear' }}
-        </button>
+   
         <button type="button" class="m-btn ct-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
         <button type="submit" class="m-btn m-btn-primary">
           <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>

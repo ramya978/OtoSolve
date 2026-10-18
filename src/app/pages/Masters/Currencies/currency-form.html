@@ -332,19 +332,13 @@
 
     <!-- action bar -->
     <div class="mf-footer">
-      <div class="mf-footer-left">
-        <button type="button" class="m-btn" (click)="cancel()">
+     <button type="button" class="m-btn" (click)="cancel()">
           <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
           Cancel
         </button>
-        <button type="button" class="m-text-btn" [disabled]="!dirty()" (click)="reset()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
-          {{ editing ? 'Undo changes' : 'Start new' }}
-        </button>
-      </div>
       <button type="submit" class="m-btn m-btn-primary">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
-        {{ editing ? 'Save changes' : 'Create currency' }}
+        {{ editing ? 'Save' : 'Create' }}
       </button>
     </div>
   </form>

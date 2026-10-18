@@ -196,10 +196,7 @@
 
       <!-- actions -->
       <div class="cf-actions">
-        <button type="button" class="m-text-btn cf-link" [disabled]="!dirty()" (click)="reset()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
-          {{ editing ? 'Undo changes' : 'Clear' }}
-        </button>
+      
         <span class="cf-spacer"></span>
         <button type="button" class="m-btn cf-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
         <button type="submit" class="m-btn m-btn-primary">
