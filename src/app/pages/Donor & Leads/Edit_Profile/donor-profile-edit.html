@@ -1,0 +1,195 @@
+<!-- =====================================================================================================
+     DONOR · EDIT PROFILE - simple single card.
+     Header (avatar · title · donor · last updated) → three plain field sections → reason → footer (Cancel / Save).
+     ===================================================================================================== -->
+<div class="pe">
+  <div class="pe-card">
+    <!-- ===== header ===== -->
+    <header class="pe-head">
+      <span class="pe-avatar" aria-hidden="true">{{ initials() }}</span>
+      <div class="pe-head-txt">
+        <h1>Edit profile</h1>
+        <p>
+          <b>{{ fullName() }}</b>
+          <span class="pe-sep"></span>
+          <span class="pe-code">{{ code }}</span>
+          <span class="pe-sep"></span>
+          <span class="pe-status"><i></i>{{ status }}</span>
+        </p>
+      </div>
+      <span class="pe-updated">Last updated<b>{{ updated }}</b></span>
+    </header>
+
+    <!-- ===== identity ===== -->
+    <section class="pe-sec">
+      <h2>Identity <small>Who the donor is</small></h2>
+
+      <div class="pe-fields">
+        <div class="pe-field is-full">
+          <div class="pe-lbl">
+            <span>Donor type</span>
+          </div>
+          <div class="pe-seg" role="radiogroup" aria-label="Donor type">
+            @for (t of types; track t.key) {
+              <button type="button" role="radio" [class.is-on]="form().type === t.key" [attr.aria-checked]="form().type === t.key" (click)="set('type', t.key)">{{ t.key }}</button>
+            }
+          </div>
+        </div>
+
+        <div class="pe-field" [class.is-edited]="isEdited('firstName')" [class.has-err]="showError('firstName')">
+          <div class="pe-lbl">
+            <label for="pe-first">{{ form().type === 'Organisation' ? 'Organisation name' : 'First name' }} <em>*</em></label>
+          </div>
+          <input id="pe-first" class="pe-input" [value]="form().firstName" (input)="text('firstName', $event)" autocomplete="off" />
+          @if (showError('firstName'); as m) { <p class="pe-err">{{ m }}</p> }
+        </div>
+
+        <div class="pe-field" [class.is-edited]="isEdited('lastName')">
+          <div class="pe-lbl">
+            <label for="pe-last">{{ form().type === 'Organisation' ? 'Contact person' : 'Last name' }}</label>
+          </div>
+          <input id="pe-last" class="pe-input" [value]="form().lastName" (input)="text('lastName', $event)" autocomplete="off" />
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== contact ===== -->
+    <section class="pe-sec">
+      <h2>Contact &amp; preferences <small>How we reach them</small></h2>
+
+      <div class="pe-fields">
+        <div class="pe-field">
+          <div class="pe-lbl"><span>E-mail</span></div>
+          <div class="pe-input is-locked">
+            <span>{{ form().email }}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>
+          </div>
+          <p class="pe-help">The e-mail address cannot be changed.</p>
+        </div>
+
+        <div class="pe-field" [class.is-edited]="isEdited('phone')" [class.has-err]="showError('phone')">
+          <div class="pe-lbl">
+            <label for="pe-phone">Phone</label>
+          </div>
+          <input id="pe-phone" class="pe-input" inputmode="tel" [value]="form().phone" (input)="text('phone', $event)" autocomplete="off" />
+          @if (showError('phone'); as m) { <p class="pe-err">{{ m }}</p> }
+        </div>
+
+        <div class="pe-field" [class.is-edited]="isEdited('language')">
+          <div class="pe-lbl">
+            <span>Preferred language</span>
+          </div>
+          <div class="pe-dd" [class.is-open]="menu() === 'language'">
+            <button type="button" class="pe-input pe-dd-btn" (click)="toggleMenu('language', $event)" [attr.aria-expanded]="menu() === 'language'" aria-haspopup="listbox">
+              <span>{{ languageLabel() }}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'language') {
+              <ul class="pe-menu" role="listbox" (click)="$event.stopPropagation()">
+                @for (l of languages; track l.code) {
+                  <li role="option" [attr.aria-selected]="form().language === l.code">
+                    <button type="button" [class.is-on]="form().language === l.code" (click)="pickLanguage(l.code)">
+                      <span>{{ l.label }}</span>
+                      @if (form().language === l.code) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="pe-field" [class.is-edited]="isEdited('mayContact')">
+          <div class="pe-lbl">
+            <span>Contact permission</span>
+          </div>
+          <button type="button" class="pe-switch" role="switch" [class.is-on]="form().mayContact" [attr.aria-checked]="form().mayContact" (click)="set('mayContact', !form().mayContact)">
+            <span class="pe-knob"><i></i></span>
+            {{ form().mayContact ? 'May be contacted' : 'Do not contact' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== owner ===== -->
+    <section class="pe-sec">
+      <h2>Relationship owner <small>Who looks after the donor</small></h2>
+
+      <div class="pe-fields">
+        <div class="pe-field" [class.is-edited]="isEdited('owner')">
+          <div class="pe-lbl">
+            <span>Owner</span>
+          </div>
+          <div class="pe-dd" [class.is-open]="menu() === 'owner'">
+            <button type="button" class="pe-input pe-dd-btn" (click)="toggleMenu('owner', $event)" [attr.aria-expanded]="menu() === 'owner'" aria-haspopup="listbox">
+              <span>{{ form().owner }}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'owner') {
+              <div class="pe-menu" (click)="$event.stopPropagation()">
+                <input class="pe-menu-search" type="text" placeholder="Search people" [value]="ownerQuery()" (input)="setOwnerQuery($event)" />
+                <ul role="listbox">
+                  @for (o of ownerOptions(); track o.name) {
+                    <li role="option" [attr.aria-selected]="form().owner === o.name">
+                      <button type="button" [class.is-on]="form().owner === o.name" (click)="pickOwner(o.name)">
+                        <span>{{ o.name }}</span><small>{{ o.role }}</small>
+                        @if (form().owner === o.name) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                      </button>
+                    </li>
+                  } @empty {
+                    <li class="pe-menu-none">No one matches "{{ ownerQuery() }}".</li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== reason ===== -->
+    <section class="pe-sec">
+      <h2>Reason for change <em>*</em> <small>Kept in the audit trail</small></h2>
+      <div class="pe-field" [class.has-err]="showError('reason')">
+        <textarea id="pe-reason" rows="3" class="pe-input" aria-label="Reason for change" placeholder="Why is this profile being corrected?" [value]="reason()" (input)="setReason($event)"></textarea>
+        <div class="pe-reason-meta">
+          @if (showError('reason'); as m) { <span class="pe-err">{{ m }}</span> }
+          @else { <span class="pe-help">Saved as an audited correction on the donor's record.</span> }
+          <small [class.is-ok]="reasonLen() >= reasonMin">{{ reasonLen() }} / {{ reasonMin }} min</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== footer ===== -->
+    <footer class="pe-foot">
+      <span class="pe-foot-note">
+        @if (dirty()) {
+          {{ changes().length }} change{{ changes().length === 1 ? '' : 's' }}: {{ changeSummary() }}
+        } @else { No changes yet. }
+      </span>
+      <button type="button" class="pe-btn btn-secondary" (click)="back()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel
+      </button>
+      <button type="button" class="pe-btn is-primary" [disabled]="saving()" [class.is-off]="!canSave()" (click)="save()">
+        @if (saving()) { <span class="pe-spin" aria-hidden="true"></span> Saving… }
+        @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg> Save }
+      </button>
+    </footer>
+  </div>
+
+  <!-- ===== leave with unsaved changes ===== -->
+  @if (confirmLeave()) {
+    <div class="pe-overlay" (click)="confirmLeave.set(false)">
+      <div class="pe-dialog" role="alertdialog" aria-modal="true" aria-labelledby="pe-leave-title" (click)="$event.stopPropagation()">
+        <h3 id="pe-leave-title">Discard unsaved changes?</h3>
+        <p>The profile stays as it was.</p>
+        <div class="pe-dialog-actions">
+          <button type="button" class="pe-btn" (click)="confirmLeave.set(false)">Keep editing</button>
+          <button type="button" class="pe-btn is-danger" (click)="leave()">Discard</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (toast()) { <div class="pe-toast" role="status">{{ toast() }}</div> }
+</div>

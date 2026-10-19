@@ -55,6 +55,48 @@ export class CampaignDetail {
   protected readonly liveAssets = computed(() => this.store.assets().filter((a) => a.campaign === this.c().code && a.status === 'active').length);
   protected readonly daysLeft = computed(() => daysBetween(this.today, this.c().end));
 
+  // ---- mini charts on the right side of the KPI cards (shown only when a card is wide) ----
+  /** Last 6 months (oldest first) with revenue, donors and gift counts per month. */
+  protected readonly trend = computed(() => {
+    const [y, m] = this.today.split('-').map(Number);
+    const months = Array.from({ length: 6 }, (_, i) => new Date(Date.UTC(y, m - 6 + i, 1)).toISOString().slice(0, 7));
+    const list = this.donations();
+    const rows = months.map((key) => {
+      const inMonth = list.filter((d) => d.date.slice(0, 7) === key);
+      return {
+        key,
+        label: MONTH_NAMES[Number(key.slice(5)) - 1].slice(0, 3),
+        revenue: inMonth.reduce((s, d) => s + d.amount, 0),
+        donors: new Set(inMonth.map((d) => d.donor)).size,
+        gifts: inMonth.length
+      };
+    });
+    const series = (pick: (r: (typeof rows)[number]) => number) => {
+      const max = Math.max(1, ...rows.map(pick));
+      const bars = rows.map((r, i) => ({
+        label: r.label,
+        value: pick(r),
+        /** bar height in % (0 = empty month, drawn as a dot on the baseline) */
+        h: pick(r) ? Math.max(12, Math.round((pick(r) / max) * 100)) : 0,
+        now: i === rows.length - 1,
+        peak: pick(r) > 0 && pick(r) === max,
+        /** shade level 0-4 for the heat tiles */
+        lv: pick(r) ? Math.max(1, Math.ceil((pick(r) / max) * 4)) : 0
+      }));
+      return { bars, total: rows.reduce((t, r) => t + pick(r), 0) };
+    };
+    return { revenue: series((r) => r.revenue), donors: series((r) => r.donors), gifts: series((r) => r.gifts) };
+  });
+  /** Top tracking assets by donations traced (max 3) for the asset card. */
+  protected readonly topAssets = computed(() => {
+    const list = this.store.assets()
+      .filter((a) => a.campaign === this.c().code)
+      .sort((a, b) => b.received - a.received)
+      .slice(0, 3);
+    const max = Math.max(1, ...list.map((a) => a.received));
+    return list.map((a) => ({ ref: a.ref, type: a.type, live: a.status === 'active', received: a.received, pct: Math.round((a.received / max) * 100) }));
+  });
+
   // ---- calendar ----
   private readonly month = signal(this.today.slice(0, 7)); // yyyy-mm
   protected readonly selectedDay = signal(this.today);

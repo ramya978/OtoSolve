@@ -62,6 +62,20 @@
         <b>{{ revenueChange().dir === 'down' ? '↓' : revenueChange().dir === 'up' ? '↑' : '–' }} {{ revenueChange().pct }}%</b> vs last month
       </span>
     </div>
+    <!-- right side (wide card only): Revenue, last 6 months -->
+    <div class="cd-kpi-side tone-success" role="img" [attr.aria-label]="'Revenue: ' + inr(trend().revenue.total)">
+      <span class="cd-sep" aria-hidden="true"></span>
+      <div class="cd-side-in">
+        <span class="cd-side-head"><small>6 mo</small><b>{{ inr(trend().revenue.total) }}</b></span>
+        <span class="cd-heat">
+          @for (b of trend().revenue.bars; track b.label) {
+            <span [class]="'cd-heat-tile lv-' + b.lv" [class.is-now]="b.now" [attr.data-tip]="b.label + ' · ' + inr(b.value)">
+              <small>{{ b.label.charAt(0) }}</small>
+            </span>
+          }
+        </span>
+      </div>
+    </div>
   </div>
   <div class="cd-kpi">
     <span class="cd-kpi-ico tone-info"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg></span>
@@ -69,6 +83,20 @@
       <span class="cd-kpi-label">Total donors</span>
       <span class="cd-kpi-value">{{ c().donors }}</span>
       <span class="cd-kpi-note">People who gave</span>
+    </div>
+    <!-- right side (wide card only): Donors, last 6 months -->
+    <div class="cd-kpi-side tone-info" role="img" [attr.aria-label]="'Donors: ' + trend().donors.total">
+      <span class="cd-sep" aria-hidden="true"></span>
+      <div class="cd-side-in">
+        <span class="cd-side-head"><small>6 mo</small><b>{{ trend().donors.total }}</b></span>
+        <span class="cd-heat">
+          @for (b of trend().donors.bars; track b.label) {
+            <span [class]="'cd-heat-tile lv-' + b.lv" [class.is-now]="b.now" [attr.data-tip]="b.label + ' · ' + b.value">
+              <small>{{ b.label.charAt(0) }}</small>
+            </span>
+          }
+        </span>
+      </div>
     </div>
   </div>
   <div class="cd-kpi">
@@ -78,6 +106,20 @@
       <span class="cd-kpi-value">{{ c().donations }}</span>
       <span class="cd-kpi-note">Gifts received</span>
     </div>
+    <!-- right side (wide card only): Donations, last 6 months -->
+    <div class="cd-kpi-side tone-purple" role="img" [attr.aria-label]="'Donations: ' + trend().gifts.total">
+      <span class="cd-sep" aria-hidden="true"></span>
+      <div class="cd-side-in">
+        <span class="cd-side-head"><small>6 mo</small><b>{{ trend().gifts.total }}</b></span>
+        <span class="cd-heat">
+          @for (b of trend().gifts.bars; track b.label) {
+            <span [class]="'cd-heat-tile lv-' + b.lv" [class.is-now]="b.now" [attr.data-tip]="b.label + ' · ' + b.value">
+              <small>{{ b.label.charAt(0) }}</small>
+            </span>
+          }
+        </span>
+      </div>
+    </div>
   </div>
   <div class="cd-kpi">
     <span class="cd-kpi-ico tone-warning"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
@@ -85,6 +127,22 @@
       <span class="cd-kpi-label">Tracking assets</span>
       <span class="cd-kpi-value">{{ assetCount() }}</span>
       <span class="cd-kpi-note">{{ liveAssets() }} live · <a class="w-link" [routerLink]="paths.assets">Manage</a></span>
+    </div>
+    <div class="cd-kpi-side tone-warning">
+      <span class="cd-sep" aria-hidden="true"></span>
+      <div class="cd-side-in">
+        <span class="cd-side-head"><small>Top assets</small><b>{{ liveAssets() }} live</b></span>
+        <ul class="cd-assets">
+          @for (a of topAssets(); track a.ref) {
+            <li [class.is-live]="a.live" [attr.title]="a.ref + (a.live ? ' · live' : ' · not live')">
+              <span class="cd-asset-top"><i></i><span>{{ a.type }}</span><b>{{ inr(a.received) }}</b></span>
+              <span class="cd-asset-bar"><em [style.width.%]="a.pct"></em></span>
+            </li>
+          } @empty {
+            <li class="is-empty">No assets yet</li>
+          }
+        </ul>
+      </div>
     </div>
   </div>
 </section>

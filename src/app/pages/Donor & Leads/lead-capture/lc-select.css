@@ -1,0 +1,116 @@
+/* Custom dropdown - theme tokens, button radius from Theme Settings. */
+:host {
+  display: block;
+  min-width: 0;
+  --ls-primary: var(--primary, var(--accent, #5b3a6e));
+  --ls-line: var(--line, #e4e4ea);
+  --ls-card: var(--panel, var(--white, #fff));
+  --ls-radius: var(--btn-radius, 8px);
+}
+
+:host svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ls { position: relative; }
+
+.ls-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--ls-line);
+  border-radius: var(--ls-radius);
+  background: var(--ls-card);
+  color: var(--ink, #2b2b33);
+  font: inherit;
+  font-size: calc(13px * var(--font-scale, 1));
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.ls-btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--ls-primary) 35%, var(--ls-line)); }
+
+.ls.is-open .ls-btn {
+  border-color: var(--ls-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ls-primary) 12%, transparent);
+}
+
+.ls.is-invalid .ls-btn { border-color: var(--status-danger, #a23c4c); }
+.ls.is-disabled .ls-btn { background: color-mix(in srgb, var(--ls-line) 25%, var(--white, #fff)); cursor: not-allowed; opacity: .7; }
+
+.ls-val,
+.ls-ph { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-ph { color: var(--muted, #6f6f7a); }
+
+.ls-chev { flex: none; width: 14px; height: 14px; color: var(--muted, #6f6f7a); transition: transform .2s; }
+.ls.is-open .ls-chev { transform: rotate(180deg); }
+
+.ls-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  min-width: 200px;
+  border: 1px solid var(--ls-line);
+  border-radius: var(--ls-radius);
+  background: var(--ls-card);
+  box-shadow: 0 14px 32px rgba(20, 20, 35, .1);
+  animation: ls-drop .15s ease-out;
+}
+
+.ls-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 6px 6px 0;
+  padding: 0 9px;
+  border: 1px solid var(--ls-line);
+  border-radius: calc(var(--ls-radius) - 2px);
+}
+
+.ls-search svg { flex: none; width: 14px; height: 14px; color: var(--muted, #6f6f7a); }
+.ls-search input { flex: 1; min-width: 0; height: 30px; border: 0; outline: 0; background: none; font: inherit; font-size: calc(13px * var(--font-scale, 1)); }
+
+.ls-list {
+  max-height: 240px;
+  margin: 0;
+  padding: 5px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.ls-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: max(3px, calc(var(--ls-radius) - 3px));
+  font-size: calc(13px * var(--font-scale, 1));
+  cursor: pointer;
+}
+
+.ls-list li:hover,
+.ls-list li:focus-visible { outline: 0; background: color-mix(in srgb, var(--ls-line) 30%, var(--white, #fff)); }
+.ls-list li.is-on { background: color-mix(in srgb, var(--ls-primary) 9%, var(--white, #fff)); color: var(--ls-primary); font-weight: 500; }
+
+.ls-list li > svg { flex: none; width: 14px; height: 14px; opacity: 0; stroke-width: 2.2; }
+.ls-list li.is-on > svg { opacity: 1; }
+
+.ls-opt { display: grid; min-width: 0; }
+.ls-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-opt small { color: var(--muted, #6f6f7a); font-size: calc(11px * var(--font-scale, 1)); font-weight: 400; }
+
+.ls-list li.ls-empty { justify-content: center; color: var(--muted, #6f6f7a); cursor: default; }
+
+@keyframes ls-drop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }

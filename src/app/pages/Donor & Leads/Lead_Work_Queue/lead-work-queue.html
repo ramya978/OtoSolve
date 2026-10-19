@@ -1,0 +1,243 @@
+<!-- =====================================================================================================
+     LEAD WORK QUEUE (lead-work-queue.ts · lead-work-queue.css)
+     Header card (title, search, filters toggle, sort, export, capture) · filter row with custom dropdowns ·
+     summary tabs · lead table with animated row actions · pager · floating bulk-action bar · toast.
+     ===================================================================================================== -->
+<section class="lwq-panel" aria-label="Lead work queue">
+  <!-- ===== header ===== -->
+  <header class="lwq-head">
+    <div class="lwq-title">
+      <span class="lwq-eyebrow">Donors &amp; Leads</span>
+      <h1>Lead Work Queue</h1>
+    </div>
+
+    <!-- filters sit on the same line as the title and tools -->
+    <div class="lwq-fbar" role="group" aria-label="Queue filters">
+      <span class="lwq-fbar-lead">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>
+        Filter by
+      </span>
+
+      @for (f of filterDefs(); track f.key) {
+        <div class="lwq-dd lwq-pill" [class.is-open]="openDd() === f.key" [class.is-set]="f.value !== 'all'">
+          <button type="button" class="lwq-pill-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === f.key" (click)="toggleDd(f.key, $event)">
+            <svg class="lwq-pill-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>
+            <span class="lwq-pill-label">{{ f.label }}</span>
+            @if (f.value !== 'all') { <b class="lwq-pill-val">{{ labelOf(f.opts, f.value) }}</b> }
+            <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (f.value !== 'all') {
+            <button type="button" class="lwq-pill-x" [attr.aria-label]="'Clear ' + f.label" (click)="clearF(f.key, $event)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+            </button>
+          }
+          @if (openDd() === f.key) {
+            <div class="lwq-pop" (click)="$event.stopPropagation()">
+              <div class="lwq-pop-head">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>{{ f.label }}
+              </div>
+              <ul class="lwq-pop-list" role="listbox">
+                @for (o of f.opts; track o.value) {
+                  <li role="option" [attr.aria-selected]="o.value === f.value" [class.is-on]="o.value === f.value" (click)="pick(f.key, o.value)">
+                    <i class="lwq-radio"></i>{{ o.label }}
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      }
+
+      @if (activeFilters()) {
+        <button type="button" class="lwq-clear" (click)="clearFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
+          Clear all <b>{{ activeFilters() }}</b>
+        </button>
+      }
+    </div>
+
+    <div class="lwq-tools">
+      <label class="lwq-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+        <input type="search" placeholder="Search name, lead ID, phone, e-mail" aria-label="Search leads" [value]="query()" (input)="setQuery($any($event.target).value)" />
+      </label>
+
+
+      <!-- sort (custom dropdown) -->
+      <div class="lwq-dd lwq-sort" [class.is-open]="openDd() === 'sort'">
+        <button type="button" class="lwq-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'sort'" (click)="toggleDd('sort', $event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
+          {{ labelOf(sortOpts, sort()) }}
+          <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+        </button>
+        @if (openDd() === 'sort') {
+          <ul class="lwq-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+            @for (o of sortOpts; track o.value) {
+              <li role="option" [attr.aria-selected]="o.value === sort()" [class.is-on]="o.value === sort()" (click)="pick('sort', o.value)">
+                {{ o.label }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <button type="button" class="lwq-btn" (click)="doExport()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+        Export
+      </button>
+      <button type="button" class="lwq-btn is-primary" (click)="goCapture()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+        Capture lead
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== summary widgets: label · big number · note (click to filter the list) ===== -->
+  <div class="lwq-stats" role="tablist" aria-label="Queue summary">
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'all'" [attr.aria-selected]="tab() === 'all'" (click)="setTab('all')">
+      <span class="lwq-stat-label">All leads</span>
+      <strong>{{ counts().all }}</strong>
+      <small>Every lead in scope</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'unassigned'" [attr.aria-selected]="tab() === 'unassigned'" (click)="setTab('unassigned')">
+      <span class="lwq-stat-label">Unassigned</span>
+      <strong>{{ counts().unassigned }}</strong>
+      <small>Waiting for an owner</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'assigned'" [attr.aria-selected]="tab() === 'assigned'" (click)="setTab('assigned')">
+      <span class="lwq-stat-label">Assigned</span>
+      <strong>{{ counts().assigned }}</strong>
+      <small>With a fundraiser</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'hot'" [attr.aria-selected]="tab() === 'hot'" (click)="setTab('hot')">
+      <span class="lwq-stat-label">Hot</span>
+      <strong>{{ counts().hot }}</strong>
+      <small>Ready to talk</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'high'" [attr.aria-selected]="tab() === 'high'" (click)="setTab('high')">
+      <span class="lwq-stat-label">High potential</span>
+      <strong>{{ counts().high }}</strong>
+      <small>Largest likely gifts</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'recent'" [attr.aria-selected]="tab() === 'recent'" (click)="setTab('recent')">
+      <span class="lwq-stat-label">Recently added</span>
+      <strong>{{ counts().recent }}</strong>
+      <small>Captured in last 7 days</small>
+    </button>
+    <button type="button" role="tab" class="lwq-stat" [class.active]="tab() === 'converted'" [attr.aria-selected]="tab() === 'converted'" (click)="setTab('converted')">
+      <span class="lwq-stat-label">Converted</span>
+      <strong>{{ counts().converted }}</strong>
+      <small>Donation recorded</small>
+    </button>
+  </div>
+</section>
+
+<!-- ===== table ===== -->
+<section class="lwq-card" aria-label="Leads">
+  <table class="lwq-table">
+    <colgroup>
+      <col class="c-check" /><col class="c-lead" /><col class="c-contact" /><col class="c-camp" /><col class="c-owner" />
+      <col class="c-stage" /><col class="c-sig" /><col class="c-next" /><col class="c-act" />
+    </colgroup>
+    <thead><tr>
+      <th class="c-check"><input type="checkbox" class="lwq-check" [checked]="allChecked()" (change)="toggleAll()" aria-label="Select page" /></th>
+      <th>Lead</th><th class="c-contact">Contact</th><th class="c-camp">Campaign</th><th class="c-owner">Owner</th>
+      <th class="c-stage">Stage</th><th class="c-sig">Signals</th><th class="c-next">Next contact</th><th class="c-act">Action</th>
+    </tr></thead>
+    <tbody>
+      @for (r of pageRows(); track r.id) {
+        <tr [class.is-checked]="isChecked(r.id)">
+          <td class="c-check"><input type="checkbox" class="lwq-check" [checked]="isChecked(r.id)" (change)="toggleRow(r.id)" [attr.aria-label]="'Select ' + r.name" /></td>
+          <td><button type="button" class="lwq-name" (click)="openLead(r)">{{ r.name }}</button><span class="lwq-sub">{{ r.ref }}</span></td>
+          <td class="c-contact"><span class="lwq-main">{{ r.phone }}</span><span class="lwq-sub">{{ r.email }}</span></td>
+          <td class="c-camp"><span class="lwq-main">{{ r.campaign }}</span><span class="lwq-sub">{{ r.source }}</span></td>
+          <td class="c-owner">
+            @if (r.owner) { <span class="lwq-owner"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ r.owner }}</span> }
+            @else { <span class="lwq-owner is-none"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>Unassigned</span> }
+          </td>
+          <td class="c-stage"><span [class]="'lwq-stage st-' + r.stage.toLowerCase()"><i></i>{{ r.stage }}</span></td>
+          <td class="c-sig">
+            <span [class]="'lwq-temp t-' + r.temp.toLowerCase()">{{ r.temp }}</span>
+            <span class="lwq-sub">{{ r.potential }} potential</span>
+          </td>
+          <td class="c-next"><span class="lwq-main">{{ r.due }}</span>
+            @if (r.overdue > 0) { <span class="lwq-overdue">{{ r.overdue }} day{{ r.overdue === 1 ? '' : 's' }} overdue</span> }
+            @else { <span class="lwq-sub">Due today</span> }
+          </td>
+          <td class="c-act">
+            <span class="lwq-actions">
+              <button type="button" class="a-view" data-tip="View lead" aria-label="View lead" (click)="act(r, 'view')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+              </button>
+              <button type="button" class="a-note" data-tip="Log a note" aria-label="Log a note" (click)="act(r, 'note')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
+              </button>
+              <button type="button" class="a-assign" [attr.data-tip]="r.owner ? 'Reassign' : 'Assign'" [attr.aria-label]="r.owner ? 'Reassign' : 'Assign'" (click)="act(r, 'assign')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('userPlus')" /></svg>
+              </button>
+            </span>
+          </td>
+        </tr>
+      } @empty {
+        <tr><td colspan="9" class="lwq-empty">No leads match these filters. <button type="button" class="lwq-link" (click)="reset()">Reset</button></td></tr>
+      }
+    </tbody>
+  </table>
+
+  <!-- ===== footer: range · rows · pager ===== -->
+  <footer class="lwq-foot">
+    <div class="lwq-showing">
+      <span>Showing <b>{{ rangeFrom() }}–{{ rangeTo() }}</b> of <b>{{ filtered().length }}</b></span>
+      <div class="lwq-dd lwq-rows" [class.is-open]="openDd() === 'rows'">
+        <button type="button" class="lwq-select sm" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'rows'" (click)="toggleDd('rows', $event)">
+          <span>Rows <b>{{ pageSize() }}</b></span>
+          <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+        </button>
+        @if (openDd() === 'rows') {
+          <ul class="lwq-menu is-up" role="listbox" (click)="$event.stopPropagation()">
+            @for (o of rowOpts; track o.value) {
+              <li role="option" [attr.aria-selected]="+o.value === pageSize()" [class.is-on]="+o.value === pageSize()" (click)="pick('rows', o.value)">
+                {{ o.label }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+    <nav class="lwq-pager" aria-label="Pages">
+      <button type="button" class="lwq-page" [disabled]="pageSafe() === 1" (click)="page.set(pageSafe() - 1)" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg>
+      </button>
+      @for (p of pages(); track $index) {
+        @if (p === 0) { <span class="lwq-gap">…</span> }
+        @else {
+          <button type="button" class="lwq-page" [class.active]="p === pageSafe()" [attr.aria-current]="p === pageSafe() ? 'page' : null" (click)="page.set(p)">{{ p }}</button>
+        }
+      }
+      <button type="button" class="lwq-page" [disabled]="pageSafe() === totalPages()" (click)="page.set(pageSafe() + 1)" aria-label="Next page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg>
+      </button>
+    </nav>
+  </footer>
+</section>
+
+<!-- ===== floating bulk bar ===== -->
+@if (checked().size) {
+  <div class="lwq-bulk" role="status">
+    <span class="lwq-bulk-count"><b>{{ checked().size }}</b> leads selected</span>
+    <span class="lwq-bulk-actions">
+      <button type="button" class="lwq-btn is-ghost" (click)="clearChecked()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Clear
+      </button>
+      <button type="button" class="lwq-btn" (click)="exportSelected()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export selected
+      </button>
+      <button type="button" class="lwq-btn is-primary" (click)="assignSelected()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('userPlus')" /></svg> Assign selected
+      </button>
+    </span>
+  </div>
+}
+
+<app-footer />
+@if (toast(); as t) { <div class="lwq-toast" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>{{ t }}</div> }

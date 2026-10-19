@@ -5,7 +5,7 @@ import { PaymentsReceipts } from './pages/Donations/Payment_History/payments-rec
 import { Profile } from './pages/Auth/Profile/profile';
 import { NewCampaign } from './pages/Campaign/Campaign_Wizard/new-campaign';
 import { CampaignRegister } from './pages/Campaign/Campaign_Register/campaign-register';
-import { LeadProfile } from './pages/Donor & Leads/Lead_Work_Queue/Lead_Profile/lead-profile';
+import { LeadWorkQueue } from './pages/Donor & Leads/Lead_Work_Queue/lead-work-queue';
 import { Cities } from './pages/Masters/Cities/cities';
 import { CityForm } from './pages/Masters/Cities/city-form';
 import { Countries } from './pages/Masters/Countries/countries';
@@ -21,13 +21,24 @@ import { CampaignLifecycle } from './pages/Campaign/campaign-lifecycle/campaign-
 import { ReadinessChecklist } from './pages/Campaign/readiness-checklist/readiness-checklist';
 import { TrackingAssetForm } from './pages/Campaign/tracking-asset-form/tracking-asset-form';
 import { TrackingAssets } from './pages/Campaign/tracking-assets/tracking-assets';
+import { LeadProfile } from './pages/Donor & Leads/Lead_Profile/lead-profile';
+import { LeadCapture } from './pages/Donor & Leads/lead-capture/lead-capture';
+import { LeadCaptureBulk } from './pages/Donor & Leads/lead-capture/bulk/lead-capture-bulk';
+import { LC_PATHS } from './pages/Donor & Leads/lead-capture/lc-shared';
+import { LeadCaptureSingle } from './pages/Donor & Leads/lead-capture/single/lead-capture-single';
+import { AllDonors } from './pages/Donor & Leads/All Donors/all-donors';
+import { Donor360 } from './pages/Donor & Leads/Donor360/donor-360';
+import { DonorProfileEdit } from './pages/Donor & Leads/Edit_Profile/donor-profile-edit';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
 const REAL_SCREENS: Record<string, unknown> = {
   'app/donations/payment-event-queue': PaymentsReceipts,
   'app/fundraising/campaigns/campaign-wizard': NewCampaign,
-  'app/fundraising/campaigns/campaign-register': CampaignRegister
+  'app/fundraising/campaigns/campaign-register': CampaignRegister,
+  'app/fundraising/relationships/lead-work-queue': LeadWorkQueue,
+  'app/fundraising/donors/all-donors': AllDonors,
+  'app/fundraising/relationships/donor-360': Donor360
 };
 
 const menuRoutes: Routes = flatten(MENU_DATA)
@@ -82,6 +93,23 @@ export const routes: Routes = [
     title: 'Create tracking asset',
     data: { name: 'Tracking Asset Manager', route: '/app/fundraising/campaigns/tracking-asset-manager' }
   },
+
+  // Donor & leads - Lead Capture shell (heading + Single/Bulk switch) with child routes
+  {
+    path: 'app/fundraising/relationships/lead-capture',
+    component: LeadCapture,
+    title: 'Lead capture',
+    data: { name: 'Lead Capture', route: '/app/fundraising/relationships/lead-capture' },
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: LC_PATHS.single },
+      { path: LC_PATHS.single, component: LeadCaptureSingle, title: 'Lead capture · Single lead' },
+      { path: LC_PATHS.bulk, component: LeadCaptureBulk, title: 'Lead capture · Bulk upload' },
+      { path: '**', redirectTo: LC_PATHS.single },
+    ],
+  },
+      { path:  'app/fundraising/relationships/donor/edit', component: DonorProfileEdit, title: 'Donor Profile Edit' },
+
+  // Masters
     { path: 'app/masters/country', component: Countries, title: 'Countries' },
   { path: 'app/masters/country/new', component: CountryForm, title: 'New country' },
   { path: 'app/masters/country/:id/edit', component: CountryForm, title: 'Edit country' },

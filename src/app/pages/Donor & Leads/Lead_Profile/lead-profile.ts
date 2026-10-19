@@ -1,17 +1,8 @@
 import { Component, DestroyRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
-import { Footer } from '../../../../Shared/layout/Footer/footer';
+import { Footer } from '../../../Shared/layout/Footer/footer';
 
-/* =====================================================================================================
-   LEAD PROFILE - "Evergreen executive offsite" layout with the lead record content:
-   page head · tinted summary card (chips, owner + reassign, lifecycle track, key figures) ·
-   left: identity & contact, engagement, consent · right: origin & ownership, location, lifecycle, notes.
-   Typography follows the OtoSolve reference (Inter / Segoe UI). Accent colour comes from var(--primary).
-   ===================================================================================================== */
-
-/** Lead statuses as the API sends them (same names as the lead list). */
 export type LeadStatus = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost' | 'Dormant';
 
-/** Colour family per status - matches the dots in the lead list. */
 export type StatusTone = 'new' | 'assigned' | 'contacted' | 'qualified' | 'converted' | 'closed';
 
 export interface ConsentRow {

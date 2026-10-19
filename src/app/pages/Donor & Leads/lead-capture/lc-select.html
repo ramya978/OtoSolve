@@ -1,0 +1,30 @@
+<div class="ls" [class.is-open]="open()" [class.is-disabled]="disabled()" [class.is-invalid]="invalid()">
+  <button type="button" class="ls-btn" [disabled]="disabled()" aria-haspopup="listbox"
+          [attr.aria-expanded]="open()" [attr.aria-label]="ariaLabel() || placeholder()" (click)="toggle()">
+    @if (current(); as c) { <span class="ls-val">{{ c.label }}</span> }
+    @else { <span class="ls-ph">{{ placeholder() }}</span> }
+    <svg class="ls-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+  </button>
+
+  @if (open()) {
+    <div class="ls-pop">
+      @if (searchable()) {
+        <label class="ls-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search" aria-label="Search options" [value]="query()" (input)="setQuery($any($event.target).value)" />
+        </label>
+      }
+      <ul class="ls-list" role="listbox">
+        @for (o of shown(); track o.value) {
+          <li role="option" tabindex="0" [attr.aria-selected]="o.value === value()" [class.is-on]="o.value === value()"
+              (click)="pick(o)" (keydown.enter)="pick(o)">
+            <span class="ls-opt"><span>{{ o.label }}</span>@if (o.hint) { <small>{{ o.hint }}</small> }</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+          </li>
+        } @empty {
+          <li class="ls-empty">No match</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

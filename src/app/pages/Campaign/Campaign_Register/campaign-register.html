@@ -28,6 +28,28 @@
   </div>
 </div>
 
+<!-- KPI strip: 5 widgets, summed live from the list-view rows below -->
+<section class="card cr-kpis mb" aria-label="Campaign summary">
+  @for (k of kpis(); track k.key) {
+    <div class="cr-kpi">
+      <div class="cr-kpi-top">
+        <span class="cr-kpi-label">{{ k.label }}</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath(k.icon)" /></svg>
+      </div>
+      <div class="cr-kpi-mid">
+        <strong class="cr-kpi-value num">{{ k.value }}</strong>
+        <!-- second figure on the right: fills the empty side of the widget -->
+        <span class="cr-kpi-side">
+          <b>{{ k.side.value }}</b>
+          <small>{{ k.side.label }}</small>
+        </span>
+      </div>
+      <p class="cr-kpi-note">{{ k.note }}</p>
+    </div>
+  }
+</section>
+
 <!-- register -->
 <section class="card cr-card mb" aria-labelledby="cr-reg-title">
 

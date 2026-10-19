@@ -1,14 +1,3 @@
-/* =====================================================================================================
-   CAMPAIGN REGISTER - list view
-   Heading (eyebrow · title · Export / Create) · register card: title + count, pill search, custom
-   owner dropdown, status tabs with live counts, bulk bar, fixed-layout table that never scrolls
-   sideways (initials tile, status label + lifecycle stage track, progress ring + caption, owner
-   avatar, launch → end timeline) and animated row actions · pager.
-   Every colour / font / radius / shadow comes from the shared theme tokens
-   (--primary, --secondary, --ink, --line, --panel, status tones, --font-*, --radius,
-   --btn-radius, --shadow, --icon-color), so light / dark, palette, custom colour
-   controls and the appearance studio all apply automatically.
-   ===================================================================================================== */
 :host {
   --cr-primary: var(--primary, var(--accent));
   --cr-primary-soft: color-mix(in srgb, var(--cr-primary) 14%, var(--white));
@@ -119,6 +108,106 @@
   gap: 14px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--cr-line);
+}
+
+/* ---------- KPI strip (sample image: 6 widgets, one card, dividers) ---------- */
+.cr-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 0;
+  overflow: hidden;
+}
+
+.cr-kpi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 20px 22px 22px;
+  border-left: 1px solid var(--cr-row-line);
+}
+
+.cr-kpi:first-child { border-left: 0; }
+
+.cr-kpi-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cr-kpi-label {
+  color: var(--cr-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 550;
+  line-height: 1.45;
+}
+
+.cr-kpi-top svg {
+  flex: none;
+  color: var(--cr-icon);
+  opacity: .85;
+}
+
+/* value row: figure on the left, a small visual on the right */
+.cr-kpi-mid {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 8px;
+}
+
+.cr-kpi-value {
+  display: block;
+  margin: 0;
+  color: var(--cr-heading);
+  font-family: var(--cr-number-font);
+  font-size: calc(30px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.6px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* --- second figure on the right of the value --- */
+.cr-kpi { container: cr-kpi / inline-size; }
+
+.cr-kpi-side {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 1px;
+  padding-left: 14px;
+  border-left: 1px solid var(--cr-row-line);
+  text-align: right;
+}
+
+.cr-kpi-side b {
+  color: var(--cr-heading);
+  font-family: var(--cr-number-font);
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.cr-kpi-side small {
+  color: var(--cr-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+}
+
+/* narrow widget: drop the second figure, keep the main one */
+@container cr-kpi (max-width: 200px) {
+  .cr-kpi-side { display: none; }
+}
+
+.cr-kpi-note {
+  margin: 0;
+  color: var(--cr-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+  line-height: 1.6;
 }
 
 .cr-bar-title {
@@ -843,8 +932,8 @@
   position: relative;
   display: inline-grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: var(--btn-radius, 8px);
@@ -855,8 +944,8 @@
 }
 
 .cr-act svg {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   overflow: visible;
 }
 
@@ -879,6 +968,41 @@
 .cr-act:focus-visible {
   outline: 2px solid var(--cr-primary-ink);
   outline-offset: 2px;
+}
+
+/* --- per-action tones: every action icon gets its own colour (rest + hover) --- */
+.act-view { color: var(--status-info-ink, #3c62a3); }
+.act-edit { color: var(--cr-primary-ink); }
+.act-copy { color: var(--purple, #7a5af5); }
+.act-ready { color: var(--status-success-ink, #35695a); }
+.act-delete { color: var(--status-danger-ink, #a23c4c); }
+
+.act-view:hover,
+.act-view:focus-visible {
+  border-color: color-mix(in srgb, var(--status-info, #3c62a3) 30%, transparent);
+  background: var(--status-info-bg, #ecf0f6);
+  color: var(--status-info-ink, #3c62a3);
+}
+
+.act-edit:hover,
+.act-edit:focus-visible {
+  border-color: color-mix(in srgb, var(--cr-primary) 30%, transparent);
+  background: var(--cr-primary-soft);
+  color: var(--cr-primary-ink);
+}
+
+.act-copy:hover,
+.act-copy:focus-visible {
+  border-color: color-mix(in srgb, var(--purple, #7a5af5) 30%, transparent);
+  background: color-mix(in srgb, var(--purple, #7a5af5) 10%, transparent);
+  color: var(--purple, #7a5af5);
+}
+
+.act-ready:hover,
+.act-ready:focus-visible {
+  border-color: color-mix(in srgb, var(--status-success, #3d7a68) 30%, transparent);
+  background: var(--status-success-bg, #ecf2f0);
+  color: var(--status-success-ink, #35695a);
 }
 
 /* --- view: blink + look around --- */
@@ -1400,7 +1524,7 @@ html[data-motion="reduce"] .cr-overlay {
 
   .cr-actions { gap: 0; }
 
-  .cr-act { width: 30px; height: 30px; }
+  .cr-act { width: 26px; height: 26px; }
 
   .cr-tile { width: 32px; height: 32px; }
 
@@ -1418,10 +1542,18 @@ html[data-motion="reduce"] .cr-overlay {
 /* ---------- responsive (page) ---------- */
 @media (max-width: 1080px) {
   .cr-search input { width: 190px; }
+  .cr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .cr-kpi { border-top: 1px solid var(--cr-row-line); }
+  .cr-kpi:nth-child(-n + 3) { border-top: 0; }
+  .cr-kpi:nth-child(3n + 1) { border-left: 0; }
 }
 
 @media (max-width: 800px) {
   .pagehead { flex-direction: column; }
+  .cr-kpis { grid-template-columns: 1fr; }
+  .cr-kpi { border-left: 0; border-top: 1px solid var(--cr-row-line); }
+  .cr-kpi:first-child { border-top: 0; }
+  .cr-kpi-value { margin-top: 14px; font-size: calc(26px * var(--font-scale, 1)); }
   .cr-bar { flex-direction: column; align-items: stretch; }
   .cr-tools { width: 100%; }
   .cr-search { flex: 1; }

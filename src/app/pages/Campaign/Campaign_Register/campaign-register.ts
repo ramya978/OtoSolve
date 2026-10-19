@@ -4,51 +4,50 @@ import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignInfo } from '../../../Shared/Campaign/cw.data';
 
-/** Campaign lifecycle states shown in the Status column. */
 export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'closing' | 'closed';
 
 export interface CampaignRow {
   id: string;
   name: string;
-  /** Uppercase reference code shown under the name. */
   code: string;
   status: CampaignStatus;
-  /** Completion percentage (0-100) driving the progress bar. */
   progress: number;
-  /** Owner display name; "+n" suffix is baked in where extra collaborators exist. */
   owner: string;
-  /** Pre-formatted launch / end dates (dd MMM yyyy). */
   launch: string;
   ends: string;
+  /** List-view engagement metrics that back the KPI strip (single source of truth). */
+  received: number;
+  target: number;
+  delivered: number;
+  replies: number;
+  overdue: number;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** Format a UTC date as "dd MMM yyyy" (e.g. "01 Feb 2027"). */
 export const fmtDate = (d: Date): string =>
   `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
 const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
 
-/** Seed rows matching the Campaign register overview (16 campaigns). */
 export const CAMPAIGNS: CampaignRow[] = [
-  { id: 'c1', name: 'Walkathon for Elders 2027', code: 'HAI-WALKATHON-2027', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2027, 2, 1))), ends: fmtDate(new Date(utc(2027, 2, 3))) },
-  { id: 'c2', name: 'Palliative Care at Home', code: 'HAI-PALLIATIVE-2027', status: 'draft', progress: 0, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2027, 3, 13))), ends: fmtDate(new Date(utc(2027, 9, 9))) },
-  { id: 'c3', name: 'Elder Self-Help Groups - Livelihood Fund', code: 'HAI-LIVELIHOOD-2027', status: 'submitted', progress: 0, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2027, 1, 7))), ends: fmtDate(new Date(utc(2027, 7, 6))) },
-  { id: 'c4', name: 'Corporate Champions for Elder Care FY 2026-27', code: 'HAI-CSR-2027', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 11, 18))), ends: fmtDate(new Date(utc(2027, 4, 6))) },
-  { id: 'c5', name: 'Winter Relief - Warmth for Elders', code: 'HAI-WINTER-2026', status: 'scheduled', progress: 0, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 26))), ends: fmtDate(new Date(utc(2027, 1, 17))) },
-  { id: 'c6', name: 'Restore Sight - Cataract Surgeries 2026', code: 'HAI-SIGHT-2026', status: 'active', progress: 35, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 8, 5))), ends: fmtDate(new Date(utc(2027, 3, 3))) },
-  { id: 'c7', name: 'Physiotherapy at Home', code: 'HAI-PHYSIO-2026', status: 'closing', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 6, 24))), ends: fmtDate(new Date(utc(2026, 10, 10))) },
-  { id: 'c8', name: 'Mobile Healthcare Units - Care at the Doorstep', code: 'HAI-MOBILECARE-2026', status: 'active', progress: 47, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 7, 26))), ends: fmtDate(new Date(utc(2027, 1, 22))) },
+  { id: 'c1', name: 'Walkathon for Elders 2027', code: 'HAI-WALKATHON-2027', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2027, 2, 1))), ends: fmtDate(new Date(utc(2027, 2, 3))), received: 42000, target: 200000, delivered: 18, replies: 4, overdue: 2 },
+  { id: 'c2', name: 'Palliative Care at Home', code: 'HAI-PALLIATIVE-2027', status: 'draft', progress: 0, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2027, 3, 13))), ends: fmtDate(new Date(utc(2027, 9, 9))), received: 18500, target: 150000, delivered: 9, replies: 1, overdue: 1 },
+  { id: 'c3', name: 'Elder Self-Help Groups - Livelihood Fund', code: 'HAI-LIVELIHOOD-2027', status: 'submitted', progress: 0, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2027, 1, 7))), ends: fmtDate(new Date(utc(2027, 7, 6))), received: 96400, target: 300000, delivered: 34, replies: 9, overdue: 3 },
+  { id: 'c4', name: 'Corporate Champions for Elder Care FY 2026-27', code: 'HAI-CSR-2027', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 11, 18))), ends: fmtDate(new Date(utc(2027, 4, 6))), received: 152300, target: 500000, delivered: 41, replies: 12, overdue: 2 },
+  { id: 'c5', name: 'Winter Relief - Warmth for Elders', code: 'HAI-WINTER-2026', status: 'scheduled', progress: 0, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 26))), ends: fmtDate(new Date(utc(2027, 1, 17))), received: 88400, target: 250000, delivered: 29, replies: 6, overdue: 4 },
+  { id: 'c6', name: 'Restore Sight - Cataract Surgeries 2026', code: 'HAI-SIGHT-2026', status: 'active', progress: 35, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 8, 5))), ends: fmtDate(new Date(utc(2027, 3, 3))), received: 96500, target: 275000, delivered: 33, replies: 8, overdue: 3 },
+  { id: 'c7', name: 'Physiotherapy at Home', code: 'HAI-PHYSIO-2026', status: 'closing', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 6, 24))), ends: fmtDate(new Date(utc(2026, 10, 10))), received: 61200, target: 180000, delivered: 22, replies: 5, overdue: 1 },
+  { id: 'c8', name: 'Mobile Healthcare Units - Care at the Doorstep', code: 'HAI-MOBILECARE-2026', status: 'active', progress: 47, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 7, 26))), ends: fmtDate(new Date(utc(2027, 1, 22))), received: 74300, target: 220000, delivered: 27, replies: 7, overdue: 2 },
 
-  { id: 'c9', name: 'Elder Helpline - Keep the Line Open', code: 'HAI-HELPLINE-2026', status: 'scheduled', progress: 3, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 12))), ends: fmtDate(new Date(utc(2027, 5, 2))) },
-  { id: 'c10', name: 'Heatwave Relief for Elders 2026', code: 'HAI-HEATWAVE-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 5, 2))), ends: fmtDate(new Date(utc(2026, 10, 7))) },
-  { id: 'c11', name: 'Nutrition Kits for Homebound Seniors', code: 'HAI-NUTRITION-2026', status: 'active', progress: 62, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2026, 4, 18))), ends: fmtDate(new Date(utc(2026, 12, 20))) },
-  { id: 'c12', name: 'Safe Drinking Water - Rural Elders', code: 'HAI-WATER-2026', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2026, 11, 2))), ends: fmtDate(new Date(utc(2027, 3, 28))) },
-  { id: 'c13', name: 'Diabetes Screening Camps', code: 'HAI-DIABETES-2026', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 9, 9))), ends: fmtDate(new Date(utc(2027, 2, 14))) },
-  { id: 'c14', name: 'Hearing Aid Support Programme', code: 'HAI-HEARING-2026', status: 'closing', progress: 96, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 3, 5))), ends: fmtDate(new Date(utc(2026, 11, 30))) },
-  { id: 'c15', name: 'Monthly Pension Top-Up Drive', code: 'HAI-PENSION-2026', status: 'active', progress: 78, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 2, 11))), ends: fmtDate(new Date(utc(2026, 12, 31))) },
-  { id: 'c16', name: 'Shelter Upgrade - Monsoon Ready', code: 'HAI-SHELTER-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen', launch: fmtDate(new Date(utc(2026, 1, 20))), ends: fmtDate(new Date(utc(2026, 8, 15))) }
+  { id: 'c9', name: 'Elder Helpline - Keep the Line Open', code: 'HAI-HELPLINE-2026', status: 'scheduled', progress: 3, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 12))), ends: fmtDate(new Date(utc(2027, 5, 2))), received: 33800, target: 120000, delivered: 15, replies: 3, overdue: 5 },
+  { id: 'c10', name: 'Heatwave Relief for Elders 2026', code: 'HAI-HEATWAVE-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 5, 2))), ends: fmtDate(new Date(utc(2026, 10, 7))), received: 52100, target: 160000, delivered: 19, replies: 4, overdue: 0 },
+  { id: 'c11', name: 'Nutrition Kits for Homebound Seniors', code: 'HAI-NUTRITION-2026', status: 'active', progress: 62, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2026, 4, 18))), ends: fmtDate(new Date(utc(2026, 12, 20))), received: 68900, target: 190000, delivered: 24, replies: 6, overdue: 2 },
+  { id: 'c12', name: 'Safe Drinking Water - Rural Elders', code: 'HAI-WATER-2026', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2026, 11, 2))), ends: fmtDate(new Date(utc(2027, 3, 28))), received: 12700, target: 140000, delivered: 6, replies: 1, overdue: 1 },
+  { id: 'c13', name: 'Diabetes Screening Camps', code: 'HAI-DIABETES-2026', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 9, 9))), ends: fmtDate(new Date(utc(2027, 2, 14))), received: 29400, target: 110000, delivered: 12, replies: 3, overdue: 2 },
+  { id: 'c14', name: 'Hearing Aid Support Programme', code: 'HAI-HEARING-2026', status: 'closing', progress: 96, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 3, 5))), ends: fmtDate(new Date(utc(2026, 11, 30))), received: 57600, target: 175000, delivered: 21, replies: 5, overdue: 1 },
+  { id: 'c15', name: 'Monthly Pension Top-Up Drive', code: 'HAI-PENSION-2026', status: 'active', progress: 78, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 2, 11))), ends: fmtDate(new Date(utc(2026, 12, 31))), received: 81900, target: 210000, delivered: 26, replies: 7, overdue: 2 },
+  { id: 'c16', name: 'Shelter Upgrade - Monsoon Ready', code: 'HAI-SHELTER-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen', launch: fmtDate(new Date(utc(2026, 1, 20))), ends: fmtDate(new Date(utc(2026, 8, 15))), received: 47200, target: 130000, delivered: 17, replies: 4, overdue: 1 }
 ];
 
 /** Label + theme status tone for each campaign state. */
@@ -61,7 +60,6 @@ const STATUS_META: Record<CampaignStatus, { label: string; tone: string }> = {
   closed: { label: 'Closed', tone: 'ink' }
 };
 
-/** Icon path data for the actions + header controls (24x24 viewBox). */
 const ICON_PATHS: Record<string, string> = {
   search: 'M3 11a8 8 0 1 0 16 0 8 8 0 1 0-16 0 M21 21l-4.35-4.35',
   plus: 'M12 5v14 M5 12h14',
@@ -74,14 +72,29 @@ const ICON_PATHS: Record<string, string> = {
   chevronDown: 'M6 9l6 6 6-6',
   check: 'M20 6 9 17l-5-5',
   filter: 'M3 5h18 M6 12h12 M10 19h4',
+  heart: 'M20 5a5 5 0 0 0-8 1 5 5 0 0 0-8-1c-5 5 1 10 8 16 7-6 13-11 8-16z',
+  flag: 'M5 21V4 M5 4h13l-3 4 3 4H5',
+  people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M22 21v-2a4 4 0 0 0-3-3.9 M16 3.1a4 4 0 0 1 0 7.8',
+  mail: 'M3 5h18v14H3z M3 6l9 7 9-7',
+  case: 'M4 8h16v12H4z M9 8V5h6v3 M4 13h16',
+  globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M3 12h18 M12 2c3 3.5 3 16.5 0 20-3-3.5-3-16.5 0-20z',
   x: 'M18 6 6 18 M6 6l12 12'
 };
 
 /** Columns that support sorting. */
 export type SortKey = 'name' | 'status' | 'progress' | 'owner' | 'launch' | 'ends';
 
-/** Row actions offered for each campaign state (in display order). */
 export type RowAction = 'view' | 'edit' | 'duplicate' | 'readiness' | 'launch' | 'delete';
+
+export interface CampaignKpi {
+  key: 'total' | 'active' | 'scheduled' | 'approval' | 'ending';
+  label: string;
+  value: string;
+  note: string;
+  icon: string;
+  /** second figure shown on the right of the main value (fills the empty side of the widget) */
+  side: { value: string; label: string };
+}
 
 const ACTIONS: Record<CampaignStatus, RowAction[]> = {
   draft: ['view', 'edit', 'duplicate', 'delete'],
@@ -92,7 +105,6 @@ const ACTIONS: Record<CampaignStatus, RowAction[]> = {
   closed: ['view', 'duplicate']
 };
 
-/** Status tabs above the table, in lifecycle order. */
 const STATUS_ORDER: CampaignStatus[] = ['draft', 'submitted', 'scheduled', 'active', 'closing', 'closed'];
 
 const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
@@ -132,6 +144,61 @@ export class CampaignRegister {
   readonly statusLabel = (s: CampaignStatus): string => STATUS_META[s].label;
   readonly statusTone = (s: CampaignStatus): string => STATUS_META[s].tone;
   readonly iconPath = (name: string): string => ICON_PATHS[name] ?? '';
+
+  /** Top KPI strip - built only from what the list view shows (status, progress, owner, launch / end),
+   *  for the rows matching the current search + owner filter. */
+  readonly kpis = computed<CampaignKpi[]>(() => {
+    const rows = this.baseRows();
+    const time = (d: string): number => Date.parse(d + ' UTC') || 0;
+    const now = Date.now();
+    const count = (s: CampaignStatus): number => rows.filter((r) => r.status === s).length;
+
+    const owners = new Set(rows.map((r) => ownerBase(r.owner))).size;
+
+    const active = rows.filter((r) => r.status === 'active');
+    const lead = active.slice().sort((a, b) => b.progress - a.progress)[0];
+    const avgProgress = active.length ? Math.round(active.reduce((t, r) => t + r.progress, 0) / active.length) : 0;
+
+    const scheduled = rows.filter((r) => r.status === 'scheduled').sort((a, b) => time(a.launch) - time(b.launch));
+    const nextLaunch = scheduled.find((r) => time(r.launch) >= now) ?? scheduled[0];
+
+    const drafts = count('draft');
+    const submitted = count('submitted');
+
+    const closing = rows.filter((r) => r.status === 'closing').sort((a, b) => time(a.ends) - time(b.ends));
+    const nextEnd = closing.find((r) => time(r.ends) >= now) ?? closing[closing.length - 1];
+    const closed = count('closed');
+    const goalReached = rows.filter((r) => r.progress >= 100).length;
+
+    const ended = closing.length + closed;
+    const endedGoal = rows.filter((r) => (r.status === 'closing' || r.status === 'closed') && r.progress >= 100).length;
+    const short = (d?: string) => (d ? d.split(' ').slice(0, 2).join(' ') : '—');
+
+    return [
+      {
+        key: 'total', side: { value: String(owners), label: 'Owners' }, label: 'Campaigns', value: String(rows.length), icon: 'case',
+        note: `${active.length} running now · ${scheduled.length} scheduled`
+      },
+      {
+        key: 'active', side: { value: avgProgress + '%', label: 'Avg progress' }, label: 'Active', value: String(active.length), icon: 'flag',
+        note: lead ? `Furthest along: ${lead.name} (${lead.progress}%)` : 'No campaign is running'
+      },
+      {
+        key: 'scheduled', side: { value: short(nextLaunch?.launch), label: 'Next launch' }, label: 'Scheduled to launch', value: String(scheduled.length), icon: 'calendar',
+        note: nextLaunch ? `Next: ${nextLaunch.name}` : 'Nothing scheduled'
+      },
+      {
+        key: 'approval', side: { value: String(submitted), label: 'Submitted' }, label: 'Draft & submitted', value: String(drafts + submitted), icon: 'edit',
+        note: `${drafts} draft${drafts === 1 ? '' : 's'} not yet submitted for approval`
+      },
+      {
+        key: 'ending', side: { value: (ended ? Math.round((endedGoal / ended) * 100) : 0) + '%', label: 'Reached goal' }, label: 'Closing & closed', value: String(closing.length + closed), icon: 'check',
+        note: nextEnd
+          ? `${closing.length} closing, ${closed} closed · ${nextEnd.name} ${time(nextEnd.ends) >= now ? 'ends' : 'ended'} ${nextEnd.ends}`
+          : `${closed} closed · ${goalReached} reached the goal`
+      }
+    ];
+  });
 
   /** Rows matching search + owner (before the status tab) - drives the tab counts. */
   private readonly baseRows = computed(() => {

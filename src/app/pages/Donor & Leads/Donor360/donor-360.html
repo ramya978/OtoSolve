@@ -1,0 +1,495 @@
+<!-- =====================================================================================================
+     DONOR 360 - one page, no tabs.
+     Flat identity bar on top (avatar · name · status · ID · contact · actions).
+     Below: a two-column card grid (equal columns, equal heights per row):
+       Overview (full) · Profile | Consent · Activity | Promises · Gifts | Campaigns · Follow-ups (full)
+     Full-width cards keep a summary column beside the detail; half cards put the summary on top.
+     ===================================================================================================== -->
+<nav class="dx-crumbs" aria-label="Breadcrumb">
+  <a [routerLink]="listPath">All Donors</a>
+  <span aria-hidden="true">/</span>
+  <b>Donor 360</b>
+</nav>
+
+<!-- ================= identity bar (flat, no card) ================= -->
+<header class="dx-idbar">
+  <span class="dx-avatar" aria-hidden="true">{{ initials(d().name) }}</span>
+
+  <div class="dx-who">
+    <div class="dx-name-row">
+      <h1>{{ d().name }}</h1>
+      <span [class]="'dx-status st-' + d().status.toLowerCase()"><i></i>{{ d().status }}</span>
+    </div>
+    <ul class="dx-inline">
+      <li>
+        <button type="button" class="dx-code" (click)="copy(d().code)" [attr.aria-label]="'Copy donor ID ' + d().code">
+          {{ d().code }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>
+        </button>
+      </li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>{{ d().phone }}</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ d().email }}</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ d().owner }}</li>
+      <li [class.is-ok]="d().consent.state === 'Granted'" [class.is-bad]="d().consent.state === 'Withdrawn'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Consent {{ d().consent.state.toLowerCase() }}
+      </li>
+      <li class="dx-upd">Updated {{ d().updated }}</li>
+    </ul>
+  </div>
+
+  <div class="dx-actions">
+    <div class="dx-group" role="group" aria-label="Donor actions">
+      <button type="button" (click)="timeline()" data-tip="Timeline" aria-label="Timeline">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('timeline')" /></svg>
+      </button>
+      <button type="button" (click)="schedule()" data-tip="Schedule follow-up" aria-label="Schedule follow-up">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg>
+      </button>
+      <button type="button" (click)="exportHistory()" data-tip="Export history" aria-label="Export history">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+      </button>
+      <button type="button" (click)="editProfile()" data-tip="Edit profile" aria-label="Edit profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
+      </button>
+      <button type="button" class="dx-spin" (click)="refresh()" data-tip="Refresh" aria-label="Refresh">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>
+      </button>
+    </div>
+    <button type="button" class="dx-btn is-primary" (click)="createIntent()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Create donation intent
+    </button>
+  </div>
+</header>
+
+<div class="dx-layout">
+
+  <!-- ================= sections ================= -->
+  <div class="dx-sections">
+    <!-- overview -->
+    <section class="dx-sec is-wide" id="dx-overview">
+      <div class="dx-sec-side">
+        <h2>Overview</h2>
+        <span class="dx-eyebrow">Money on record</span>
+        <b class="dx-big">{{ rupees(stages().total) }}</b>
+        <ul class="dx-legend">
+          @for (m of stages().parts; track m.label) {
+            <li [class]="'tone-' + m.tone"><i></i>{{ m.label }} · {{ m.pct }}%</li>
+          }
+        </ul>
+      </div>
+      <div class="dx-sec-body">
+        <div class="dx-figures">
+          @for (s of stats(); track s.key) {
+            <div [class]="'dx-fig tone-' + s.tone">
+              <span class="dx-fig-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg></span>
+              <small>{{ s.label }}</small>
+              <b>{{ s.value }}</b>
+              <em>{{ s.note }}</em>
+            </div>
+          }
+        </div>
+        <ol class="dx-journey" aria-label="Giving journey">
+          @for (s of journey(); track s.key) {
+            <li [class.is-on]="s.on">
+              <span class="dx-j-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg></span>
+              <span class="dx-j-txt">
+                <small>{{ s.label }}</small>
+                <b>{{ rupees(s.amount) }}</b>
+                <em>{{ s.note }}</em>
+              </span>
+            </li>
+          }
+        </ol>
+        <div class="dx-next">
+          @for (c of comingUp(); track c.key) {
+            <div class="dx-next-item" [class.is-empty]="c.empty">
+              <span class="dx-next-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg></span>
+              <span class="dx-next-txt"><small>{{ c.label }}</small>{{ c.text }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- profile -->
+    <section class="dx-sec is-half" id="dx-profile">
+      <div class="dx-sec-side">
+        <h2>Profile</h2>
+        <p>Personal details and how this person likes to be reached.</p>
+        <button type="button" class="dx-btn sm" (click)="editProfile()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Edit profile
+        </button>
+      </div>
+      <div class="dx-sec-body">
+        <dl class="dx-tiles">
+          <div class="dx-tile"><dt>Full name</dt><dd>{{ d().name }}</dd></div>
+          <div class="dx-tile"><dt>Donor ID</dt><dd>{{ d().code }}</dd></div>
+          <div class="dx-tile"><dt>Language</dt><dd>{{ d().language }}</dd></div>
+          <div class="dx-tile"><dt>E-mail</dt><dd [attr.title]="d().email">{{ d().email }}</dd></div>
+          <div class="dx-tile"><dt>Phone</dt><dd>{{ d().phone }}</dd></div>
+          <div class="dx-tile"><dt>Contact by</dt><dd class="dx-tags">
+            @for (c of d().contactBy; track c) { <span class="dx-tag">{{ c }}</span> }
+          </dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- consent -->
+    <section class="dx-sec is-half" id="dx-consent">
+      <div class="dx-sec-side">
+        <h2>Consent</h2>
+        <span [class]="'dx-state ' + consentTone(d().consent.state)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>{{ d().consent.state }}</span>
+        <button type="button" class="dx-btn sm" (click)="manageConsent()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('settings')" /></svg> Manage
+        </button>
+      </div>
+      <div class="dx-sec-body">
+        <dl class="dx-tiles">
+          <div class="dx-tile"><dt>Do not contact</dt><dd>{{ d().consent.doNotContact ? 'Yes' : 'No' }}</dd></div>
+          <div class="dx-tile"><dt>Last recorded</dt><dd>{{ d().consent.lastRecorded }}</dd></div>
+          <div class="dx-tile"><dt>Notice version</dt><dd class="dx-mono">{{ d().consent.notice }}</dd></div>
+        </dl>
+        <p class="dx-body-label">By channel</p>
+        <div class="dx-ch-grid">
+          @for (c of d().channels; track c.channel) {
+            <div class="dx-ch-card">
+              <span class="dx-ch-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.channel === 'E-mail' ? 'mail' : 'phone')" /></svg></span>
+              <span class="dx-ch-main">
+                <b>{{ c.channel }}</b>
+                <small>Since {{ c.since }} · Public thanks: {{ c.publicThanks ? 'yes' : 'no' }}</small>
+              </span>
+              <span [class]="'dx-dotted ' + consentTone(c.state)"><i></i>{{ c.state }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- activity -->
+    <section class="dx-sec is-half" id="dx-activity">
+      <div class="dx-sec-side">
+        <h2>Activity</h2>
+        <p>Everything that happened on this record, newest first.</p>
+        <span class="dx-side-num"><b>{{ d().activity.length }}</b> entries</span>
+        <label class="dx-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search…" aria-label="Search activity"
+                 [value]="activityQuery()" (input)="activityQuery.set($any($event.target).value)" />
+        </label>
+      </div>
+      <div class="dx-sec-body">
+        @for (g of activityGroups(); track g.label) {
+          <p class="dx-month">{{ g.label }}</p>
+          <ol class="dx-timeline">
+            @for (a of g.items; track $index) {
+              <li [class]="'k-' + a.kind">
+                <span class="dx-tl-date"><b>{{ day(a.date) }}</b>{{ weekday(a.date) }}</span>
+                <span class="dx-tl-dot"></span>
+                <span class="dx-tl-txt">{{ a.text }}</span>
+                <span class="dx-tl-by">{{ a.by }}</span>
+              </li>
+            }
+          </ol>
+        } @empty {
+          <p class="dx-empty">No activity matches.</p>
+        }
+      </div>
+    </section>
+
+    <!-- promises -->
+    <section class="dx-sec is-half" id="dx-promises">
+      <div class="dx-sec-side">
+        <h2>Promise schedule</h2>
+        <p>Instalments the donor has promised to give.</p>
+        <span class="dx-side-num"><b>{{ promiseCounts().pending }}</b> pending · <b>{{ promiseCounts().fulfilled }}</b> fulfilled</span>
+      </div>
+      <div class="dx-sec-body">
+        @if (d().promises.length) {
+          <ul class="dx-promises">
+            @for (p of d().promises; track p.due) {
+              <li>
+                <span>{{ p.due ? longDate(p.due) : 'No date set' }}</span>
+                <b>{{ rupees(p.amount) }}</b>
+                <span [class]="'dx-dotted ' + (p.status === 'Fulfilled' ? 'tone-green' : 'tone-amber')"><i></i>{{ p.status }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="dx-blank">
+            <span class="dx-next-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('promise')" /></svg></span>
+            <b>No promises recorded</b>
+            <span>Record what the donor intends to give and when - it shows up here as a pending promise.</span>
+            <button type="button" class="dx-btn sm" (click)="createIntent()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Record a promise
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- gifts -->
+    <section class="dx-sec is-half" id="dx-gifts">
+      <div class="dx-sec-side">
+        <h2>Gifts</h2>
+        <span class="dx-eyebrow">Received to date</span>
+        <b class="dx-big is-sm">{{ rupees(received()) }}</b>
+      </div>
+      <div class="dx-sec-body">
+        <div class="dx-gstrip">
+          @for (s of stages().parts; track s.label) {
+            <div [class]="'dx-gs tone-' + s.tone">
+              <small><i></i>{{ s.label }}</small>
+              <b>{{ rupees(s.amount) }} <em>{{ s.pct }}%</em></b>
+            </div>
+          }
+          <div class="dx-gs">
+            <small>As of</small>
+            <b>{{ stages().parts[0]?.asOf }}</b>
+          </div>
+          <div class="dx-gs">
+            <small>Gifts</small>
+            <b>{{ d().gifts.length }}</b>
+          </div>
+        </div>
+        <table class="dx-table">
+          <colgroup><col class="w-ref" /><col class="w-date c-hide-sm" /><col /><col class="w-amt" /><col class="w-st" /></colgroup>
+          <thead><tr><th>Reference</th><th class="c-hide-sm">Date</th><th>Campaign</th><th class="num">Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            @for (g of d().gifts; track g.ref) {
+              <tr>
+                <td><b class="dx-mono">{{ g.ref }}</b></td>
+                <td class="c-hide-sm">{{ longDate(g.date) }}</td>
+                <td [attr.title]="g.campaign">{{ g.campaign }}</td>
+                <td class="num"><b>{{ rupees(g.amount) }}</b></td>
+                <td><span class="dx-dotted tone-blue"><i></i>{{ g.status }}</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="dx-empty">No gifts recorded.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- campaigns -->
+    <section class="dx-sec is-half" id="dx-campaigns">
+      <div class="dx-sec-side">
+        <h2>Campaign history</h2>
+        <p>Campaigns this person came through and what they gave to each.</p>
+        <span class="dx-side-num"><b>{{ d().campaigns.length }}</b> campaign{{ d().campaigns.length === 1 ? '' : 's' }}</span>
+      </div>
+      <div class="dx-sec-body">
+        <div class="dx-camps">
+          @for (c of d().campaigns; track c.code) {
+            <article class="dx-camp">
+              <header>
+                <span class="dx-camp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg></span>
+                <span class="dx-camp-name">
+                  <b [attr.title]="c.name">{{ c.name }}</b>
+                  <span class="dx-link-txt">{{ c.code }}</span>
+                </span>
+                <span [class]="'dx-dotted ' + (c.status === 'Converted' ? 'tone-green' : c.status === 'Lost' ? 'tone-red' : 'tone-amber')"><i></i>{{ c.status }}</span>
+              </header>
+              <dl class="dx-tiles is-4">
+                <div class="dx-tile"><dt>Came via</dt><dd class="dx-mono">{{ c.via }}</dd></div>
+                <div class="dx-tile"><dt>Converted</dt><dd>{{ c.converted }}</dd></div>
+                <div class="dx-tile"><dt>Given</dt><dd>{{ rupees(c.given) }}</dd></div>
+                <div class="dx-tile"><dt>Gifts</dt><dd>{{ c.gifts }}</dd></div>
+              </dl>
+            </article>
+          } @empty {
+            <p class="dx-empty">No campaign history.</p>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- follow-ups -->
+    <section class="dx-sec is-wide" id="dx-followups">
+      <div class="dx-sec-side">
+        <h2>Follow-ups</h2>
+        <div class="dx-filter" role="group" aria-label="Follow-up filter">
+          @for (t of followTabs(); track t.key) {
+            <button type="button" [class.is-on]="followFilter() === t.key" [attr.aria-pressed]="followFilter() === t.key" (click)="followFilter.set(t.key)">
+              <span>{{ t.label }}</span><b>{{ t.count }}</b>
+            </button>
+          }
+        </div>
+        <button type="button" class="dx-btn sm" (click)="schedule()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Schedule
+        </button>
+      </div>
+      <div class="dx-sec-body">
+        <label class="dx-search dx-search-top">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search follow-ups…" aria-label="Search follow-ups"
+                 [value]="followQuery()" (input)="followQuery.set($any($event.target).value)" />
+        </label>
+        <table class="dx-table">
+          <colgroup><col class="w-due" /><col /><col class="w-owner c-hide-sm" /><col class="w-pri c-hide-sm" /><col class="w-st" /><col class="w-act" /></colgroup>
+          <thead><tr><th>Due</th><th>Follow-up</th><th class="c-hide-sm">Owner</th><th class="c-hide-sm">Priority</th><th>Status</th><th class="num">Action</th></tr></thead>
+          <tbody>
+            @for (f of followRows(); track f.due + f.title) {
+              <tr>
+                <td><span class="dx-due"><b>{{ day(f.due) }}</b><span>{{ monthYear(f.due) }}<small>{{ weekday(f.due) }}</small></span></span></td>
+                <td [attr.title]="f.title">{{ f.title }}</td>
+                <td class="c-hide-sm">{{ f.owner }}</td>
+                <td class="c-hide-sm"><span [class]="'dx-dotted ' + (f.priority === 'Urgent' ? 'tone-red' : f.priority === 'High' ? 'tone-amber' : 'tone-muted')"><i></i>{{ f.priority }}</span></td>
+                <td><span [class]="'dx-dotted ' + (f.status === 'Completed' ? 'tone-green' : 'tone-blue')"><i></i>{{ f.status }}</span></td>
+                <td class="num">
+                  @if (f.status === 'Completed') {
+                    <span class="dx-closed"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Closed</span>
+                  } @else {
+                    <button type="button" class="dx-link" (click)="flash('Follow-up marked done.')">Mark done</button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="dx-empty">No follow-ups here.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+
+
+
+
+  </div>
+</div>
+
+<!-- ================= create donation intent (popup) ================= -->
+@if (intentOpen()) {
+  <div class="di-overlay" (click)="closeIntent()">
+    <div class="di-dialog" role="dialog" aria-modal="true" aria-labelledby="di-title" (click)="$event.stopPropagation(); curOpen.set(false); calOpen.set(false)">
+
+      <header class="di-head">
+        <h2 id="di-title">Create donation intent</h2>
+        <button type="button" class="di-x" (click)="closeIntent()" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        </button>
+      </header>
+
+      <div class="di-body">
+        <!-- who -->
+        <div class="di-hero">
+          <div class="di-hero-text">
+            <span class="di-eyebrow">Donation intent · <span class="di-eyebrow-ref">{{ d().code }}</span></span>
+            <h3 class="di-hero-name">{{ d().name }}</h3>
+          </div>
+          <span class="di-pill">Promise</span>
+        </div>
+
+        <!-- amount -->
+        <div class="di-field" [class.is-err]="iTried() && iErrors().amount">
+          <label for="di-amount">Amount <span class="req">*</span></label>
+          <div class="di-amount">
+            <div class="di-cur" (click)="$event.stopPropagation()">
+              <button type="button" class="di-cur-btn" [class.is-open]="curOpen()" aria-haspopup="listbox" [attr.aria-expanded]="curOpen()"
+                      (click)="curOpen.set(!curOpen()); calOpen.set(false)">
+                {{ iCurrency() }}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+              </button>
+              @if (curOpen()) {
+                <ul class="di-menu" role="listbox" aria-label="Currency">
+                  @for (c of currencies; track c.code) {
+                    <li>
+                      <button type="button" role="option" [class.is-on]="iCurrency() === c.code" [attr.aria-selected]="iCurrency() === c.code" (click)="pickCurrency(c.code)">
+                        <b>{{ c.symbol }}</b><span>{{ c.code }}</span><small>{{ c.label }}</small>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+            <span class="di-sym">{{ iSymbol() }}</span>
+            <input id="di-amount" class="di-amount-inp" inputmode="numeric" placeholder="0" autocomplete="off"
+                   [value]="iAmountText()" (input)="setAmount($any($event.target).value)" />
+          </div>
+          @if (iTried() && iErrors().amount) {
+            <span class="di-msg">{{ iErrors().amount }}</span>
+          } @else {
+            <span class="di-help" [class.is-words]="iWords()">{{ iWords() || 'The amount reads back here in words.' }}</span>
+          }
+          <div class="di-chips">
+            @for (q of quickAmounts; track q) {
+              <button type="button" class="di-chip" [class.is-on]="iAmountNum() === q" (click)="setAmount('' + q)">
+                {{ iSymbol() }}{{ iCurrency() === 'INR' ? rupees(q).slice(1) : q.toLocaleString('en-US') }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- expected by -->
+        <div class="di-field" [class.is-err]="iTried() && iErrors().date">
+          <label>Expected by <span class="di-opt">Optional</span></label>
+          <div class="di-chips">
+            @for (w of whenOptions; track w.key) {
+              <button type="button" class="di-chip" [class.is-on]="iWhen() === w.key" (click)="setWhen(w.key)">{{ w.label }}</button>
+            }
+          </div>
+          <div class="di-date" (click)="$event.stopPropagation()">
+            <button type="button" class="di-date-btn" [class.is-open]="calOpen()" [class.is-empty]="!iDate()" (click)="toggleCal()" aria-haspopup="dialog" [attr.aria-expanded]="calOpen()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg>
+              <span>{{ iDateLabel() || 'Pick a date' }}</span>
+              @if (iDate()) {
+                <span class="di-date-x" role="button" aria-label="Clear date" (click)="$event.stopPropagation(); clearDate()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+                </span>
+              }
+            </button>
+            @if (calOpen()) {
+              <div class="di-cal" role="dialog" aria-label="Choose a date">
+                <div class="di-cal-head">
+                  <button type="button" (click)="moveCal(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                  <b>{{ calTitle() }}</b>
+                  <button type="button" (click)="moveCal(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                </div>
+                <div class="di-cal-grid">
+                  @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="di-cal-wd">{{ w }}</span> }
+                  @for (week of calWeeks(); track $index) {
+                    @for (c of week; track c.iso) {
+                      <button type="button" class="di-cal-day" [class.is-out]="c.out" [class.is-today]="c.today" [class.is-on]="c.iso === iDate()"
+                              [disabled]="c.past" (click)="pickDate(c.iso)">{{ c.day }}</button>
+                    }
+                  }
+                </div>
+              </div>
+            }
+          </div>
+          @if (iTried() && iErrors().date) { <span class="di-msg">{{ iErrors().date }}</span> }
+        </div>
+
+        <!-- notes -->
+        <div class="di-field" [class.is-err]="iTried() && iErrors().notes">
+          <label for="di-notes">Notes <span class="req">*</span><span class="di-count">{{ iNotes().trim().length }} / {{ notesMin }} min</span></label>
+          <textarea id="di-notes" rows="3" placeholder="How the intent was made, any conditions, who was present…"
+                    [value]="iNotes()" (input)="iNotes.set($any($event.target).value)"></textarea>
+          @if (iTried() && iErrors().notes) { <span class="di-msg">{{ iErrors().notes }}</span> }
+        </div>
+
+        <!-- read-back -->
+        <p class="di-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+          <span>
+            {{ d().name }} intends to give
+            @if (iAmountNum()) { <b>{{ iSymbol() }}{{ iAmountText() }}</b>, } @else { <em>an amount still to be entered</em>, }
+            @if (iDate()) { expected by <b>{{ iDateLabel() }}</b>. } @else { with no date set. }
+            This records a promise only - the donor pays through their own donation link.
+          </span>
+        </p>
+      </div>
+
+      <footer class="di-foot">
+        <button type="button" class="di-btn" (click)="closeIntent()">Cancel</button>
+        <button type="button" class="di-btn is-primary" (click)="submitIntent()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Create intent
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+@if (toast(); as msg) {
+  <div class="dx-toast" role="status">{{ msg }}</div>
+}

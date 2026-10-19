@@ -100,8 +100,15 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--t-bg);
-  color: var(--t-ink);
+  /* tint built from the tone colour itself, so it shows even when the theme's --status-*-bg is empty */
+  background: color-mix(in srgb, var(--t, var(--w-primary)) 12%, var(--w-card, #fff));
+  color: var(--t-ink, var(--t));
+  transition: transform .2s ease, background .2s ease;
+}
+
+.cd-kpi:hover .cd-kpi-ico {
+  background: color-mix(in srgb, var(--t, var(--w-primary)) 18%, var(--w-card, #fff));
+  transform: translateY(-1px);
 }
 
 .cd-kpi-ico .w-ico {
@@ -146,6 +153,251 @@
 
 .cd-delta.is-up b { color: var(--status-success-ink, #35695a); }
 .cd-delta.is-down b { color: var(--status-danger-ink, #a23c4c); }
+
+/* ---------- right side of the small KPI cards ----------
+   Hidden in the narrow 5-column row; appears when a card gets wide (e.g. 4 cards in a row
+   under the full-width "Raised" card), so the empty space on the right is used. */
+.cd-kpi:not(.cd-kpi-main) {
+  container: cd-k / inline-size;
+}
+
+/* right side: small header + 6-month column chart, separated by a soft dashed line */
+.cd-kpi-side {
+  display: none;
+  flex: 1 1 auto;
+  align-self: stretch;
+  min-width: 0;
+}
+
+/* the dashed line sits in the middle of the gap between the figures and the chart */
+.cd-sep {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 24px;
+}
+
+.cd-sep::before {
+  content: "";
+  width: 0;
+  height: 100%;
+  border-left: 1px dashed var(--w-line);
+}
+
+.cd-side-in {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cd-kpi-side:not(.tone-warning) .cd-side-in { width: 94px; } /* 3 x 28 + 2 x 5 */
+.cd-kpi-side.tone-warning .cd-side-in { flex: 0 1 170px; min-width: 120px; }
+
+.cd-side-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cd-side-head small {
+  overflow: hidden;
+  color: var(--w-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-side-head b {
+  flex: none;
+  color: var(--t-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 6-month heat tiles: one tile per month, darker = more */
+.cd-heat {
+  display: grid;
+  /* small square tiles, 3 x 2 - same width as the header above */
+  grid-template-columns: repeat(3, 28px);
+  gap: 5px;
+}
+
+/* keep the left figures whole; the chart side takes what is left */
+.cd-kpi:not(.cd-kpi-main) .cd-kpi-body { flex: none; max-width: 60%; }
+
+.cd-heat-tile {
+  --shade: 0%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  border: 1px solid color-mix(in srgb, var(--t) calc(var(--shade) + 10%), var(--white, #fff));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--t) var(--shade), var(--white, #fff));
+  cursor: default;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.cd-heat-tile.lv-0 { --shade: 0%; border-style: dashed; border-color: var(--w-line); }
+.cd-heat-tile.lv-1 { --shade: 6%; }
+.cd-heat-tile.lv-2 { --shade: 11%; }
+.cd-heat-tile.lv-3 { --shade: 16%; }
+.cd-heat-tile.lv-4 { --shade: 22%; }
+
+.cd-heat-tile small {
+  color: var(--w-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* soft fills: the letter takes the tone colour instead of turning white */
+.cd-heat-tile:not(.lv-0) small { color: var(--t-ink, var(--t)); font-weight: 600; }
+
+/* a small dot marks the months that had something */
+.cd-heat-tile:not(.lv-0)::before {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--t);
+  opacity: .7;
+  transform: translateX(-50%);
+}
+
+/* this month: inner outline (same size as every other tile) */
+.cd-heat-tile.is-now {
+  border-style: solid;
+  border-color: transparent;
+  outline: 1.5px solid color-mix(in srgb, var(--t) 60%, var(--white, #fff));
+  outline-offset: -1.5px;
+}
+.cd-heat-tile.is-now small { font-weight: 700; }
+
+.cd-heat-tile:hover { transform: translateY(-2px); }
+
+/* tiles pop in one after another when the card is hovered */
+.cd-kpi:hover .cd-heat-tile { animation: cd-pop .35s ease both; }
+.cd-kpi:hover .cd-heat-tile:nth-child(2) { animation-delay: .04s; }
+.cd-kpi:hover .cd-heat-tile:nth-child(3) { animation-delay: .08s; }
+.cd-kpi:hover .cd-heat-tile:nth-child(4) { animation-delay: .12s; }
+.cd-kpi:hover .cd-heat-tile:nth-child(5) { animation-delay: .16s; }
+.cd-kpi:hover .cd-heat-tile:nth-child(6) { animation-delay: .2s; }
+@keyframes cd-pop { 0% { transform: scale(.85); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+
+/* value on hover */
+.cd-heat-tile::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  z-index: 5;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--inverse-bg, #24242c);
+  color: #fff;
+  font-size: calc(11px * var(--font-scale, 1));
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 3px);
+  transition: opacity .15s, transform .15s;
+}
+
+.cd-heat-tile:hover::after { opacity: 1; transform: translate(-50%, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-kpi:hover .cd-heat-tile { animation: none; }
+}
+
+/* tracking assets: top 3 with a share bar */
+.cd-assets {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cd-assets li {
+  display: grid;
+  gap: 3px;
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.cd-asset-top {
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.cd-asset-top i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--w-line);
+}
+
+.cd-assets li.is-live .cd-asset-top i {
+  background: var(--status-success, #3d7a68);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-success, #3d7a68) 16%, transparent);
+}
+
+.cd-asset-top span {
+  overflow: hidden;
+  color: var(--w-ink);
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.cd-asset-top b {
+  color: var(--w-heading);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.cd-asset-bar {
+  height: 4px;
+  margin-left: 12px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--w-soft);
+}
+
+.cd-asset-bar em {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--t) 55%, var(--white, #fff));
+  transition: width .5s ease;
+}
+
+.cd-assets li.is-live .cd-asset-bar em { background: var(--t); }
+.cd-assets li.is-empty { color: var(--w-muted); }
+
+.cd-kpi:not(.cd-kpi-main) { overflow: visible; }
+
+@container cd-k (min-width: 300px) {
+  .cd-kpi-side { display: flex; }
+}
+
+
+
+
+
 
 /* raised: progress ring */
 .cd-kpi-main {
@@ -862,7 +1114,9 @@
   display: grid;
   place-items: center;
   width: 34px;
-  height: 34px;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
   border: 1px solid color-mix(in srgb, var(--tone-ink) 25%, var(--white, #fff));
   border-radius: 50%;
   background: var(--tone-bg);

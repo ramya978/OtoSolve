@@ -1,0 +1,228 @@
+<!-- =====================================================================================================
+     LEAD CAPTURE · BULK UPLOAD (route /bulk)
+     Top: template strip (columns as chips, rules, download).
+     Below: one card with three vertical steps - Attach a file → Review the rows → Import.
+     Only the current step is open; finished steps fold into a one-line summary with "Change".
+     ===================================================================================================== -->
+
+<!-- ===== template strip ===== -->
+<section class="bu-tpl" aria-label="Template">
+  <div class="bu-tpl-main">
+    <header class="bu-tpl-head">
+      <span class="bu-tpl-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg></span>
+      <div>
+        <h2>Use the upload template</h2>
+        <p>One row per lead. Keep the header row as it is - <span class="req">*</span> columns are required.</p>
+      </div>
+    </header>
+    <ul class="bu-cols">
+      @for (c of columns; track c.key) {
+        <li [class.is-req]="c.required" [attr.title]="'e.g. ' + c.example">{{ c.label }}@if (c.required) { <span class="req">*</span> }</li>
+      }
+    </ul>
+    <ul class="bu-rules">
+      <li>Mobile numbers without a prefix are saved as +91</li>
+      <li>Consent is captured later, per lead</li>
+      <li>Rows with errors are skipped; the rest still import</li>
+    </ul>
+  </div>
+  <div class="bu-tpl-side">
+    <button type="button" class="bu-btn" (click)="downloadTemplate()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Download template
+    </button>
+  </div>
+</section>
+
+<!-- ===== steps ===== -->
+<ol class="bu-flow" aria-label="Upload steps">
+
+  <!-- 1 · attach -->
+  <li class="bu-step" [class.is-now]="step() === 1" [class.is-done]="step() > 1">
+    <span class="bu-rail"><span class="bu-dot">
+      @if (step() > 1) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { 1 }
+    </span></span>
+    <div class="bu-step-in">
+      <header class="bu-step-head">
+        <span class="bu-step-txt"><b>Attach a file</b><small>CSV or XLSX · up to 10 MB</small></span>
+        @if (step() === 2 && file(); as f) {
+          <span class="bu-step-sum">{{ f.name }} · {{ size(f.size) }}</span>
+          <button type="button" class="bu-link" (click)="goStep(1)">Change</button>
+        } @else if (step() === 3 && file(); as f) {
+          <span class="bu-step-sum">{{ f.name }} · {{ size(f.size) }}</span>
+        }
+      </header>
+
+      @if (step() === 1) {
+        <div class="bu-step-body">
+          @if (file(); as f) {
+            <div class="bu-file">
+              <span class="bu-file-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg></span>
+              <span class="bu-file-txt">
+                <b>{{ f.name }}</b>
+                <small>
+                  {{ size(f.size) }} ·
+                  @if (f.kind === 'csv') { {{ rows().length }} row{{ rows().length === 1 ? '' : 's' }} found }
+                  @else { XLSX - rows are checked on import }
+                </small>
+              </span>
+              <button type="button" class="bu-icon-btn" aria-label="Remove file" (click)="removeFile()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
+              </button>
+            </div>
+            @if (unknownHeaders().length) {
+              <p class="bu-note is-warn">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+                These columns are not in the template and will be ignored: {{ unknownHeaders().join(', ') }}
+              </p>
+            }
+          } @else {
+            <label class="bu-drop" [class.is-over]="dragOver()"
+                   (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+              <input type="file" accept=".csv,.xlsx" (change)="onPick($event)" />
+              <span class="bu-drop-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg></span>
+              <span class="bu-drop-txt"><b>Drop your spreadsheet here</b><small>or click to browse your computer</small></span>
+              <span class="bu-drop-btn">Choose file</span>
+            </label>
+            <p class="bu-sample">No file yet? <button type="button" class="bu-link" (click)="useSample()">Try a sample file</button></p>
+          }
+          @if (fileError(); as m) {
+            <p class="bu-note is-err"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>{{ m }}</p>
+          }
+          <footer class="bu-step-foot">
+            <button type="button" class="bu-btn is-primary" [disabled]="!canNext()" (click)="next()">
+              Review rows <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowRight')" /></svg>
+            </button>
+          </footer>
+        </div>
+      }
+    </div>
+  </li>
+
+  <!-- 2 · review -->
+  <li class="bu-step" [class.is-now]="step() === 2" [class.is-done]="step() > 2">
+    <span class="bu-rail"><span class="bu-dot">
+      @if (step() > 2) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { 2 }
+    </span></span>
+    <div class="bu-step-in">
+      <header class="bu-step-head">
+        <span class="bu-step-txt"><b>Review the rows</b><small>Fix or skip errors</small></span>
+        @if (step() === 2 && file()?.kind === 'csv') {
+          <span class="bu-pills">
+            <span class="bu-pill is-ok"><b>{{ okCount() }}</b> ready</span>
+            <span class="bu-pill is-bad"><b>{{ badCount() }}</b> with errors</span>
+          </span>
+        } @else if (step() === 3 && file()?.kind === 'csv') {
+          <span class="bu-step-sum">{{ okCount() }} ready · {{ badCount() }} with errors</span>
+        }
+      </header>
+
+      @if (step() === 2) {
+        <div class="bu-step-body">
+          @if (file()?.kind === 'xlsx') {
+            <div class="bu-info">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>
+              <span><b>Rows are checked when the file is imported.</b> XLSX files are read on the server. Rows with errors are skipped and listed in the result.</span>
+            </div>
+          } @else {
+            @if (badCount()) {
+              <div class="bu-tools">
+                <p class="bu-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+                  Rows with errors are skipped; the rest still import. Fix them in the file and upload again, or import now.</p>
+                <button type="button" class="bu-toggle" role="switch" [attr.aria-checked]="errorsOnly()" (click)="errorsOnly.set(!errorsOnly())">
+                  <i></i>Show errors only
+                </button>
+              </div>
+            }
+
+            <div class="bu-table-wrap">
+              <table class="bu-table">
+                <colgroup><col class="c-n" /><col class="c-name" /><col class="c-mob" /><col class="c-mail" /><col class="c-city" /><col class="c-camp" /><col class="c-st" /></colgroup>
+                <thead><tr><th>Row</th><th>Name</th><th>Mobile</th><th class="c-mail">E-mail</th><th class="c-city">City</th><th class="c-camp">Campaign</th><th>Status</th></tr></thead>
+                <tbody>
+                  @for (r of shownRows(); track r.n) {
+                    <tr [class.is-bad]="r.errors.length">
+                      <td class="num">{{ r.n }}</td>
+                      <td><span class="cell">{{ (r.v['first_name'] || '—') + ' ' + (r.v['last_name'] || '') }}</span></td>
+                      <td><span class="cell">{{ r.v['mobile'] || '—' }}</span></td>
+                      <td class="c-mail"><span class="cell">{{ r.v['email'] || '—' }}</span></td>
+                      <td class="c-city"><span class="cell">{{ r.v['city'] || '—' }}</span></td>
+                      <td class="c-camp"><span class="cell">{{ r.v['campaign'] || '—' }}</span></td>
+                      <td>
+                        @if (r.errors.length) {
+                          <span class="bu-st is-bad" [attr.title]="r.errors.join(' · ')">{{ r.errors[0] }}@if (r.errors.length > 1) { <em>+{{ r.errors.length - 1 }}</em> }</span>
+                        } @else {
+                          <span class="bu-st is-ok">Ready</span>
+                        }
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="7" class="bu-none">Every row is ready.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+          <footer class="bu-step-foot">
+            <button type="button" class="bu-btn" (click)="back()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowLeft')" /></svg> Back
+            </button>
+            <button type="button" class="bu-btn is-primary" [disabled]="!canNext()" (click)="next()">
+              @if (file()?.kind === 'xlsx') { Import file }
+              @else { Import {{ okCount() }} lead{{ okCount() === 1 ? '' : 's' }} }
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowRight')" /></svg>
+            </button>
+          </footer>
+        </div>
+      }
+    </div>
+  </li>
+
+  <!-- 3 · import -->
+  <li class="bu-step" [class.is-now]="step() === 3 && importing()" [class.is-done]="step() === 3 && !importing()">
+    <span class="bu-rail"><span class="bu-dot">
+      @if (step() === 3 && !importing()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { 3 }
+    </span></span>
+    <div class="bu-step-in">
+      <header class="bu-step-head">
+        <span class="bu-step-txt"><b>Import</b><small>Add to the work queue</small></span>
+      </header>
+
+      @if (step() === 3) {
+        <div class="bu-step-body">
+          @if (importing()) {
+            <div class="bu-result">
+              <span class="bu-spinner" aria-hidden="true"></span>
+              <span class="bu-result-txt"><b>Importing {{ file()?.name }}…</b><small>Adding leads to the work queue.</small></span>
+            </div>
+          } @else if (result(); as res) {
+            <div class="bu-result is-done">
+              <span class="bu-done-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+              <span class="bu-result-txt">
+                @if (file()?.kind === 'xlsx') {
+                  <b>File sent for import</b>
+                  <small>{{ file()?.name }} is being processed. The leads appear in the work queue as soon as they are checked.</small>
+                } @else {
+                  <b>{{ res.imported }} lead{{ res.imported === 1 ? '' : 's' }} imported</b>
+                  <small>@if (res.skipped) { {{ res.skipped }} row{{ res.skipped === 1 ? ' was' : 's were' }} skipped because of errors. } @else { No rows were skipped. }</small>
+                }
+              </span>
+            </div>
+            <footer class="bu-step-foot">
+              @if (res.skipped) {
+                <button type="button" class="bu-btn" (click)="downloadErrors()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Download skipped rows
+                </button>
+              }
+              <button type="button" class="bu-btn" (click)="startOver()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg> Upload another
+              </button>
+              <a class="bu-btn is-primary" [routerLink]="queuePath">
+                Open work queue <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowRight')" /></svg>
+              </a>
+            </footer>
+          }
+        </div>
+      }
+    </div>
+  </li>
+</ol>

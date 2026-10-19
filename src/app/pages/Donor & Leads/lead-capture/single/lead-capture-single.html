@@ -1,0 +1,376 @@
+<!-- =====================================================================================================
+     LEAD CAPTURE · SINGLE LEAD (route /single)
+     Left: one form card - each section is a row (title + status on the left, fields on the right):
+     01 Identity · 02 Contact · 03 Location · 04 Source · 05 Consent (switch on to collect).
+     Right: sticky summary that fills in while typing, section checklist, progress and the actions.
+     After saving, a success card replaces the form.
+     ===================================================================================================== -->
+@if (saved(); as s) {
+  <!-- ===== saved ===== -->
+  <section class="sl-done" role="status">
+    <span class="sl-done-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+    <div class="sl-done-txt">
+      <h2>Lead saved</h2>
+      <p><b>{{ s.name }}</b> was added to the work queue as <b>{{ s.ref }}</b>.</p>
+    </div>
+    <div class="sl-done-actions">
+      <button type="button" class="sl-btn" (click)="startOver()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Capture another
+      </button>
+      <a class="sl-btn is-primary" [routerLink]="queuePath">
+        Open work queue <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowRight')" /></svg>
+      </a>
+    </div>
+  </section>
+} @else {
+  <div class="sl">
+    <!-- ===== left: one form card, a row per section ===== -->
+    <form class="sl-form" novalidate (submit)="$event.preventDefault(); submit()">
+
+      <!-- 01 Identity -->
+      <section id="lc-sec-identity" [class]="'sl-sec is-' + sectionState()['identity']" [class.is-active]="active() === 'identity'" (focusin)="active.set('identity')">
+        <header class="sl-side">
+          <span class="sl-no">01</span>
+          <h2>Identity</h2>
+          <p>Name as the person would like to be addressed.</p>
+          <span class="sl-state">{{ stateLabel('identity') }}</span>
+        </header>
+        <div class="sl-body">
+          <div class="sl-grid g3">
+            <div class="fld" [class.is-err]="err('firstName')">
+              <label for="lc-first">First name <span class="req">*</span></label>
+              <input id="lc-first" class="inp" placeholder="e.g. Anita" autocomplete="given-name"
+                     [value]="f().firstName" (input)="set('firstName', $any($event.target).value)" (blur)="touch('firstName')" />
+              @if (err('firstName'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('lastName')">
+              <label for="lc-last">Last name <span class="req">*</span></label>
+              <input id="lc-last" class="inp" placeholder="e.g. Raman" autocomplete="family-name"
+                     [value]="f().lastName" (input)="set('lastName', $any($event.target).value)" (blur)="touch('lastName')" />
+              @if (err('lastName'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('displayName')">
+              <label for="lc-display">Display name <span class="req">*</span><span class="count">{{ len('displayName') }}/50</span></label>
+              <input id="lc-display" class="inp" maxlength="50" placeholder="e.g. Anita Raman"
+                     [value]="f().displayName" (input)="setDisplay($any($event.target).value)" (blur)="touch('displayName')" />
+              @if (err('displayName'); as m) { <span class="msg">{{ m }}</span> }
+              @else { <span class="help">Fills in from first and last name</span> }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 02 Contact -->
+      <section id="lc-sec-contact" [class]="'sl-sec is-' + sectionState()['contact']" [class.is-active]="active() === 'contact'" (focusin)="active.set('contact')">
+        <header class="sl-side">
+          <span class="sl-no">02</span>
+          <h2>Contact</h2>
+          <p>At least one mobile number and an e-mail address.</p>
+          <span class="sl-state">{{ stateLabel('contact') }}</span>
+        </header>
+        <div class="sl-body">
+          <div class="sl-grid g3">
+            <div class="fld">
+              <label>Mobile number <span class="req">*</span>
+                @if (f().phones.length < 3) {
+                  <button type="button" class="link" (click)="addPhone()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Add
+                  </button>
+                }
+              </label>
+              @for (p of f().phones; track $index; let i = $index) {
+                <div class="phone" [class.is-err]="err('phone' + i)">
+                  <span class="phone-cc">+91</span>
+                  <input class="inp" inputmode="numeric" placeholder="98765 43210" [attr.aria-label]="'Mobile number ' + (i + 1)"
+                         [value]="p" (input)="setPhone(i, $any($event.target).value)" (blur)="touch('phone' + i)" />
+                  @if (i > 0) {
+                    <button type="button" class="phone-x" aria-label="Remove number" (click)="removePhone(i)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+                    </button>
+                  }
+                </div>
+                @if (err('phone' + i); as m) { <span class="msg">{{ m }}</span> }
+              }
+            </div>
+            <div class="fld" [class.is-err]="err('email')">
+              <label for="lc-email">E-mail address <span class="req">*</span></label>
+              <input id="lc-email" class="inp" type="email" placeholder="name@example.com" autocomplete="email"
+                     [value]="f().email" (input)="set('email', $any($event.target).value)" (blur)="touch('email')" />
+              @if (err('email'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('language')">
+              <label>Preferred language <span class="req">*</span></label>
+              <lc-select [options]="languages" [value]="f().language" placeholder="Select a language" ariaLabel="Preferred language"
+                         [invalid]="!!err('language')" (valueChange)="set('language', $event); touch('language')" />
+              @if (err('language'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 Location -->
+      <section id="lc-sec-location" [class]="'sl-sec is-' + sectionState()['location']" [class.is-active]="active() === 'location'" (focusin)="active.set('location')">
+        <header class="sl-side">
+          <span class="sl-no">03</span>
+          <h2>Location</h2>
+          <p>Postal address for letters and receipts.</p>
+          <span class="sl-state">{{ stateLabel('location') }}</span>
+        </header>
+        <div class="sl-body">
+          <div class="sl-grid g3">
+            <div class="fld" [class.is-err]="err('address1')">
+              <label for="lc-a1">Address line 1 <span class="req">*</span></label>
+              <input id="lc-a1" class="inp" placeholder="House / flat no., street" autocomplete="address-line1"
+                     [value]="f().address1" (input)="set('address1', $any($event.target).value)" (blur)="touch('address1')" />
+              @if (err('address1'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld">
+              <label for="lc-a2">Address line 2 <span class="opt">Optional</span></label>
+              <input id="lc-a2" class="inp" placeholder="Locality, landmark" autocomplete="address-line2"
+                     [value]="f().address2" (input)="set('address2', $any($event.target).value)" />
+            </div>
+            <div class="fld" [class.is-err]="err('zip')">
+              <label for="lc-zip">Zipcode <span class="opt">Optional</span></label>
+              <input id="lc-zip" class="inp" inputmode="numeric" maxlength="6" placeholder="e.g. 600001" autocomplete="postal-code"
+                     [value]="f().zip" (input)="set('zip', $any($event.target).value)" (blur)="touch('zip')" />
+              @if (err('zip'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('country')">
+              <label>Country <span class="req">*</span></label>
+              <lc-select [options]="countries" [value]="f().country" placeholder="Select a country" ariaLabel="Country"
+                         [invalid]="!!err('country')" (valueChange)="set('country', $event); touch('country')" />
+              @if (err('country'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('state')">
+              <label>State <span class="req">*</span></label>
+              @if (isIndia()) {
+                <lc-select [options]="states" [value]="f().state" placeholder="Select a state" ariaLabel="State"
+                           [invalid]="!!err('state')" (valueChange)="set('state', $event); touch('state')" />
+              } @else {
+                <input class="inp" placeholder="State / region" aria-label="State"
+                       [value]="f().state" (input)="set('state', $any($event.target).value)" (blur)="touch('state')" />
+              }
+              @if (err('state'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('city')">
+              <label>City <span class="req">*</span></label>
+              @if (isIndia()) {
+                <lc-select [options]="cityOpts()" [value]="f().city" [disabled]="!f().state"
+                           [placeholder]="f().state ? 'Select a city' : 'Choose a state first'" ariaLabel="City"
+                           [invalid]="!!err('city')" (valueChange)="set('city', $event); touch('city')" />
+              } @else {
+                <input class="inp" placeholder="City" aria-label="City"
+                       [value]="f().city" (input)="set('city', $any($event.target).value)" (blur)="touch('city')" />
+              }
+              @if (err('city'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 04 Source -->
+      <section id="lc-sec-source" [class]="'sl-sec is-' + sectionState()['source']" [class.is-active]="active() === 'source'" (focusin)="active.set('source')">
+        <header class="sl-side">
+          <span class="sl-no">04</span>
+          <h2>Source</h2>
+          <p>Where you met this person and which campaign it counts towards.</p>
+          <span class="sl-state">{{ stateLabel('source') }}</span>
+        </header>
+        <div class="sl-body">
+          <div class="sl-grid g2">
+            <div class="fld" [class.is-err]="err('source')">
+              <label>Lead source <span class="req">*</span></label>
+              <lc-select [options]="sources" [value]="f().source" placeholder="Select a source" ariaLabel="Lead source"
+                         [invalid]="!!err('source')" (valueChange)="set('source', $event); touch('source')" />
+              @if (err('source'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld" [class.is-err]="err('campaign')">
+              <label>Campaign <span class="req">*</span></label>
+              <lc-select [options]="campaigns" [value]="f().campaign" placeholder="Select a campaign" ariaLabel="Campaign"
+                         [invalid]="!!err('campaign')" (valueChange)="set('campaign', $event); touch('campaign')" />
+              @if (err('campaign'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+            <div class="fld span-2" [class.is-err]="err('sourceDetails')">
+              <label for="lc-sd">Source details <span class="opt">Optional · 10+ characters</span><span class="count">{{ len('sourceDetails') }}/100</span></label>
+              <input id="lc-sd" class="inp" maxlength="100" placeholder="Event booth, referral ID, partner code"
+                     [value]="f().sourceDetails" (input)="set('sourceDetails', $any($event.target).value)" (blur)="touch('sourceDetails')" />
+              @if (err('sourceDetails'); as m) { <span class="msg">{{ m }}</span> }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 05 Consent -->
+      <section id="lc-sec-consent" [class]="'sl-sec is-' + sectionState()['consent']" [class.is-active]="active() === 'consent'" (focusin)="active.set('consent')">
+        <header class="sl-side">
+          <span class="sl-no">05</span>
+          <h2>Consent</h2>
+          <p>Record how this person agreed to be contacted.</p>
+          <button type="button" class="switch" role="switch" [attr.aria-checked]="f().consentOn" (click)="toggleConsent()">
+            <i></i>{{ f().consentOn ? 'Collecting consent' : 'Collect consent' }}
+          </button>
+        </header>
+        <div class="sl-body">
+  
+          @if (f().consentOn) {
+            <div class="sl-grid g2">
+              <div class="fld span-2" [class.is-err]="err('channels')">
+                <label>May we contact them by <span class="req">*</span></label>
+                <div class="chips" role="group" aria-label="Contact channels">
+                  @for (c of contactChannels; track c.key) {
+                    <button type="button" class="chip" [class.is-on]="hasChannel(c.key)" [attr.aria-pressed]="hasChannel(c.key)" (click)="toggleChannel(c.key)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}
+                      <span class="chip-tick"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+                    </button>
+                  }
+                </div>
+                @if (err('channels'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+  
+              <div class="fld" [class.is-err]="err('recognition')">
+                <label>Recognition <span class="req">*</span></label>
+                <div class="seg" role="radiogroup" aria-label="Recognition">
+                  <button type="button" role="radio" [attr.aria-checked]="f().recognition === 'Anonymous'" [class.is-on]="f().recognition === 'Anonymous'"
+                          (click)="set('recognition', 'Anonymous'); touch('recognition')">Anonymous</button>
+                  <button type="button" role="radio" [attr.aria-checked]="f().recognition === 'Recognised'" [class.is-on]="f().recognition === 'Recognised'"
+                          (click)="set('recognition', 'Recognised'); touch('recognition')">Recognised</button>
+                </div>
+                @if (err('recognition'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+              <div class="fld" [class.is-err]="err('capturedThrough')">
+                <label>Captured through <span class="req">*</span></label>
+                <lc-select [options]="captureChannels" [value]="f().capturedThrough" placeholder="Select a channel" ariaLabel="Captured through"
+                           [invalid]="!!err('capturedThrough')" (valueChange)="set('capturedThrough', $event); touch('capturedThrough')" />
+                @if (err('capturedThrough'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+  
+              <div class="fld" [class.is-err]="err('consentState')">
+                <label>Consent state <span class="req">*</span></label>
+                <lc-select [options]="consentStates" [value]="f().consentState" placeholder="Select a state" ariaLabel="Consent state"
+                           [invalid]="!!err('consentState')" (valueChange)="set('consentState', $event); touch('consentState')" />
+                @if (err('consentState'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+              <div class="fld" [class.is-err]="err('effDate') || err('time')">
+                <label>Effective from <span class="opt">IST</span> <span class="req">*</span></label>
+                <div class="when">
+                  <input class="inp" type="date" aria-label="Effective date" [value]="f().effDate"
+                         (input)="set('effDate', $any($event.target).value)" (blur)="touch('effDate')" />
+                  <span class="time">
+                    <input inputmode="numeric" placeholder="HH" aria-label="Hour" [value]="f().hh" (input)="setTime('hh', $any($event.target).value)" (blur)="touch('time')" />
+                    <b>:</b>
+                    <input inputmode="numeric" placeholder="MM" aria-label="Minute" [value]="f().mm" (input)="setTime('mm', $any($event.target).value)" (blur)="touch('time')" />
+                  </span>
+                  <span class="seg seg-sm" role="radiogroup" aria-label="AM or PM">
+                    <button type="button" role="radio" [attr.aria-checked]="f().ampm === 'AM'" [class.is-on]="f().ampm === 'AM'" (click)="set('ampm', 'AM')">AM</button>
+                    <button type="button" role="radio" [attr.aria-checked]="f().ampm === 'PM'" [class.is-on]="f().ampm === 'PM'" (click)="set('ampm', 'PM')">PM</button>
+                  </span>
+                </div>
+                @if (err('effDate') || err('time')) { <span class="msg">{{ err('effDate') || err('time') }}</span> }
+              </div>
+  
+              <div class="fld span-2" [class.is-err]="err('evidence')">
+                <label>Evidence <span class="opt">Needed when consent is granted</span></label>
+                @if (f().evidence) {
+                  <div class="file">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg>
+                    <span>{{ f().evidence }}</span>
+                    <button type="button" class="phone-x" aria-label="Remove file" (click)="set('evidence', '')">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+                    </button>
+                  </div>
+                } @else {
+                  <label class="drop">
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onEvidence($event)" />
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg>
+                    <b>Upload a file</b><span>PDF, JPG or PNG · up to 5 MB</span>
+                  </label>
+                }
+                @if (err('evidence'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+  
+              <div class="fld" [class.is-err]="err('purpose')">
+                <label for="lc-purpose">Purpose <span class="req">*</span><span class="count">{{ len('purpose') }}/2000</span></label>
+                <textarea id="lc-purpose" class="inp" rows="4" maxlength="2000"
+                          placeholder="Why consent is being captured, e.g. campaign communication (10+ characters)"
+                          [value]="f().purpose" (input)="set('purpose', $any($event.target).value)" (blur)="touch('purpose')"></textarea>
+                @if (err('purpose'); as m) { <span class="msg">{{ m }}</span> }
+              </div>
+              <div class="fld">
+                <label for="lc-notes">Consent notes <span class="opt">Optional</span><span class="count">{{ len('notes') }}/2000</span></label>
+                <textarea id="lc-notes" class="inp" rows="4" maxlength="2000" placeholder="Anything the next person should know"
+                          [value]="f().notes" (input)="set('notes', $any($event.target).value)"></textarea>
+              </div>
+            </div>
+          } @else {
+            <p class="sl-off">Consent is optional here. Switch it on to record contact channels, recognition and evidence now - or capture it later from the lead profile.</p>
+          }
+        </div>
+      </section>
+
+    </form>
+
+    <!-- ===== right: live summary + actions ===== -->
+    <aside class="sl-sum" aria-label="Lead summary">
+      <div class="sl-who">
+        <span class="sl-avatar" [class.is-empty]="!preview().initials">
+          @if (preview().initials) { {{ preview().initials }} }
+          @else { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> }
+        </span>
+        <span class="sl-who-txt">
+          <b>{{ preview().name || 'New lead' }}</b>
+          <small>{{ preview().campaign || 'Not saved yet' }}</small>
+        </span>
+      </div>
+
+      <ul class="sl-facts">
+        <li [class.is-empty]="!preview().phone"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg><span>{{ preview().phone || 'Mobile number' }}</span></li>
+        <li [class.is-empty]="!preview().email"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg><span>{{ preview().email || 'E-mail address' }}</span></li>
+        <li [class.is-empty]="!preview().place"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pin')" /></svg><span>{{ preview().place || 'City, state' }}</span></li>
+        <li [class.is-empty]="!preview().source"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('source')" /></svg><span>{{ preview().source || 'Lead source' }}</span></li>
+        <li [class.is-empty]="!f().consentOn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
+          <span>Consent: {{ preview().consent }}@if (preview().channels) { · {{ preview().channels }} channel{{ preview().channels === 1 ? '' : 's' }} }</span></li>
+      </ul>
+
+      <div class="sl-prog">
+        <span class="sl-prog-top"><span>Progress</span><b>{{ progress() }}%</b></span>
+        <span class="sl-prog-bar"><i [style.width.%]="progress()"></i></span>
+      </div>
+
+      <ol class="sl-check">
+        @for (s of sections; track s.id) {
+          <li>
+            <button type="button" [class]="'sl-check-row is-' + sectionState()[s.id]" [class.is-active]="active() === s.id" (click)="go(s.id)">
+              <span class="sl-mark">
+                @switch (sectionState()[s.id]) {
+                  @case ('done') { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                  @case ('error') { ! }
+                  @default { {{ s.no }} }
+                }
+              </span>
+              <span class="sl-check-txt">{{ s.title }}</span>
+              <small>{{ stateLabel(s.id) }}</small>
+            </button>
+          </li>
+        }
+      </ol>
+
+      <p class="sl-note" [class.is-err]="submitted() && errorCount()">
+        @if (submitted() && errorCount()) {
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+          {{ errorCount() }} field{{ errorCount() === 1 ? '' : 's' }} still need attention
+        } @else {
+          Fields marked <span class="req">*</span> are required
+        }
+      </p>
+
+      <div class="sl-actions">
+        <button type="button" class="sl-btn is-primary" (click)="submit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Submit lead
+        </button>
+        <button type="button" class="sl-btn" (click)="startOver()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg> Start over
+        </button>
+      </div>
+    </aside>
+  </div>
+}
