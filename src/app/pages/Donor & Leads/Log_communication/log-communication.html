@@ -1,0 +1,322 @@
+<!-- =====================================================================================================
+     LOG COMMUNICATION  (account-workspace look)
+     Page header (eyebrow · title · actions) → identity card (avatar · name · health | owner block)
+     → info banner with the required checklist
+     → [ section cards: channel & timing · outcome · conversation · summary & note | side cards:
+       preview · recent entries ] → leave confirm.
+     ===================================================================================================== -->
+<div class="lc">
+  <!-- ===== page header ===== -->
+  <header class="lc-page">
+    <div class="lc-page-txt">
+      <span class="lc-eyebrow">Lead workspace</span>
+      <h1>Log communication</h1>
+      <p>Record a call, e-mail, meeting or note so the whole team sees it on the timeline.</p>
+    </div>
+    <div class="lc-page-actions">
+      <button type="button" class="lc-btn" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
+    </div>
+  </header>
+
+  <!-- ===== identity card ===== -->
+  <section class="lc-card lc-id">
+    <span class="lc-avatar">{{ initials() }}</span>
+    <div class="lc-id-txt">
+      <div class="lc-id-name">
+        <h2>{{ lead().name }}</h2>
+        <span class="lc-badge">{{ lead().stage }}</span>
+      </div>
+      <p class="lc-id-role">Lead · <span class="lc-mono">{{ lead().code }}</span></p>
+      <p class="lc-id-meta">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>{{ lead().phone }}</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ lead().email }}</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>Last contact {{ lastContact() }}</span>
+      </p>
+    </div>
+    <div class="lc-id-side">
+      <span class="lc-eyebrow">Health</span>
+      <b>{{ health().value }} / 100</b>
+      <small><span [class]="'lc-tone tone-' + health().tone">{{ health().label }}</span> · <span class="lc-cap">{{ lead().temperature }}</span> · <span class="lc-cap">{{ lead().potential }}</span> potential</small>
+    </div>
+  </section>
+
+  <!-- ===== required banner ===== -->
+  <div class="lc-banner">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+    <span><b>Required before saving.</b> The entry is added to the timeline straight away.</span>
+    <ol class="lc-check">
+      @for (c of checklist(); track c.key) {
+        <li [class.is-done]="c.done"><span class="lc-tick">@if (c.done) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</span>{{ c.label }}</li>
+      }
+    </ol>
+  </div>
+
+  <div class="lc-grid">
+    <div class="lc-main">
+      <!-- ===== channel & timing ===== -->
+      <section class="lc-card">
+        <header class="lc-sec-head">
+          <div><h3>Channel &amp; timing</h3><p>How and when you were in touch.</p></div>
+          <span class="lc-chip">{{ channelCount() }} on this channel before</span>
+        </header>
+
+        <div class="lc-row">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('message')" /></svg></span>
+          <div class="lc-row-txt"><b>Channel</b><small>Pick one</small></div>
+          <div class="lc-row-ctl">
+            <div class="lc-channels" role="radiogroup" aria-label="Channel">
+              @for (c of channels; track c.key) {
+                <button type="button" role="radio" [class.is-on]="channel() === c.key" [attr.aria-checked]="channel() === c.key" (click)="setChannel(c.key)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="lc-row" [class.has-err]="show('day')">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+          <div class="lc-row-txt"><b>Day <em>*</em></b><small>{{ dayLabel(day()) }}</small></div>
+          <div class="lc-row-ctl">
+            <div class="lc-days">
+              @for (d of days(); track d.iso) {
+                <button type="button" class="lc-day" [class.is-on]="day() === d.iso" (click)="pickDay(d.iso)"><small>{{ d.wd }}</small><b>{{ d.d }}</b></button>
+              }
+              <div class="lc-dd">
+                <button type="button" class="lc-day is-earlier" [class.is-on]="isEarlier()" (click)="toggle('cal', $event)" [attr.aria-expanded]="menu() === 'cal'" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg><small>{{ isEarlier() ? dayLabel(day()) : 'Earlier' }}</small>
+                </button>
+                @if (menu() === 'cal') {
+                  <div class="lc-cal" role="dialog" aria-label="Choose an earlier day" (click)="$event.stopPropagation()">
+                    <div class="lc-cal-head">
+                      <button type="button" (click)="moveCal(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                      <b>{{ calTitle() }}</b>
+                      <button type="button" [disabled]="!canNextMonth()" (click)="moveCal(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                    </div>
+                    <div class="lc-cal-grid">
+                      @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="lc-cal-wd">{{ w }}</span> }
+                      @for (week of calWeeks(); track $index) {
+                        @for (c of week; track c.iso) {
+                          <button type="button" class="lc-cal-day" [class.is-out]="c.out" [class.is-on]="c.iso === day()" [disabled]="c.future" (click)="pickDay(c.iso)">{{ c.day }}</button>
+                        }
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lc-row" [class.has-err]="show('time')">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+          <div class="lc-row-txt"><b>Time <em>*</em></b>@if (show('time'); as m) { <small class="lc-err">{{ m }}</small> } @else { <small>Hour and minutes</small> }</div>
+          <div class="lc-row-ctl lc-time">
+            <div class="lc-dd">
+              <button type="button" class="lc-input lc-dd-btn" (click)="toggle('hh', $event)" [attr.aria-expanded]="menu() === 'hh'" aria-label="Hour">
+                <span [class.lc-ph]="!hh()">{{ hh() || 'HH' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+              </button>
+              @if (menu() === 'hh') {
+                <div class="lc-menu" role="listbox" (click)="$event.stopPropagation()">
+                  @for (h of hours; track h) { <button type="button" role="option" [class.is-on]="hh() === h" (click)="pickHour(h)">{{ h }}</button> }
+                </div>
+              }
+            </div>
+            <span class="lc-colon">:</span>
+            <div class="lc-dd">
+              <button type="button" class="lc-input lc-dd-btn" (click)="toggle('mm', $event)" [attr.aria-expanded]="menu() === 'mm'" aria-label="Minutes">
+                <span [class.lc-ph]="!mm()">{{ mm() || 'MM' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+              </button>
+              @if (menu() === 'mm') {
+                <div class="lc-menu" role="listbox" (click)="$event.stopPropagation()">
+                  @for (m of minutes; track m) { <button type="button" role="option" [class.is-on]="mm() === m" (click)="pickMinute(m)">{{ m }}</button> }
+                </div>
+              }
+            </div>
+            <div class="lc-seg">
+              <button type="button" [class.is-on]="ampm() === 'AM'" (click)="ampm.set('AM')">AM</button>
+              <button type="button" [class.is-on]="ampm() === 'PM'" (click)="ampm.set('PM')">PM</button>
+            </div>
+            <button type="button" class="lc-btn sm" (click)="useNow()">Use now <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+          </div>
+        </div>
+
+        @if (hasDirection()) {
+          <div class="lc-row">
+            <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(direction())" /></svg></span>
+            <div class="lc-row-txt"><b>Direction</b><small>Who started it</small></div>
+            <div class="lc-row-ctl">
+              <div class="lc-seg">
+                <button type="button" [class.is-on]="direction() === 'out'" (click)="direction.set('out')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('out')" /></svg> Outgoing</button>
+                <button type="button" [class.is-on]="direction() === 'in'" (click)="direction.set('in')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('in')" /></svg> Incoming</button>
+              </div>
+            </div>
+          </div>
+        }
+      </section>
+
+      <!-- ===== outcome ===== -->
+      <section class="lc-card" [class.has-err]="show('outcome')">
+        <header class="lc-sec-head">
+          <div><h3>Outcome <em>*</em></h3>@if (show('outcome'); as m) { <p class="lc-err">{{ m }}</p> } @else { <p>What happened in this {{ channel() === 'note' ? 'note' : 'contact' }}.</p> }</div>
+          @if (preview().outcome) { <span [class]="'lc-chip lc-tone tone-' + preview().tone">{{ preview().outcome }}</span> }
+        </header>
+        <div class="lc-outcomes">
+          @for (g of groups; track g.key) {
+            <div [class]="'lc-ogroup tone-' + g.tone">
+              <span class="lc-eyebrow">{{ g.label }}</span>
+              @for (o of outcomesOf(g.key); track o.key) {
+                <button type="button" role="radio" class="lc-oopt" [class.is-on]="outcome() === o.key" [attr.aria-checked]="outcome() === o.key" (click)="outcome.set(o.key)">
+                  <span class="lc-radio"></span>{{ o.label }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- ===== conversation ===== -->
+      <section class="lc-card">
+        <header class="lc-sec-head">
+          <div><h3>Conversation</h3><p>How it went. Both are optional.</p></div>
+          <span class="lc-chip">Optional</span>
+        </header>
+        <div class="lc-row">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pulse')" /></svg></span>
+          <div class="lc-row-txt"><b>Engagement</b><small>How involved they were</small></div>
+          <div class="lc-row-ctl">
+            <div class="lc-seg">
+              @for (l of levels; track l.key) {
+                <button type="button" [class.is-on]="engagement() === l.key" (click)="pickLevel(l.key)"><span class="lc-bars" [attr.data-n]="l.bars"><i></i><i></i><i></i></span>{{ l.label }}</button>
+              }
+            </div>
+          </div>
+        </div>
+        <div class="lc-row">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('star')" /></svg></span>
+          <div class="lc-row-txt"><b>Quality of the conversation</b><small>Your overall feel</small></div>
+          <div class="lc-row-ctl">
+            <div class="lc-seg">
+              @for (q of qualities; track q.key) {
+                <button type="button" [class.is-on]="quality() === q.key" (click)="pickQuality(q.key)"><span class="lc-bars" [attr.data-n]="q.bars"><i></i><i></i><i></i><i></i></span>{{ q.label }}</button>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== summary & note ===== -->
+      <section class="lc-card">
+        <header class="lc-sec-head">
+          <div><h3>Summary &amp; note</h3><p>The summary shows on the timeline; the note stays with the team.</p></div>
+        </header>
+        <div class="lc-texts">
+          <div class="lc-field" [class.has-err]="show('summary')">
+            <div class="lc-field-head"><b>Summary <em>*</em></b><small [class.is-over]="summary().length > summaryMax">{{ summary().length }} / {{ summaryMax }}</small></div>
+            <div class="lc-starters">@for (s of starters; track s) { <button type="button" (click)="addStarter(s)">{{ s.trim() }}</button> }</div>
+            <textarea class="lc-input" rows="5" aria-label="Summary" placeholder="What happened, what they said or asked for, and what happens next." [value]="summary()" (input)="setText('summary', $event)"></textarea>
+            @if (show('summary'); as m) { <p class="lc-err">{{ m }}</p> }
+          </div>
+          <div class="lc-field" [class.has-err]="show('note')">
+            <div class="lc-field-head"><b><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg> Internal note</b><small [class.is-over]="note().length > noteMax">{{ note().length }} / {{ noteMax }}</small></div>
+            <p class="lc-note-hint">Team only - not shown to the donor or in the timeline summary.</p>
+            <textarea class="lc-input lc-note" rows="5" aria-label="Internal note" placeholder="Preferences, sensitivities, who else is involved…" [value]="note()" (input)="setText('note', $event)"></textarea>
+            @if (show('note'); as m) { <p class="lc-err">{{ m }}</p> }
+          </div>
+        </div>
+
+        <div class="lc-row">
+          <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg></span>
+          <div class="lc-row-txt">
+            <b>Attachment</b>
+            @if (fileError()) { <small class="lc-err">{{ fileError() }}</small> }
+            @else if (file(); as f) { <small>{{ f.name }} · {{ size(f.size) }}</small> }
+            @else { <small>PDF, DOCX, PNG or JPG · up to 10 MB</small> }
+          </div>
+          <div class="lc-row-ctl">
+            @if (file()) {
+              <button type="button" class="lc-btn sm" (click)="removeFile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg> Remove</button>
+            } @else {
+              <label class="lc-btn sm lc-attach">
+                <input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" (change)="onFile($event)" />
+                Attach a file <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg>
+              </label>
+            }
+          </div>
+        </div>
+        <div class="lc-row">
+          <span class="lc-row-ico" [class.is-amber]="important()"><svg [class.is-filled]="important()" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('star')" /></svg></span>
+          <div class="lc-row-txt"><b>Important</b><small>Shows under the Important tab</small></div>
+          <div class="lc-row-ctl">
+            <button type="button" class="lc-switch" role="switch" [class.is-on]="important()" [attr.aria-checked]="important()" (click)="important.set(!important())" aria-label="Mark as important"><i></i></button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ===== side ===== -->
+    <aside class="lc-side">
+      <section class="lc-card lc-side-card">
+        <span class="lc-row-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></span>
+        <h3>How it will read</h3>
+        <p>The entry as it will appear on the timeline.</p>
+        <div class="lc-preview">
+          <span [class]="'lc-row-ico tone-' + preview().tone"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="preview().icon" /></svg></span>
+          <div>
+            <div class="lc-pv-top"><b>{{ preview().title }}</b>@if (preview().outcome) { <span [class]="'lc-tone tone-' + preview().tone">{{ preview().outcome }}</span> }</div>
+            <p [class.lc-ph]="!preview().summary">{{ preview().summary || 'Your summary will appear here as you write.' }}</p>
+            @if (preview().note) { <p class="lc-pv-note"><b>Note</b>{{ preview().note }}</p> }
+            <small>{{ preview().day }} {{ preview().month }}@if (preview().time) { · {{ preview().time }} }@if (important()) { · Important }@if (file(); as f) { · {{ f.name }} }</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="lc-card lc-side-card">
+        <header class="lc-side-head"><h3>Recent entries</h3><span class="lc-chip">{{ history().length }}</span></header>
+        <ul class="lc-recent">
+          @for (e of history().slice(0, 4); track e.id) {
+            <li>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="entryIcon(e.channel)" /></svg>
+              <div>
+                <b>{{ entryChannel(e.channel) }} <span [class]="'lc-tone tone-' + entryTone(e.outcome)">{{ entryOutcome(e.outcome) }}</span></b>
+                <p>{{ e.summary }}</p>
+              </div>
+              <small>{{ date(e.at) }}</small>
+            </li>
+          } @empty {
+            <li class="lc-none">Nothing logged yet.</li>
+          }
+        </ul>
+      </section>
+
+      <!-- ===== actions ===== -->
+      <footer class="lc-card lc-actions">
+        <span>
+          @if (doneCount() === 4) { <b class="lc-tone tone-green">Ready to save.</b> The entry goes on the timeline straight away. }
+          @else { <b>{{ 4 - doneCount() }} required field{{ 4 - doneCount() === 1 ? '' : 's' }} left.</b> Fill them in to save. }
+        </span>
+        <button type="button" class="lc-btn" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
+        <button type="button" class="lc-btn is-primary" [class.is-off]="doneCount() < 4" [disabled]="saving()" (click)="save()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Save entry
+        </button>
+      </footer>
+    </aside>
+  </div>
+
+  <!-- ===== leave with unsaved changes ===== -->
+  @if (confirmLeave()) {
+    <div class="lc-overlay" (click)="confirmLeave.set(false)">
+      <div class="lc-dialog" role="alertdialog" aria-modal="true" aria-labelledby="lc-leave-title" (click)="$event.stopPropagation()">
+        <h3 id="lc-leave-title">Discard this entry?</h3>
+        <p>Nothing is saved to the timeline.</p>
+        <div class="lc-dialog-actions">
+          <button type="button" class="lc-btn" (click)="confirmLeave.set(false)">Keep editing</button>
+          <button type="button" class="lc-btn is-danger" (click)="leave()">Discard</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (toast()) { <div class="lc-toast" role="status">{{ toast() }}</div> }
+</div>

@@ -1,0 +1,288 @@
+<!-- =====================================================================================================
+     COMMUNICATION TIMELINE
+     Page header (eyebrow · title · actions)
+     → profile card: identity (avatar · name · stage · contact | owner) + four figures in one card
+     → [ timeline card: tabs + search + filters in the head · month groups · dated rail entries · pager
+       | side cards: standing · record · activity ] → entry popup.
+     ===================================================================================================== -->
+<div class="ct">
+  <!-- ===== page header ===== -->
+  <header class="ct-page">
+    <div class="ct-page-txt">
+      <span class="ct-eyebrow">Lead workspace</span>
+      <h1>Communication timeline</h1>
+      <p>Every call, e-mail, meeting and note with this lead in one place.</p>
+    </div>
+    <div class="ct-page-actions">
+      <button type="button" class="ct-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
+      <button type="button" class="ct-btn" (click)="scheduleFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Schedule follow-up</button>
+      <button type="button" class="ct-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
+      <button type="button" class="ct-btn is-primary" (click)="logCommunication()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Log communication</button>
+    </div>
+  </header>
+
+  <!-- ===== profile card: identity + figures ===== -->
+  <section class="ct-card ct-profile">
+    <div class="ct-id">
+      <span class="ct-avatar">{{ initials() }}</span>
+      <div class="ct-id-txt">
+        <div class="ct-id-name">
+          <h2>{{ lead().name }}</h2>
+          <span class="ct-badge">{{ lead().stage }}</span>
+          <span class="ct-mono ct-code">{{ lead().code }}</span>
+        </div>
+        <p class="ct-id-meta">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>{{ lead().phone }}</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ lead().email }}</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg>{{ lead().language }}</span>
+        </p>
+      </div>
+      <div class="ct-owner">
+        <span class="ct-owner-ava"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg></span>
+        <div>
+          <span class="ct-eyebrow">Owner</span>
+          <b>{{ lead().owner }}</b>
+          <small [attr.title]="lead().campaign">{{ lead().campaign }}</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="ct-figs">
+      <div class="ct-fig">
+        <span class="ct-eyebrow">Logged</span>
+        <b>{{ figures()[0].value }} <small>{{ figures()[0].sub }}</small></b>
+        <em>{{ figures()[1].value }} call{{ figures()[1].value === 1 ? '' : 's' }} · {{ figures()[2].value }} e-mail{{ figures()[2].value === 1 ? '' : 's' }} · {{ figures()[3].value }} meeting{{ figures()[3].value === 1 ? '' : 's' }}</em>
+      </div>
+      <div class="ct-fig">
+        <span class="ct-eyebrow">Last contact</span>
+        @if (lastContact(); as lc) {
+          <b>{{ lc.ago }}</b>
+          <em>{{ lc.date }} · {{ lc.channel }}</em>
+        } @else {
+          <b>Never</b><em>Nothing logged yet</em>
+        }
+      </div>
+      <div [class]="'ct-fig tone-' + health().tone">
+        <span class="ct-eyebrow">Health</span>
+        <b>{{ health().value }} <small>/ 100</small></b>
+        <span class="ct-meter"><i [style.width]="health().value + '%'"></i></span>
+        <em class="ct-tone">{{ health().label }}</em>
+      </div>
+      <div class="ct-fig">
+        <span class="ct-eyebrow">Last 8 weeks</span>
+        <b>{{ heat().active }} <small>active day{{ heat().active === 1 ? '' : 's' }}</small></b>
+        <div class="ct-weeks" aria-label="Entries per week over the last 8 weeks">
+          <ol>
+            @for (w of heat().weeks; track w.from) {
+              <li [class.has]="w.n" [class.is-now]="w.current" [attr.title]="w.tip"><i>{{ w.n || '' }}</i></li>
+            }
+          </ol>
+          <span class="ct-weeks-axis"><small>{{ heat().first }}</small><small>This week</small></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ct-grid">
+    <!-- ===== timeline ===== -->
+    <section class="ct-card ct-main">
+      <header class="ct-main-head">
+        <nav class="ct-tabs" aria-label="Entry type">
+          @for (t of tabs(); track t.key) {
+            <button type="button" [class.is-on]="tab() === t.key" (click)="setTab(t.key)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(t.key === 'all' ? 'message' : t.key === 'call' ? 'phone' : t.key === 'email' ? 'mail' : t.key === 'meeting' ? 'users' : 'star')" /></svg>
+              {{ t.label }} <em>{{ t.n }}</em>
+            </button>
+          }
+        </nav>
+        <div class="ct-tools">
+          <label class="ct-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+            <input type="text" placeholder="Search entries…" [value]="query()" (input)="setQuery($event)" />
+          </label>
+          <div class="ct-dd">
+            <button type="button" class="ct-btn" [class.is-active]="filterCount()" (click)="toggleMenu('filters', $event)" [attr.aria-expanded]="menu() === 'filters'">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg> Filters
+              @if (filterCount()) { <em class="ct-count">{{ filterCount() }}</em> }
+            </button>
+            @if (menu() === 'filters') {
+              <div class="ct-pop ct-filters" (click)="$event.stopPropagation()">
+                <p class="ct-pop-lbl">Outcome</p>
+                <div class="ct-checks">
+                  @for (g of outcomeGroups; track g.key) {
+                    <button type="button" role="checkbox" [attr.aria-checked]="hasGroup(g.key)" [class.is-on]="hasGroup(g.key)" (click)="toggleGroup(g.key)">
+                      <span class="ct-box">@if (hasGroup(g.key)) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</span>
+                      <i [class]="'tone-' + g.tone"></i>{{ g.label }}
+                    </button>
+                  }
+                </div>
+                <p class="ct-pop-lbl">Direction</p>
+                <div class="ct-seg">
+                  <button type="button" [class.is-on]="fDirection() === 'any'" (click)="setDirection('any')">Any</button>
+                  <button type="button" [class.is-on]="fDirection() === 'out'" (click)="setDirection('out')">Outgoing</button>
+                  <button type="button" [class.is-on]="fDirection() === 'in'" (click)="setDirection('in')">Incoming</button>
+                </div>
+                <button type="button" class="ct-link" (click)="clearFilters()">Clear all</button>
+              </div>
+            }
+          </div>
+        </div>
+      </header>
+
+      <div class="ct-list">
+        @for (g of groups(); track g.key) {
+          <div class="ct-month"><b>{{ g.label }}</b><span>{{ g.items.length }} entr{{ g.items.length === 1 ? 'y' : 'ies' }}</span></div>
+          @for (e of g.items; track e.id) {
+            <article class="ct-entry">
+              <div class="ct-when">
+                <b>{{ day(e.at) }}</b>
+                <span>{{ weekday(e.at) }}</span>
+                <small>{{ time(e.at) }}</small>
+              </div>
+              <div class="ct-rail"><span [class]="'ct-dot tone-' + tone(e)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="channelIcon(e)" /></svg></span></div>
+              <div class="ct-box-entry" [class.is-important]="e.important">
+                <div class="ct-entry-top">
+                  <div class="ct-entry-title">
+                    <b>{{ title(e) }}</b>
+                    <span [class]="'ct-outcome tone-' + tone(e)">{{ outcome(e) }}</span>
+                  </div>
+                  <div class="ct-entry-acts">
+                    <button type="button" class="ct-icon ct-star" [class.is-on]="e.important" (click)="toggleImportant(e)" [attr.aria-pressed]="e.important"
+                            [attr.aria-label]="e.important ? 'Unmark important' : 'Mark as important'" [attr.title]="e.important ? 'Important' : 'Mark as important'">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('star')" /></svg>
+                    </button>
+                    <button type="button" class="ct-icon" (click)="viewing.set(e)" aria-label="View entry" title="View entry">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="ct-summary">{{ e.summary }}</p>
+                @if (e.note) { <p class="ct-note"><b>Note</b><span>{{ e.note }}</span></p> }
+                <p class="ct-tags">
+                  <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg><i class="ct-m-date">{{ date(e.at) }}, {{ time(e.at) }} · </i>{{ ago(e.at) }}</span>
+                  @if (e.channel !== 'note') { <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(e.direction)" /></svg>{{ e.direction === 'out' ? 'Outgoing' : 'Incoming' }}</span> }
+                  <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ e.by }}</span>
+                  @if (e.attachment) { <span class="ct-file" [attr.title]="e.attachment"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg>{{ e.attachment }}</span> }
+                </p>
+              </div>
+            </article>
+          }
+        } @empty {
+          <div class="ct-empty">
+            <span class="ct-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('message')" /></svg></span>
+            <b>{{ all().length ? 'Nothing matches these filters' : 'No communication logged yet' }}</b>
+            <span>{{ all().length ? 'Try another tab or clear the filters.' : 'Calls, e-mails and meetings with this lead will appear here.' }}</span>
+            <div class="ct-empty-acts">
+              @if (anyFilter()) { <button type="button" class="ct-btn" (click)="clearFilters()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Clear filters</button> }
+              <button type="button" class="ct-btn is-primary" (click)="logCommunication()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Log communication</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <footer class="ct-foot">
+        <span>Showing <b>{{ range().from }}–{{ range().to }}</b> of <b>{{ range().n }}</b> · newest first</span>
+        <div class="ct-dd">
+          <button type="button" class="ct-rows" (click)="toggleMenu('rows', $event)" [attr.aria-expanded]="menu() === 'rows'">
+            Rows <b>{{ rows() }}</b><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'rows') {
+            <ul class="ct-pop ct-rows-menu" (click)="$event.stopPropagation()">
+              @for (r of rowOptions; track r) {
+                <li><button type="button" [class.is-on]="rows() === r" (click)="setRows(r)">{{ r }} rows</button></li>
+              }
+            </ul>
+          }
+        </div>
+        <span class="ct-pager">
+          <button type="button" class="ct-icon" [disabled]="page() <= 1" (click)="go(-1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+          <span>{{ page() }} / {{ pages() }}</span>
+          <button type="button" class="ct-icon" [disabled]="page() >= pages()" (click)="go(1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+        </span>
+      </footer>
+    </section>
+
+    <!-- ===== side ===== -->
+    <aside class="ct-side">
+      <section class="ct-card ct-side-card">
+        <header class="ct-side-head"><h3>Standing</h3></header>
+        <div class="ct-stand">
+          <span>Temperature</span>
+          <div class="ct-seg">
+            <button type="button" [class.is-on]="lead().temperature === 'cold'" (click)="setTemperature('cold')">Cold</button>
+            <button type="button" [class.is-on]="lead().temperature === 'warm'" (click)="setTemperature('warm')">Warm</button>
+            <button type="button" [class.is-on]="lead().temperature === 'hot'" (click)="setTemperature('hot')">Hot</button>
+          </div>
+        </div>
+        <div class="ct-stand">
+          <span>Potential</span>
+          <div class="ct-seg">
+            <button type="button" [class.is-on]="lead().potential === 'low'" (click)="setPotential('low')">Low</button>
+            <button type="button" [class.is-on]="lead().potential === 'medium'" (click)="setPotential('medium')">Medium</button>
+            <button type="button" [class.is-on]="lead().potential === 'high'" (click)="setPotential('high')">High</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="ct-card ct-side-card">
+        <header class="ct-side-head"><h3>Record</h3><span class="ct-chip">{{ lead().stage }}</span></header>
+        <dl class="ct-dl">
+          <div><dt>Reference</dt><dd class="ct-mono">{{ lead().code }}</dd></div>
+          <div><dt>Source</dt><dd [attr.title]="lead().source">{{ lead().source }}</dd></div>
+          <div><dt>Campaign</dt><dd [attr.title]="lead().campaign">{{ lead().campaign }}</dd></div>
+          <div><dt>Last entry</dt><dd>{{ lastContact()?.date ?? '—' }}</dd></div>
+          <div><dt>Donation link</dt><dd><button type="button" class="ct-link" (click)="copyLink()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg> Copy link</button></dd></div>
+        </dl>
+      </section>
+
+      <section class="ct-card ct-side-card">
+        <header class="ct-side-head"><h3>Activity</h3><span class="ct-chip">{{ lead().followUpsDone }}% follow-ups</span></header>
+        <dl class="ct-dl">
+          <div><dt>Contact rhythm</dt><dd>{{ lead().contactRhythm }}</dd></div>
+          <div><dt>Engagement</dt><dd>{{ lead().engagement }}</dd></div>
+          <div><dt>Interested replies</dt><dd>{{ lead().interestedReplies }}</dd></div>
+          <div><dt>Follow-ups done</dt><dd>{{ lead().followUpsDone }}%</dd></div>
+        </dl>
+        <span class="ct-meter"><i [style.width]="lead().followUpsDone + '%'"></i></span>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ===== entry popup ===== -->
+  @if (viewing(); as v) {
+    <div class="ct-overlay" (click)="viewing.set(null)">
+      <div class="ct-dialog" role="dialog" aria-modal="true" aria-labelledby="ct-dlg-title" (click)="$event.stopPropagation()">
+        <header class="ct-dlg-head">
+          <h2 id="ct-dlg-title">Communication</h2>
+          <button type="button" class="ct-dlg-x" (click)="viewing.set(null)" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="ct-dlg-body">
+          <div class="ct-dlg-hero">
+            <div>
+              <span class="ct-eyebrow">{{ title(v) }} · {{ lead().code }}</span>
+              <h3>{{ v.summary }}</h3>
+            </div>
+            <span [class]="'ct-dlg-pill tone-' + tone(v)">{{ outcome(v) }}</span>
+          </div>
+          <dl class="ct-dlg-fields">
+            <div><dt>Date</dt><dd>{{ date(v.at) }}, {{ time(v.at) }}</dd></div>
+            <div><dt>Channel</dt><dd>{{ title(v) }}</dd></div>
+            <div><dt>Logged by</dt><dd>{{ v.by }}</dd></div>
+            <div><dt>Engagement</dt><dd class="is-cap">{{ v.engagement ?? '—' }}</dd></div>
+            <div><dt>Conversation quality</dt><dd class="is-cap">{{ v.quality ?? '—' }}</dd></div>
+            <div><dt>Attachment</dt><dd>{{ v.attachment ?? '—' }}</dd></div>
+          </dl>
+          <p class="ct-dlg-note">{{ v.note || 'No internal note.' }}</p>
+        </div>
+        <footer class="ct-dlg-foot">
+          <button type="button" class="ct-btn" (click)="toggleImportant(v); viewing.set(null)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('star')" /></svg> {{ v.important ? 'Unmark important' : 'Mark as important' }}
+          </button>
+          <button type="button" class="ct-btn" (click)="viewing.set(null)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  @if (toast()) { <div class="ct-toast" role="status">{{ toast() }}</div> }
+</div>

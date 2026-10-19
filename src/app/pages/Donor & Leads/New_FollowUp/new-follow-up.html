@@ -1,0 +1,135 @@
+<!-- =====================================================================================================
+     NEW FOLLOW-UP
+     Account-workspace look: page header (Back) → "Who is it for?" card
+     (Leads / Donors tabs · search · table · Plan →) → "Already scheduled" side card (paged).
+     ===================================================================================================== -->
+<div class="nf">
+  <header class="fu-page">
+    <div class="fu-page-txt">
+      <span class="fu-eyebrow">Follow-ups</span>
+      <h1>New follow-up</h1>
+      <p>Pick the lead or donor first. The plan - owner, channel, time and brief - comes next.</p>
+    </div>
+    <div class="fu-page-actions">
+      <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back to follow-ups</button>
+    </div>
+  </header>
+
+  <div class="nf-grid">
+    <!-- ===== who is it for ===== -->
+    <section class="fu-card nf-main">
+      <header class="nf-head">
+        <div class="nf-head-txt">
+          <h2>Who is it for?</h2>
+          <p>Search by name, record code, e-mail or phone, then plan the follow-up.</p>
+        </div>
+        <span class="nf-tag">{{ matches().length }} {{ type() === 'lead' ? 'lead' : 'donor' }}{{ matches().length === 1 ? '' : 's' }}</span>
+      </header>
+
+      <nav class="nf-tabs" role="tablist" aria-label="Record type">
+        <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ counts().lead }}</em>
+        </button>
+        <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ counts().donor }}</em>
+        </button>
+      </nav>
+
+      <div class="nf-search-row">
+        <label class="fu-search nf-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" [placeholder]="'Search ' + (type() === 'lead' ? 'leads' : 'donors')" [value]="query()" (input)="setQuery($event)" />
+        </label>
+      </div>
+
+      <table class="nf-table">
+        <colgroup><col /><col class="c-stage" /><col class="c-camp" /><col class="c-own" /><col class="c-open" /><col class="c-act" /></colgroup>
+        <thead>
+          <tr>
+            <th>{{ type() === 'lead' ? 'Lead' : 'Donor' }}</th>
+            <th class="c-stage">Stage</th>
+            <th class="c-camp">Campaign</th>
+            <th class="c-own">Owner</th>
+            <th class="c-open">Follow-ups</th>
+            <th class="c-act"><span class="nf-sr">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pageRows(); track p.code) {
+            <tr>
+              <td>
+                <div class="nf-who">
+                  <span class="nf-ava">{{ ini(p.name) }}</span>
+                  <span class="nf-who-txt">
+                    <b>{{ p.name }}</b>
+                    <small><span class="fu-mono">{{ p.code }}</span><span class="nf-m-stage"> · {{ p.stage }}</span></small>
+                  </span>
+                </div>
+              </td>
+              <td class="c-stage"><span class="nf-stage">{{ p.stage }}</span></td>
+              <td class="c-camp"><span class="nf-two"><span>{{ p.campaign }}</span><small>{{ p.region }}</small></span></td>
+              <td class="c-own">
+                @if (p.owner) { <span class="nf-owner"><span class="fu-ava">{{ ini(p.owner) }}</span><span>{{ p.owner }}</span></span> }
+                @else { <span class="nf-un">Unassigned</span> }
+              </td>
+              <td class="c-open">
+                @if (openCount(p)) { <span class="nf-open">{{ openCount(p) }} open</span> } @else { <span class="nf-none-txt">None</span> }
+              </td>
+              <td class="c-act">
+                <button type="button" class="nf-plan" (click)="plan(p)" [attr.aria-label]="'Plan a follow-up for ' + p.name"><span>Plan</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" class="nf-empty">
+                <span class="nf-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg></span>
+                <b>No {{ type() === 'lead' ? 'leads' : 'donors' }} match "{{ query() }}"</b>
+                <span>Check the spelling or try a record code.</span>
+                <button type="button" class="fu-link" (click)="clearQuery()">Clear search</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <footer class="nf-foot">
+        <span>Showing <b>{{ range() }}</b></span>
+        <div class="nf-pager">
+          <button type="button" class="fu-icon" [disabled]="page() <= 1" (click)="goPage(page() - 1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+          <span>Page <b>{{ page() }}</b> of {{ pages() }}</span>
+          <button type="button" class="fu-icon" [disabled]="page() >= pages()" (click)="goPage(page() + 1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ===== already scheduled ===== -->
+    <aside class="fu-card nf-side">
+      <header class="nf-side-head">
+        <div>
+          <span class="fu-eyebrow">Queue</span>
+          <h3>Already scheduled</h3>
+        </div>
+        <span class="fu-count">{{ scheduled().length }}</span>
+      </header>
+      <ul class="nf-sched">
+        @for (f of sRows(); track f.id) {
+          <li>
+            <span class="nf-tile" [class.is-late]="isLate(f)"><small>{{ tile(f).mon }}</small><b>{{ tile(f).day }}</b><small>{{ tile(f).wd }}</small></span>
+            <div class="nf-sched-txt">
+              <b>{{ f.name }}</b>
+              <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="chIcon(f)" /></svg> {{ chLabel(f) }} · {{ time(f) }}</span>
+            </div>
+            <span [class]="'fu-dot tone-' + pri(f).tone"><span class="fu-tone">{{ pri(f).label }}</span></span>
+          </li>
+        } @empty {
+          <li class="nf-none">Nothing is scheduled yet.</li>
+        }
+      </ul>
+      <footer class="nf-side-foot">
+        <button type="button" class="fu-icon" [disabled]="sPage() <= 1" (click)="goSPage(sPage() - 1)" aria-label="Previous"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+        <span>{{ sPage() }} / {{ sPages() }}</span>
+        <button type="button" class="fu-icon" [disabled]="sPage() >= sPages()" (click)="goSPage(sPage() + 1)" aria-label="Next"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+      </footer>
+    </aside>
+  </div>
+</div>

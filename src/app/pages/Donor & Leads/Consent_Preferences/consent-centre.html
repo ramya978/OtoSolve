@@ -1,0 +1,363 @@
+<!-- =====================================================================================================
+     CONSENT AND PREFERENCE CENTRE
+     Page header (title · reference · actions) → summary card (state panel | facts · purpose · permission) → record card with two halves
+     (Consent details | Evidence and restrictions) → Actions (two tiles) → History table → popups.
+     ===================================================================================================== -->
+<div class="cc">
+  <!-- ===== page header ===== -->
+  <header class="cc-top">
+    <div class="cc-top-txt">
+      <h1>Consent and preference centre</h1>
+      <p>{{ reference() }}<span class="cc-sep"></span>Updated {{ stamp(updatedAt()) }}</p>
+    </div>
+    <div class="cc-top-actions">
+      <button type="button" class="cc-btn" (click)="evidenceOpen.set(true)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Review evidence
+      </button>
+      <div class="cc-dd">
+        <button type="button" class="cc-btn" (click)="toggle('more', $event)" [attr.aria-expanded]="menu() === 'more'" aria-haspopup="menu">
+          More actions <svg class="cc-chev" [class.is-up]="menu() === 'more'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+        </button>
+        @if (menu() === 'more') {
+          <ul class="cc-menu is-right" role="menu" (click)="$event.stopPropagation()">
+            <li role="none"><button type="button" role="menuitem" class="is-danger" [disabled]="record().state === 'Withdrawn'" (click)="open('withdraw')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('ban')" /></svg> Withdraw consent</button></li>
+            <li role="none"><button type="button" role="menuitem" (click)="open('correct')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Correct record</button></li>
+          </ul>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== summary ===== -->
+  <section class="cc-summary">
+    <div [class]="'cc-sum-state tone-' + tone(record().state)">
+      <span class="cc-sum-ico"><svg viewBox="0 0 24 24" aria-hidden="true" style="stroke: var(--primary);"><path [attr.d]="icon(record().state === 'Withdrawn' ? 'ban' : 'shield')" /></svg></span>
+      <small>Consent state</small>
+      <b>{{ record().state }}</b>
+      <span class="cc-sum-since">Since {{ date(record().effective) }}</span>
+    </div>
+
+    <div class="cc-sum-body">
+      <dl class="cc-sum-facts">
+        <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(record().channel === 'Call' ? 'phone' : 'mail')" /></svg>Channel</dt><dd>{{ record().channel }}</dd></div>
+        <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>Effective → expiry</dt><dd>{{ date(record().effective) }} → {{ date(record().expiry) || 'No expiry' }}</dd></div>
+        <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg>Evidence</dt><dd>{{ record().evidence }} · {{ record().notice }}</dd></div>
+        <div><dt><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>Public recognition</dt><dd>{{ record().recognition }}</dd></div>
+      </dl>
+      <div class="cc-sum-foot">
+        <div class="cc-sum-purpose"><small>Purpose</small><p>{{ record().purpose }}</p></div>
+        <div class="cc-sum-perms"><small>Effective permission</small>
+          <p>@for (p of permissions; track p) { <i>{{ p }}</i> }</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== record ===== -->
+  <section class="cc-card cc-record">
+    <!-- consent details -->
+    <div class="cc-half">
+      <h2><span>01</span> Consent details</h2>
+
+      <div class="cc-fields">
+        <div class="cc-field">
+          <span class="cc-lbl">Donor reference</span>
+          <div class="cc-input is-locked"><span class="cc-mono">{{ record().donorRef }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg></div>
+        </div>
+        <div class="cc-field">
+          <span class="cc-lbl">Consent reference</span>
+          <div class="cc-input is-locked"><span>{{ reference() }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg></div>
+        </div>
+
+        <div class="cc-field is-full" [class.is-edited]="isChanged('Purpose')" [class.has-err]="draftErrors()['purpose']">
+          <label class="cc-lbl" for="cc-purpose">Purpose <em>*</em></label>
+          <input id="cc-purpose" class="cc-input" [value]="draft().purpose" (input)="text('purpose', $event)" />
+          @if (draftErrors()['purpose']; as m) { <p class="cc-err">{{ m }}</p> }
+        </div>
+
+        <div class="cc-field is-third" [class.is-edited]="isChanged('Channel')">
+          <span class="cc-lbl">Channel <em>*</em></span>
+          <div class="cc-dd">
+            <button type="button" class="cc-input cc-dd-btn" (click)="toggle('channel', $event)" [attr.aria-expanded]="menu() === 'channel'" aria-haspopup="listbox">
+              <span>{{ draft().channel }}</span>
+              <svg class="cc-chev" [class.is-up]="menu() === 'channel'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'channel') {
+              <ul class="cc-menu" role="listbox" (click)="$event.stopPropagation()">
+                @for (c of channels; track c) {
+                  <li role="option" [attr.aria-selected]="draft().channel === c">
+                    <button type="button" [class.is-on]="draft().channel === c" (click)="pick('channel', c)">
+                      {{ c }} @if (draft().channel === c) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="cc-field is-third" [class.is-edited]="isChanged('Consent state')">
+          <span class="cc-lbl">Consent state <em>*</em></span>
+          <div class="cc-dd">
+            <button type="button" class="cc-input cc-dd-btn" (click)="toggle('state', $event)" [attr.aria-expanded]="menu() === 'state'" aria-haspopup="listbox">
+              <span class="cc-state"><i [class]="'tone-' + tone(draft().state)"></i>{{ draft().state }}</span>
+              <svg class="cc-chev" [class.is-up]="menu() === 'state'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'state') {
+              <ul class="cc-menu" role="listbox" (click)="$event.stopPropagation()">
+                @for (s of states; track s) {
+                  <li role="option" [attr.aria-selected]="draft().state === s">
+                    <button type="button" [class.is-on]="draft().state === s" (click)="pick('state', s)">
+                      <span class="cc-state"><i [class]="'tone-' + tone(s)"></i>{{ s }}</span>
+                      @if (draft().state === s) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="cc-field is-third" [class.is-edited]="isChanged('Notice version')" [class.has-err]="draftErrors()['notice']">
+          <label class="cc-lbl" for="cc-notice">Notice version</label>
+          <input id="cc-notice" class="cc-input" [value]="draft().notice" (input)="text('notice', $event)" />
+          @if (draftErrors()['notice']; as m) { <p class="cc-err">{{ m }}</p> }
+        </div>
+      </div>
+    </div>
+
+    <!-- evidence and restrictions -->
+    <div class="cc-half">
+      <h2><span>02</span> Evidence and restrictions</h2>
+
+      <div class="cc-fields">
+        <div class="cc-field is-full">
+          <span class="cc-lbl">Evidence source <em>*</em></span>
+          <div class="cc-evidence">
+            <span class="cc-evidence-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg></span>
+            <span class="cc-evidence-txt"><b>{{ record().evidence }}</b><small>Notice {{ record().notice }}</small></span>
+            <button type="button" class="cc-link" (click)="evidenceOpen.set(true)">Preview</button>
+          </div>
+        </div>
+
+        <div class="cc-field">
+          <span class="cc-lbl">Effective time <em>*</em></span>
+          <div class="cc-input is-locked"><span>{{ date(draft().effective) }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg></div>
+        </div>
+
+        <div class="cc-field" [class.is-edited]="isChanged('Expiry time')" [class.has-err]="draftErrors()['expiry']">
+          <span class="cc-lbl">Expiry time</span>
+          <div class="cc-dd">
+            <button type="button" class="cc-input cc-dd-btn" (click)="toggle('expiry', $event)" [attr.aria-expanded]="menu() === 'expiry'" aria-haspopup="dialog">
+              <span [class.cc-ph]="!draft().expiry">{{ draft().expiry ? date(draft().expiry) : 'No expiry' }}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>
+            </button>
+            @if (menu() === 'expiry') {
+              <div class="cc-cal" role="dialog" aria-label="Choose the expiry date" (click)="$event.stopPropagation()">
+                <div class="cc-cal-head">
+                  <button type="button" (click)="moveCal(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                  <b>{{ calTitle() }}</b>
+                  <button type="button" (click)="moveCal(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                </div>
+                <div class="cc-cal-grid">
+                  @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="cc-cal-wd">{{ w }}</span> }
+                  @for (week of calWeeks(); track $index) {
+                    @for (c of week; track c.iso) {
+                      <button type="button" class="cc-cal-day" [class.is-out]="c.out" [class.is-on]="c.iso === draft().expiry" [disabled]="c.off" (click)="pickExpiry(c.iso)">{{ c.day }}</button>
+                    }
+                  }
+                </div>
+                <button type="button" class="cc-cal-clear" (click)="pickExpiry(null)">No expiry</button>
+              </div>
+            }
+          </div>
+          @if (draftErrors()['expiry']; as m) { <p class="cc-err">{{ m }}</p> }
+        </div>
+
+        <div class="cc-field" [class.is-edited]="isChanged('Public recognition')">
+          <span class="cc-lbl">Public recognition <small>Internal · public only</small></span>
+          <div class="cc-dd">
+            <button type="button" class="cc-input cc-dd-btn" (click)="toggle('recognition', $event)" [attr.aria-expanded]="menu() === 'recognition'" aria-haspopup="listbox">
+              <span>{{ draft().recognition }}</span>
+              <svg class="cc-chev" [class.is-up]="menu() === 'recognition'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'recognition') {
+              <ul class="cc-menu" role="listbox" (click)="$event.stopPropagation()">
+                @for (r of recognitions; track r.key) {
+                  <li role="option" [attr.aria-selected]="draft().recognition === r.key">
+                    <button type="button" [class.is-on]="draft().recognition === r.key" (click)="pick('recognition', r.key)">
+                      <span class="cc-opt"><b>{{ r.key }}</b><small>{{ r.hint }}</small></span>
+                      @if (draft().recognition === r.key) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="cc-field" [class.is-edited]="isChanged('Contact restrictions')">
+          <label class="cc-lbl" for="cc-restr">Contact restrictions</label>
+          <input id="cc-restr" class="cc-input" [value]="draft().restrictions" (input)="text('restrictions', $event)" />
+        </div>
+      </div>
+    </div>
+
+    @if (dirty()) {
+      <footer class="cc-dirty">
+        <span><b>{{ changedFields().length }} unsaved correction{{ changedFields().length === 1 ? '' : 's' }}</b> · saved as a corrected consent, the original stays in the trail</span>
+        <button type="button" class="cc-btn" (click)="discard()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Discard
+        </button>
+        <button type="button" class="cc-btn is-primary" (click)="open('correct')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Correct consent
+        </button>
+      </footer>
+    }
+  </section>
+
+  <!-- ===== actions + history ===== -->
+  <div class="cc-bottom">
+  
+    <section class="cc-card">
+      <header class="cc-head">
+        <h2>History</h2>
+        <div class="cc-dd">
+          <button type="button" class="cc-view" (click)="toggle('view', $event)" [attr.aria-expanded]="menu() === 'view'" aria-haspopup="listbox">
+            <small>Saved view</small> {{ viewLabel() }}
+            <svg class="cc-chev" [class.is-up]="menu() === 'view'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'view') {
+            <ul class="cc-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+              @for (v of views; track v.key) {
+                <li role="option" [attr.aria-selected]="view() === v.key">
+                  <button type="button" [class.is-on]="view() === v.key" (click)="pickView(v.key)">
+                    {{ v.label }} <small>{{ viewCount(v.key) }}</small>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </header>
+
+      <table class="cc-table">
+        <colgroup><col class="c-state" /><col class="c-ch" /><col /><col class="c-by" /><col class="c-date" /><col class="c-notice" /></colgroup>
+        <thead><tr><th>State</th><th>Channel</th><th>Purpose</th><th class="c-by">Recorded by</th><th>Date</th><th class="c-notice">Notice</th></tr></thead>
+        <tbody>
+          @for (h of viewRows(); track $index) {
+            <tr>
+              <td><span [class]="'cc-pill tone-' + tone(h.state)">{{ h.state }}</span></td>
+              <td>{{ h.channel }}</td>
+              <td><span class="cc-cell" [attr.title]="h.purpose">{{ h.purpose }}</span>@if (h.reason) { <small class="cc-reason">“{{ h.reason }}”</small> }</td>
+              <td class="c-by">{{ h.by }}</td>
+              <td>{{ date(h.date) }}</td>
+              <td class="c-notice">{{ h.notice }}</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="cc-none">No consents in this view.</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+
+  </div>
+
+  <!-- ===== confirm withdraw / correct (payment-event popup look) ===== -->
+  @if (dialogInfo(); as dlg) {
+    <div class="cc-overlay" (click)="close()">
+      <div class="cc-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-dlg-title" (click)="$event.stopPropagation()">
+        <header class="cc-dlg-head">
+          <h2 id="cc-dlg-title">Confirm {{ dlg.title }}</h2>
+          <button type="button" class="cc-dlg-x" (click)="close()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+
+        <div class="cc-dlg-body">
+          <div class="cc-dlg-hero">
+            <div class="cc-dlg-hero-txt">
+              <span class="cc-eyebrow">{{ dlg.title }} · <span class="cc-eyebrow-ref">{{ record().donorRef }}</span></span>
+              <h3 class="cc-dlg-name">{{ reference() }}</h3>
+            </div>
+            <span [class]="'cc-dlg-pill tone-' + tone(dlg.to)">{{ dlg.to }}</span>
+          </div>
+
+          <dl class="cc-dlg-fields">
+            <div><dt>Consent state</dt><dd>{{ dlg.from }} → {{ dlg.to }}</dd></div>
+            <div><dt>Effective time</dt><dd>{{ stamp(updatedAt()) }}</dd></div>
+            @if (!(dialog() === 'correct' && isChanged('Channel'))) { <div><dt>Channel</dt><dd>{{ record().channel }}</dd></div> }
+            @if (!(dialog() === 'correct' && isChanged('Notice version'))) { <div><dt>Notice version</dt><dd>{{ record().notice }}</dd></div> }
+            <div><dt>Evidence</dt><dd>{{ record().evidence }}</dd></div>
+            <div><dt>Donor</dt><dd>{{ record().donorCode }}</dd></div>
+            @if (dialog() === 'correct') {
+              @for (c of changedFields(); track c.label) {
+                @if (c.label !== 'Consent state') {
+                <div class="is-changed"><dt>{{ c.label }}</dt><dd><s>{{ c.from }}</s> → {{ c.to }}</dd></div>
+                }
+              }
+            }
+          </dl>
+
+          <p class="cc-dlg-note">{{ dlg.text }}@if (dialog() === 'correct' && !changedFields().length) { No field changes - only the reason is recorded. }</p>
+
+          <div class="cc-field cc-dlg-reason" [class.has-err]="tried() && reasonError()">
+            <label class="cc-lbl" for="cc-reason">Reason <em>*</em></label>
+            <textarea id="cc-reason" rows="3" class="cc-input" placeholder="State why this action is being taken…" [attr.maxlength]="reasonMax" [value]="reason()" (input)="setReason($event)"></textarea>
+            <div class="cc-reason-meta">
+              @if (tried() && reasonError()) { <span class="cc-err">{{ reasonError() }}</span> }
+              @else { <span>Minimum {{ reasonMin }} characters</span> }
+              <span [class.is-ok]="reasonLen() >= reasonMin">{{ reason().length }} / {{ reasonMax }}</span>
+            </div>
+          </div>
+        </div>
+
+        <footer class="cc-dlg-foot">
+          <button type="button" class="cc-btn" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel
+          </button>
+          <button type="button" class="cc-btn" [class.is-danger]="dialog() === 'withdraw'" [class.is-primary]="dialog() === 'correct'" [class.is-off]="!!reasonError()" (click)="confirm()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(dialog() === 'withdraw' ? 'ban' : 'check')" /></svg> {{ dlg.title }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== evidence (payment-event popup look) ===== -->
+  @if (evidenceOpen()) {
+    <div class="cc-overlay" (click)="evidenceOpen.set(false)">
+      <div class="cc-dialog" role="dialog" aria-modal="true" aria-labelledby="cc-ev-title" (click)="$event.stopPropagation()">
+        <header class="cc-dlg-head">
+          <h2 id="cc-ev-title">Consent evidence</h2>
+          <button type="button" class="cc-dlg-x" (click)="evidenceOpen.set(false)" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="cc-dlg-body">
+          <div class="cc-dlg-hero">
+            <div class="cc-dlg-hero-txt">
+              <span class="cc-eyebrow">Evidence · <span class="cc-eyebrow-ref">{{ record().notice }}</span></span>
+              <h3 class="cc-dlg-name">{{ record().evidence }}</h3>
+            </div>
+            <span [class]="'cc-dlg-pill tone-' + tone(record().state)">{{ record().state }}</span>
+          </div>
+          <dl class="cc-dlg-fields">
+            <div><dt>Consent reference</dt><dd>{{ reference() }}</dd></div>
+            <div><dt>Captured</dt><dd>{{ date(record().effective) }}</dd></div>
+            <div><dt>Expiry</dt><dd>{{ date(record().expiry) || 'No expiry' }}</dd></div>
+            <div><dt>Channel</dt><dd>{{ record().channel }}</dd></div>
+            <div><dt>Notice version</dt><dd>{{ record().notice }}</dd></div>
+            <div><dt>Public recognition</dt><dd>{{ record().recognition }}</dd></div>
+          </dl>
+          <p class="cc-dlg-note">Purpose: {{ record().purpose }} Contact restrictions: {{ record().restrictions }}.</p>
+        </div>
+        <footer class="cc-dlg-foot">
+          <button type="button" class="cc-btn" (click)="evidenceOpen.set(false)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  @if (toast()) { <div class="cc-toast" role="status">{{ toast() }}</div> }
+</div>

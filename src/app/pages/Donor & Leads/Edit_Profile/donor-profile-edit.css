@@ -274,9 +274,9 @@ textarea.pe-input { display: block; min-height: 76px; resize: vertical; line-hei
   animation: pe-spin 0.7s linear infinite;
 }
 @keyframes pe-spin { to { transform: rotate(360deg); } }
-.pe-btn.is-primary { border-color: var(--pe-primary); background: var(--pe-primary); color: var(--white, #fff) !important; }
+.pe-btn.is-primary { border-color: var(--cc-btn, var(--pe-primary)); background: var(--cc-btn, var(--pe-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
 .pe-btn.is-primary.is-off { border-color: transparent; background: color-mix(in srgb, var(--pe-primary) 40%, var(--pe-card)); }
-.pe-btn.is-danger { border-color: var(--pe-red); background: var(--pe-red); color: var(--white, #fff) !important; }
+.pe-btn.is-danger { border-color: var(--pe-red); background: var(--pe-red); color: #fff !important; }
 .pe-btn:disabled { cursor: progress; }
 
 /* ================= dialog + toast ================= */

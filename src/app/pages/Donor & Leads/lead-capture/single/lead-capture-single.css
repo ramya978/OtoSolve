@@ -257,7 +257,7 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
 }
 
 .chip-tick svg { width: 11px; height: 11px; stroke-width: 3; opacity: 0; }
-.chip.is-on .chip-tick { border-color: var(--sl-primary); background: var(--sl-primary); color: #fff; }
+.chip.is-on .chip-tick { border-color: var(--cc-btn, var(--sl-primary)); background: var(--cc-btn, var(--sl-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .chip.is-on .chip-tick svg { opacity: 1; animation: sl-pop .25s ease; }
 
 /* segmented choice */
@@ -377,13 +377,13 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  background: var(--white, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 22%, transparent);
   transition: transform .2s ease;
 }
 
 .switch[aria-checked="true"] { color: var(--sl-primary); }
-.switch[aria-checked="true"] i { background: var(--sl-primary); }
+.switch[aria-checked="true"] i { background: var(--cc-btn, var(--sl-primary)); }
 .switch[aria-checked="true"] i::after { transform: translateX(14px); }
 
 /* ================= summary ================= */
@@ -408,7 +408,7 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
   height: 44px;
   border-radius: 50%;
   background: var(--sl-primary);
-  color: var(--white, #fff);
+  color: var(--primary-on, #fff);
   font-size: calc(15px * var(--font-scale, 1));
   font-weight: 600;
   transition: background .2s, color .2s;
@@ -528,8 +528,8 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
 .sl-btn svg { width: 15px; height: 15px; }
 .sl-btn:hover { border-color: color-mix(in srgb, var(--sl-primary) 35%, var(--sl-line)); color: var(--sl-primary); }
 .sl-btn:hover svg { animation: sl-spin .5s ease; }
-.sl-btn.is-primary { border-color: var(--sl-primary); background: var(--sl-primary); color: var(--white, #fff); }
-.sl-btn.is-primary:hover { background: color-mix(in srgb, var(--sl-primary) 88%, #000); color: var(--white, #fff); }
+.sl-btn.is-primary { border-color: var(--cc-btn, var(--sl-primary)); background: var(--cc-btn, var(--sl-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
+.sl-btn.is-primary:hover { background: color-mix(in srgb, var(--cc-btn, var(--sl-primary)) 88%, #000); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .sl-btn.is-primary:hover svg { animation: sl-pop .35s ease; }
 
 /* ================= saved ================= */

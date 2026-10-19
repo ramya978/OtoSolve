@@ -1,0 +1,259 @@
+<!-- =====================================================================================================
+     FOLLOW-UP PLANNER  (account-workspace look)
+     Page header → profile card → facts strip → "Plan details" rows + "Brief" card | side checklist card.
+     ===================================================================================================== -->
+<div class="fp">
+  @if (person(); as p) {
+    <!-- ===== page header ===== -->
+    <header class="fu-page">
+      <div class="fu-page-txt">
+        <span class="fu-eyebrow">Follow-ups</span>
+        <h1>Plan follow-up</h1>
+        <p>Choose who does it, how and when - then write what they need to know.</p>
+      </div>
+      <div class="fu-page-actions">
+        <button type="button" class="fu-btn" (click)="changePerson()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg> Change person</button>
+        <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back</button>
+      </div>
+    </header>
+
+    <!-- ===== profile card ===== -->
+    <section class="fu-card fp-hero">
+      <div class="fp-who">
+        <span class="fp-ava">{{ ini(p.name) }}</span>
+        <div class="fp-who-txt">
+          <div class="fp-name"><h2>{{ p.name }}</h2><span class="fp-tag">Draft</span></div>
+          <p class="fp-sub">{{ p.type === 'lead' ? 'Lead' : 'Donor' }} · {{ p.stage }} <span class="fp-sep">·</span> <span class="fu-mono">{{ p.code }}</span></p>
+          <p class="fp-meta">
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('target')" /></svg>{{ p.campaign }}</span>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ p.email }}</span>
+          </p>
+        </div>
+      </div>
+      <div class="fp-owner">
+        <span class="fu-eyebrow">Record owner</span>
+        <b [class.fp-none-txt]="!p.owner">{{ p.owner ?? 'Unassigned' }}</b>
+        <small>{{ p.region }}</small>
+      </div>
+    </section>
+
+    <!-- ===== facts strip ===== -->
+    <section class="fu-card fp-facts">
+      <div class="fp-fact">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>
+        <span><span class="fu-eyebrow">Phone</span><b>{{ p.phone }}</b></span>
+      </div>
+      <div class="fp-fact">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('language')" /></svg>
+        <span><span class="fu-eyebrow">Language</span><b>{{ p.language }}</b></span>
+      </div>
+      <div class="fp-fact">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sun')" /></svg>
+        <span><span class="fu-eyebrow">Best time</span><b [class.fp-none-txt]="!p.bestTime">{{ p.bestTime ?? 'Not recorded' }}</b></span>
+      </div>
+      <div class="fp-fact">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
+        <span><span class="fu-eyebrow">Consent</span><b>{{ consentCount() }} of {{ channels.length }} channels</b></span>
+      </div>
+    </section>
+
+    <div class="fp-grid">
+      <div class="fp-main">
+        <!-- ===== plan details ===== -->
+        <section class="fu-card fp-card">
+          <header class="fp-card-head">
+            <div><h3>Plan details</h3><p>Owner, priority, channel and timing for this follow-up.</p></div>
+            <span class="fp-tag">{{ doneCount() }} of 5 filled</span>
+          </header>
+
+          <!-- assigned user -->
+          <div class="fp-row">
+            <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg></span>
+            <div class="fp-row-txt">
+              <b>Assigned user <em>*</em></b>
+              <span>@if (ownerInfo(); as oi) { {{ oi.team }} · {{ load(oi.name) }} open records } @else { Who will make the contact. }</span>
+            </div>
+            <div class="fp-row-ctl">
+              <div class="fu-dd" [class.is-open]="menu() === 'owner'">
+                <button type="button" class="fu-input fu-dd-btn" [class.has-err]="tried() && errors().owner" (click)="toggleMenu('owner', $event)">
+                  <span [class.fu-ph]="!owner()">{{ owner() ?? 'Select a user' }}</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+                </button>
+                @if (menu() === 'owner') {
+                  <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                    @for (o of owners; track o.name) {
+                      <li><button type="button" [class.is-on]="owner() === o.name" (click)="pickOwner(o.name)"><span class="fu-ava">{{ ini(o.name) }}</span>{{ o.name }}<small>{{ load(o.name) }} open</small></button></li>
+                    }
+                  </ul>
+                }
+              </div>
+              @if (tried() && errors().owner) { <p class="fu-err">{{ errors().owner }}</p> }
+            </div>
+          </div>
+
+          <!-- priority -->
+          <div class="fp-row">
+            <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg></span>
+            <div class="fp-row-txt">
+              <b>Priority</b>
+              <span>How soon it should be picked up.</span>
+            </div>
+            <div class="fp-row-ctl">
+              <div class="fp-pills" role="radiogroup">
+                @for (pr of priorities; track pr.key) {
+                  <button type="button" role="radio" [attr.aria-checked]="priority() === pr.key" [class.is-on]="priority() === pr.key" (click)="priority.set(pr.key)">{{ pr.label }}</button>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- channel -->
+          <div class="fp-row">
+            <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sms')" /></svg></span>
+            <div class="fp-row-txt">
+              <b>Channel <em>*</em></b>
+              @if (!consentOk()) {
+                <span class="fp-warn">No consent for {{ chLabel(channel()) }}. Pick another channel.</span>
+              } @else if (blockedChannels().length) {
+                <span>No consent on record for {{ blockedChannels().join(', ') }}.</span>
+              } @else {
+                <span>Every channel is allowed for this record.</span>
+              }
+            </div>
+            <div class="fp-row-ctl">
+              <div class="fp-pills" role="radiogroup">
+                @for (c of channels; track c.key) {
+                  <button type="button" role="radio" [attr.aria-checked]="channel() === c.key" [class.is-on]="channel() === c.key" [class.is-off]="!hasConsent(c.key)" [attr.title]="hasConsent(c.key) ? 'Consent on record' : 'No consent on record'" (click)="channel.set(c.key)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}
+                  </button>
+                }
+              </div>
+              @if (tried() && errors().channel) { <p class="fu-err">{{ errors().channel }}</p> }
+            </div>
+          </div>
+
+          <!-- date -->
+          <div class="fp-row">
+            <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+            <div class="fp-row-txt">
+              <b>Date <em>*</em></b>
+              <span>{{ when() ? 'Due ' + when()?.rel + '.' : 'The day it is due.' }}</span>
+            </div>
+            <div class="fp-row-ctl">
+              <div class="fu-dd" [class.is-open]="menu() === 'date'">
+                <button type="button" class="fu-input fu-dd-btn" [class.has-err]="tried() && errors().date" (click)="toggleMenu('date', $event)">
+                  <span [class.fu-ph]="!date()">{{ when()?.long ?? 'Select a date' }}</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>
+                </button>
+                @if (menu() === 'date') {
+                  <div class="fu-cal" (click)="$event.stopPropagation()">
+                    <div class="fu-cal-head">
+                      <button type="button" (click)="movePick(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                      <b>{{ pickTitle() }}</b>
+                      <button type="button" (click)="movePick(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                    </div>
+                    <div class="fu-cal-grid">
+                      @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="fu-cal-wd">{{ w }}</span> }
+                      @for (wk of pickWeeks(); track $index) {
+                        @for (c of wk; track c.iso) {
+                          <button type="button" class="fu-cal-day" [class.is-out]="c.out" [class.is-today]="c.iso === todayIso" [class.is-on]="c.iso === date()" [disabled]="c.iso < todayIso" (click)="pickDate(c.iso)">{{ c.day }}</button>
+                        }
+                      }
+                    </div>
+                    <div class="fu-cal-foot"><button type="button" class="fu-link" (click)="pickDate(todayIso)">Today</button><button type="button" class="fu-link" (click)="date.set(null); menu.set(null)">Clear</button></div>
+                  </div>
+                }
+              </div>
+              <div class="fp-quick">
+                @for (d of datePresets; track d.days) {
+                  <button type="button" [class.is-on]="date() === presetIso(d.days)" (click)="pickDate(presetIso(d.days))">{{ d.label }}</button>
+                }
+              </div>
+              @if (tried() && errors().date) { <p class="fu-err">{{ errors().date }}</p> }
+            </div>
+          </div>
+
+          <!-- time -->
+          <div class="fp-row">
+            <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+            <div class="fp-row-txt">
+              <b>Time <em>*</em></b>
+              <span>@if (p.bestTime) { Best time: {{ p.bestTime }}. } @else { No best time recorded. }</span>
+            </div>
+            <div class="fp-row-ctl">
+              <div class="fu-dd" [class.is-open]="menu() === 'time'">
+                <button type="button" class="fu-input fu-dd-btn" [class.has-err]="tried() && errors().time" (click)="toggleMenu('time', $event)">
+                  <span [class.fu-ph]="!time()">{{ timeLabel(time()) }}</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+                </button>
+                @if (menu() === 'time') {
+                  <ul class="fu-menu fp-times" role="listbox" (click)="$event.stopPropagation()">
+                    @for (t of timeSlots; track t) { <li><button type="button" [class.is-on]="time() === t" (click)="pickTime(t)">{{ timeLabel(t) }}</button></li> }
+                  </ul>
+                }
+              </div>
+              <div class="fp-quick">
+                @for (t of timePresets; track t) { <button type="button" [class.is-on]="time() === t" (click)="pickTime(t)">{{ timeLabel(t) }}</button> }
+              </div>
+              @if (tried() && errors().time) { <p class="fu-err">{{ errors().time }}</p> }
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== brief ===== -->
+        <section class="fu-card fp-card">
+          <header class="fp-card-head">
+            <div><h3>Brief</h3><p>What the person doing it needs to know.</p></div>
+            <span class="fp-tag">Shared with the owner</span>
+          </header>
+          <div class="fp-texts">
+            <label class="fu-field">
+              <span class="fu-lbl">Purpose <em>*</em><small>{{ purpose().length }}/{{ maxText }}</small></span>
+              <textarea class="fu-input" rows="4" maxlength="500" placeholder="e.g. Confirm the visit date and share the facility brochure" [class.has-err]="tried() && errors().purpose" [value]="purpose()" (input)="setText('purpose', $event)"></textarea>
+              @if (tried() && errors().purpose) { <span class="fu-err">{{ errors().purpose }}</span> }
+            </label>
+            <label class="fu-field">
+              <span class="fu-lbl">Expected outcome <small>{{ outcome().length }}/{{ maxText }}</small></span>
+              <textarea class="fu-input" rows="4" maxlength="500" placeholder="e.g. Visit booked, or a clear reason to stop" [value]="outcome()" (input)="setText('outcome', $event)"></textarea>
+            </label>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== side card ===== -->
+      <aside class="fu-card fp-side">
+        <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+        <h3>Ready to schedule?</h3>
+        <p>Fill in the items below. The follow-up lands in {{ owner() ?? 'the owner' }}'s queue as soon as you schedule it.</p>
+        <ul class="fp-checks">
+          @for (c of checklist(); track c.label) {
+            <li [class.is-ok]="c.ok">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.ok ? 'check' : 'clock')" /></svg>
+              <span>{{ c.label }}</span>
+              @if (c.value) { <em>{{ c.value }}</em> }
+            </li>
+          }
+        </ul>
+        <div class="fp-pri">
+          <span>Priority</span>
+          <span [class]="'fu-dot tone-' + priTone(priority())"><span class="fu-tone">{{ priLabel(priority()) }}</span></span>
+        </div>
+        @if (purpose().trim()) { <p class="fp-quote">{{ purpose() }}</p> }
+        <div class="fp-side-foot">
+          <button type="button" class="fu-btn is-primary" [class.is-off]="missing().length > 0" [disabled]="saving()" (click)="schedule()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> {{ saving() ? 'Scheduling…' : 'Schedule follow-up' }}
+          </button>
+          <button type="button" class="fu-btn" (click)="discard()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Discard</button>
+        </div>
+      </aside>
+    </div>
+  } @else {
+    <section class="fu-card fp-empty">
+      <b>No record to plan for</b>
+      <span>Pick a lead or donor first.</span>
+      <button type="button" class="fu-btn is-primary" (click)="changePerson()">Choose a person</button>
+    </section>
+  }
+
+  @if (toast()) { <div class="fu-toast" role="status">{{ toast() }}</div> }
+</div>

@@ -320,7 +320,7 @@
   left: 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: var(--ad-primary);
+  background: var(--cc-btn, var(--ad-primary));
   transform: scaleX(0);
   transition: transform 0.2s ease;
 }
@@ -429,10 +429,10 @@
 }
 
 .ad-av.lg { width: 42px; height: 42px; font-size: 14px; }
-.ad-av.av-0 { background: #e8ddf3; color: #5b3a6e; }
-.ad-av.av-1 { background: #d9e9f5; color: #2f5d86; }
-.ad-av.av-2 { background: #d8eee7; color: #3d7a68; }
-.ad-av.av-3 { background: #f6e6d3; color: #8a5a2b; }
+.ad-av.av-0 { background: color-mix(in srgb, var(--purple, #8763bd) 16%, var(--white, #fff)); color: color-mix(in srgb, var(--purple, #8763bd) 62%, var(--mix-ink, #000)); }
+.ad-av.av-1 { background: color-mix(in srgb, var(--blue, #4169c4) 16%, var(--white, #fff)); color: color-mix(in srgb, var(--blue, #4169c4) 62%, var(--mix-ink, #000)); }
+.ad-av.av-2 { background: color-mix(in srgb, var(--status-success, #3d7a68) 16%, var(--white, #fff)); color: color-mix(in srgb, var(--status-success, #3d7a68) 62%, var(--mix-ink, #000)); }
+.ad-av.av-3 { background: color-mix(in srgb, var(--orange, #c78028) 16%, var(--white, #fff)); color: color-mix(in srgb, var(--orange, #c78028) 62%, var(--mix-ink, #000)); }
 
 .ad-stack { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ad-table .ad-stack > span:not(.ad-bar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -625,7 +625,7 @@
 
 .ad-tile .ad-check svg { width: 13px; height: 13px; stroke-width: 3; opacity: 0; transform: scale(0.5); transition: opacity 0.15s, transform 0.15s; }
 .ad-tile .ad-check:hover { border-color: var(--ad-primary); }
-.ad-tile .ad-check[aria-checked="true"] { border-color: var(--ad-primary); background: var(--ad-primary); }
+.ad-tile .ad-check[aria-checked="true"] { border-color: var(--cc-btn, var(--ad-primary)); background: var(--cc-btn, var(--ad-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .ad-tile .ad-check[aria-checked="true"] svg { opacity: 1; transform: none; }
 
 /* ---- lifetime | last gift ---- */
@@ -851,7 +851,7 @@
 }
 
 .ad-page:hover:not(:disabled):not(.is-on) { border-color: var(--ad-primary-line); color: var(--ad-primary); }
-.ad-page.is-on { border-color: var(--ad-primary); background: var(--ad-primary); color: var(--white, #fff); }
+.ad-page.is-on { border-color: var(--cc-btn, var(--ad-primary)); background: var(--cc-btn, var(--ad-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .ad-page:disabled { opacity: 0.45; cursor: default; }
 
 .ad-empty { padding: 28px 16px; text-align: center; color: var(--ad-muted); }

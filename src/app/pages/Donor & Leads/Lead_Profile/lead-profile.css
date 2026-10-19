@@ -28,13 +28,13 @@
   --lp-cold: var(--status-info-ink);
   --lp-cold-soft: var(--status-info-bg);
 
-  /* status colours - same as the dots in the lead list */
-  --st-new: #2f5fa7;
-  --st-assigned: #b45f0b;
-  --st-contacted: #0f766e;
-  --st-qualified: #a07a16;
-  --st-converted: #157969;
-  --st-closed: #b42335;
+  /* status colours - follow the app theme's Status colours (same family as the dots in the lead list) */
+  --st-new: var(--status-info, #2f5fa7);
+  --st-assigned: var(--status-warning, #b45f0b);
+  --st-contacted: var(--lp-primary, #0f766e);
+  --st-qualified: var(--teal, #a07a16);
+  --st-converted: var(--status-success, #157969);
+  --st-closed: var(--status-danger, #b42335);
 
   display: block;
   color: var(--lp-ink);
@@ -461,7 +461,7 @@
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  box-shadow: 0 12px 38px #19374b18, 0 2px 7px #19374b09;
+  box-shadow: var(--shadow, 0 4px 18px #22283f04);
   overflow: hidden;
   animation: lp-pop .14s ease-out
 }
@@ -792,7 +792,7 @@
 }
 
 .lp-ring-val.is-warn {
-  stroke: #d08a2c
+  stroke: var(--lp-warn)
 }
 
 .lp-ring-val.is-bad {
@@ -1224,7 +1224,7 @@ dd.is-due {
   background: var(--inverse-bg);
   color: #fff;
   font-size: calc(13px * var(--font-scale, 1));
-  box-shadow: 0 8px 26px #102b3f33;
+  box-shadow: var(--shadow, 0 8px 26px #102b3f33);
   transform: translateX(-50%);
   animation: lp-toast .2s ease-out
 }

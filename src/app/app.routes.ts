@@ -29,6 +29,14 @@ import { LeadCaptureSingle } from './pages/Donor & Leads/lead-capture/single/lea
 import { AllDonors } from './pages/Donor & Leads/All Donors/all-donors';
 import { Donor360 } from './pages/Donor & Leads/Donor360/donor-360';
 import { DonorProfileEdit } from './pages/Donor & Leads/Edit_Profile/donor-profile-edit';
+import { ConsentCentre } from './pages/Donor & Leads/Consent_Preferences/consent-centre';
+import { LogCommunication } from './pages/Donor & Leads/Log_communication/log-communication';
+import { CommunicationTimeline } from './pages/Donor & Leads/Communication_Timeline/communication-timeline';
+import { AssignmentBoard } from './pages/Donor & Leads/Assignment_Board/assignment-board';
+import { FollowUpExecution } from './pages/Donor & Leads/FollowUp_Execution/follow-up-execution';
+import { FollowUpPlanner } from './pages/Donor & Leads/Follow_Planner/follow-up-planner';
+import { FollowUps } from './pages/Donor & Leads/Follow_Ups/follow-ups';
+import { NewFollowUp } from './pages/Donor & Leads/New_FollowUp/new-follow-up';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -38,7 +46,12 @@ const REAL_SCREENS: Record<string, unknown> = {
   'app/fundraising/campaigns/campaign-register': CampaignRegister,
   'app/fundraising/relationships/lead-work-queue': LeadWorkQueue,
   'app/fundraising/donors/all-donors': AllDonors,
-  'app/fundraising/relationships/donor-360': Donor360
+  'app/fundraising/relationships/donor-360': Donor360,
+  'app/fundraising/relationships/communication-timeline': CommunicationTimeline,
+  'app/fundraising/relationships/follow-up-queue': FollowUps,
+  'app/fundraising/relationships/follow-up-planner': FollowUpPlanner,
+  'app/fundraising/relationships/follow-up-execution': FollowUpExecution,
+  'app/fundraising/relationships/assignment-board': AssignmentBoard
 };
 
 const menuRoutes: Routes = flatten(MENU_DATA)
@@ -50,11 +63,8 @@ const menuRoutes: Routes = flatten(MENU_DATA)
     data: { name: item.name, route: item.route }
   }));
 
-
-
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
-
 
   // Campaign Routes
   {
@@ -63,7 +73,7 @@ export const routes: Routes = [
     title: 'Campaign Detail',
     data: { name: 'Campaign Detail', route: '/app/fundraising/campaigns/campaign-detail' }
   },
-    {
+  {
     path: 'app/fundraising/campaigns/campaign-detail',
     component: CampaignDetail,
     title: 'Campaign Detail',
@@ -107,10 +117,62 @@ export const routes: Routes = [
       { path: '**', redirectTo: LC_PATHS.single },
     ],
   },
-      { path:  'app/fundraising/relationships/donor/edit', component: DonorProfileEdit, title: 'Donor Profile Edit' },
+  // Donor 360 → Edit profile (same path as editPath in donor-360.ts)
+  {
+    path: 'app/fundraising/relationships/donor-360/edit',
+    component: DonorProfileEdit,
+    title: 'Edit profile',
+    data: { name: 'Donor 360', route: '/app/fundraising/relationships/donor-360' }
+  },
+  {
+    path: 'app/fundraising/relationships/consent-and-preference-centre',
+    component: ConsentCentre,
+    title: 'Consent and preference centre',
+    data: { name: 'Consent and preference centre', route: '/app/fundraising/relationships/consent-and-preference-centre' }
+  },
+
+  // Communication timeline (list) + Log communication (form) - two-way nav
+  {
+    path: 'app/fundraising/relationships/communication-timeline/log',
+    component: LogCommunication,
+    title: 'Log communication',
+    data: { name: 'Communication Timeline', route: '/app/fundraising/relationships/communication-timeline' }
+  },
+
+  // Follow-ups: queue → new (pick person) → plan (?ref=) · queue ▶ → execute (?id=) · assignment board
+  {
+    path: 'app/fundraising/relationships/follow-up-queue',
+    component: FollowUps,
+    title: 'Follow-ups',
+    data: { name: 'Follow-ups', route: '/app/fundraising/relationships/follow-up-queue' }
+  },
+  {
+    path: 'app/fundraising/relationships/follow-up-queue/new',
+    component: NewFollowUp,
+    title: 'New follow-up',
+    data: { name: 'Follow-ups', route: '/app/fundraising/relationships/follow-up-queue' }
+  },
+  {
+    path: 'app/fundraising/relationships/follow-up-queue/plan',
+    component: FollowUpPlanner,
+    title: 'Plan follow-up',
+    data: { name: 'Follow-ups', route: '/app/fundraising/relationships/follow-up-queue' }
+  },
+  {
+    path: 'app/fundraising/relationships/follow-up-queue/execute',
+    component: FollowUpExecution,
+    title: 'Follow-up execution',
+    data: { name: 'Follow-ups', route: '/app/fundraising/relationships/follow-up-queue' }
+  },
+  {
+    path: 'app/fundraising/relationships/assignment-board',
+    component: AssignmentBoard,
+    title: 'Assignment board',
+    data: { name: 'Assignment board', route: '/app/fundraising/relationships/assignment-board' }
+  },
 
   // Masters
-    { path: 'app/masters/country', component: Countries, title: 'Countries' },
+  { path: 'app/masters/country', component: Countries, title: 'Countries' },
   { path: 'app/masters/country/new', component: CountryForm, title: 'New country' },
   { path: 'app/masters/country/:id/edit', component: CountryForm, title: 'Edit country' },
 
@@ -130,6 +192,6 @@ export const routes: Routes = [
   { path: 'app/masters/timezone/new', component: TimeZoneForm, title: 'New time zone' },
   { path: 'app/masters/timezone/:id/edit', component: TimeZoneForm, title: 'Edit time zone' },
   { path: 'app/auth/profile', component: Profile, title: 'Profile', data: { name: 'Profile', route: '/app/auth/profile' } },
-   { path: 'app/fundraising/Lead/Lead-view', component: LeadProfile, title: 'Lead_Profile', data: { name: 'Lead_Profile', route: '/app/fundraising/Lead/Lead-view' } },
+  { path: 'app/fundraising/Lead/Lead-view', component: LeadProfile, title: 'Lead_Profile', data: { name: 'Lead_Profile', route: '/app/fundraising/Lead/Lead-view' } },
   ...menuRoutes
 ];

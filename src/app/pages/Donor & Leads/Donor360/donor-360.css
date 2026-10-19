@@ -70,7 +70,7 @@
   height: 56px;
   border-radius: 50%;
   background: var(--dx-primary);
-  color: var(--white, #fff);
+  color: var(--primary-on, #fff);
   font-size: 19px;
   font-weight: 600;
   box-shadow: 0 0 0 4px var(--dx-primary-soft);
@@ -349,7 +349,7 @@
 }
 
 .dx-j-ico svg { width: 16px; height: 16px; }
-.dx-journey li.is-on .dx-j-ico { border: 0; background: var(--dx-primary); color: var(--white, #fff); box-shadow: 0 0 0 4px var(--dx-primary-soft); }
+.dx-journey li.is-on .dx-j-ico { border: 0; background: var(--cc-btn, var(--dx-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); box-shadow: 0 0 0 4px var(--dx-primary-soft); }
 .dx-journey li:hover .dx-j-ico { transform: scale(1.06); }
 
 .dx-j-txt { position: relative; z-index: 1; display: grid; min-width: 0; padding-right: 10px; background: var(--dx-card); line-height: 1.3; }
@@ -699,8 +699,8 @@ col.w-act { width: 100px; }
 .dx-btn:hover { border-color: var(--dx-primary-line); color: var(--dx-primary) !important; }
 .dx-btn:hover svg { transform: rotate(90deg); }
 .dx-btn.sm { height: 34px; padding: 0 12px; font-size: 12px; }
-.dx-btn.is-primary { border-color: var(--dx-primary); background: var(--dx-primary); color: var(--white, #fff) !important; }
-.dx-btn.is-primary:hover { background: color-mix(in srgb, var(--dx-primary) 88%, #000); }
+.dx-btn.is-primary { border-color: var(--cc-btn, var(--dx-primary)); background: var(--cc-btn, var(--dx-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
+.dx-btn.is-primary:hover { background: color-mix(in srgb, var(--cc-btn, var(--dx-primary)) 88%, #000); }
 
 /* ================= create donation intent popup
    (same look as the receipt popup: soft scrim, white dialog, bordered close, eyebrow + name + pill,
@@ -981,7 +981,7 @@ col.w-act { width: 100px; }
 .di-cal-day:hover:not(:disabled) { background: var(--dx-primary-soft); color: var(--dx-primary) !important; }
 .di-cal-day.is-out { color: var(--dx-muted) !important; opacity: 0.6; }
 .di-cal-day.is-today { box-shadow: inset 0 0 0 1px var(--dx-primary-line); font-weight: 600; }
-.di-cal-day.is-on { background: var(--dx-primary); color: var(--white, #fff) !important; font-weight: 600; }
+.di-cal-day.is-on { background: var(--cc-btn, var(--dx-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; font-weight: 600; }
 .di-cal-day:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* notes */
@@ -1042,8 +1042,8 @@ col.w-act { width: 100px; }
 
 .di-btn svg { width: 15px; height: 15px; }
 .di-btn:hover { background: var(--dx-primary-soft); color: var(--dx-primary) !important; }
-.di-btn.is-primary { border-color: var(--dx-primary); background: var(--dx-primary); color: var(--white, #fff) !important; }
-.di-btn.is-primary:hover { background: color-mix(in srgb, var(--dx-primary) 88%, #000); color: var(--white, #fff) !important; }
+.di-btn.is-primary { border-color: var(--cc-btn, var(--dx-primary)); background: var(--cc-btn, var(--dx-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
+.di-btn.is-primary:hover { background: color-mix(in srgb, var(--cc-btn, var(--dx-primary)) 88%, #000); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
 .di-btn.is-primary:hover svg { animation: di-pop 0.35s ease; }
 
 @keyframes di-fade { from { opacity: 0; } }

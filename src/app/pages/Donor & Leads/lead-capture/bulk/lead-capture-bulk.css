@@ -151,7 +151,7 @@
 }
 
 .bu-dot svg { width: 14px; height: 14px; stroke-width: 2.4; }
-.bu-step.is-now .bu-dot { border-color: var(--bu-primary); background: var(--bu-primary); color: var(--white, #fff); }
+.bu-step.is-now .bu-dot { border-color: var(--cc-btn, var(--bu-primary)); background: var(--cc-btn, var(--bu-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .bu-step.is-done .bu-dot { border-color: var(--bu-success); background: var(--bu-success); color: #fff; }
 
 .bu-step-in { min-width: 0; padding: 14px 0; }
@@ -355,13 +355,13 @@
   width: 13px;
   height: 13px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+  background: var(--white, #fff);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 22%, transparent);
   transition: transform .2s ease;
 }
 
 .bu-toggle[aria-checked="true"] { color: var(--bu-primary) !important; }
-.bu-toggle[aria-checked="true"] i { background: var(--bu-primary); }
+.bu-toggle[aria-checked="true"] i { background: var(--cc-btn, var(--bu-primary)); }
 .bu-toggle[aria-checked="true"] i::after { transform: translateX(13px); }
 
 /* review table - fixed layout, no sideways scroll */
@@ -487,8 +487,8 @@ col.c-st { width: auto; }
 .bu-btn svg { width: 15px; height: 15px; }
 .bu-btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--bu-primary) 35%, var(--bu-line)); color: var(--bu-primary); }
 .bu-btn:hover:not(:disabled) svg { animation: bu-nudge .5s ease; }
-.bu-btn.is-primary { border-color: var(--bu-primary); background: var(--bu-primary); color: var(--white, #fff); }
-.bu-btn.is-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--bu-primary) 88%, #000); color: var(--white, #fff); }
+.bu-btn.is-primary { border-color: var(--cc-btn, var(--bu-primary)); background: var(--cc-btn, var(--bu-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
+.bu-btn.is-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--cc-btn, var(--bu-primary)) 88%, #000); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .bu-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ================= motion ================= */

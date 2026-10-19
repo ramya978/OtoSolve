@@ -110,7 +110,23 @@ html[data-cc="on"] .cp-card,
 html[data-cc="on"] .cp-create,
 html[data-cc="on"] .cp-summary,
 html[data-cc="on"] .cp-rcard,
-html[data-cc="on"] .cp-actionbar {
+html[data-cc="on"] .cp-actionbar,
+/* Donors & Leads menu pages (All Donors, Donor 360, Consent, Timeline, Follow-ups family,
+   Assignment board, Lead Work Queue, Lead Capture, Log communication, Edit profile) */
+html[data-cc="on"] .ad-card,
+html[data-cc="on"] .ad-kpi,
+html[data-cc="on"] .dx-sec,
+html[data-cc="on"] .cc-card,
+html[data-cc="on"] .cc-summary,
+html[data-cc="on"] .ct-card,
+html[data-cc="on"] .fu-card,
+html[data-cc="on"] .lwq-panel,
+html[data-cc="on"] .lc-card,
+html[data-cc="on"] .pe-card,
+html[data-cc="on"] .sl-form,
+html[data-cc="on"] .sl-done,
+html[data-cc="on"] .bu-tpl,
+html[data-cc="on"] .bu-result {
   border-color: var(--cc-card-outline)
 }
 

@@ -1,0 +1,682 @@
+<!-- =====================================================================================================
+     FOLLOW-UPS  (account-workspace look, same as My profile)
+     Page header → my-queue card → figures strip → view tabs → attention banner
+     → "All follow-ups" card (quick filters · tools · filters · week strip · list / board / calendar · pager)
+       + side cards (queue health · SLA monitor · pending by age)
+     → details drawer · reassign / escalate / history / day popups.
+     ===================================================================================================== -->
+<div class="fq">
+  <!-- ===== page header ===== -->
+  <header class="fu-page">
+    <div class="fu-page-txt">
+      <span class="fu-eyebrow">Relationship workspace</span>
+      <h1>Follow-ups</h1>
+      <p>Every call, e-mail and visit the team owes a lead or donor - and whether it is on time.</p>
+    </div>
+    <div class="fu-page-actions">
+      <button type="button" class="fu-btn" (click)="refresh()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg> Refresh</button>
+      <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
+      <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New follow-up</button>
+    </div>
+  </header>
+
+  <!-- ===== my queue ===== -->
+  <section class="fu-card fq-hero">
+    <div class="fq-me">
+      <span class="fq-me-ava">{{ me().ini }}</span>
+      <div class="fq-me-txt">
+        <div class="fq-me-name"><h2>{{ me().name }}</h2><span class="fq-tag">{{ health().state.label }} queue</span></div>
+        <p class="fq-me-sub">Your follow-ups <span class="fq-sep">·</span> <span class="fu-mono">{{ me().team }}</span></p>
+        <p class="fq-me-meta">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>{{ me().open }} open</span>
+          <span [class.fq-red]="me().overdue > 0"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>{{ me().overdue }} overdue</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg>{{ me().ready }} ready to execute</span>
+        </p>
+      </div>
+    </div>
+    <div class="fq-next">
+      <span class="fu-eyebrow">Today's agenda</span>
+      @if (nextUp(); as n) {
+        <button type="button" class="fq-next-btn" (click)="openDetails(n.id)">{{ n.name }}</button>
+        <small>{{ chLabel(n) }} · {{ when(n).text }} · {{ time(n.dueAt) }}</small>
+      } @else {
+        <b>Nothing due</b>
+        <small>Your agenda is clear.</small>
+      }
+      <small>{{ agenda().todo }} to do · {{ agenda().done }} done · <button type="button" class="fu-link" (click)="openAgenda()">Open</button></small>
+    </div>
+  </section>
+
+ 
+
+  <!-- ===== view tabs ===== -->
+  <nav class="fq-vtabs" aria-label="View">
+    <div class="fq-vtab-list" role="tablist">
+      @for (v of views(); track v.key) {
+        <button type="button" role="tab" [class.is-on]="view() === v.key" [attr.aria-selected]="view() === v.key" (click)="setView(v.key)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(v.icon)" /></svg>{{ v.label }}
+          @if (v.key === 'list') { <em>{{ filtered().length }}</em> }
+        </button>
+      }
+    </div>
+    <span class="fq-vtab-note">{{ sortLabel() }} · {{ filterCount() ? filterCount() + ' filter' + (filterCount() === 1 ? '' : 's') : 'no filters' }}</span>
+  </nav>
+
+
+
+  <div class="fq-grid" [class.is-wide]="view() === 'calendar'">
+    <!-- ===== all follow-ups ===== -->
+    <section class="fu-card fq-main">
+      <header class="fq-card-head">
+        <div><h3>All follow-ups</h3><p>Search, filter and act on the queue.</p></div>
+        <span class="fq-tag">{{ filtered().length }} records</span>
+      </header>
+
+      <div class="fq-tools">
+        <label class="fu-search fq-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="text" placeholder="Search name, reference or purpose" [value]="query()" (input)="setQuery($event)" />
+        </label>
+        <div class="fu-dd" [class.is-open]="menu() === 'sort'">
+          <button type="button" class="fu-btn" (click)="toggleMenu('sort', $event)" [attr.aria-expanded]="menu() === 'sort'">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg> {{ sortLabel() }} <svg class="fq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'sort') {
+            <ul class="fu-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+              @for (s of sorts; track s.key) {
+                <li><button type="button" [class.is-on]="sort() === s.key" (click)="setSort(s.key)">{{ s.label }}@if (sort() === s.key) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></li>
+              }
+            </ul>
+          }
+        </div>
+        <button type="button" class="fu-btn" [class.is-active]="filtersOpen() || filterCount()" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg> Filters @if (filterCount()) { <em class="fu-count">{{ filterCount() }}</em> }
+        </button>
+      </div>
+
+      <!-- quick filters -->
+      <nav class="fq-quick" aria-label="Quick views">
+        @for (grp of tabs(); track $index) {
+          @for (t of grp; track t.key) {
+            <button type="button" [class.is-on]="tab() === t.key" (click)="setTab(t.key)">{{ t.label }} <em>{{ t.n }}</em></button>
+          }
+        }
+      </nav>
+
+      <!-- filters panel -->
+      @if (filtersOpen()) {
+        <div class="fq-filters">
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Status</span>
+            <div class="fq-pills">
+              @for (s of statuses; track s.key) { <button type="button" [class.is-on]="hasStatus(s.key)" (click)="toggleStatus(s.key)">{{ s.label }}</button> }
+            </div>
+          </div>
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Channel</span>
+            <div class="fq-pills">
+              @for (c of channels; track c.key) {
+                <button type="button" [class.is-on]="hasChannel(c.key)" (click)="toggleChannel(c.key)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}</button>
+              }
+            </div>
+          </div>
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Priority</span>
+            <div class="fq-pills">
+              @for (p of priorities; track p.key) {
+                <button type="button" [class.is-on]="hasPriority(p.key)" (click)="togglePriority(p.key)">{{ p.label }}</button>
+              }
+            </div>
+          </div>
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Owner</span>
+            <div class="fu-dd" [class.is-open]="menu() === 'owner'">
+              <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('owner', $event)"><span>{{ fOwner() ?? 'All owners' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+              @if (menu() === 'owner') {
+                <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                  <li><button type="button" [class.is-on]="!fOwner()" (click)="pickOwner(null)">All owners</button></li>
+                  @for (o of owners; track o) { <li><button type="button" [class.is-on]="fOwner() === o" (click)="pickOwner(o)"><span class="fu-ava">{{ ini(o) }}</span>{{ o }}</button></li> }
+                </ul>
+              }
+            </div>
+          </div>
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Campaign</span>
+            <div class="fu-dd" [class.is-open]="menu() === 'campaign'">
+              <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('campaign', $event)"><span>{{ fCampaign() ?? 'All campaigns' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+              @if (menu() === 'campaign') {
+                <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                  <li><button type="button" [class.is-on]="!fCampaign()" (click)="pickCampaign(null)">All campaigns</button></li>
+                  @for (c of campaigns; track c) { <li><button type="button" [class.is-on]="fCampaign() === c" (click)="pickCampaign(c)">{{ c }}</button></li> }
+                </ul>
+              }
+            </div>
+          </div>
+          <div class="fq-fgroup">
+            <span class="fu-eyebrow">Due between</span>
+            <div class="fq-range">
+              <div class="fu-dd">
+                <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('from', $event)"><span [class.fu-ph]="!fFrom()">{{ dateLabel(fFrom()) }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
+                @if (menu() === 'from') {
+                  <div class="fu-cal" (click)="$event.stopPropagation()">
+                    <div class="fu-cal-head">
+                      <button type="button" (click)="movePick(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                      <b>{{ pickTitle() }}</b>
+                      <button type="button" (click)="movePick(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                    </div>
+                    <div class="fu-cal-grid">
+                      @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="fu-cal-wd">{{ w }}</span> }
+                      @for (wk of pickWeeks(); track $index) {
+                        @for (c of wk; track c.iso) {
+                          <button type="button" class="fu-cal-day" [class.is-out]="c.out" [class.is-today]="c.iso === todayIso()" [class.is-on]="c.iso === fFrom()" (click)="pickDate('from', c.iso)">{{ c.day }}</button>
+                        }
+                      }
+                    </div>
+                    <div class="fu-cal-foot"><button type="button" class="fu-link" (click)="pickDate('from', todayIso())">Today</button><button type="button" class="fu-link" (click)="pickDate('from', null)">Clear</button></div>
+                  </div>
+                }
+              </div>
+              <span class="fu-muted">to</span>
+              <div class="fu-dd">
+                <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('to', $event)"><span [class.fu-ph]="!fTo()">{{ dateLabel(fTo()) }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
+                @if (menu() === 'to') {
+                  <div class="fu-cal is-right" (click)="$event.stopPropagation()">
+                    <div class="fu-cal-head">
+                      <button type="button" (click)="movePick(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                      <b>{{ pickTitle() }}</b>
+                      <button type="button" (click)="movePick(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                    </div>
+                    <div class="fu-cal-grid">
+                      @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="fu-cal-wd">{{ w }}</span> }
+                      @for (wk of pickWeeks(); track $index) {
+                        @for (c of wk; track c.iso) {
+                          <button type="button" class="fu-cal-day" [class.is-out]="c.out" [class.is-today]="c.iso === todayIso()" [class.is-on]="c.iso === fTo()" (click)="pickDate('to', c.iso)">{{ c.day }}</button>
+                        }
+                      }
+                    </div>
+                    <div class="fu-cal-foot"><button type="button" class="fu-link" (click)="pickDate('to', todayIso())">Today</button><button type="button" class="fu-link" (click)="pickDate('to', null)">Clear</button></div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+          <footer class="fq-filters-foot">
+            <span class="fu-muted">{{ filterCount() ? filterCount() + ' filter' + (filterCount() === 1 ? '' : 's') + ' applied' : 'No filters applied' }}</span>
+            <button type="button" class="fu-btn sm" (click)="resetFilters()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg> Reset</button>
+          </footer>
+        </div>
+      }
+
+      <!-- week strip -->
+      @if (view() !== 'calendar') {
+        <div class="fq-week">
+          <div class="fq-week-nav">
+            <button type="button" class="fu-icon" (click)="moveWeek(-1)" aria-label="Previous week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+            <span><b>{{ weekTitle().month }}</b><small>{{ weekTitle().range }}</small></span>
+            <button type="button" class="fu-icon" (click)="moveWeek(1)" aria-label="Next week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+            <button type="button" class="fu-btn sm" (click)="thisWeek()">Today</button>
+          </div>
+          <div class="fq-days">
+            @for (d of week(); track d.iso) {
+              <button type="button" class="fq-day" [class.is-today]="d.iso === todayIso()" [class.is-on]="fDay() === d.iso" (click)="pickDay(d.iso)" [attr.title]="d.n + ' follow-up' + (d.n === 1 ? '' : 's') + ', ' + d.pct + '% done'">
+                <small>{{ d.wd }}</small><b>{{ d.d }}</b><em>{{ d.n }}</em>
+              </button>
+            }
+          </div>
+          <p class="fq-week-sum"><b>{{ weekSum().total }}</b> due this week<span>{{ weekSum().done }} done</span></p>
+        </div>
+      }
+
+      @if (selected().length) {
+        <div class="fq-bulk">
+          <b>{{ selected().length }} selected</b>
+          <button type="button" class="fu-btn sm" (click)="startReassign(selected())"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button>
+          <button type="button" class="fu-btn sm" (click)="startEscalate(selected())"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
+          <button type="button" class="fu-link" (click)="clearSel()">Clear</button>
+        </div>
+      }
+
+      <!-- ===== views ===== -->
+      @switch (view()) {
+        @case ('list') {
+          <table class="fq-table">
+            <colgroup><col class="c-sel" /><col /><col class="c-due" /><col class="c-own" /><col class="c-pri" /><col class="c-st" /><col class="c-act" /></colgroup>
+            <thead>
+              <tr>
+                <th class="c-sel"><button type="button" class="fq-check" [class.is-on]="allOnPage()" (click)="togglePage()" aria-label="Select this page">@if (allOnPage()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></th>
+                <th>Follow-up</th><th class="c-due">Due</th><th class="c-own">Assigned to</th><th class="c-pri">Priority</th><th class="c-st">Status</th><th class="c-act"><span class="fq-sr">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of pageRows(); track f.id) {
+                <tr [class.is-sel]="isSel(f.id)" [class.has-menu]="menu() === 'row' && menuRow() === f.id">
+                  <td class="c-sel"><button type="button" class="fq-check" [class.is-on]="isSel(f.id)" (click)="toggleSel(f.id)" [attr.aria-label]="'Select ' + f.name">@if (isSel(f.id)) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></td>
+                  <td>
+                    <div class="fq-who">
+                      <span class="fq-ch" [attr.title]="chLabel(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="chIcon(f)" /></svg></span>
+                      <div>
+                        <button type="button" class="fq-name" (click)="openDetails(f.id)">{{ f.name }}</button>
+                        <p class="fq-purpose" [attr.title]="f.purpose">{{ f.purpose }}</p>
+                        <small class="fq-ref"><b>{{ f.recordType }}</b> · {{ f.id }}@if (f.blocked || f.status === 'escalated') { · <span class="fq-exec" [class.is-warn]="f.blocked">{{ execution(f) }}</span> }</small>
+                        <small [class]="'fq-mdue tone-' + when(f).tone">{{ date(f.dueAt) }} · {{ when(f).text }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="c-due"><b class="fq-date">{{ date(f.dueAt) }}</b><small [class]="'fq-when tone-' + when(f).tone">{{ when(f).text }} · {{ time(f.dueAt) }}</small></td>
+                  <td class="c-own"><span class="fq-owner"><span class="fu-ava">{{ ini(f.owner) }}</span><span>{{ f.owner }}</span></span></td>
+                  <td class="c-pri"><span class="fq-pri">{{ pri(f).label }}</span></td>
+                  <td class="c-st"><span [class]="'fq-status tone-' + st(f).tone">{{ st(f).label }}</span></td>
+                  <td class="c-act">
+                    <div class="fq-acts">
+                      @if (canRun(f)) {
+                        <button type="button" class="fu-icon fq-run" (click)="run(f)" [attr.aria-label]="'Execute follow-up for ' + f.name" title="Execute follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg></button>
+                      }
+                      <div class="fu-dd fq-row-dd">
+                        <button type="button" class="fu-icon" (click)="toggleMenu('row', $event, f.id)" [attr.aria-expanded]="menu() === 'row' && menuRow() === f.id" [attr.aria-label]="'Actions for ' + f.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('more')" /></svg></button>
+                        @if (menu() === 'row' && menuRow() === f.id) {
+                          <ul class="fu-menu is-right" role="menu" (click)="$event.stopPropagation()">
+                            @if (canRun(f)) { <li><button type="button" role="menuitem" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute follow-up</button></li> }
+                            <li><button type="button" role="menuitem" (click)="openDetails(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Open details</button></li>
+                            <li><button type="button" role="menuitem" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button></li>
+                            <li><button type="button" role="menuitem" [disabled]="f.status === 'escalated'" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button></li>
+                            <li><button type="button" role="menuitem" (click)="showHistory(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg> View history</button></li>
+                          </ul>
+                        }
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="7" class="fq-empty"><b>No follow-ups here</b><span>Try another view or reset the filters.</span></td></tr>
+              }
+            </tbody>
+          </table>
+
+          <footer class="fq-foot">
+            <span>Showing <b>{{ range().from }}–{{ range().to }}</b> of <b>{{ range().n }}</b></span>
+            <div class="fu-dd">
+              <button type="button" class="fq-rows" (click)="toggleMenu('rows', $event)">Rows <b>{{ rows() }}</b><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+              @if (menu() === 'rows') {
+                <ul class="fu-menu is-up" (click)="$event.stopPropagation()">
+                  @for (r of rowOptions; track r) { <li><button type="button" [class.is-on]="rows() === r" (click)="setRows(r)">{{ r }} rows</button></li> }
+                </ul>
+              }
+            </div>
+            <nav class="fq-pager" aria-label="Pages">
+              <button type="button" class="fu-icon" [disabled]="page() <= 1" (click)="go(-1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+              @for (p of pageList(); track $index) {
+                <button type="button" class="fq-pg" [class.is-on]="p === page()" [disabled]="p === '…'" (click)="goPage(p)">{{ p }}</button>
+              }
+              <button type="button" class="fu-icon" [disabled]="page() >= pages()" (click)="go(1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+            </nav>
+          </footer>
+        }
+
+        @case ('board') {
+          <div class="fq-board">
+            @for (col of board(); track col.key) {
+              <section class="fq-col">
+                <header><b>{{ col.label }}</b><span class="fq-tag">{{ col.items.length }}</span></header>
+                <div class="fq-col-list">
+                  @for (f of col.items; track f.id) {
+                    <button type="button" class="fq-kard" (click)="openDetails(f.id)">
+                      <span class="fq-kard-top">
+                        <span class="fq-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="chIcon(f)" /></svg></span>
+                        <small class="fu-mono">{{ f.id }}</small>
+                        <small class="fq-pri">{{ pri(f).label }}</small>
+                      </span>
+                      <b>{{ f.name }}</b>
+                      <span class="fq-kard-txt">{{ f.purpose }}</span>
+                      <span class="fq-kard-foot">
+                        <small [class]="'tone-' + when(f).tone"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>{{ when(f).text }}</small>
+                        <span class="fu-ava" [attr.title]="f.owner">{{ ini(f.owner) }}</span>
+                      </span>
+                    </button>
+                  } @empty {
+                    <p class="fq-none">Nothing here.</p>
+                  }
+                </div>
+              </section>
+            }
+          </div>
+        }
+
+        @case ('calendar') {
+          <div class="fq-pl">
+            <!-- toolbar -->
+            <header class="fq-pl-bar">
+              <div class="fq-pl-nav">
+                <button type="button" class="fu-icon" (click)="moveWeek(-1)" aria-label="Previous week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                <button type="button" class="fu-icon" (click)="moveWeek(1)" aria-label="Next week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                <h3>{{ weekLabel() }}</h3>
+                <button type="button" class="fu-btn sm" (click)="thisWeek()">This week</button>
+              </div>
+              <div class="fq-pl-filters">
+                <div class="fq-pl-f">
+                  <span class="fu-lbl">Go to date</span>
+                  <div class="fu-dd" [class.is-open]="menu() === 'c-date'">
+                    <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('c-date', $event)"><span [class.fu-ph]="!goDate()">{{ dateLabel(goDate()) }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
+                    @if (menu() === 'c-date') {
+                      <div class="fu-cal is-right" (click)="$event.stopPropagation()">
+                        <div class="fu-cal-head">
+                          <button type="button" (click)="movePick(-1)" aria-label="Previous month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+                          <b>{{ pickTitle() }}</b>
+                          <button type="button" (click)="movePick(1)" aria-label="Next month"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+                        </div>
+                        <div class="fu-cal-grid">
+                          @for (w of ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; track w) { <span class="fu-cal-wd">{{ w }}</span> }
+                          @for (wk of pickWeeks(); track $index) {
+                            @for (c of wk; track c.iso) {
+                              <button type="button" class="fu-cal-day" [class.is-out]="c.out" [class.is-today]="c.iso === todayIso()" [class.is-on]="c.iso === goDate()" (click)="goTo(c.iso)">{{ c.day }}</button>
+                            }
+                          }
+                        </div>
+                        <div class="fu-cal-foot"><button type="button" class="fu-link" (click)="goTo(todayIso())">Today</button></div>
+                      </div>
+                    }
+                  </div>
+                </div>
+                <div class="fq-pl-f">
+                  <span class="fu-lbl">Channel</span>
+                  <div class="fu-dd" [class.is-open]="menu() === 'c-cat'">
+                    <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('c-cat', $event)"><span>{{ catLabel() }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+                    @if (menu() === 'c-cat') {
+                      <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                        <li><button type="button" [class.is-on]="!cCat()" (click)="pickCat(null)">All channels</button></li>
+                        @for (c of channels; track c.key) { <li><button type="button" [class.is-on]="cCat() === c.key" (click)="pickCat(c.key)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}</button></li> }
+                      </ul>
+                    }
+                  </div>
+                </div>
+                <div class="fq-pl-f">
+                  <span class="fu-lbl">Staff member</span>
+                  <div class="fu-dd" [class.is-open]="menu() === 'c-staff'">
+                    <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('c-staff', $event)"><span>{{ cStaff() ?? 'Everyone' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+                    @if (menu() === 'c-staff') {
+                      <ul class="fu-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+                        <li><button type="button" [class.is-on]="!cStaff()" (click)="pickStaff(null)">Everyone</button></li>
+                        @for (o of owners; track o) { <li><button type="button" [class.is-on]="cStaff() === o" (click)="pickStaff(o)"><span class="fu-ava">{{ ini(o) }}</span>{{ o }}</button></li> }
+                      </ul>
+                    }
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            <!-- week figures -->
+            <div class="fq-pl-stats">
+              <span><b>{{ weekStats().total }}</b> scheduled follow-ups</span>
+              <span><b>{{ weekStats().staff }}</b> staff involved</span>
+              <span><b>{{ weekStats().open }}</b> still open</span>
+              <span [class.fq-red]="weekStats().overdue > 0"><b>{{ weekStats().overdue }}</b> overdue</span>
+              <small>Selected week and filters</small>
+            </div>
+
+            <!-- grid -->
+            <div class="fq-pl-grid" role="table" aria-label="Follow-ups by staff member and day">
+              <div class="fq-pl-row fq-pl-head" role="row">
+                <span class="fq-pl-staff" role="columnheader">Staff member / load</span>
+                @for (d of weekDays(); track d.iso) {
+                  <button type="button" class="fq-pl-day" [class.is-today]="d.today" role="columnheader" (click)="openDay(d.iso)"><small>{{ d.wd }}</small><b>{{ d.label }}</b></button>
+                }
+              </div>
+              @for (r of planner(); track r.name) {
+                <div class="fq-pl-row" role="row">
+                  <div class="fq-pl-staff" role="rowheader">
+                    <b>{{ r.name }}</b>
+                    <span>{{ r.team }}</span>
+                    <small>{{ r.count }} follow-up{{ r.count === 1 ? '' : 's' }} · {{ r.open }} open</small>
+                  </div>
+                  @for (c of r.days; track c.iso; let i = $index) {
+                    <div class="fq-pl-cell" [class.is-empty]="!c.items.length" role="cell">
+                      <span class="fq-pl-dl">{{ weekDays()[i].wd }} {{ weekDays()[i].label }}</span>
+                      @for (f of c.items; track f.id) {
+                        <button type="button" [class]="'fq-pl-ev tone-' + evTone(f)" (click)="openDetails(f.id)">
+                          <small>{{ time(f.dueAt) }} · {{ chLabel(f) }}</small>
+                          <b>{{ f.name }}</b>
+                          <span>{{ st(f).label }}@if (isOverdue(f)) { · overdue }</span>
+                        </button>
+                      } @empty {
+                        <span class="fq-pl-none">No follow-ups</span>
+                        <button type="button" class="fq-pl-add" (click)="addFor(r.name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Add</button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <footer class="fq-pl-foot">
+              <p>Counts include every follow-up due in the selected week that matches the list filters, the channel and the staff member.</p>
+              <p class="fq-legend"><span class="fu-dot tone-ink">Open</span><span class="fu-dot tone-amber">Escalated</span><span class="fu-dot tone-red">Overdue</span><span class="fu-dot tone-green">Done</span></p>
+            </footer>
+          </div>
+        }
+      }
+    </section>
+
+    <!-- ===== side cards ===== -->
+    <aside class="fq-side">
+      <!-- queue health -->
+      <section class="fu-card fq-sc">
+        <span class="fq-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pulse')" /></svg></span>
+        <h3>Queue health</h3>
+        <p>{{ health().done }}% of all follow-ups are closed. {{ health().overduePct }}% of open work is overdue.</p>
+        <ul class="fq-checks">
+          <li [class.is-ok]="health().overduePct < 20"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(health().overduePct < 20 ? 'check' : 'alert')" /></svg><span>Overdue work</span><em>{{ health().overdue }}</em></li>
+          <li [class.is-ok]="!health().escalated"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(!health().escalated ? 'check' : 'alert')" /></svg><span>Escalated</span><em>{{ health().escalated }}</em></li>
+          <li [class.is-ok]="!health().blocked"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(!health().blocked ? 'check' : 'alert')" /></svg><span>Blocked by consent</span><em>{{ health().blocked }}</em></li>
+        </ul>
+        <div class="fq-sc-foot"><span>State</span><b [class]="'tone-' + health().state.tone">{{ health().state.label }}</b></div>
+      </section>
+
+      <!-- SLA monitor -->
+      <section class="fu-card fq-sc">
+        <span class="fq-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('target')" /></svg></span>
+        <h3>SLA monitor</h3>
+        <p><b class="fq-big">{{ sla().onTimePct }}%</b> of {{ sla().open }} open follow-ups are on time.</p>
+        <div class="fq-stack" aria-hidden="true">
+          @for (p of sla().parts; track p.key) { <i [class]="'tone-' + p.tone" [style.width]="p.w + '%'"></i> }
+        </div>
+        <ul class="fq-rows-list">
+          @for (p of sla().parts; track p.key) {
+            <li><span [class]="'fq-key tone-' + p.tone"></span><span>{{ p.label }}</span><em>{{ p.value }}</em></li>
+          }
+        </ul>
+      </section>
+
+      <!-- pending by age -->
+      <section class="fu-card fq-sc">
+        <span class="fq-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('hourglass')" /></svg></span>
+        <h3>Pending by age</h3>
+        <p>{{ ages().total }} pending follow-ups, by days since they were created.</p>
+        <ul class="fq-ages">
+          @for (b of ages().buckets; track b.label) {
+            <li [class]="'tone-' + b.tone">
+              <span>{{ b.label }}</span>
+              <i class="fq-age-bar"><i [style.width]="b.pct + '%'"></i></i>
+              <em>{{ b.n }}</em>
+            </li>
+          }
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+
+  <!-- ===== details offcanvas ===== -->
+  @if (current(); as f) {
+    <div class="fq-scrim" (click)="drawer.set(null)"></div>
+    <aside class="fq-drawer" role="dialog" aria-modal="true" aria-labelledby="fq-dr-title">
+      <header class="fq-dr-head">
+        <div>
+          <span class="fu-eyebrow">Follow-ups / {{ f.id }}</span>
+          <h2 id="fq-dr-title">{{ f.name }}</h2>
+        </div>
+        <button type="button" class="fq-dr-x" (click)="drawer.set(null)" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+      </header>
+      <div class="fq-dr-body">
+        <p class="fq-dr-cat"><span [class]="'fu-dot tone-' + evTone(f)">{{ chLabel(f) }} · {{ st(f).label }}</span></p>
+        <dl class="fq-dr-rows">
+          <div><dt>When</dt><dd>{{ date(f.dueAt) }} {{ time(f.dueAt) }}<small [class]="'tone-' + when(f).tone">{{ when(f).text }} · Asia/Kolkata · UTC +05:30</small></dd></div>
+          <div><dt>Staff owner</dt><dd>{{ f.owner }}</dd></div>
+          <div><dt>Record</dt><dd>{{ f.name }} · <span class="fu-mono">{{ f.recordCode }}</span><small class="fq-cap">{{ f.recordType }}</small></dd></div>
+          <div><dt>Campaign</dt><dd>{{ f.campaign }}</dd></div>
+          <div><dt>Channel</dt><dd>{{ chLabel(f) }}@if (f.blocked) { <small class="fq-red">Blocked - no consent for this channel</small> }</dd></div>
+          <div><dt>Priority</dt><dd>{{ pri(f).label }}</dd></div>
+          <div><dt>Contact</dt><dd>{{ f.phone }}<small>{{ f.email }}</small></dd></div>
+          @if (f.escalatedTo) { <div><dt>Escalated to</dt><dd>{{ f.escalatedTo }}</dd></div> }
+          <div><dt>Reference</dt><dd><span class="fu-mono">{{ f.id }}</span> · created {{ date(f.createdAt) }}</dd></div>
+        </dl>
+
+        <section class="fq-dr-sec">
+          <h3>Purpose &amp; next action</h3>
+          <p>{{ f.purpose }}</p>
+          <p class="fq-dr-next"><b>Next:</b> {{ f.nextAction }}</p>
+        </section>
+
+        <div class="fq-dr-actions">
+          @if (canRun(f)) {
+            <button type="button" class="fu-btn is-primary" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute</button>
+          } @else if (!f.completedAt) {
+            <button type="button" class="fu-btn is-primary" (click)="markDone(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Mark done</button>
+          }
+          <button type="button" class="fu-btn" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button>
+          <button type="button" class="fu-btn" [disabled]="f.status === 'escalated' || !!f.completedAt" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
+        </div>
+
+        <section class="fq-dr-sec">
+          <h3>History</h3>
+          <ol class="fq-hist">
+            @for (h of f.history; track $index) { <li><b>{{ h.text }}</b><small>{{ date(h.at) }} · {{ time(h.at) }} · {{ h.by }}</small></li> }
+          </ol>
+        </section>
+      </div>
+    </aside>
+  }
+
+  <!-- ===== reassign ===== -->
+  @if (dialog() === 'reassign') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-r-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg></span>
+          <div><h2 id="fq-r-title">Reassign follow-up{{ targets().length > 1 ? 's' : '' }}</h2><p>Hand the work to another relationship owner.</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <p class="fq-targets">@for (t of targetItems().slice(0, 3); track t.id) { <span class="fu-chip">{{ t.name }} · {{ t.owner }}</span> }@if (targetItems().length > 3) { <span class="fu-chip">+{{ targetItems().length - 3 }} more</span> }</p>
+          <div class="fu-field" [class.has-err]="tried() && rError()">
+            <span class="fu-lbl">New owner <em>*</em></span>
+            <div class="fu-dd" [class.is-open]="menu() === 'r-owner'">
+              <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('r-owner', $event)"><span [class.fu-ph]="!rOwner()">{{ rOwner() ?? 'Select an owner' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+              @if (menu() === 'r-owner') {
+                <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                  @for (o of owners; track o) { <li><button type="button" [class.is-on]="rOwner() === o" (click)="pickROwner(o)"><span class="fu-ava">{{ ini(o) }}</span>{{ o }}<small>{{ store.load().get(o) ?? 0 }} open</small></button></li> }
+                </ul>
+              }
+            </div>
+            @if (tried() && rError()) { <p class="fu-err">{{ rError() }}</p> }
+          </div>
+          <div class="fu-field">
+            <span class="fu-lbl">Reason <small>Optional</small></span>
+            <input class="fu-input" type="text" placeholder="Why is it moving?" [value]="rReason()" (input)="setText(rReason, $event)" />
+          </div>
+        </div>
+        <footer class="fu-dlg-foot">
+          <button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
+          <button type="button" class="fu-btn is-primary" [class.is-off]="!!rError()" (click)="confirmReassign()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== escalate ===== -->
+  @if (dialog() === 'escalate') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-e-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico tone-amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg></span>
+          <div><h2 id="fq-e-title">Escalate follow-up{{ targets().length > 1 ? 's' : '' }}</h2><p>Hand it to somebody who can move it, and record why. It is marked escalated for everyone.</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <p class="fq-targets">@for (t of targetItems().slice(0, 3); track t.id) { <span class="fu-chip">{{ t.name }}</span> }@if (targetItems().length > 3) { <span class="fu-chip">+{{ targetItems().length - 3 }} more</span> }</p>
+          <div class="fu-field" [class.has-err]="tried() && eErrors().to">
+            <span class="fu-lbl">Escalate to <em>*</em></span>
+            <div class="fu-dd" [class.is-open]="menu() === 'e-manager'">
+              <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('e-manager', $event)"><span [class.fu-ph]="!eTo()">{{ eTo() ?? 'Select a manager' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
+              @if (menu() === 'e-manager') {
+                <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+                  @for (m of managers; track m) { <li><button type="button" [class.is-on]="eTo() === m" (click)="pickEManager(m)"><span class="fu-ava">{{ ini(m) }}</span>{{ m }}<small>Manager</small></button></li> }
+                </ul>
+              }
+            </div>
+            @if (tried() && eErrors().to) { <p class="fu-err">{{ eErrors().to }}</p> }
+          </div>
+          <div class="fu-field" [class.has-err]="tried() && eErrors().reason">
+            <span class="fu-lbl">Reason <em>*</em></span>
+            <input class="fu-input" type="text" placeholder="What is stuck and why" [value]="eReason()" (input)="setText(eReason, $event)" />
+            @if (tried() && eErrors().reason) { <p class="fu-err">{{ eErrors().reason }}</p> }
+          </div>
+          <div class="fu-field">
+            <span class="fu-lbl">Notes <small>Optional</small></span>
+            <textarea class="fu-input" rows="3" placeholder="Anything the manager should know" [value]="eNotes()" (input)="setText(eNotes, $event)"></textarea>
+          </div>
+        </div>
+        <footer class="fu-dlg-foot">
+          <button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
+          <button type="button" class="fu-btn is-primary" [class.is-off]="!!(eErrors().to || eErrors().reason)" (click)="confirmEscalate()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== history ===== -->
+  @if (dialog() === 'history') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-h-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg></span>
+          <div><h2 id="fq-h-title">History</h2><p>{{ targetItems()[0]?.name }} · {{ targetItems()[0]?.id }}</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <ol class="fq-hist">
+            @for (h of targetItems()[0]?.history ?? []; track $index) { <li><b>{{ h.text }}</b><small>{{ date(h.at) }} · {{ time(h.at) }} · {{ h.by }}</small></li> }
+          </ol>
+        </div>
+        <footer class="fu-dlg-foot"><button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close</button></footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== calendar day ===== -->
+  @if (dialog() === 'day') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-d-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+          <div><h2 id="fq-d-title">{{ dayTitle(dialogDay()) }}</h2><p>{{ dayItems().length }} follow-up{{ dayItems().length === 1 ? '' : 's' }} on this day. Choose one to see its details.</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <ul class="fq-daylist">
+            @for (f of dayItems(); track f.id) {
+              <li>
+                <button type="button" [class]="'tone-' + st(f).tone" (click)="openDetails(f.id)">
+                  <small>{{ time(f.dueAt) }}</small>
+                  <span><b>{{ f.name }}</b><em>{{ chLabel(f) }} · {{ f.id }} · {{ f.owner }}</em></span>
+                  <span class="fq-status">{{ st(f).label }}</span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg>
+                </button>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (toast()) { <div class="fu-toast" role="status">{{ toast() }}</div> }
+</div>
