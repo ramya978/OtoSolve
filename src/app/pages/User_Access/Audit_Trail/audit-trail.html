@@ -1,0 +1,131 @@
+<!-- =====================================================================================
+     AUDIT TRAIL — Workspace Kit "Activity journal"
+     heading · journal card: summary strip · filters · events grouped by date (time · icon · action /
+     by · record · outcome, expandable) · load more | outcome overview + time-of-day heatmap
+     ===================================================================================== -->
+<div class="at-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / Audit</span>
+      <h1>Activity journal</h1>
+      <p>Every sign-in, view and change in time order — who did it, on which record and how it ended.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export to CSV</button>
+    </div>
+  </header>
+
+  <div class="at-layout">
+    <section class="i-card at-card" aria-label="Activity journal">
+      <div class="i-sum at-sum">
+        <div><span>Total events</span><strong>{{ total }}</strong><small>All-time activities</small></div>
+        <div><span>Succeeded</span><strong>{{ succeeded }}</strong><small><b class="at-ok">{{ pct(succeeded) }}%</b> of all events</small></div>
+        <div><span>Denied or failed</span><strong [class.at-bad]="deniedFailed > 0">{{ deniedFailed }}</strong><small><b>{{ pct(deniedFailed) }}%</b> of all events</small></div>
+        <div class="at-sum-top"><span>Most active</span><strong class="is-text">{{ top.name }}</strong><small>{{ top.count }} events · {{ actors.length }} {{ actors.length === 1 ? 'person' : 'people' }} involved</small></div>
+      </div>
+
+      <div class="i-toolbar at-tools">
+        <label class="i-search at-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="User, action or record…" aria-label="Search events" [value]="query()"
+                 (input)="query.set($any($event.target).value); shown.set(5)" />
+        </label>
+        <iam-select icon="doc" [options]="typeOptions" [value]="recordType()" (valueChange)="recordType.set($event); shown.set(5)" />
+        <iam-select icon="pulse" [options]="outcomeOptions" [value]="outcome()" (valueChange)="outcome.set($any($event)); shown.set(5)" />
+        <iam-date-range class="at-range" [start]="range().start" [end]="range().end" [today]="today" (rangeChange)="setRange($event)" />
+        @if (hasFilters()) {
+          <button type="button" class="i-btn i-btn--ghost i-btn--sm" (click)="reset()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>Reset</button>
+        }
+      </div>
+
+      <!-- journal -->
+      @for (g of journal(); track g.key) {
+        <div class="at-day">
+          <strong>{{ dayLabel(g.events[0].at) === 'Today' || dayLabel(g.events[0].at) === 'Yesterday' ? dayLabel(g.events[0].at) + ' · ' + g.label : g.label }}</strong>
+          <span>{{ g.total }} event{{ g.total === 1 ? '' : 's' }} on this date</span>
+        </div>
+        <ol class="at-events">
+          @for (e of g.events; track e.id) {
+            <li [class.is-open]="openId() === e.id">
+              <button type="button" class="at-ev" [attr.aria-expanded]="openId() === e.id" (click)="toggle(e)">
+                <span class="at-time">{{ fmtTime(e.at) }}</span>
+                <span [class]="'at-dot at-dot--' + e.outcome" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path [attr.d]="icon(e.outcome === 'succeeded' ? 'check' : e.outcome === 'denied' ? 'ban' : 'close')" /></svg>
+                </span>
+                <span class="at-what">
+                  <strong>{{ e.action }}</strong>
+                  <small>{{ e.by }} · <b class="i-mono">{{ e.code }}</b></small>
+                </span>
+                <span class="at-on"><strong>{{ e.on }}</strong><small>{{ e.onType }}</small></span>
+                <span [class]="'at-out i-st i-st--' + (e.outcome === 'succeeded' ? 'success' : e.outcome === 'denied' ? 'warning' : 'danger')">{{ outcomeLabel(e.outcome) }}</span>
+              </button>
+              @if (openId() === e.id) {
+                <dl class="i-kv at-kv">
+                  <div><dt>Event</dt><dd class="i-mono">{{ e.code }}</dd></div>
+                  <div><dt>Recorded</dt><dd>{{ fmtDateTime(e.at) }}</dd></div>
+                  <div><dt>By</dt><dd>{{ e.by }} · {{ e.byRole }}</dd></div>
+                  <div><dt>On</dt><dd>{{ e.on }} · {{ e.onType }}</dd></div>
+                  <div><dt>Outcome</dt><dd>{{ outcomeLabel(e.outcome) }}</dd></div>
+                  <div><dt>Reference</dt><dd class="i-mono">EVT-{{ e.id.slice(1).padStart(5, '0') }}</dd></div>
+                </dl>
+              }
+            </li>
+          }
+        </ol>
+      } @empty {
+        <div class="i-empty">
+          <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('docSearch')" /></svg></span>
+          <strong>No events found</strong>
+          <p>No events match the current filters.</p>
+        </div>
+      }
+
+      <footer class="i-foot">
+        <span>Showing <strong>{{ visible().length }}</strong> of {{ filtered().length }} events</span>
+        @if (visible().length < filtered().length) {
+          <button type="button" class="i-btn i-btn--sm" (click)="loadMore()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronDown')" /></svg>Load more events</button>
+        }
+      </footer>
+    </section>
+
+    <!-- ============ side insights ============ -->
+    <aside class="at-side">
+      <section class="i-card" aria-labelledby="at-overview">
+        <header class="i-card-head"><div><h2 id="at-overview">Outcome overview</h2><p>For the current filter</p></div></header>
+        <div class="i-card-body at-ov">
+          <div class="at-ov-total"><strong>{{ filtered().length }}</strong><small>events</small></div>
+          <ul class="at-legend">
+            @for (o of outcomes(); track o.key) {
+              <li><span [class]="'i-st i-st--' + (o.key === 'succeeded' ? 'success' : o.key === 'denied' ? 'warning' : 'danger')">{{ o.label }}</span>
+                <b>{{ o.count }}</b><small>{{ o.pct }}%</small></li>
+            }
+          </ul>
+        </div>
+      </section>
+
+      <section class="i-card" aria-labelledby="at-heat">
+        <header class="i-card-head"><div><h2 id="at-heat">Activity heatmap</h2><p>Events by time of day</p></div></header>
+        <div class="i-card-body">
+          <div class="at-heat" role="table" aria-label="Events by weekday and time of day">
+            @for (s of slots; track s; let si = $index) {
+              <span class="at-heat-y" role="rowheader">{{ s }}</span>
+              @for (d of days; track d; let di = $index) {
+                <span [class]="'at-cell lv-' + level(heat()[si][di])" role="cell"
+                      [attr.title]="cellLabel(si, di, heat()[si][di])" [attr.aria-label]="cellLabel(si, di, heat()[si][di])"></span>
+              }
+            }
+            <span></span>
+            @for (d of days; track d) { <span class="at-heat-x">{{ d }}</span> }
+          </div>
+          @if (busiest()) {
+            <p class="at-insight"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('bulb')" /></svg>
+              Most events occur during <strong>{{ busiest() }}</strong>.</p>
+          }
+        </div>
+      </section>
+    </aside>
+  </div>
+</div>

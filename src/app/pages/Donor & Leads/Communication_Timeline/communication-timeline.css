@@ -59,16 +59,16 @@
   gap: 7px;
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid var(--ct-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--ct-btn-radius);
-  background: var(--ct-card);
-  color: var(--ct-heading) !important;
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879)) !important;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.ct-btn:hover { border-color: var(--ct-primary-line); background: var(--ct-soft); }
+.ct-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .ct-btn svg { flex: none; width: 15px; height: 15px; }
 .ct-btn.is-primary { border-color: var(--cc-btn, var(--ct-primary)); background: var(--cc-btn, var(--ct-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
 .ct-btn.is-primary:hover { background: color-mix(in srgb, var(--cc-btn, var(--ct-primary)) 86%, #000); }
@@ -198,7 +198,7 @@
 .ct-tabs button em { min-width: 18px; padding: 0 5px; border-radius: 4px; background: var(--ct-soft); color: var(--ct-muted); font-size: 11px; font-style: normal; text-align: center; }
 .ct-tabs button:hover { color: var(--ct-heading) !important; }
 .ct-tabs button.is-on { border-color: var(--ct-line); background: var(--ct-soft); color: var(--ct-heading) !important; font-weight: 600; }
-.ct-tabs button.is-on em { background: var(--ct-heading); color: var(--white, #fff); }
+.ct-tabs button.is-on em { background: var(--primary); color: var(--white, #fff); }
 
 .ct-tools { display: flex; gap: 8px; min-width: 0; }
 .ct-search {

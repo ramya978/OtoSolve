@@ -1,0 +1,332 @@
+<!-- =====================================================================================
+     USERS — Workspace Kit "People directory" pattern
+     heading · one card: summary strip · filter toolbar (+ cards / list switch) · people cards or
+     compact list · pager · record detail drawer · invite / edit drawer
+     ===================================================================================== -->
+<div class="us-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / People</span>
+      <h1>Everyone who can sign in</h1>
+      <p>People in this organisation with their role, unit and access — as cards or a compact list.</p>
+    </div>
+    <div class="i-head-actions">
+      @if (checkedCount()) {
+        <button type="button" class="i-btn" (click)="openBulkActions()"
+                [attr.aria-label]="'Open bulk actions for ' + checkedCount() + ' people'">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg>
+          Bulk actions
+          <span class="i-count i-count--on-primary">{{ checkedCount() }}</span>
+        </button>
+      }
+      <button type="button" class="i-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
+    </div>
+  </header>
+
+  <section class="i-card us-card" aria-label="People directory">
+    <!-- summary -->
+    <div class="i-sum us-sum">
+      <div><span>Everyone</span><strong>{{ counts()['all'] }}</strong><small>{{ staffCount() }} staff · {{ counts()['all'] - staffCount() }} donors</small></div>
+      <div><span>Active</span><strong>{{ counts()['active'] }}</strong><small>{{ counts()['invited'] }} invited · {{ counts()['suspended'] }} suspended</small></div>
+      <div class="us-sum-mfa"><span>Two-step verification</span><strong [class.us-warn]="enrolled() === 0">{{ enrolled() }}</strong><small>of {{ counts()['all'] }} enrolled</small></div>
+      <div class="us-sum-never"><span>Never signed in</span><strong>{{ neverSigned() }}</strong><small>Invitation accepted, no sign-in yet</small></div>
+    </div>
+
+    <!-- filters -->
+    <div class="i-toolbar">
+      <label class="i-search us-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+        <input type="search" placeholder="Search name, e-mail or reference" aria-label="Search people" [value]="query()"
+               (input)="setQuery($any($event.target).value)" />
+      </label>
+      <iam-select [options]="statusOptions()" [value]="status()" placeholder="All statuses" (valueChange)="setStatus($event)" />
+      <iam-select [options]="roleOptions" [value]="role()" placeholder="All roles" (valueChange)="setRole($event)" />
+      <iam-select class="us-f-unit" [options]="unitOptions()" [value]="unit()" placeholder="All organisation units" (valueChange)="setUnit($event)" />
+      <iam-select class="us-f-dept" [options]="departmentOptions()" [value]="department()" placeholder="All departments" (valueChange)="setDepartment($event)" />
+      @if (activeFilters()) {
+        <button type="button" class="i-btn i-btn--ghost i-btn--sm" (click)="resetFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>Reset</button>
+      }
+      <span class="i-spacer"></span>
+      <!-- Select-all (all users) — next to Cards/List tabs -->
+      <label class="us-select-all">
+        <input type="checkbox" class="i-check" [checked]="allFilteredChecked()" (change)="toggleAllFiltered()" aria-label="Select all users" />
+        <span>Select all</span>
+      </label>
+   
+      <div class="us-views" role="radiogroup" aria-label="View">
+        <button type="button" role="radio" [class.is-on]="view() === 'cards'" [attr.aria-checked]="view() === 'cards'" (click)="view.set('cards')">
+          <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg>Cards</button>
+        <button type="button" role="radio" [class.is-on]="view() === 'list'" [attr.aria-checked]="view() === 'list'" (click)="view.set('list')">
+          <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>List</button>
+      </div>
+    </div>
+
+    @if (pageRows().length) {
+      @if (view() === 'cards') {
+        <!-- ============ cards ============ -->
+        <div class="us-cards">
+          @for (u of pageRows(); track u.id) {
+            <article class="us-person" [class.is-open]="u.id === selectedId()" [class.is-checked]="checked().has(u.id)">
+              <header>
+                <input type="checkbox" class="i-check" [checked]="checked().has(u.id)" (change)="toggleCheck(u.id)"
+                       [attr.aria-label]="'Select ' + u.name" (click)="$event.stopPropagation()" />
+                <span class="us-av" aria-hidden="true">{{ initials(u.name) }}</span>
+                <span class="us-person-id">
+                  <button type="button" class="i-link" (click)="select(u)">{{ u.name }}</button>
+                  <small class="i-mono">{{ u.ref }}</small>
+                </span>
+                <span class="us-flag" [class.is-warn]="!u.mfaEnrolled" [attr.title]="u.mfaEnrolled ? 'Two-step enrolled' : 'Two-step not enrolled'">
+                  <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(u.mfaEnrolled ? 'shieldCheck' : 'shield')" /></svg>
+                </span>
+              </header>
+
+              <div class="us-where">
+                <strong>{{ u.unit || 'No unit' }}</strong>
+                <small>{{ u.department || 'No department' }} · {{ u.designation || u.email }}</small>
+              </div>
+
+              <div class="us-split">
+                <div><span>Role</span><strong>{{ roleName(u.role) }}</strong></div>
+                <div><span>Last sign-in</span><strong>{{ u.lastSignIn ? fmtDate(u.lastSignIn) : 'Never' }}</strong></div>
+              </div>
+
+              <footer>
+                <span [class]="'i-st i-st--' + statusTone(u.status)">{{ statusLabel(u.status) }}</span>
+                <button type="button" class="us-open" (click)="select(u)">Open profile</button>
+              </footer>
+            </article>
+          }
+        </div>
+      } @else {
+        <!-- ============ compact list ============ -->
+        <table class="i-table is-grid us-table">
+          <thead>
+            <tr>
+              <th><input type="checkbox" class="i-check" [checked]="allChecked()" (change)="toggleAll()" aria-label="Select all on this page" /></th>
+              <th>Person</th>
+              <th class="h-role">Role</th>
+              <th class="h-unit">Unit</th>
+              <th class="h-status">Status</th>
+              <th class="h-sign">Last sign-in</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of pageRows(); track u.id) {
+              <tr [class.is-sel]="u.id === selectedId()" (click)="select(u)">
+                <td (click)="$event.stopPropagation()">
+                  <input type="checkbox" class="i-check" [checked]="checked().has(u.id)" (change)="toggleCheck(u.id)" [attr.aria-label]="'Select ' + u.name" />
+                </td>
+                <td>
+                  <div class="i-person">
+                    <span class="i-av" aria-hidden="true">{{ initials(u.name) }}</span>
+                    <span class="i-person-text">
+                      <button type="button" class="i-link">{{ u.name }}</button>
+                      <small class="i-mono">{{ u.ref }}</small>
+                    </span>
+                  </div>
+                </td>
+                <td class="h-role">{{ roleName(u.role) }}</td>
+                <td class="h-unit">{{ u.unit || '—' }}</td>
+                <td class="h-status"><span [class]="'i-st i-st--' + statusTone(u.status)">{{ statusLabel(u.status) }}</span></td>
+                <td class="h-sign">{{ u.lastSignIn ? fmtDate(u.lastSignIn) : 'Never' }}</td>
+                <td class="t-act">
+                  <button type="button" class="i-icon-btn" [attr.aria-label]="'Open ' + u.name">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    } @else {
+      <div class="i-empty">
+        <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('docSearch')" /></svg></span>
+        <strong>No people found</strong>
+        <p>Nobody matches the current search and filters.</p>
+      </div>
+    }
+
+    <footer class="i-foot">
+      <span><strong>{{ from() }}–{{ to() }}</strong> of {{ filtered().length }} people
+        @if (checked().size) { · <strong>{{ checked().size }}</strong> selected }</span>
+      <span class="i-pager">
+        <span class="us-pageof">Page {{ page() }} of {{ totalPages() }}</span>
+        <button type="button" class="i-icon-btn" [disabled]="page() === 1" (click)="page.set(page() - 1)" aria-label="Previous page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronLeft')" /></svg></button>
+        <button type="button" class="i-icon-btn" [disabled]="page() === totalPages()" (click)="page.set(page() + 1)" aria-label="Next page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg></button>
+      </span>
+    </footer>
+  </section>
+</div>
+
+<!-- ================= record detail drawer (kit "Payment details") ================= -->
+@if (selected(); as u) {
+  <div class="i-overlay" (click)="closeDetail()">
+    <aside class="i-drawer us-detail" role="dialog" aria-modal="true" aria-labelledby="us-dt-title" (click)="$event.stopPropagation()">
+      <header class="i-detail-head">
+        <div>
+          <span class="i-label">{{ u.ref }}</span>
+          <h2 id="us-dt-title">Person details</h2>
+        </div>
+        <button type="button" class="i-icon-btn i-icon-btn--bare" aria-label="Close" (click)="closeDetail()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <div class="i-drawer-body">
+        <div class="us-hero">
+          <span class="us-av us-av--lg" aria-hidden="true">{{ initials(u.name) }}</span>
+          <div>
+            <strong>{{ u.name }}</strong>
+            <small>{{ u.email }}</small>
+          </div>
+          <span [class]="'i-st i-st--' + statusTone(u.status)">{{ statusLabel(u.status) }}</span>
+        </div>
+
+        <section class="i-detail-sec">
+          <h3>Identity</h3>
+          <dl class="i-kv">
+            <div><dt>Reference</dt><dd class="i-mono">{{ u.ref }}</dd></div>
+            <div><dt>Username</dt><dd>{{ u.username }}</dd></div>
+            <div><dt>Display name</dt><dd>{{ u.name }}</dd></div>
+            <div><dt>Preferred name</dt><dd>{{ u.preferredName || '—' }}</dd></div>
+            <div class="is-wide"><dt>Mobile</dt><dd>{{ u.mobile || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Organisation</h3>
+          <dl class="i-kv">
+            <div><dt>Unit</dt><dd>{{ u.unit || '—' }}</dd></div>
+            <div><dt>Department</dt><dd>{{ u.department || '—' }}</dd></div>
+            <div><dt>Designation</dt><dd>{{ u.designation || '—' }}</dd></div>
+            <div><dt>Manager</dt><dd>{{ u.manager || '—' }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Access</h3>
+          <dl class="i-kv">
+            <div><dt>Primary role</dt><dd>{{ roleName(u.role) }}</dd></div>
+            <div><dt>Data scope</dt><dd>{{ u.dataScope }}</dd></div>
+            <div><dt>Second factor</dt><dd [class.us-warn]="!u.mfaEnrolled">{{ u.mfaEnrolled ? 'Enrolled' : 'Not enrolled' }} · optional</dd></div>
+            <div><dt>Access window</dt><dd>{{ fmtDate(u.accessFrom) }} – open</dd></div>
+          </dl>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Access journey</h3>
+          <ol class="i-journey">
+            <li class="is-done">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg></span>
+              <span class="i-journey-text"><strong>Invited</strong><small>{{ fmtDate(u.accessFrom) }} · {{ u.email }}</small></span>
+            </li>
+            <li [class.is-done]="u.invitation === 'Accepted'" [class.is-now]="u.invitation !== 'Accepted'">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+              <span class="i-journey-text"><strong>Invitation {{ u.invitation.toLowerCase() }}</strong><small>Role {{ roleName(u.role) }} applied</small></span>
+            </li>
+            <li [class.is-done]="!!u.lastSignIn" [class.is-now]="!u.lastSignIn">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+              <span class="i-journey-text"><strong>{{ u.lastSignIn ? 'Signed in' : 'Not signed in yet' }}</strong>
+                <small>{{ u.lastSignIn ? fmtDate(u.lastSignIn) : 'The first sign-in will show here.' }}</small></span>
+            </li>
+          </ol>
+        </section>
+      </div>
+
+      <footer class="i-drawer-foot">
+        <button type="button" class="i-icon-btn" [attr.title]="u.status === 'deactivated' ? 'Reactivate' : 'Deactivate'"
+                [attr.aria-label]="(u.status === 'deactivated' ? 'Reactivate ' : 'Deactivate ') + u.name" (click)="deactivate(u)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('ban')" /></svg></button>
+        <button type="button" class="i-icon-btn is-danger" title="Delete" [attr.aria-label]="'Delete ' + u.name" (click)="remove(u)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg></button>
+        <span class="i-foot-note"></span>
+        <button type="button" class="i-btn" (click)="openEdit(u)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+        <button type="button" class="i-btn i-btn--primary" (click)="openFullProfile(u)">Full profile
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+      </footer>
+    </aside>
+  </div>
+}
+
+<!-- ================= invite / edit drawer ================= -->
+@if (drawer(); as mode) {
+  <div class="i-overlay us-top" (click)="closeDrawer()">
+    <aside class="i-drawer" role="dialog" aria-modal="true" aria-labelledby="us-dr-title" (click)="$event.stopPropagation()">
+      <header class="i-detail-head">
+        <div>
+          <span class="i-label">{{ mode === 'edit' ? 'Edit person' : 'Invite a person' }}</span>
+          <h2 id="us-dr-title">{{ draft().name.trim() || 'New person' }}</h2>
+        </div>
+        <button type="button" class="i-icon-btn i-icon-btn--bare" aria-label="Close" (click)="closeDrawer()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <div class="i-drawer-body">
+        <section class="i-detail-sec">
+          <h3>Identity</h3>
+          <div class="i-grid-2">
+            <label class="i-field">
+              <span class="i-field-label">Display name <em>*</em></span>
+              <input class="i-input" [class.is-invalid]="tried() && draft().name.trim().length < 2" placeholder="e.g. Ajay Sekar"
+                     [value]="draft().name" (input)="patch('name', $any($event.target).value)" />
+            </label>
+            <label class="i-field">
+              <span class="i-field-label">Mobile</span>
+              <input class="i-input" placeholder="+91 98765 43210" [value]="draft().mobile" (input)="patch('mobile', $any($event.target).value)" />
+            </label>
+          </div>
+          <label class="i-field us-mt">
+            <span class="i-field-label">E-mail <em>*</em></span>
+            <input class="i-input" type="email" [class.is-invalid]="tried() && !emailOk()" placeholder="name@example.org"
+                   [value]="draft().email" (input)="patch('email', $any($event.target).value)" />
+            @if (tried() && !emailOk()) { <span class="i-err">Enter a valid e-mail address.</span> }
+          </label>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Organisation</h3>
+          <div class="i-grid-2">
+            <div class="i-field">
+              <span class="i-field-label">Unit</span>
+              <iam-select [options]="unitChoice()" [value]="draft().unit" placeholder="Choose a unit" (valueChange)="patch('unit', $event)" />
+            </div>
+            <div class="i-field">
+              <span class="i-field-label">Department</span>
+              <iam-select [options]="deptChoice()" [value]="draft().department" placeholder="Choose a department" (valueChange)="patch('department', $event)" />
+            </div>
+          </div>
+          <label class="i-field us-mt">
+            <span class="i-field-label">Designation</span>
+            <input class="i-input" placeholder="e.g. Campaign executive" [value]="draft().designation" (input)="patch('designation', $any($event.target).value)" />
+          </label>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Access</h3>
+          <div class="i-field">
+            <span class="i-field-label">Primary role <em>*</em></span>
+            <iam-select [options]="roleChoice" [value]="draft().role" placeholder="Choose a role" [invalid]="tried() && !draft().role"
+                        (valueChange)="patch('role', $event)" />
+            <span class="i-help">The primary role decides what they can see and do.</span>
+          </div>
+        </section>
+      </div>
+
+      <footer class="i-drawer-foot">
+        <span class="i-foot-note">{{ mode === 'edit' ? 'Changes apply at their next sign-in.' : 'An invitation e-mail is sent when you create.' }}</span>
+        <button type="button" class="i-btn" (click)="closeDrawer()">Cancel</button>
+        <button type="button" class="i-btn i-btn--primary" (click)="save()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(mode === 'edit' ? 'save' : 'plus')" /></svg>
+          {{ mode === 'edit' ? 'Save' : 'Invite' }}
+        </button>
+      </footer>
+    </aside>
+  </div>
+}

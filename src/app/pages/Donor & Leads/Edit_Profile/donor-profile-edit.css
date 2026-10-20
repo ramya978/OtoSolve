@@ -253,15 +253,15 @@ textarea.pe-input { display: block; min-height: 76px; resize: vertical; line-hei
   gap: 7px;
   min-height: 36px;
   padding: 0 18px;
-  border: 1px solid var(--pe-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--pe-btn-radius);
-  background: var(--pe-card);
-  color: var(--pe-heading) !important;
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879)) !important;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
-.pe-btn:hover { border-color: var(--pe-primary); }
+.pe-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .pe-btn svg { flex: none; width: 15px; height: 15px; }
 
 .pe-spin {

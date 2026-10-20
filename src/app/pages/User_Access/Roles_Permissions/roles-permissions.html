@@ -1,0 +1,409 @@
+<!-- =====================================================================================
+     ROLES & PERMISSIONS — area-first view (record style)
+     heading · toolbar (status, privilege, search roles) ·
+     left: permission areas (narrow screens: an area dropdown) ·
+     right: the chosen area — eyebrow + big name + count, facts, every role as a card (allowed / total,
+     share, actions it can do, sensitive, blocked) · role-in-area offcanvas (read + Allow / Not given / Block) ·
+     create / clone / edit offcanvas · compare popup
+     ===================================================================================== -->
+<div class="rp-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / Roles</span>
+      <h1>Roles &amp; permissions</h1>
+      <p>Pick a permission area to see what every role can do in it. Open a role to read or change its permissions.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create role</button>
+    </div>
+  </header>
+
+  <!-- toolbar -->
+  <div class="rp-toolbar">
+    <div class="rp-filter"><iam-select [options]="statusOptions()" [value]="tab()" (valueChange)="setTab($any($event))" /></div>
+    <div class="rp-filter"><iam-select [options]="privOptions" [value]="privFilter()" (valueChange)="privFilter.set($event)" /></div>
+    <span class="i-spacer"></span>
+    <label class="i-search rp-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+      <input type="search" placeholder="Search role name, code or purpose" aria-label="Search roles" [value]="query()"
+             (input)="setQuery($any($event.target).value)" />
+    </label>
+  </div>
+
+  <div class="rp-layout">
+    <!-- ============ areas ============ -->
+    <nav class="i-card rp-areas" aria-label="Permission areas">
+      <header class="rp-areas-head">
+        <strong>Permission areas</strong>
+        <small>{{ PERMISSIONS_TOTAL }} permissions</small>
+      </header>
+      <ul>
+        @for (a of areas; track a.key) {
+          <li>
+            <button type="button" class="rp-arow" [class.is-on]="area() === a.key" [attr.aria-current]="area() === a.key ? 'true' : null" (click)="area.set(a.key)">
+              <svg class="rp-aico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg>
+              <span class="rp-atext">
+                <strong>{{ a.name }}</strong>
+                <small>{{ areaPerms(a).length }} permissions · {{ rolesWithAccess(a) }} {{ rolesWithAccess(a) === 1 ? 'role' : 'roles' }} use it</small>
+              </span>
+              <svg class="rp-achev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg>
+            </button>
+          </li>
+        }
+      </ul>
+      <dl class="rp-areas-foot">
+        <div><dt>Roles</dt><dd>{{ counts()['all'] }}</dd></div>
+        <div><dt>Privileged</dt><dd>{{ privilegedCount() }}</dd></div>
+        <div><dt>People</dt><dd>{{ peopleTotal() }}</dd></div>
+      </dl>
+    </nav>
+
+    <!-- ============ chosen area ============ -->
+    <section class="i-card rp-detail" aria-labelledby="rp-area-name">
+      <div class="rp-pick">
+        <span class="i-field-label">Permission area</span>
+        <iam-select [options]="areaOptions" [value]="area()" (valueChange)="area.set($event)" />
+      </div>
+
+      <div class="rp-dhead">
+        <div class="rp-dtitle">
+          <span class="rp-eyebrow">Permission area · {{ currentArea().prefix }}</span>
+          <h2 id="rp-area-name">{{ currentArea().name }}</h2>
+        </div>
+        <span class="rp-pill is-info">{{ areaPerms(currentArea()).length }} permissions</span>
+      </div>
+
+      <dl class="rp-kv">
+        <div><dt>Roles with access</dt><dd>{{ rolesWithAccess(currentArea()) }} of {{ list().length }}</dd></div>
+        <div><dt>Sensitive permissions</dt><dd>{{ areaSensitiveTotal(currentArea()) }}</dd></div>
+        <div><dt>Most access</dt><dd>{{ topRole(currentArea()) }}</dd></div>
+        <div><dt>Rule</dt><dd>Blocked beats allowed</dd></div>
+      </dl>
+
+      <div class="rp-cards" role="list" aria-label="Roles in this area">
+        @for (r of list(); track r.code) {
+          <article class="rp-rcard" role="listitem" [class.is-none]="!areaAllowed(r, currentArea())">
+            <header>
+              <span class="rp-av" aria-hidden="true">{{ initials(r.name) }}</span>
+              <span class="rp-rtext">
+                <strong>{{ r.name }}</strong>
+                <small>{{ peopleOf(r.code) }} {{ peopleOf(r.code) === 1 ? 'person' : 'people' }}@if (r.privileged) { · <span class="rp-warn">Privileged</span> }</small>
+              </span>
+              @if (r.status !== 'active') { <span [class]="'i-st i-st--' + tone(r.status)">{{ statusLabel(r.status) }}</span> }
+            </header>
+
+            <div class="rp-score">
+              <strong>{{ areaAllowed(r, currentArea()) }}</strong><span>/ {{ areaPerms(currentArea()).length }} allowed</span>
+              <em>{{ areaShare(r, currentArea()) }}%</em>
+            </div>
+
+            <dl class="rp-rkv">
+              <div><dt>Can</dt><dd>{{ areaAllowed(r, currentArea()) ? areaActions(r, currentArea()) : 'No access' }}</dd></div>
+              <div><dt>Sensitive</dt><dd [class.rp-warn]="areaSensitive(r, currentArea()) > 0">{{ areaSensitive(r, currentArea()) }}</dd></div>
+              <div><dt>Blocked</dt><dd [class.rp-danger]="areaBlocked(r, currentArea()) > 0">{{ areaBlocked(r, currentArea()) }}</dd></div>
+            </dl>
+
+            <footer>
+              <button type="button" class="i-btn i-btn--sm" (click)="openPanel(r)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>View</button>
+              <button type="button" class="i-btn i-btn--sm" (click)="openPanel(r, true)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg>Change</button>
+            </footer>
+          </article>
+        } @empty {
+          <div class="rp-empty">
+            <strong>No roles found</strong>
+            <p>No role matches the current search and filters.</p>
+          </div>
+        }
+      </div>
+
+      <p class="rp-note">Each card shows what one role can do in {{ currentArea().name }}. Blocked beats allowed — a blocked permission stays off even if
+        another role allows it. Every change is recorded in the audit trail.</p>
+    </section>
+  </div>
+</div>
+
+<!-- ================= role-in-area offcanvas (record style) ================= -->
+@if (panel()) {
+  @if (current(); as r) {
+    <div class="i-overlay" (click)="closePanel()">
+      <aside class="i-drawer rp-dr rp-dr--wide" role="dialog" aria-modal="true" aria-labelledby="rp-pn-title" (click)="$event.stopPropagation()">
+        <header class="rp-dr-head">
+          <h2 id="rp-pn-title">{{ editing() ? 'Change permissions' : 'Role permissions' }}</h2>
+          <button type="button" class="rp-x" aria-label="Close" (click)="closePanel()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+
+        <div class="rp-dr-body">
+          <div class="rp-dhead">
+            <div class="rp-dtitle">
+              <span class="rp-eyebrow">{{ r.code }} · {{ r.builtIn ? 'Built in' : 'Custom' }}</span>
+              <h3>{{ r.name }}</h3>
+            </div>
+            <span [class]="'rp-pill is-' + tone(r.status)">{{ statusLabel(r.status) }}</span>
+          </div>
+          <p class="rp-purpose">{{ r.purpose }}</p>
+
+          <dl class="rp-kv rp-kv--4">
+            <div><dt>People</dt><dd>{{ peopleOf(r.code) }}</dd></div>
+            <div><dt>All permissions</dt><dd>{{ r.all ? 'All ' + PERMISSIONS_TOTAL : r.grants.length + ' of ' + PERMISSIONS_TOTAL }}</dd></div>
+            <div><dt>Privilege</dt><dd>{{ r.privileged ? 'Privileged' : 'Standard' }}</dd></div>
+            <div><dt>Combined with</dt><dd>{{ r.incompatible.length ? r.incompatible.length + ' blocked roles' : 'Any role' }}</dd></div>
+          </dl>
+
+        
+
+          @if (!editing()) {
+            <ul class="rp-plist">
+              @for (p of areaPerms(currentArea()); track p.code) {
+                <li [class.is-off]="baseState(r, p) === 'none'">
+                  <span class="rp-ptext"><strong>{{ p.name }}@if (p.sensitive) { <em>Sensitive</em> }</strong><small class="i-mono">{{ p.code }} · {{ actionLabel(p.action) }}</small></span>
+                  @switch (baseState(r, p)) {
+                    @case ('allow') { <span class="i-st i-st--success">Allowed</span> }
+                    @case ('block') { <span class="i-st i-st--danger">Blocked</span> }
+                    @default { <span class="i-st i-st--muted">Not given</span> }
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <div class="rp-area-tools">
+              <span>{{ currentArea().name }} · {{ changedCount(r) }} changed in total</span>
+              <button type="button" class="i-link" (click)="setAreaState('allow')">Allow all</button>
+              <button type="button" class="i-link" (click)="setAreaState('none')">Clear area</button>
+            </div>
+            <ul class="rp-plist rp-plist--edit">
+              @for (p of editList(currentArea()); track p.code) {
+                <li [class.is-changed]="editState(p) !== baseState(r, p)">
+                  <span class="rp-ptext"><strong>{{ p.name }}@if (p.sensitive) { <em>Sensitive</em> }</strong><small class="i-mono">{{ p.code }}</small></span>
+                  <span class="rp-dec" role="radiogroup" [attr.aria-label]="p.name">
+                    <button type="button" role="radio" class="is-allow" [class.is-on]="editState(p) === 'allow'" [attr.aria-checked]="editState(p) === 'allow'" (click)="setState(p, 'allow')">Allow</button>
+                    <button type="button" role="radio" [class.is-on]="editState(p) === 'none'" [attr.aria-checked]="editState(p) === 'none'" (click)="setState(p, 'none')">Not given</button>
+                    <button type="button" role="radio" class="is-block" [class.is-on]="editState(p) === 'block'" [attr.aria-checked]="editState(p) === 'block'" (click)="setState(p, 'block')">Block</button>
+                  </span>
+                </li>
+              }
+            </ul>
+            <label class="i-field rp-reason">
+              <span class="i-field-label">Reason</span>
+              <input class="i-input" placeholder="Why is this changing? (recorded in the audit trail)" [value]="editReason()" (input)="editReason.set($any($event.target).value)" />
+            </label>
+          }
+
+          <p class="rp-note">Blocked beats allowed — a blocked permission stays off even if another role allows it.</p>
+        </div>
+
+        <footer class="rp-dr-foot">
+          @if (!editing()) {
+            <button type="button" class="rp-btn rp-left" (click)="openEdit(r)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit role</button>
+            <button type="button" class="rp-btn" (click)="openClone(r)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>Clone</button>
+            <button type="button" class="rp-btn" (click)="openCompare()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('compare')" /></svg>Compare</button>
+            <button type="button" class="rp-btn is-primary" (click)="startEdit(r)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg>Change permissions</button>
+          } @else {
+            <button type="button" class="rp-btn" (click)="cancelEdit()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+            <button type="button" class="rp-btn is-primary" [disabled]="!editDirty(r)" (click)="saveEdit(r)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save {{ changedCount(r) || '' }} {{ changedCount(r) === 1 ? 'change' : 'changes' }}</button>
+          }
+        </footer>
+      </aside>
+    </div>
+  }
+}
+
+<!-- ================= create / clone / edit offcanvas (record style) ================= -->
+@if (drawer(); as mode) {
+  <div class="i-overlay" (click)="closeDrawer()">
+    <aside class="i-drawer rp-dr" role="dialog" aria-modal="true" aria-labelledby="rp-dr-title" (click)="$event.stopPropagation()">
+      <header class="rp-dr-head">
+        <h2 id="rp-dr-title">{{ mode === 'edit' ? 'Edit role' : mode === 'clone' ? 'Clone role' : 'Create role' }}</h2>
+        <button type="button" class="rp-x" aria-label="Close" (click)="closeDrawer()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <div class="rp-dr-body">
+        <div class="rp-dhead">
+          <div class="rp-dtitle">
+            <span class="rp-eyebrow">{{ draft().code || 'ROLE_CODE' }} · {{ mode === 'edit' ? 'Existing role' : 'New draft role' }}</span>
+            <h3 [class.is-empty]="!draft().name.trim()">{{ draft().name.trim() || 'Untitled role' }}</h3>
+          </div>
+          <span class="rp-pill" [class.is-success]="mode === 'edit'" [class.is-warning]="mode !== 'edit'">{{ mode === 'edit' ? 'Active' : 'Draft' }}</span>
+        </div>
+
+        <dl class="rp-kv rp-kv--3">
+          <div><dt>Privilege</dt><dd>{{ draft().privileged === null ? 'Not chosen' : draft().privileged ? 'Privileged' : 'Standard' }}</dd></div>
+          <div><dt>Given to everybody</dt><dd>{{ draft().isDefault === null ? 'Not chosen' : draft().isDefault ? 'Yes' : 'No' }}</dd></div>
+          <div><dt>Permissions</dt><dd>{{ draft().grants.length }}</dd></div>
+        </dl>
+
+        <div class="rp-form">
+          <label class="i-field">
+            <span class="i-field-label">Role name <em>*</em></span>
+            <input class="i-input" placeholder="e.g. Donation Manager" [class.is-invalid]="tried() && errors().name"
+                   [readOnly]="isBuiltInEdit()" [value]="draft().name" (input)="setName($any($event.target).value)" />
+            @if (tried() && errors().name) { <span class="i-err">{{ errors().name }}</span> }
+            @else if (isBuiltInEdit()) { <span class="i-help">Built-in role — the name is fixed.</span> }
+          </label>
+          <label class="i-field">
+            <span class="i-field-label">Role code <em>*</em></span>
+            <input class="i-input i-mono" placeholder="DON_MGR_001" [class.is-invalid]="tried() && errors().code"
+                   [readOnly]="mode === 'edit'" [value]="draft().code" (input)="patch('code', $any($event.target).value.toUpperCase())" />
+            @if (tried() && errors().code) { <span class="i-err">{{ errors().code }}</span> }
+            @else { <span class="i-help">{{ mode === 'edit' ? 'Permanent — cannot be changed.' : 'Filled from the name.' }}</span> }
+          </label>
+
+          <label class="i-field rp-full">
+            <span class="i-field-label">Purpose <em>*</em></span>
+            <textarea class="i-textarea" placeholder="What is this role for? (at least 10 characters)" [class.is-invalid]="tried() && errors().purpose"
+                      [value]="draft().purpose" (input)="patch('purpose', $any($event.target).value)"></textarea>
+            @if (tried() && errors().purpose) { <span class="i-err">{{ errors().purpose }}</span> }
+          </label>
+
+          <div class="i-field rp-full">
+            <span class="i-field-label">Privilege level <em>*</em></span>
+            <div class="rp-opts" role="radiogroup" aria-label="Privilege level">
+              <button type="button" role="radio" class="rp-opt" [class.is-on]="draft().privileged === false" [attr.aria-checked]="draft().privileged === false" (click)="patch('privileged', false)">
+                <span class="i-radio" aria-hidden="true"></span><span><strong>Standard</strong><small>Not flagged for extra review</small></span></button>
+              <button type="button" role="radio" class="rp-opt" [class.is-on]="draft().privileged === true" [attr.aria-checked]="draft().privileged === true" (click)="patch('privileged', true)">
+                <span class="i-radio" aria-hidden="true"></span><span><strong>Privileged</strong><small>Flagged in requests and reviews</small></span></button>
+            </div>
+            @if (tried() && errors().privileged) { <span class="i-err">{{ errors().privileged }}</span> }
+          </div>
+
+          <div class="i-field rp-full">
+            <span class="i-field-label">Given to everybody <em>*</em></span>
+            <div class="rp-opts" role="radiogroup" aria-label="Given to everybody">
+              <button type="button" role="radio" class="rp-opt" [class.is-on]="draft().isDefault === false" [attr.aria-checked]="draft().isDefault === false" (click)="patch('isDefault', false)">
+                <span class="i-radio" aria-hidden="true"></span><span><strong>No</strong><small>Assigned person by person</small></span></button>
+              <button type="button" role="radio" class="rp-opt" [class.is-on]="draft().isDefault === true" [attr.aria-checked]="draft().isDefault === true" (click)="patch('isDefault', true)">
+                <span class="i-radio" aria-hidden="true"></span><span><strong>Yes</strong><small>New people get it by default</small></span></button>
+            </div>
+            @if (tried() && errors().isDefault) { <span class="i-err">{{ errors().isDefault }}</span> }
+          </div>
+
+          <div class="i-field">
+            <span class="i-field-label">Priority</span>
+            <div class="i-num">
+              <button type="button" aria-label="Lower priority" (click)="bumpPriority(-10)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('minus')" /></svg></button>
+              <input inputmode="numeric" aria-label="Priority" [value]="draft().priority" (change)="setPriority($any($event.target).value)" />
+              <button type="button" aria-label="Higher priority" (click)="bumpPriority(10)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg></button>
+            </div>
+            <span class="i-help">Higher comes first in lists.</span>
+          </div>
+          <label class="i-field">
+            <span class="i-field-label">Owning function</span>
+            <input class="i-input" placeholder="e.g. Fundraising" [value]="draft().owningFunction" (input)="patch('owningFunction', $any($event.target).value)" />
+            <span class="i-help">Team that looks after this role.</span>
+          </label>
+
+          @if (mode !== 'edit') {
+            <div class="i-field rp-full">
+              <span class="i-field-label">Permissions</span>
+              <iam-select [multiple]="true" [maxChips]="4" [options]="permOptions" [values]="draft().grants" placeholder="Select permissions…"
+                          searchPlaceholder="Search permissions" (valuesChange)="patch('grants', $event)" />
+              <span class="i-help">You can fine-tune these later with Change permissions.</span>
+            </div>
+            <div class="i-field rp-full">
+              <span class="i-field-label">Cannot be combined with</span>
+              <iam-select [multiple]="true" [options]="roleChoice()" [values]="draft().incompatible" placeholder="Roles that must not be held with this one…"
+                          (valuesChange)="patch('incompatible', $event)" />
+            </div>
+          }
+        </div>
+
+        <p class="rp-note">{{ mode === 'edit'
+          ? 'Permissions are changed on the role page with Change permissions. Saved changes are recorded in the audit trail.'
+          : 'New roles start as drafts — nobody gets them until the role is activated.' }}</p>
+      </div>
+
+      <footer class="rp-dr-foot">
+        <button type="button" class="rp-btn" (click)="closeDrawer()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+        <button type="button" class="rp-btn is-primary" (click)="saveDrawer()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(mode === 'edit' ? 'save' : 'plus')" /></svg>
+          {{ mode === 'edit' ? 'Save changes' : 'Create draft role' }}</button>
+      </footer>
+    </aside>
+  </div>
+}
+
+<!-- ================= compare popup (record style) ================= -->
+@if (compareOpen()) {
+  @if (current(); as base) {
+    <div class="i-overlay is-center rp-dlg-wrap" (click)="closeCompare()">
+      <div class="i-modal rp-dlg" role="dialog" aria-modal="true" aria-labelledby="rp-cmp-title" (click)="$event.stopPropagation()">
+        <header class="rp-dr-head">
+          <h2 id="rp-cmp-title">Compare roles</h2>
+          <button type="button" class="rp-x" aria-label="Close" (click)="closeCompare()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+
+        <div class="rp-dlg-body">
+          <div class="rp-dhead">
+            <div class="rp-dtitle">
+              <span class="rp-eyebrow">Base role · {{ base.code }}</span>
+              <h3>{{ base.name }}</h3>
+            </div>
+            <span [class]="'rp-pill is-' + tone(base.status)">{{ statusLabel(base.status) }}</span>
+          </div>
+
+          <div class="i-field rp-cmp-pick">
+            <span class="i-field-label">Compare with</span>
+            <iam-select size="lg" [searchable]="true" searchPlaceholder="Search roles…" placeholder="Choose a role"
+                        [options]="compareOptions()" [value]="compareWith()" (valueChange)="pickCompare($event)" />
+          </div>
+
+          @if (compared() && diff(); as d) {
+            @if (other(); as o) {
+              <dl class="rp-kv rp-kv--3 rp-cmp-kv">
+                <div><dt>Both allow</dt><dd>{{ d.both.length }}</dd></div>
+                <div><dt>Only {{ base.name }}</dt><dd>{{ d.onlyA.length }}</dd></div>
+                <div><dt>Only {{ o.name }}</dt><dd>{{ d.onlyB.length }}</dd></div>
+              </dl>
+              <div class="rp-diff">
+                <section>
+                  <h4>Both allow</h4>
+                  <ul>
+                    @for (p of d.both; track p.code) { <li [attr.title]="p.code"><span>{{ p.name }}</span><small>{{ areaName(p.area) }}</small></li> }
+                    @empty { <li class="rp-muted">Nothing in common</li> }
+                  </ul>
+                </section>
+                <section>
+                  <h4>Only {{ base.name }}</h4>
+                  <ul>
+                    @for (p of d.onlyA; track p.code) { <li [attr.title]="p.code"><span>{{ p.name }}</span><small>{{ areaName(p.area) }}</small></li> }
+                    @empty { <li class="rp-muted">Nothing extra</li> }
+                  </ul>
+                </section>
+                <section>
+                  <h4>Only {{ o.name }}</h4>
+                  <ul>
+                    @for (p of d.onlyB; track p.code) { <li [attr.title]="p.code"><span>{{ p.name }}</span><small>{{ areaName(p.area) }}</small></li> }
+                    @empty { <li class="rp-muted">Nothing extra</li> }
+                  </ul>
+                </section>
+              </div>
+            }
+          } @else {
+            <p class="rp-note">Choose a role above to see which permissions both roles allow and where they differ.</p>
+          }
+        </div>
+
+        <footer class="rp-dr-foot">
+          <button type="button" class="rp-btn" (click)="closeCompare()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Close</button>
+        </footer>
+      </div>
+    </div>
+  }
+}

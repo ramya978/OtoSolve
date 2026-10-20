@@ -110,36 +110,46 @@
   border-bottom: 1px solid var(--cr-line);
 }
 
-/* ---------- KPI strip (sample image: 6 widgets, one card, dividers) ---------- */
+/* ---------- KPI strip: one row, never wraps ----------
+   1px gap on a line-coloured track draws the dividers, so hidden widgets never leave a stray border. */
 .cr-kpis {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  container: cr-kpis / inline-size;
   padding: 0;
   overflow: hidden;
 }
 
-.cr-kpi {
+.cr-kpis-row {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 20px 22px 22px;
-  border-left: 1px solid var(--cr-row-line);
+  flex-wrap: nowrap;
+  gap: 1px;
+  background: var(--cr-row-line);
 }
 
-.cr-kpi:first-child { border-left: 0; }
+.cr-kpi {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px clamp(14px, 1.5vw, 20px) 20px;
+  background: var(--cr-surface);
+  container: cr-kpi / inline-size;
+}
 
 .cr-kpi-top {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .cr-kpi-label {
+  overflow: hidden;
   color: var(--cr-muted);
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 550;
   line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cr-kpi-top svg {
@@ -148,36 +158,42 @@
   opacity: .85;
 }
 
-/* value row: figure on the left, a small visual on the right */
+/* Paused + Received: icon picks up the theme colour */
+.cr-kpi--paused .cr-kpi-top svg { color: var(--status-warning, #b7791f); opacity: 1; }
+.cr-kpi--received .cr-kpi-top svg { color: var(--cr-primary); opacity: 1; }
+
+/* value row: figure on the left, a second figure on the right */
 .cr-kpi-mid {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
-  margin: 22px 0 8px;
+  gap: 10px;
+  margin: 18px 0 8px;
 }
 
 .cr-kpi-value {
   display: block;
+  min-width: 0;
   margin: 0;
   color: var(--cr-heading);
   font-family: var(--cr-number-font);
-  font-size: calc(30px * var(--font-scale, 1));
+  font-size: calc(28px * var(--font-scale, 1));
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   letter-spacing: -.6px;
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
-/* --- second figure on the right of the value --- */
-.cr-kpi { container: cr-kpi / inline-size; }
+/* money figure is longer (₹12,34,567) - keep it on one line */
+.cr-kpi-value.is-money { font-size: calc(23px * var(--font-scale, 1)); letter-spacing: -.4px; }
 
 .cr-kpi-side {
   display: grid;
   flex: none;
   justify-items: end;
   gap: 1px;
-  padding-left: 14px;
+  padding-left: 12px;
   border-left: 1px solid var(--cr-row-line);
   text-align: right;
 }
@@ -185,7 +201,7 @@
 .cr-kpi-side b {
   color: var(--cr-heading);
   font-family: var(--cr-number-font);
-  font-size: calc(17px * var(--font-scale, 1));
+  font-size: calc(15px * var(--font-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -194,20 +210,35 @@
 
 .cr-kpi-side small {
   color: var(--cr-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(11.5px * var(--font-scale, 1));
   white-space: nowrap;
 }
 
 /* narrow widget: drop the second figure, keep the main one */
-@container cr-kpi (max-width: 200px) {
+@container cr-kpi (max-width: 215px) {
   .cr-kpi-side { display: none; }
 }
+@container cr-kpi (max-width: 150px) {
+  .cr-kpi-value { font-size: calc(24px * var(--font-scale, 1)); }
+  .cr-kpi-value.is-money { font-size: calc(19px * var(--font-scale, 1)); }
+}
+
+/* the strip shrinks → hide the lower-priority widgets so the rest stay on one row */
+@container cr-kpis (max-width: 1360px) { .cr-kpi--ending { display: none; } }
+@container cr-kpis (max-width: 1160px) { .cr-kpi--approval { display: none; } }
+@container cr-kpis (max-width: 900px)  { .cr-kpi--scheduled { display: none; } }
+@container cr-kpis (max-width: 700px)  { .cr-kpi--total { display: none; } }
+@container cr-kpis (max-width: 520px)  { .cr-kpi--active { display: none; } }
 
 .cr-kpi-note {
+  display: -webkit-box;
+  overflow: hidden;
   margin: 0;
   color: var(--cr-muted);
   font-size: calc(12px * var(--font-scale, 1));
   line-height: 1.6;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .cr-bar-title {
@@ -667,6 +698,25 @@
   letter-spacing: .3px;
 }
 
+/* campaign logo: white tile, colour-gradient mark only */
+.cr-logo {
+  background: #fff;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px #10131c0f;
+}
+
+.cr-logo svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+}
+
 .cr-camp-text {
   display: flex;
   flex-direction: column;
@@ -755,9 +805,11 @@
 
 .cr-stage-track {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  /* one segment per lifecycle stage (7) on a single line - never wraps */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 3px;
-  max-width: 120px;
+  max-width: 132px;
 }
 
 .cr-stage-track i {
@@ -857,40 +909,83 @@
   background: var(--cr-primary);
 }
 
-/* owner: avatar + name + "+1" */
+/* owner: overlapping photos + name / co-owners */
 .cr-owner {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   min-width: 0;
-  white-space: nowrap;
 }
 
-.cr-owner > span:nth-child(2) {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.cr-avatars {
+  display: flex;
+  flex: none;
+  align-items: center;
 }
 
-.cr-avatar {
+.cr-photo {
   display: grid;
   flex: none;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
+  margin-left: -9px;
+  border: 2px solid var(--cr-surface);
   border-radius: 50%;
-  background: var(--cr-primary-soft);
-  color: var(--cr-primary-ink);
-  font-size: calc(10px * var(--font-scale, 1));
-  font-weight: 700;
+  color: #fff;
+  font-size: calc(10.5px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: .2px;
+  text-shadow: 0 1px 1px #0000002e;
+  box-shadow: 0 1px 3px #10131c1f;
+  transition: transform .15s ease;
 }
 
-.cr-extra {
-  padding: 1px 6px;
-  border-radius: 999px;
+.cr-photo { position: relative; overflow: hidden; }
+
+/* real profile photo over the initials fallback */
+.cr-photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.cr-photo:first-child { margin-left: 0; }
+.cr-photo:nth-child(1) { z-index: 3; }
+.cr-photo:nth-child(2) { z-index: 2; }
+.cr-photo:nth-child(3) { z-index: 1; }
+.cr-avatars:hover .cr-photo { transform: translateX(2px); }
+.cr-avatars:hover .cr-photo:first-child { transform: none; }
+
+.cr-photo-more {
   background: color-mix(in srgb, var(--line) 70%, var(--white));
   color: var(--cr-muted);
-  font-size: calc(10px * var(--font-scale, 1));
-  font-weight: 650;
+  text-shadow: none;
+}
+
+.cr-owner-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.cr-owner-name {
+  overflow: hidden;
+  color: var(--cr-ink);
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-owner-sub {
+  overflow: hidden;
+  color: var(--cr-muted);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* timeline: launch → ends, duration under it */
@@ -1527,6 +1622,8 @@ html[data-motion="reduce"] .cr-overlay {
   .cr-act { width: 26px; height: 26px; }
 
   .cr-tile { width: 32px; height: 32px; }
+  .cr-logo { width: 36px; height: 36px; }
+  .cr-logo svg { width: 21px; height: 21px; }
 
   .cr-tabs { flex-wrap: wrap; padding: 4px 12px; }
 
@@ -1542,18 +1639,10 @@ html[data-motion="reduce"] .cr-overlay {
 /* ---------- responsive (page) ---------- */
 @media (max-width: 1080px) {
   .cr-search input { width: 190px; }
-  .cr-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .cr-kpi { border-top: 1px solid var(--cr-row-line); }
-  .cr-kpi:nth-child(-n + 3) { border-top: 0; }
-  .cr-kpi:nth-child(3n + 1) { border-left: 0; }
 }
 
 @media (max-width: 800px) {
   .pagehead { flex-direction: column; }
-  .cr-kpis { grid-template-columns: 1fr; }
-  .cr-kpi { border-left: 0; border-top: 1px solid var(--cr-row-line); }
-  .cr-kpi:first-child { border-top: 0; }
-  .cr-kpi-value { margin-top: 14px; font-size: calc(26px * var(--font-scale, 1)); }
   .cr-bar { flex-direction: column; align-items: stretch; }
   .cr-tools { width: 100%; }
   .cr-search { flex: 1; }

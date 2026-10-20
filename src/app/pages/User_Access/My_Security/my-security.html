@@ -1,0 +1,459 @@
+<!-- =====================================================================================
+     MY SECURITY — Workspace Kit account workspace ("My profile" pattern)
+     eyebrow + title · identity card (security level on the right) · summary strip · tabs:
+     Protection (sign-in rows, MFA methods) | Sessions & devices | Activity (journal)
+     · side "Protect your account" checklist · dialogs (MFA set-up, codes, change password)
+     ===================================================================================== -->
+<div class="ms-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Account workspace</span>
+      <h1>My security</h1>
+      <p>Your sign-in, two-step verification, sessions and recovery in one place.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn" (click)="openPassword()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>Change password</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="open('methods')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('fingerprint')" /></svg>{{ mfaOn() ? 'Add MFA method' : 'Enrol MFA' }}</button>
+    </div>
+  </header>
+
+  <!-- identity card -->
+  <section class="i-card ms-id" aria-label="Account">
+    <div class="ms-id-main">
+      <span class="ms-av" aria-hidden="true">{{ initials(me.name) }}</span>
+      <div class="ms-id-text">
+        <h2>{{ me.name }} <span class="i-chip">Active</span></h2>
+        <p>Platform administrator <span class="ms-dot">·</span> <span class="i-mono">{{ me.username }}</span></p>
+        <div class="ms-id-meta">
+          <span><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ me.email }}</span>
+          <span><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('monitor')" /></svg>{{ sessions().length }} active session{{ sessions().length === 1 ? '' : 's' }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="ms-id-side">
+      <span class="i-label">Security level</span>
+      <strong>{{ level() }}</strong>
+      <small>{{ score() }} of 4 protections on · {{ levelNote() }}</small>
+    </div>
+  </section>
+
+  <!-- summary strip -->
+  <section class="i-facts ms-facts" aria-label="Security summary">
+    <div class="i-fact">
+      <span class="i-fact-ico"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg></span>
+      <span class="i-fact-text"><span class="i-label">Password last changed</span><strong>{{ fmtDateTime(passwordChanged()) }}</strong></span>
+    </div>
+    <div class="i-fact">
+      <span class="i-fact-ico"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shieldCheck')" /></svg></span>
+      <span class="i-fact-text"><span class="i-label">Two-step verification</span>
+        <strong [class.ms-warn]="!mfaOn()">{{ mfaOn() ? 'Enrolled' : 'Not enrolled' }} <small>· {{ methods().length }} method{{ methods().length === 1 ? '' : 's' }}</small></strong></span>
+    </div>
+    <div class="i-fact ms-fact-codes">
+      <span class="i-fact-ico"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg></span>
+      <span class="i-fact-text"><span class="i-label">Recovery codes</span>
+        <strong [class.ms-warn]="!recoveryCodes().length">{{ recoveryCodes().length ? recoveryCodes().length + ' left' : 'None left' }}</strong></span>
+    </div>
+    <div class="i-fact ms-fact-last">
+      <span class="i-fact-ico"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+      <span class="i-fact-text"><span class="i-label">Last sign-in</span><strong>{{ lastSignIn() ? fmtDateTime(lastSignIn()) : '—' }}</strong></span>
+    </div>
+  </section>
+
+  <!-- tabs -->
+  <div class="ms-tabs-row">
+    <nav class="i-tabs" role="tablist" aria-label="Security sections">
+      <button type="button" role="tab" class="i-tab" [class.is-on]="tab() === 'protection'" [attr.aria-selected]="tab() === 'protection'" (click)="tab.set('protection')">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Protection</button>
+      <button type="button" role="tab" class="i-tab" [class.is-on]="tab() === 'sessions'" [attr.aria-selected]="tab() === 'sessions'" (click)="tab.set('sessions')">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg>Sessions &amp; devices <span class="i-tab-n">{{ sessions().length }}</span></button>
+      <button type="button" role="tab" class="i-tab" [class.is-on]="tab() === 'activity'" [attr.aria-selected]="tab() === 'activity'" (click)="tab.set('activity')">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>Activity <span class="i-tab-n">{{ activity().length }}</span></button>
+    </nav>
+  </div>
+
+  <div class="ms-layout">
+    <div class="ms-main">
+      @switch (tab()) {
+        @case ('protection') {
+          <section class="i-card" aria-labelledby="ms-p1">
+            <header class="i-card-head"><div><h3 id="ms-p1">Sign-in &amp; protection</h3><p>Review your sign-in details and the protection on this account.</p></div></header>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg></span>
+              <span class="i-lrow-text"><strong>Sign-in e-mail</strong><small>{{ me.email }}</small></span>
+              <span class="i-chip">Managed identity</span>
+            </div>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shieldCheck')" /></svg></span>
+              <span class="i-lrow-text"><strong>Two-step verification</strong>
+                <small [class.ms-warn]="!mfaOn()">{{ mfaOn() ? 'Enrolled · ' + methods().length + ' method' + (methods().length === 1 ? '' : 's') : 'Not enrolled · a second method protects every sign-in' }}</small></span>
+              <button type="button" class="i-btn i-btn--sm" (click)="open('methods')">{{ mfaOn() ? 'Add method' : 'Set up' }}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+            </div>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg></span>
+              <span class="i-lrow-text"><strong>Password</strong><small>Last changed {{ fmtDateTime(passwordChanged()) }} · {{ passwordGood() ? 'good' : 'older than 90 days' }}</small></span>
+              <button type="button" class="i-btn i-btn--sm" (click)="openPassword()">Change password
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+            </div>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg></span>
+              <span class="i-lrow-text"><strong>Backup codes</strong>
+                <small>{{ recoveryCodes().length ? recoveryCodes().length + ' single-use codes left' : mfaOn() ? 'None left — generate a new set' : 'Set up a second factor first' }}</small></span>
+              <button type="button" class="i-btn i-btn--sm" [disabled]="!mfaOn()" (click)="open('codes')">{{ recoveryCodes().length ? 'View codes' : 'Generate' }}
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+            </div>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg></span>
+              <span class="i-lrow-text"><strong>Lockout state</strong><small>{{ me.failedSignIns }} failed sign-ins · {{ me.attemptsLeft }} attempts left before lockout</small></span>
+              <span class="i-chip">Not locked</span>
+            </div>
+          </section>
+
+          <section class="i-card" aria-labelledby="ms-p2">
+            <header class="i-card-head"><div><h3 id="ms-p2">MFA methods</h3><p>Ways you prove it is you after the password.</p></div>
+              <span class="i-count">{{ methods().length }}</span></header>
+            @for (m of methods(); track m.id) {
+              <div class="i-lrow">
+                <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(m.kind === 'app' ? 'phone' : 'mail')" /></svg></span>
+                <span class="i-lrow-text"><strong>{{ m.label }}</strong><small>{{ m.device }} · added {{ fmtDateTime(m.addedAt) }}</small></span>
+                <button type="button" class="i-icon-btn is-danger" [attr.aria-label]="'Remove ' + m.label" (click)="removeMethod(m)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg></button>
+              </div>
+            } @empty {
+              <div class="i-lrow">
+                <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('fingerprint')" /></svg></span>
+                <span class="i-lrow-text"><strong>No second factor yet</strong><small>Anybody with your password can sign in as you.</small></span>
+                <button type="button" class="i-btn i-btn--sm i-btn--primary" (click)="open('methods')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Set up</button>
+              </div>
+            }
+          </section>
+        }
+
+        @case ('sessions') {
+          <section class="i-card" aria-labelledby="ms-s1">
+            <header class="i-card-head"><div><h3 id="ms-s1">Account sessions</h3><p>Browsers signed in to your account right now.</p></div>
+              <span class="i-count">{{ sessions().length }}</span></header>
+            @for (s of sessions(); track s.id) {
+              <div class="i-lrow">
+                <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('monitor')" /></svg></span>
+                <span class="i-lrow-text"><strong>{{ s.device }}</strong><small>{{ s.detail }} · last active {{ fmtDateTime(s.lastActive) }}</small></span>
+                @if (s.current) { <span class="i-chip">This device</span> }
+                @else {
+                  <button type="button" class="i-btn i-btn--sm i-btn--danger" (click)="revoke(s)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('xCircle')" /></svg>Revoke</button>
+                }
+              </div>
+            }
+          </section>
+          <section class="i-card" aria-labelledby="ms-s2">
+            <header class="i-card-head"><div><h3 id="ms-s2">Remembered devices</h3><p>Devices that skip the second step.</p></div>
+              <span class="i-count">{{ rememberedDevices() }}</span></header>
+            <div class="i-lrow">
+              <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg></span>
+              <span class="i-lrow-text"><strong>No device is remembered</strong>
+                <small>You will be asked to verify every time — the safer setting. Tick “Remember this device” when you sign in to add one.</small></span>
+              @if (devicesReviewed()) { <span class="i-chip">Reviewed</span> }
+              @else {
+                <button type="button" class="i-btn i-btn--sm" (click)="reviewDevices()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Mark reviewed</button>
+              }
+            </div>
+          </section>
+        }
+
+        @case ('activity') {
+          <section class="i-card ms-journal" aria-labelledby="ms-a1">
+            <header class="i-card-head"><div><h3 id="ms-a1">Recent security activity</h3><p>Sign-ins and changes to your protection, newest first.</p></div></header>
+            @for (g of activityDays(); track g.key) {
+              <div class="ms-day"><strong>{{ g.label }}</strong><span>{{ g.items.length }} event{{ g.items.length === 1 ? '' : 's' }}</span></div>
+              @for (a of g.items; track a.id) {
+                <div class="ms-ev">
+                  <span class="ms-ev-time">{{ fmtTime(a.at) }}</span>
+                  <svg class="i-ico" [class.ms-bad]="activityIcon(a) === 'xCircle'" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(activityIcon(a))" /></svg>
+                  <span class="i-lrow-text"><strong>{{ a.title }}</strong><small>{{ a.detail }}</small></span>
+                </div>
+              }
+            }
+          </section>
+        }
+      }
+    </div>
+
+    <!-- side: protect your account -->
+    <aside class="ms-side">
+      <section class="i-card ms-protect">
+        <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shieldCheck')" /></svg></span>
+        <h3>Protect your account</h3>
+        <p>{{ levelNote() }} Each step below raises your security level.</p>
+        <ul>
+          @for (c of checks(); track c.key) {
+            <li [class.is-ok]="c.ok">
+              <button type="button" (click)="c.action ? open(c.action) : reviewDevices()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.ok ? 'checkCircle' : 'plus')" /></svg>
+                <span><strong>{{ c.label }}</strong><small>{{ c.state }}</small></span>
+              </button>
+            </li>
+          }
+        </ul>
+        <div class="ms-level-line"><span>Security level</span><strong>{{ level() }} · {{ score() }}/4</strong></div>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<!-- ================= dialogs — record-dialog style: plain header (title + close), eyebrow + big title
+     + status label, label/value grid, grey info note, footer with actions on the right ================= -->
+@switch (dialog()) {
+  <!-- choose a method -->
+  @case ('methods') {
+    <div class="i-overlay is-center ms-center" (click)="close()">
+      <div class="i-modal ms-dlg" role="dialog" aria-modal="true" aria-labelledby="ms-d1" (click)="$event.stopPropagation()">
+        <header class="ms-dlg-head">
+          <h2 id="ms-d1">Two-step verification</h2>
+          <button type="button" class="ms-dlg-x" aria-label="Close" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+        <div class="ms-dlg-body">
+          <div class="ms-dlg-intro">
+            <div>
+              <span class="ms-dlg-eyebrow">Account security · {{ me.username }}</span>
+              <h3>Set up multi-factor authentication</h3>
+            </div>
+            <span class="ms-dlg-pill" [class.is-ok]="mfaOn()">{{ mfaOn() ? 'Enrolled' : 'Not enrolled' }}</span>
+          </div>
+
+          <dl class="ms-dlg-kv">
+            <div><dt>Methods set up</dt><dd>{{ methods().length }}</dd></div>
+            <div><dt>Requirement</dt><dd>Optional · organisation default</dd></div>
+            <div><dt>Recovery codes</dt><dd>{{ recoveryCodes().length ? recoveryCodes().length + ' left' : 'None yet' }}</dd></div>
+          </dl>
+
+          <div class="ms-methods">
+            <button type="button" class="ms-method" (click)="startApp()">
+              <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg></span>
+              <span class="ms-method-text"><strong>Authenticator app <span class="i-chip">Recommended</span></strong>
+                <small>Scan a QR code with Google Authenticator, Authy or Microsoft Authenticator</small></span>
+              <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg>
+            </button>
+            <button type="button" class="ms-method" (click)="startEmail()">
+              <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg></span>
+              <span class="ms-method-text"><strong>E-mail OTP</strong><small>Receive a one-time passcode at your registered e-mail address</small></span>
+              <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg>
+            </button>
+            <div class="ms-method is-off" aria-disabled="true">
+              <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg></span>
+              <span class="ms-method-text"><strong>Security key <span class="i-chip">Unavailable</span></strong><small>Not available yet.</small></span>
+            </div>
+            <div class="ms-method is-off" aria-disabled="true">
+              <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('fingerprint')" /></svg></span>
+              <span class="ms-method-text"><strong>Biometric <span class="i-chip">Unavailable</span></strong><small>Unlock your device to use your authenticator app instead.</small></span>
+            </div>
+          </div>
+
+          <p class="ms-dlg-note">A second method protects every sign-in, even if someone learns your password. You can add more than one method
+            and remove them at any time.</p>
+        </div>
+        <footer class="ms-dlg-foot">
+          <button type="button" class="ms-dlg-btn" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Close</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- recovery codes -->
+  @case ('codes') {
+    <div class="i-overlay is-center ms-center" (click)="close()">
+      <div class="i-modal ms-dlg" role="dialog" aria-modal="true" aria-labelledby="ms-d3" (click)="$event.stopPropagation()">
+        <header class="ms-dlg-head">
+          <h2 id="ms-d3">Backup codes</h2>
+          <button type="button" class="ms-dlg-x" aria-label="Close" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+        <div class="ms-dlg-body">
+          <div class="ms-dlg-intro">
+            <div>
+              <span class="ms-dlg-eyebrow">Recovery · {{ me.username }}</span>
+              <h3>{{ recoveryCodes().length }} single-use codes</h3>
+            </div>
+            <span class="ms-dlg-pill" [class.is-ok]="mfaOn()">{{ mfaOn() ? 'Two-step on' : 'Two-step off' }}</span>
+          </div>
+
+          <dl class="ms-dlg-kv">
+            <div><dt>Second factor</dt><dd>{{ methods().length ? methods()[methods().length - 1].label : '—' }}</dd></div>
+            <div><dt>Codes left</dt><dd>{{ recoveryCodes().length }}</dd></div>
+            <div><dt>Each code</dt><dd>Works once</dd></div>
+          </dl>
+
+          <ol class="ms-codes">
+            @for (c of recoveryCodes(); track c) { <li class="i-mono">{{ c }}</li> }
+          </ol>
+
+          <p class="ms-dlg-note">Keep these codes somewhere safe and offline. Generating a new set stops every earlier code working,
+            including any you have printed.</p>
+        </div>
+        <footer class="ms-dlg-foot">
+          <button type="button" class="ms-dlg-btn" (click)="generateCodes()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>Generate new codes</button>
+          <button type="button" class="ms-dlg-btn is-primary" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checkCircle')" /></svg>I have saved them</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- change password -->
+  @case ('password') {
+    <div class="i-overlay is-center ms-center" (click)="close()">
+      <div class="i-modal ms-dlg" role="dialog" aria-modal="true" aria-labelledby="ms-d4" (click)="$event.stopPropagation()">
+        <header class="ms-dlg-head">
+          <h2 id="ms-d4">Change password</h2>
+          <button type="button" class="ms-dlg-x" aria-label="Close" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+        <div class="ms-dlg-body">
+          <div class="ms-dlg-intro">
+            <div>
+              <span class="ms-dlg-eyebrow">Password · {{ me.username }}</span>
+              <h3>{{ me.name }}</h3>
+            </div>
+            <span class="ms-dlg-pill" [class.is-ok]="passwordGood()">{{ passwordGood() ? 'Good' : 'Change due' }}</span>
+          </div>
+
+          <dl class="ms-dlg-kv">
+            <div><dt>Last changed</dt><dd>{{ fmtDateTime(passwordChanged()) }}</dd></div>
+            <div><dt>Sign-in e-mail</dt><dd>{{ me.email }}</dd></div>
+            <div><dt>Failed sign-ins</dt><dd>{{ me.failedSignIns }} · {{ me.attemptsLeft }} attempts left</dd></div>
+          </dl>
+
+          <div class="ms-pw">
+            <label class="i-field">
+              <span class="i-field-label">Current password <em>*</em></span>
+              <span class="ms-pw-wrap">
+                <input class="i-input" autocomplete="current-password" [type]="show().current ? 'text' : 'password'"
+                       [class.is-invalid]="pwTried() && !pw().current" [value]="pw().current" (input)="setPw('current', $any($event.target).value)" />
+                <button type="button" class="ms-eye" [attr.aria-label]="show().current ? 'Hide password' : 'Show password'" (click)="toggleShow('current')">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(show().current ? 'eyeOff' : 'eye')" /></svg></button>
+              </span>
+            </label>
+            <div class="ms-pw-two">
+              <label class="i-field">
+                <span class="i-field-label">New password <em>*</em></span>
+                <span class="ms-pw-wrap">
+                  <input class="i-input" autocomplete="new-password" [type]="show().next ? 'text' : 'password'"
+                         [class.is-invalid]="pwTried() && !rulesOk()" [value]="pw().next" (input)="setPw('next', $any($event.target).value)" />
+                  <button type="button" class="ms-eye" [attr.aria-label]="show().next ? 'Hide password' : 'Show password'" (click)="toggleShow('next')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(show().next ? 'eyeOff' : 'eye')" /></svg></button>
+                </span>
+              </label>
+              <label class="i-field">
+                <span class="i-field-label">Confirm new password <em>*</em></span>
+                <span class="ms-pw-wrap">
+                  <input class="i-input" autocomplete="new-password" [type]="show().confirm ? 'text' : 'password'"
+                         [class.is-invalid]="(pwTried() || !!pw().confirm) && !matchOk()" [value]="pw().confirm" (input)="setPw('confirm', $any($event.target).value)" />
+                  <button type="button" class="ms-eye" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggleShow('confirm')">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(show().confirm ? 'eyeOff' : 'eye')" /></svg></button>
+                </span>
+                @if (pw().confirm && !matchOk()) { <span class="i-err">The two new passwords do not match.</span> }
+              </label>
+            </div>
+            <ul class="ms-rules" aria-live="polite">
+              @for (r of rules(); track r.key) {
+                <li [class.is-ok]="r.ok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(r.ok ? 'checkCircle' : 'info')" /></svg>{{ r.label }}</li>
+              }
+            </ul>
+          </div>
+
+          <p class="ms-dlg-note">Your new password must also differ from your last 5 passwords — that is checked when you save.
+            Other sessions stay signed in until they next verify.</p>
+        </div>
+        <footer class="ms-dlg-foot">
+          <button type="button" class="ms-dlg-btn" (click)="close()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+          <button type="button" class="ms-dlg-btn is-primary" [disabled]="!canChange()" (click)="changePassword()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>Change password</button>
+        </footer>
+      </div>
+    </div>
+  }
+}
+
+<!-- authenticator app / e-mail OTP: scan or receive, then type the 6-digit code -->
+@if (dialog() === 'app' || dialog() === 'email') {
+  <div class="i-overlay is-center ms-center" (click)="close()">
+    <div class="i-modal ms-dlg" role="dialog" aria-modal="true" aria-labelledby="ms-d2" (click)="$event.stopPropagation()">
+      <header class="ms-dlg-head">
+        <h2 id="ms-d2">{{ dialog() === 'app' ? 'Authenticator app' : 'E-mail OTP' }}</h2>
+        <button type="button" class="ms-dlg-x" aria-label="Close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <div class="ms-dlg-body">
+        <div class="ms-dlg-intro">
+          <div>
+            <span class="ms-dlg-eyebrow">Two-step verification · {{ dialog() === 'app' ? 'scan and confirm' : 'confirm the code' }}</span>
+            <h3>{{ dialog() === 'app' ? 'Link your authenticator app' : 'Check your inbox' }}</h3>
+          </div>
+          <span class="ms-dlg-pill">{{ dialog() === 'app' ? 'Waiting for scan' : 'Code sent' }}</span>
+        </div>
+
+        <dl class="ms-dlg-kv">
+          <div><dt>Account</dt><dd>{{ me.email }}</dd></div>
+          <div><dt>{{ dialog() === 'app' ? 'New code every' : 'Sent to' }}</dt><dd>{{ dialog() === 'app' ? '30 seconds' : maskedEmail() }}</dd></div>
+          <div><dt>Code expires in</dt><dd [class.ms-warn]="secondsLeft() === 0">{{ secondsLeft() ? expires() : 'Expired' }}</dd></div>
+        </dl>
+
+        @if (dialog() === 'app') {
+          <div class="ms-qr-card">
+            <div class="ms-qr">
+              <svg viewBox="-2 -2 29 29" role="img" aria-label="QR code for your authenticator app"><path [attr.d]="qrPath()" /></svg>
+            </div>
+            <div class="ms-qr-side">
+              <span class="i-field-label">Can't scan? Enter this key in your app</span>
+              <div class="ms-secret">
+                <span class="i-mono">{{ secretGroups() }}</span>
+                <button type="button" class="i-icon-btn i-icon-btn--bare" [attr.aria-label]="copied() ? 'Copied' : 'Copy key'" (click)="copySecret()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(copied() ? 'check' : 'copy')" /></svg></button>
+              </div>
+              <label class="i-field">
+                <span class="i-field-label">Device name <small>(helps you recognise it later)</small></span>
+                <input class="i-input" placeholder="e.g. Office laptop" [value]="deviceName()" (input)="deviceName.set($any($event.target).value)" />
+              </label>
+            </div>
+          </div>
+        }
+
+        <div class="i-field ms-code-field">
+          <span class="i-field-label">Verification code <em>*</em></span>
+          <div class="ms-code" role="group" aria-label="6-digit verification code">
+            @for (d of code(); track $index; let i = $index) {
+              <input inputmode="numeric" autocomplete="one-time-code" maxlength="6" [attr.aria-label]="'Digit ' + (i + 1)"
+                     [class.is-invalid]="verifyTried() && !codeFull()" [value]="d" (input)="setDigit(i, $event)" (keydown)="backDigit(i, $event)" />
+            }
+          </div>
+          @if (verifyTried() && !codeFull()) { <span class="i-err">Enter all 6 digits.</span> }
+          @if (secondsLeft() === 0) { <span class="i-err">Code expired — {{ dialog() === 'email' ? 'resend a new one.' : 'go back and start again.' }}</span> }
+        </div>
+
+        <p class="ms-dlg-note">{{ dialog() === 'app'
+          ? 'Open your authenticator app, add an account by scanning the code, then type the 6 digits it shows. Backup codes are created as soon as you verify.'
+          : 'The code works once and only for this sign-in set-up. Check your spam folder if it has not arrived within a minute.' }}</p>
+      </div>
+
+      <footer class="ms-dlg-foot">
+        <button type="button" class="ms-dlg-btn ms-dlg-left" (click)="open('methods')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowLeft')" /></svg>Back</button>
+        @if (dialog() === 'email') {
+          <button type="button" class="ms-dlg-btn" (click)="startEmail()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>Resend</button>
+        }
+        <button type="button" class="ms-dlg-btn is-primary" [disabled]="secondsLeft() === 0" (click)="verify()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checkCircle')" /></svg>Verify &amp; enrol</button>
+      </footer>
+    </div>
+  </div>
+}

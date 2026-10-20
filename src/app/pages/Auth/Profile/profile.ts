@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { Router } from '@angular/router';
 import { ThemeSettingsService, profileImageSrc } from './theme-settings';
+import { IamUser, ORG_NAME, ROLES as IAM_ROLES, USER_STATUS_LABEL, fmtDate, initialsOf } from '../../../Shared/IAM/iam-data';
 
 export type ProfileTab = 'overview' | 'access' | 'security';
 
@@ -44,7 +46,20 @@ export interface SecurityRow {
   action?: string;
 }
 
-const PROFILE = {
+/** Header block shown in the hero and the access glance card. */
+export interface ProfileHeader {
+  name: string;
+  initials: string;
+  designation: string;
+  reference: string;
+  organisation: string;
+  email: string;
+  primaryRole: string;
+  primaryRoleNote: string;
+  scopeNote: string;
+}
+
+const PROFILE: ProfileHeader = {
   name: 'Vikram Anand',
   initials: 'VA',
   designation: 'Platform Operations Lead',
@@ -52,7 +67,8 @@ const PROFILE = {
   organisation: 'Unity for Change',
   email: 'vikram.anand@example.test',
   primaryRole: 'Super admin',
-  primaryRoleNote: 'Organisation-wide scope · sample'
+  primaryRoleNote: 'Organisation-wide scope · sample',
+  scopeNote: 'whole organisation'
 };
 
 const STATS: StatCell[] = [
@@ -153,19 +169,108 @@ const ICON_PATHS: Record<string, string> = {
   styleUrl: './profile.css'
 })
 export class Profile {
-  protected readonly profile = PROFILE;
-  protected readonly stats = STATS;
+  private readonly theme = inject(ThemeSettingsService);
+  private readonly router = inject(Router);
+
+  /** Person opened from the Users drawer's "Full profile" button (passed in the router state).
+   *  Null keeps the signed-in sample account and its static sample data. */
+  protected readonly viewed: IamUser | null =
+    (this.router.getCurrentNavigation()?.extras.state as { user?: IamUser } | null | undefined)?.user ?? null;
+
+  protected readonly profile: ProfileHeader = this.viewed
+    ? {
+        name: this.viewed.name,
+        initials: initialsOf(this.viewed.name),
+        designation: this.viewed.designation || '—',
+        reference: this.viewed.ref,
+        organisation: this.viewed.unit || ORG_NAME,
+        email: this.viewed.email,
+        primaryRole: this.roleName(this.viewed.role),
+        primaryRoleNote: this.viewed.dataScope,
+        scopeNote: this.viewed.dataScope.toLowerCase()
+      }
+    : PROFILE;
+
+  /** Hero status chip — the real status for a viewed user, the sample chip otherwise. */
+  protected readonly heroStatus = this.viewed ? USER_STATUS_LABEL[this.viewed.status] : 'Active · sample';
+  protected readonly heroTone = !this.viewed || this.viewed.status === 'active' ? 'green' : '';
+
   protected readonly tabs = TABS;
-  protected readonly identityLeft = IDENTITY_LEFT;
-  protected readonly identityRight = IDENTITY_RIGHT;
-  protected readonly orgLeft = ORG_LEFT;
-  protected readonly orgRight = ORG_RIGHT;
-  protected readonly assignmentSteps = ASSIGNMENT_STEPS;
-  protected readonly signInRows = SIGN_IN_ROWS;
+
+  protected readonly stats: StatCell[] = this.viewed
+    ? STATS.map((s): StatCell => (s.label === 'Last sign-in · sample'
+        ? { ...s, label: 'Last sign-in', value: this.viewed!.lastSignIn ? fmtDate(this.viewed!.lastSignIn) : 'Never signed in', note: '' }
+        : s.label === 'Two-step verification'
+          ? { ...s, value: this.viewed!.mfaEnrolled ? 'Enrolled' : 'Not enrolled', note: '', tone: this.viewed!.mfaEnrolled ? undefined : 'amber' }
+          : s.label === 'Assigned roles'
+            ? { ...s, note: '' }
+            : s))
+    : STATS;
+
+  protected readonly identityLeft: FieldRow[] = this.viewed
+    ? [
+        { label: 'Display name', value: this.viewed.name },
+        { label: 'Preferred name', value: this.viewed.preferredName || null },
+        { label: 'Employee ID', value: null },
+        { label: 'Username', value: this.viewed.username, mono: true }
+      ]
+    : IDENTITY_LEFT;
+  protected readonly identityRight: FieldRow[] = this.viewed
+    ? [
+        { label: 'Contact email', value: this.viewed.email },
+        { label: 'Mobile number', value: this.viewed.mobile || null },
+        { label: 'Language', value: 'English (India)' },
+        { label: 'Time zone', value: 'Asia/Kolkata' }
+      ]
+    : IDENTITY_RIGHT;
+  protected readonly orgLeft: FieldRow[] = this.viewed
+    ? [
+        { label: 'Organisation', value: ORG_NAME },
+        { label: 'Business unit', value: this.viewed.unit || null },
+        { label: 'Department', value: this.viewed.department || null }
+      ]
+    : ORG_LEFT;
+  protected readonly orgRight: FieldRow[] = this.viewed
+    ? [
+        { label: 'Designation', value: this.viewed.designation || null },
+        { label: 'Reports to', value: this.viewed.manager || null },
+        { label: 'Access from', value: fmtDate(this.viewed.accessFrom) }
+      ]
+    : ORG_RIGHT;
+
+  protected readonly assignedRoles: AssignedRole[] = this.viewed
+    ? [{
+        name: this.roleName(this.viewed.role),
+        note: 'Primary assignment',
+        scope: this.viewed.unit || ORG_NAME,
+        scopeNote: this.viewed.dataScope,
+        permissions: 'Not loaded',
+        term: this.viewed.status === 'active' ? 'Active' : USER_STATUS_LABEL[this.viewed.status]
+      }]
+    : ROLES;
+
+  protected readonly assignmentSteps: AssignmentStep[] = this.viewed
+    ? [
+        { title: 'Granted by an administrator', detail: `Primary role ${this.roleName(this.viewed.role)} assigned by the platform administrator · ${this.viewed.ref}.` },
+        { title: 'Scope of this assignment', detail: `${this.viewed.dataScope} scope · ${this.viewed.unit || ORG_NAME}.` },
+        { title: this.viewed.invitation === 'Accepted' ? 'Invitation accepted' : `Invitation ${this.viewed.invitation.toLowerCase()}`, detail: `Access from ${fmtDate(this.viewed.accessFrom)} · no end date.` }
+      ]
+    : ASSIGNMENT_STEPS;
+
+  protected readonly signInRows: SecurityRow[] = this.viewed
+    ? SIGN_IN_ROWS.map((r): SecurityRow => (r.title === 'Sign-in email'
+        ? { ...r, detail: this.viewed!.email }
+        : r.title === 'Two-step verification'
+          ? { ...r, detail: this.viewed!.mfaEnrolled ? 'Enrolled · a second factor protects every sign-in.' : 'Not enrolled · a second verification method adds protection at sign-in.' }
+          : r))
+    : SIGN_IN_ROWS;
   protected readonly sessionRows = SESSION_ROWS;
   protected readonly protectTips = PROTECT_TIPS;
 
-  private readonly theme = inject(ThemeSettingsService);
+  /** Role code → display name (same lookup the Users screens use). */
+  private roleName(code: string): string {
+    return IAM_ROLES.find((r) => r.code === code)?.name ?? code;
+  }
 
   /** Opens the shared Appearance studio popup (the app shell hosts it, so it opens on any page). */
   protected openStudio(): void {
@@ -174,7 +279,7 @@ export class Profile {
 
   /** Selected avatar image src, or null when initials are used. */
   protected readonly avatarSrc = computed<string | null>(
-    () => profileImageSrc(this.theme.prefs().profileImage)
+    () => (this.viewed ? null : profileImageSrc(this.theme.prefs().profileImage))
   );
 
   /** Same avatar as a CSS background value. */
@@ -184,7 +289,7 @@ export class Profile {
   });
 
   /** Every profile field, used for the "Complete your profile" card. */
-  private readonly allFields: FieldRow[] = [...IDENTITY_LEFT, ...IDENTITY_RIGHT, ...ORG_LEFT, ...ORG_RIGHT];
+  private readonly allFields: FieldRow[] = [...this.identityLeft, ...this.identityRight, ...this.orgLeft, ...this.orgRight];
 
   protected readonly completeness = computed(() => {
     const total = this.allFields.length;
@@ -205,7 +310,7 @@ export class Profile {
 
   readonly visibleRoles = computed(() => {
     const q = this.roleQuery().trim().toLowerCase();
-    return ROLES.filter((r) => !q || [r.name, r.note, r.scope, r.scopeNote].some((v) => v.toLowerCase().includes(q)));
+    return this.assignedRoles.filter((r) => !q || [r.name, r.note, r.scope, r.scopeNote].some((v) => v.toLowerCase().includes(q)));
   });
 
   setTab(tab: ProfileTab): void {

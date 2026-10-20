@@ -37,11 +37,21 @@ import { FollowUpExecution } from './pages/Donor & Leads/FollowUp_Execution/foll
 import { FollowUpPlanner } from './pages/Donor & Leads/Follow_Planner/follow-up-planner';
 import { FollowUps } from './pages/Donor & Leads/Follow_Ups/follow-ups';
 import { NewFollowUp } from './pages/Donor & Leads/New_FollowUp/new-follow-up';
+import { NewDonation } from './pages/Donations/New Campaign/new-donation';
+import { Users } from './pages/User_Access/Users/users';
+import { RolesPermissions } from './pages/User_Access/Roles_Permissions/roles-permissions';
+import { MenuConfiguration } from './pages/User_Access/Menu_Configuration/menu-configuration';
+import { AccessRequests } from './pages/User_Access/Access_Requests/access-requests';
+import { AuditTrail } from './pages/User_Access/Audit_Trail/audit-trail';
+import { MySecurity } from './pages/User_Access/My_Security/my-security';
+import { CreateUser } from './pages/User_Access/Create_User/create-user';
+import { BulkUsers } from './pages/User_Access/Bulk_Users/bulk-users';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
 const REAL_SCREENS: Record<string, unknown> = {
   'app/donations/payment-event-queue': PaymentsReceipts,
+  'app/donations/public-donation-initiation': NewDonation,
   'app/fundraising/campaigns/campaign-wizard': NewCampaign,
   'app/fundraising/campaigns/campaign-register': CampaignRegister,
   'app/fundraising/relationships/lead-work-queue': LeadWorkQueue,
@@ -51,7 +61,19 @@ const REAL_SCREENS: Record<string, unknown> = {
   'app/fundraising/relationships/follow-up-queue': FollowUps,
   'app/fundraising/relationships/follow-up-planner': FollowUpPlanner,
   'app/fundraising/relationships/follow-up-execution': FollowUpExecution,
-  'app/fundraising/relationships/assignment-board': AssignmentBoard
+  'app/fundraising/relationships/assignment-board': AssignmentBoard,
+
+  // Users & Access (IAM)
+  'app/administration/access/user-directory': Users,
+  'app/administration/access/create-user': CreateUser,
+  'app/administration/access/role-and-permission-catalogue': RolesPermissions,
+  'app/administration/access/menu-configuration': MenuConfiguration,
+  'app/administration/access/access-request-and-approval': AccessRequests,
+  'app/administration/audit': AuditTrail,
+  'app/administration/access/my-security': MySecurity,
+  'app/administration/access/my-security/mfa-enrol': MySecurity,
+  'app/administration/users/bulk-actions': BulkUsers
+
 };
 
 const menuRoutes: Routes = flatten(MENU_DATA)
@@ -112,12 +134,12 @@ export const routes: Routes = [
     data: { name: 'Lead Capture', route: '/app/fundraising/relationships/lead-capture' },
     children: [
       { path: '', pathMatch: 'full', redirectTo: LC_PATHS.single },
-      { path: LC_PATHS.single, component: LeadCaptureSingle, title: 'Lead capture · Single lead' },
-      { path: LC_PATHS.bulk, component: LeadCaptureBulk, title: 'Lead capture · Bulk upload' },
+      { path: LC_PATHS.single, component: LeadCaptureSingle, title: 'Lead capture Â· Single lead' },
+      { path: LC_PATHS.bulk, component: LeadCaptureBulk, title: 'Lead capture Â· Bulk upload' },
       { path: '**', redirectTo: LC_PATHS.single },
     ],
   },
-  // Donor 360 → Edit profile (same path as editPath in donor-360.ts)
+  // Donor 360 â†’ Edit profile (same path as editPath in donor-360.ts)
   {
     path: 'app/fundraising/relationships/donor-360/edit',
     component: DonorProfileEdit,
@@ -139,7 +161,7 @@ export const routes: Routes = [
     data: { name: 'Communication Timeline', route: '/app/fundraising/relationships/communication-timeline' }
   },
 
-  // Follow-ups: queue → new (pick person) → plan (?ref=) · queue ▶ → execute (?id=) · assignment board
+  // Follow-ups: queue â†’ new (pick person) â†’ plan (?ref=) Â· queue â–¶ â†’ execute (?id=) Â· assignment board
   {
     path: 'app/fundraising/relationships/follow-up-queue',
     component: FollowUps,
@@ -169,6 +191,56 @@ export const routes: Routes = [
     component: AssignmentBoard,
     title: 'Assignment board',
     data: { name: 'Assignment board', route: '/app/fundraising/relationships/assignment-board' }
+  },
+
+  // Users & Access (IAM) â€” same paths as the sidebar menu (Users & Access group)
+  {
+    path: 'app/administration/access/user-directory',
+    component: Users,
+    title: 'Users',
+    data: { name: 'Users', route: '/app/administration/access/user-directory' }
+  },
+  {
+    path: 'app/administration/access/create-user',
+    component: CreateUser,
+    title: 'Create User',
+    data: { name: 'Create User', route: '/app/administration/access/create-user' }
+  },
+  {
+    path: 'app/administration/access/role-and-permission-catalogue',
+    component: RolesPermissions,
+    title: 'Roles & Permissions',
+    data: { name: 'Roles & Permissions', route: '/app/administration/access/role-and-permission-catalogue' }
+  },
+  {
+    path: 'app/administration/access/menu-configuration',
+    component: MenuConfiguration,
+    title: 'Menu Configuration',
+    data: { name: 'Menu Configuration', route: '/app/administration/access/menu-configuration' }
+  },
+  {
+    path: 'app/administration/access/access-request-and-approval',
+    component: AccessRequests,
+    title: 'Access Requests',
+    data: { name: 'Access Requests', route: '/app/administration/access/access-request-and-approval' }
+  },
+  {
+    path: 'app/administration/audit',
+    component: AuditTrail,
+    title: 'Audit Trail',
+    data: { name: 'Audit Trail', route: '/app/administration/audit' }
+  },
+  {
+    path: 'app/administration/access/my-security',
+    component: MySecurity,
+    title: 'My Security',
+    data: { name: 'My Security', route: '/app/administration/access/my-security' }
+  },
+  {
+    path: 'app/administration/access/my-security/mfa-enrol',
+    component: MySecurity,
+    title: 'MFA Enrolment',
+    data: { name: 'My Security', route: '/app/administration/access/my-security' }
   },
 
   // Masters

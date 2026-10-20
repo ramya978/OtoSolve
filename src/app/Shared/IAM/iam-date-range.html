@@ -1,0 +1,42 @@
+<div class="dr" [class.is-open]="open()">
+  <button type="button" class="dr-btn" aria-haspopup="dialog" [attr.aria-expanded]="open()" (click)="toggle()">
+    <span class="dr-part" [class.is-set]="start()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('calendar')" /></svg>
+      {{ start() ? label(start()) : 'Start date' }}
+    </span>
+    <svg class="dr-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('arrow')" /></svg>
+    <span class="dr-part" [class.is-set]="end()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('calendar')" /></svg>
+      {{ end() ? label(end()) : 'End date' }}
+    </span>
+    @if (start() || end()) {
+      <span class="dr-clear" role="button" tabindex="0" aria-label="Clear dates" (click)="clear($event)" (keydown.enter)="clear($event)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('close')" /></svg>
+      </span>
+    }
+  </button>
+
+  @if (open()) {
+    <div class="dr-pop" role="dialog" aria-label="Choose a date range">
+      <div class="dr-head">
+        <button type="button" class="dr-nav" aria-label="Previous month" (click)="shift(-1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('chevronLeft')" /></svg>
+        </button>
+        <strong>{{ title() }}</strong>
+        <button type="button" class="dr-nav" aria-label="Next month" (click)="shift(1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('chevron')" /></svg>
+        </button>
+      </div>
+      <div class="dr-grid">
+        @for (w of weekdays; track w) { <span class="dr-wd">{{ w }}</span> }
+        @for (c of cells(); track c.iso) {
+          <button type="button" class="dr-day" [class.is-out]="!c.inMonth" [class.is-start]="isStart(c)" [class.is-end]="isEnd(c)"
+                  [class.is-range]="inRange(c)" [class.is-today]="isToday(c)" [attr.aria-label]="label(c.iso)" (click)="pick(c)">
+            {{ c.day }}
+          </button>
+        }
+      </div>
+      <p class="dr-hint">{{ draftStart() ? 'Now pick the end date' : 'Pick the start date' }}</p>
+    </div>
+  }
+</div>

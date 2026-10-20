@@ -1,0 +1,302 @@
+<!-- =====================================================================================
+     CREATE USER — campaign-wizard layout (one scrolling page, no stepper)
+     page heading + Back · record card · [section index + required inputs] | [01 Identity · 02 Organisation
+     · 03 Access · 04 Review & invite] | [why this record exists · protected core · where it connects]
+     · action bar (Cancel · Save as draft · Create & invite)
+     ===================================================================================== -->
+<div class="cu-page">
+  <header class="cu-pagehead">
+    <div>
+      <h1>Users</h1>
+      <p>A user account lets one person sign in to this organisation, with a role, a data scope and an access window.</p>
+    </div>
+    <button type="button" class="i-btn" (click)="back()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowLeft')" /></svg>Back</button>
+  </header>
+
+  <!-- record card -->
+  <section class="i-card cu-record">
+    <div>
+      <span class="i-label">Add user record</span>
+      <h2>Invite user</h2>
+      <p>A permanent user reference is generated when you invite. The login e-mail and username are locked once the invitation is accepted.</p>
+    </div>
+    <div class="cu-record-side">
+      <span class="i-chip">{{ status() === 'sent' ? 'Invitation sent' : status() === 'draft' ? 'Draft saved' : 'New record' }}</span>
+      <button type="button" class="cu-backlink" (click)="back()">Back to records</button>
+    </div>
+  </section>
+
+  @if (status() === 'sent') {
+    <div class="i-banner cu-done" role="status">
+      <span class="i-ibox i-ibox--tint"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checkCircle')" /></svg></span>
+      <div>
+        <strong>Invitation sent to {{ form().email }}</strong>
+        <p>{{ form().displayName }} appears under Invited until they accept and set their own password.</p>
+      </div>
+      <button type="button" class="i-btn i-btn--sm" (click)="startAnother()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite another</button>
+      <button type="button" class="i-btn i-btn--sm i-btn--primary" (click)="back()">Back to records</button>
+    </div>
+  }
+
+  <div class="cu-layout">
+    <!-- ============ section index ============ -->
+    <aside class="cu-nav">
+      <span class="i-label cu-nav-label">User sections</span>
+      <ol>
+        @for (s of sections; track s.key) {
+          <li>
+            <button type="button" [class.is-on]="active() === s.key"
+                    [class.is-done]="s.key !== 'review' && done(s.key) === needed(s.key)" (click)="go(s.key)">
+              <span class="cu-no">
+                @if (s.key !== 'review' && done(s.key) === needed(s.key)) {
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+                } @else { {{ s.no }} }
+              </span>
+              <span class="cu-nav-text">
+                <strong>{{ s.title }}</strong>
+                <small>{{ s.key === 'review' ? (ready() ? 'Ready to invite' : 'Waiting for required inputs') : done(s.key) + ' / ' + needed(s.key) + ' complete' }}</small>
+              </span>
+            </button>
+          </li>
+        }
+      </ol>
+
+      <div class="i-card cu-req">
+        <span class="i-label">Required inputs</span>
+        <strong>{{ requiredDone() }} <small>/ {{ requiredTotal }}</small></strong>
+        <p>{{ ready() ? 'Everything required is in. Review and invite.' : 'Presence and format are checked as you type; uniqueness again when you invite.' }}</p>
+      </div>
+    </aside>
+
+    <!-- ============ sections ============ -->
+    <div class="cu-main">
+      <!-- 01 identity -->
+      <section class="i-card cu-sec" id="cu-identity" aria-labelledby="cu-h1">
+        <header class="cu-sec-head">
+          <span class="cu-sec-no">01</span>
+          <div><h3 id="cu-h1">Identity</h3><p>How the person appears, how they sign in and how to reach them.</p></div>
+        </header>
+
+        <div class="cu-grid">
+          <div class="i-field c2">
+            <span class="cu-lab"><span class="i-field-label">Title</span>
+              <span class="cu-q" title="Shown before the name in letters and e-mails.">?</span></span>
+            <iam-select [options]="titleOptions" [value]="form().title" placeholder="Select title" (valueChange)="set('title', $event)" />
+            <span class="i-help">Optional.</span>
+          </div>
+          <label class="i-field c2">
+            <span class="cu-lab"><span class="i-field-label">First name <em>*</em></span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('person')" /></svg>
+              <input class="i-input" placeholder="Enter first name" maxlength="60" [class.is-invalid]="err('firstName')"
+                     [value]="form().firstName" (input)="set('firstName', $any($event.target).value)" (blur)="touch('firstName')" /></span>
+            @if (err('firstName')) { <span class="i-err">{{ err('firstName') }}</span> }
+          </label>
+          <label class="i-field c2">
+            <span class="cu-lab"><span class="i-field-label">Last name <em>*</em></span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('person')" /></svg>
+              <input class="i-input" placeholder="Enter last name" maxlength="60" [class.is-invalid]="err('lastName')"
+                     [value]="form().lastName" (input)="set('lastName', $any($event.target).value)" (blur)="touch('lastName')" /></span>
+            @if (err('lastName')) { <span class="i-err">{{ err('lastName') }}</span> }
+          </label>
+
+          <label class="i-field c3">
+            <span class="cu-lab"><span class="i-field-label">Display name <em>*</em></span>
+              <span class="cu-q" title="Fills from first and last name until you change it.">?</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('doc')" /></svg>
+              <input class="i-input" placeholder="Enter display name" maxlength="120" [class.is-invalid]="err('displayName')"
+                     [value]="form().displayName" (input)="set('displayName', $any($event.target).value)" (blur)="touch('displayName')" /></span>
+            @if (err('displayName')) { <span class="i-err">{{ err('displayName') }}</span> }
+            @else { <span class="i-help">How the person appears across the directory.</span> }
+          </label>
+          <label class="i-field c3">
+            <span class="cu-lab"><span class="i-field-label">Preferred name</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
+              <input class="i-input" placeholder="Enter preferred name (optional)" maxlength="60"
+                     [value]="form().preferredName" (input)="set('preferredName', $any($event.target).value)" /></span>
+            <span class="i-help">Used in greetings. Leave empty to use the display name.</span>
+          </label>
+
+          <label class="i-field c3">
+            <span class="cu-lab"><span class="i-field-label">Login e-mail <em>*</em></span>
+              <span class="cu-q" title="The invitation is sent here. It becomes the sign-in identity.">?</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>
+              <input class="i-input" type="email" placeholder="name@organisation.org" [class.is-invalid]="err('email')"
+                     [value]="form().email" (input)="set('email', $any($event.target).value)" (blur)="touch('email')" /></span>
+            @if (err('email')) { <span class="i-err">{{ err('email') }}</span> }
+            @else { <span class="i-help">The invitation is sent to this address.</span> }
+          </label>
+          <label class="i-field c3">
+            <span class="cu-lab"><span class="i-field-label">Username <em>*</em></span>
+              <span class="cu-q" title="Fills from the e-mail until you change it. Must be unique.">?</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('at')" /></svg>
+              <input class="i-input i-mono" placeholder="Enter username" maxlength="40" [class.is-invalid]="err('username')"
+                     [value]="form().username" (input)="set('username', $any($event.target).value.toLowerCase())" (blur)="touch('username')" /></span>
+            @if (err('username')) { <span class="i-err">{{ err('username') }}</span> }
+            @else { <span class="i-help">Lower-case, unique.</span> }
+          </label>
+
+          <div class="i-field c1">
+            <span class="cu-lab"><span class="i-field-label">Country code</span></span>
+            <iam-select icon="globe" [options]="codeOptions" [value]="form().countryCode" placeholder="Code" (valueChange)="set('countryCode', $event)" />
+          </div>
+          <label class="i-field c2">
+            <span class="cu-lab"><span class="i-field-label">Mobile</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>
+              <input class="i-input" inputmode="tel" placeholder="Enter mobile number" [class.is-invalid]="err('mobile')"
+                     [value]="form().mobile" (input)="set('mobile', $any($event.target).value)" (blur)="touch('mobile')" /></span>
+            @if (err('mobile')) { <span class="i-err">{{ err('mobile') }}</span> }
+            @else { <span class="i-help">Optional — needs its country code.</span> }
+          </label>
+          <label class="i-field c3">
+            <span class="cu-lab"><span class="i-field-label">Employee or volunteer number</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg>
+              <input class="i-input" placeholder="e.g. EMP-1042" maxlength="30"
+                     [value]="form().employeeNo" (input)="set('employeeNo', $any($event.target).value)" /></span>
+            <span class="i-help">Optional. The staff or volunteer reference your organisation uses.</span>
+          </label>
+        </div>
+      </section>
+
+      <!-- 02 organisation -->
+      <section class="i-card cu-sec" id="cu-organisation" aria-labelledby="cu-h2">
+        <header class="cu-sec-head">
+          <span class="cu-sec-no">02</span>
+          <div><h3 id="cu-h2">Organisation</h3><p>Where they sit — the unit and department decide which records they reach.</p></div>
+        </header>
+        <div class="cu-grid cu-grid--2">
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Organisation unit <em>*</em></span>
+              <span class="cu-q" title="With an own-unit data scope, the person only reaches this unit's records.">?</span></span>
+            <iam-select [options]="unitOptions" [value]="form().unit" placeholder="Choose a unit…" [invalid]="!!err('unit')"
+                        (valueChange)="set('unit', $event); touch('unit')" />
+            @if (err('unit')) { <span class="i-err">{{ err('unit') }}</span> }
+          </div>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Department <em>*</em></span></span>
+            <iam-select [options]="deptOptions" [value]="form().department" placeholder="Choose a department…" [invalid]="!!err('department')"
+                        (valueChange)="set('department', $event); touch('department')" />
+            @if (err('department')) { <span class="i-err">{{ err('department') }}</span> }
+          </div>
+          <label class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Designation</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('award')" /></svg>
+              <input class="i-input" placeholder="Enter designation" maxlength="80"
+                     [value]="form().designation" (input)="set('designation', $any($event.target).value)" /></span>
+            <span class="i-help">Shown on their profile and in the directory.</span>
+          </label>
+          <label class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Work location</span></span>
+            <span class="i-input-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('home')" /></svg>
+              <input class="i-input" placeholder="Enter work location" maxlength="80"
+                     [value]="form().workLocation" (input)="set('workLocation', $any($event.target).value)" /></span>
+          </label>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Preferred language</span></span>
+            <iam-select [options]="languageOptions" [value]="form().language" placeholder="Select a language" (valueChange)="set('language', $event)" />
+            <span class="i-help">Used for their e-mails and screens.</span>
+          </div>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Time zone</span></span>
+            <iam-select icon="clock" [options]="zoneOptions" [value]="form().timeZone" placeholder="Select a time zone" (valueChange)="set('timeZone', $event)" />
+          </div>
+        </div>
+      </section>
+
+      <!-- 03 access -->
+      <section class="i-card cu-sec" id="cu-access" aria-labelledby="cu-h3">
+        <header class="cu-sec-head">
+          <span class="cu-sec-no">03</span>
+          <div><h3 id="cu-h3">Access</h3><p>What they may do, over which records, for how long.</p></div>
+        </header>
+        <div class="cu-grid cu-grid--2">
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Primary role <em>*</em></span>
+              <span class="cu-q" title="The role decides the permissions. More roles can be added later.">?</span></span>
+            <iam-select [options]="roleOptions" [value]="form().role" placeholder="Choose a role…" [invalid]="!!err('role')"
+                        (valueChange)="set('role', $event); touch('role')" />
+            @if (err('role')) { <span class="i-err">{{ err('role') }}</span> }
+            @else if (rolePrivileged()) { <span class="i-help cu-warn">Privileged role — this invitation is flagged for review.</span> }
+          </div>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Data scope <em>*</em></span></span>
+            <iam-select icon="database" [options]="scopeOptions" [value]="form().dataScope" placeholder="Select data scope" [invalid]="!!err('dataScope')"
+                        (valueChange)="set('dataScope', $event); touch('dataScope')" />
+            @if (err('dataScope')) { <span class="i-err">{{ err('dataScope') }}</span> }
+            @else { <span class="i-help">Narrower scopes (a campaign, a queue) are granted later through an access request.</span> }
+          </div>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Access window</span>
+              <span class="cu-q" title="Pick the start, then the end. Clear the end for open-ended access.">?</span></span>
+            <iam-date-range [start]="form().accessFrom" [end]="form().accessUntil" [today]="today" (rangeChange)="setWindow($event)" />
+            <span class="i-help">Starts today by default. Leave the end empty for open-ended access.</span>
+          </div>
+          <div class="i-field">
+            <span class="cu-lab"><span class="i-field-label">Two-step verification <em>*</em></span></span>
+            <iam-select icon="lock" [options]="mfaOptions" [value]="form().mfa" placeholder="Select" [invalid]="!!err('mfa')"
+                        (valueChange)="set('mfa', $event); touch('mfa')" />
+            @if (err('mfa')) { <span class="i-err">{{ err('mfa') }}</span> }
+            @else { <span class="i-help"><b>Required</b> means they must set up a second factor during activation.</span> }
+          </div>
+          <label class="i-field cfull">
+            <span class="cu-lab"><span class="i-field-label">Business justification <em>*</em></span>
+              <span class="cu-q" title="Recorded in the audit trail — the first thing an access review looks at.">?</span></span>
+            <textarea class="i-textarea cu-text" placeholder="Why does this person need this access? At least 10 characters." [attr.maxlength]="justifyMax"
+                      [class.is-invalid]="err('justification')" [value]="form().justification"
+                      (input)="set('justification', $any($event.target).value)" (blur)="touch('justification')"></textarea>
+            <span class="cu-under">
+              @if (err('justification')) { <span class="i-err">{{ err('justification') }}</span> }
+              @else { <span class="i-help">Recorded in the audit trail.</span> }
+              <span class="i-help">{{ form().justification.length }} / {{ justifyMax }} characters</span>
+            </span>
+          </label>
+        </div>
+
+
+        
+      </section>
+
+  <!-- action bar -->
+  <footer class="i-card cu-actions">
+    <button type="button" class="i-btn" (click)="back()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+  
+    <button type="button" class="i-btn" (click)="saveDraft()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save as draft</button>
+    <button type="button" class="i-btn i-btn--primary" [disabled]="status() === 'sent'" (click)="create()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>Create</button>
+  </footer>
+
+    </div>
+
+    <!-- ============ guidance ============ -->
+    <aside class="i-card cu-help">
+      <section>
+        <h4><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>Why this record exists</h4>
+        <p>A user account lets one person sign in, with one primary role, a data scope and an access window. Every action they take is tied to it in the audit trail.</p>
+      </section>
+      <section>
+        <h4>Protected core</h4>
+        <p>The user reference stays permanent. The login e-mail and username lock once the invitation is accepted. Role, scope and window can change later with a recorded reason.</p>
+      </section>
+      <section>
+        <h4>Where it connects</h4>
+        <ul>
+          <li><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg>Roles &amp; permissions</li>
+          <li><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('unit')" /></svg>Organisation units</li>
+          <li><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clipboard')" /></svg>Access requests</li>
+          <li><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('doc')" /></svg>Audit trail</li>
+        </ul>
+      </section>
+      <div class="cu-note">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+        <span>Invited people stay <b>Invited</b> until they open the link. Unused invitations expire after 7 days.</span>
+      </div>
+    </aside>
+
+
+    
+  </div>
+
+</div>

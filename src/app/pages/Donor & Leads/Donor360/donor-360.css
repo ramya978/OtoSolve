@@ -686,9 +686,10 @@ col.w-act { width: 100px; }
   gap: 7px;
   height: 38px;
   padding: 0 16px;
-  border: 1px solid var(--dx-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--dx-btn-radius);
-  background: var(--dx-card);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
@@ -696,7 +697,7 @@ col.w-act { width: 100px; }
 }
 
 .dx-btn svg { width: 15px; height: 15px; transition: transform 0.2s; }
-.dx-btn:hover { border-color: var(--dx-primary-line); color: var(--dx-primary) !important; }
+.dx-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .dx-btn:hover svg { transform: rotate(90deg); }
 .dx-btn.sm { height: 34px; padding: 0 12px; font-size: 12px; }
 .dx-btn.is-primary { border-color: var(--cc-btn, var(--dx-primary)); background: var(--cc-btn, var(--dx-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }

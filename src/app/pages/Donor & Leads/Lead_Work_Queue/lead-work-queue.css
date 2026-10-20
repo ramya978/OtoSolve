@@ -123,10 +123,10 @@
   gap: 7px;
   height: 36px;
   padding: 0 13px;
-  border: 1px solid var(--lwq-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--lwq-btn-radius);
-  background: var(--lwq-card);
-  color: var(--lwq-ink);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 500;
   white-space: nowrap;
@@ -136,7 +136,7 @@
 
 .lwq-btn svg { width: 15px; height: 15px; flex: none; }
 
-.lwq-btn:hover { border-color: var(--lwq-primary-line); background: var(--lwq-primary-soft); color: var(--lwq-primary); }
+.lwq-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)); }
 
 .lwq-btn.is-primary {
   border-color: var(--cc-btn, var(--lwq-primary));

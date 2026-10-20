@@ -2,9 +2,9 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
-import { CampaignInfo } from '../../../Shared/Campaign/cw.data';
+import { CampaignInfo, inr, PEOPLE } from '../../../Shared/Campaign/cw.data';
 
-export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'closing' | 'closed';
+export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'paused' | 'closing' | 'closed';
 
 export interface CampaignRow {
   id: string;
@@ -36,13 +36,13 @@ export const CAMPAIGNS: CampaignRow[] = [
   { id: 'c3', name: 'Elder Self-Help Groups - Livelihood Fund', code: 'HAI-LIVELIHOOD-2027', status: 'submitted', progress: 0, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2027, 1, 7))), ends: fmtDate(new Date(utc(2027, 7, 6))), received: 96400, target: 300000, delivered: 34, replies: 9, overdue: 3 },
   { id: 'c4', name: 'Corporate Champions for Elder Care FY 2026-27', code: 'HAI-CSR-2027', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 11, 18))), ends: fmtDate(new Date(utc(2027, 4, 6))), received: 152300, target: 500000, delivered: 41, replies: 12, overdue: 2 },
   { id: 'c5', name: 'Winter Relief - Warmth for Elders', code: 'HAI-WINTER-2026', status: 'scheduled', progress: 0, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 26))), ends: fmtDate(new Date(utc(2027, 1, 17))), received: 88400, target: 250000, delivered: 29, replies: 6, overdue: 4 },
-  { id: 'c6', name: 'Restore Sight - Cataract Surgeries 2026', code: 'HAI-SIGHT-2026', status: 'active', progress: 35, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 8, 5))), ends: fmtDate(new Date(utc(2027, 3, 3))), received: 96500, target: 275000, delivered: 33, replies: 8, overdue: 3 },
+  { id: 'c6', name: 'Restore Sight - Cataract Surgeries 2026', code: 'HAI-SIGHT-2026', status: 'paused', progress: 35, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 8, 5))), ends: fmtDate(new Date(utc(2027, 3, 3))), received: 96500, target: 275000, delivered: 33, replies: 8, overdue: 3 },
   { id: 'c7', name: 'Physiotherapy at Home', code: 'HAI-PHYSIO-2026', status: 'closing', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 6, 24))), ends: fmtDate(new Date(utc(2026, 10, 10))), received: 61200, target: 180000, delivered: 22, replies: 5, overdue: 1 },
   { id: 'c8', name: 'Mobile Healthcare Units - Care at the Doorstep', code: 'HAI-MOBILECARE-2026', status: 'active', progress: 47, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 7, 26))), ends: fmtDate(new Date(utc(2027, 1, 22))), received: 74300, target: 220000, delivered: 27, replies: 7, overdue: 2 },
 
   { id: 'c9', name: 'Elder Helpline - Keep the Line Open', code: 'HAI-HELPLINE-2026', status: 'scheduled', progress: 3, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 12))), ends: fmtDate(new Date(utc(2027, 5, 2))), received: 33800, target: 120000, delivered: 15, replies: 3, overdue: 5 },
   { id: 'c10', name: 'Heatwave Relief for Elders 2026', code: 'HAI-HEATWAVE-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 5, 2))), ends: fmtDate(new Date(utc(2026, 10, 7))), received: 52100, target: 160000, delivered: 19, replies: 4, overdue: 0 },
-  { id: 'c11', name: 'Nutrition Kits for Homebound Seniors', code: 'HAI-NUTRITION-2026', status: 'active', progress: 62, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2026, 4, 18))), ends: fmtDate(new Date(utc(2026, 12, 20))), received: 68900, target: 190000, delivered: 24, replies: 6, overdue: 2 },
+  { id: 'c11', name: 'Nutrition Kits for Homebound Seniors', code: 'HAI-NUTRITION-2026', status: 'paused', progress: 62, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2026, 4, 18))), ends: fmtDate(new Date(utc(2026, 12, 20))), received: 68900, target: 190000, delivered: 24, replies: 6, overdue: 2 },
   { id: 'c12', name: 'Safe Drinking Water - Rural Elders', code: 'HAI-WATER-2026', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2026, 11, 2))), ends: fmtDate(new Date(utc(2027, 3, 28))), received: 12700, target: 140000, delivered: 6, replies: 1, overdue: 1 },
   { id: 'c13', name: 'Diabetes Screening Camps', code: 'HAI-DIABETES-2026', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 9, 9))), ends: fmtDate(new Date(utc(2027, 2, 14))), received: 29400, target: 110000, delivered: 12, replies: 3, overdue: 2 },
   { id: 'c14', name: 'Hearing Aid Support Programme', code: 'HAI-HEARING-2026', status: 'closing', progress: 96, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 3, 5))), ends: fmtDate(new Date(utc(2026, 11, 30))), received: 57600, target: 175000, delivered: 21, replies: 5, overdue: 1 },
@@ -56,6 +56,7 @@ const STATUS_META: Record<CampaignStatus, { label: string; tone: string }> = {
   submitted: { label: 'Submitted', tone: 'info' },
   scheduled: { label: 'Scheduled', tone: 'purple' },
   active: { label: 'Active', tone: 'success' },
+  paused: { label: 'Paused', tone: 'warning' },
   closing: { label: 'Closing', tone: 'warning' },
   closed: { label: 'Closed', tone: 'ink' }
 };
@@ -78,8 +79,44 @@ const ICON_PATHS: Record<string, string> = {
   mail: 'M3 5h18v14H3z M3 6l9 7 9-7',
   case: 'M4 8h16v12H4z M9 8V5h6v3 M4 13h16',
   globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M3 12h18 M12 2c3 3.5 3 16.5 0 20-3-3.5-3-16.5 0-20z',
-  x: 'M18 6 6 18 M6 6l12 12'
+  pause: 'M9 5v14 M15 5v14',
+  money: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6.5v11 M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.4 0-2.5.7-2.5 2s1.1 1.8 2.5 2 2.5.7 2.5 2-1.1 2-2.5 2A2.5 2 0 0 1 9.5 15',
+  x: 'M18 6 6 18 M6 6l12 12',
+  // ---- campaign logo marks ----
+  walk: 'M13 4a1.6 1.6 0 1 0 0 .1 M10 21l2.5-6 2.5 2v4 M9 11l2.5-3 3 2.5 2.5 1 M11.5 8l-1 5.5',
+  care: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z M9 11h2l1-2 1.5 4 1-2h1.5',
+  sprout: 'M12 21v-9 M12 12c0-4-3-6-7-6 0 4 3 6 7 6z M12 10c0-3.5 2.5-6 7-6 0 4-3 6-7 6z',
+  snow: 'M12 2v20 M4.9 6l14.2 12 M19.1 6 4.9 18 M9.5 3.5 12 6l2.5-2.5 M9.5 20.5 12 18l2.5 2.5',
+  van: 'M2 7h11v9H2z M13 10h4l3 3v3h-7 M6 19a1.8 1.8 0 1 0 0-.1 M17 19a1.8 1.8 0 1 0 0-.1 M6.5 9.5v4 M4.5 11.5h4',
+  phone: 'M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z',
+  sun: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M12 2v2 M12 20v2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M2 12h2 M20 12h2 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4',
+  bowl: 'M3 11h18a9 9 0 0 1-18 0z M8 7c0-1.5 1-2 1-3.5 M12 7c0-1.5 1-2 1-3.5 M16 7c0-1.5 1-2 1-3.5',
+  drop: 'M12 3s6 6.6 6 11a6 6 0 0 1-12 0c0-4.4 6-11 6-11z',
+  pulse: 'M3 12h4l2-5 4 10 2-5h6',
+  ear: 'M7 10a5 5 0 0 1 10 0c0 3-3 4-3 7a3 3 0 0 1-5 2 M10 10a2 2 0 0 1 4 0c0 1.2-1 1.6-1.6 2.3',
+  home: 'M3 11l9-7 9 7 M5 9.5V20h14V9.5 M10 20v-6h4v6'
 };
+
+/** Unsplash image for a campaign / owner photo, cropped square. */
+const unsplash = (id: string, size = 96): string =>
+  `https://images.unsplash.com/photo-${id}?w=${size}&h=${size}&fit=crop&crop=faces,center&auto=format&q=70`;
+
+/** Owner profile photos. Replace with your user photo URLs (e.g. from the users API / 'assets/people/ritu.jpg'). */
+const OWNER_PHOTOS: Record<string, string> = {
+  'Ritu Anil': 'https://randomuser.me/api/portraits/women/68.jpg',
+  'Priyanka Naveen': 'https://randomuser.me/api/portraits/women/44.jpg',
+  'Aditya Ganesh': 'https://randomuser.me/api/portraits/men/32.jpg',
+  'Arvind Murali': 'https://randomuser.me/api/portraits/men/75.jpg',
+  'Vikram Anand': 'https://randomuser.me/api/portraits/men/46.jpg'
+};
+
+/** Campaign code keyword → logo mark (first match wins; shown if the image fails to load). */
+const LOGO_MARKS: [RegExp, string][] = [
+  [/WALK/, 'walk'], [/MOBILE/, 'van'], [/PALLIATIVE|CARE/, 'care'], [/LIVELIHOOD/, 'sprout'], [/CSR/, 'case'],
+  [/WINTER/, 'snow'], [/SIGHT/, 'eye'], [/PHYSIO/, 'people'],
+  [/HELPLINE/, 'phone'], [/HEAT/, 'sun'], [/NUTRITION/, 'bowl'], [/WATER/, 'drop'],
+  [/DIABETES/, 'pulse'], [/HEARING/, 'ear'], [/PENSION/, 'money'], [/SHELTER/, 'home']
+];
 
 /** Columns that support sorting. */
 export type SortKey = 'name' | 'status' | 'progress' | 'owner' | 'launch' | 'ends';
@@ -87,7 +124,7 @@ export type SortKey = 'name' | 'status' | 'progress' | 'owner' | 'launch' | 'end
 export type RowAction = 'view' | 'edit' | 'duplicate' | 'readiness' | 'launch' | 'delete';
 
 export interface CampaignKpi {
-  key: 'total' | 'active' | 'scheduled' | 'approval' | 'ending';
+  key: 'total' | 'active' | 'scheduled' | 'approval' | 'ending' | 'paused' | 'received';
   label: string;
   value: string;
   note: string;
@@ -101,11 +138,12 @@ const ACTIONS: Record<CampaignStatus, RowAction[]> = {
   submitted: ['view', 'duplicate', 'readiness'],
   scheduled: ['view', 'edit', 'duplicate', 'launch'],
   active: ['view', 'edit', 'duplicate'],
+  paused: ['view', 'edit', 'duplicate'],
   closing: ['view', 'duplicate'],
   closed: ['view', 'duplicate']
 };
 
-const STATUS_ORDER: CampaignStatus[] = ['draft', 'submitted', 'scheduled', 'active', 'closing', 'closed'];
+const STATUS_ORDER: CampaignStatus[] = ['draft', 'submitted', 'scheduled', 'active', 'paused', 'closing', 'closed'];
 
 const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
 
@@ -159,6 +197,13 @@ export class CampaignRegister {
     const lead = active.slice().sort((a, b) => b.progress - a.progress)[0];
     const avgProgress = active.length ? Math.round(active.reduce((t, r) => t + r.progress, 0) / active.length) : 0;
 
+    const pausedRows = rows.filter((r) => r.status === 'paused');
+    const pausedReceived = pausedRows.reduce((t, r) => t + r.received, 0);
+
+    const receivedTotal = rows.reduce((t, r) => t + r.received, 0);
+    const targetTotal = rows.reduce((t, r) => t + r.target, 0);
+    const receivedPct = targetTotal ? Math.round((receivedTotal / targetTotal) * 100) : 0;
+
     const scheduled = rows.filter((r) => r.status === 'scheduled').sort((a, b) => time(a.launch) - time(b.launch));
     const nextLaunch = scheduled.find((r) => time(r.launch) >= now) ?? scheduled[0];
 
@@ -182,6 +227,14 @@ export class CampaignRegister {
       {
         key: 'active', side: { value: avgProgress + '%', label: 'Avg progress' }, label: 'Active', value: String(active.length), icon: 'flag',
         note: lead ? `Furthest along: ${lead.name} (${lead.progress}%)` : 'No campaign is running'
+      },
+      {
+        key: 'paused', side: { value: inr(pausedReceived), label: 'On hold' }, label: 'Paused', value: String(pausedRows.length), icon: 'pause',
+        note: pausedRows.length ? `${pausedRows.length} campaign${pausedRows.length === 1 ? '' : 's'} paused · ${inr(pausedReceived)} held` : 'No campaign is paused'
+      },
+      {
+        key: 'received', side: { value: receivedPct + '%', label: 'Of target' }, label: 'Received', value: inr(receivedTotal), icon: 'money',
+        note: `${rows.length} campaign${rows.length === 1 ? '' : 's'} · target ${inr(targetTotal)}`
       },
       {
         key: 'scheduled', side: { value: short(nextLaunch?.launch), label: 'Next launch' }, label: 'Scheduled to launch', value: String(scheduled.length), icon: 'calendar',
@@ -226,7 +279,7 @@ export class CampaignRegister {
 
     const key = this.sortKey();
     const dir = this.sortDir() === 'asc' ? 1 : -1;
-    const rank: Record<CampaignStatus, number> = { draft: 0, submitted: 1, scheduled: 2, active: 3, closing: 4, closed: 5 };
+    const rank: Record<CampaignStatus, number> = { draft: 0, submitted: 1, scheduled: 2, active: 3, paused: 4, closing: 5, closed: 6 };
     const time = (d: string): number => Date.parse(d + ' UTC') || 0;
     return rows.slice().sort((a, b) => {
       let cmp: number;
@@ -261,6 +314,57 @@ export class CampaignRegister {
   /** "+1" collaborators suffix ('' when none). */
   ownerExtra(owner: string): string {
     return owner.match(/\+\d+$/)?.[0] ?? '';
+  }
+
+ 
+  ownersOf(r: CampaignRow): string[] {
+    const extra = Number(r.owner.match(/\+(\d+)/)?.[1] ?? 0);
+    const base = ownerBase(r.owner);
+    const pool = PEOPLE.filter((p) => p !== base);
+    const out = [base];
+    for (let i = 0; i < extra; i++) out.push(pool[(this.seedOf(r.code) + i) % pool.length]);
+    return out;
+  }
+
+  /** Deterministic brand-style photo/gradient background for an owner's avatar. */
+  avatarStyle(name: string): string {
+    const at = PEOPLE.indexOf(name);
+    const hue = at >= 0 ? (at * 72 + 200) % 360 : this.seedOf(name) % 360;
+    return `radial-gradient(circle at 30% 25%, hsl(${hue} 70% 72%), transparent 55%), linear-gradient(135deg, hsl(${hue} 52% 48%), hsl(${(hue + 38) % 360} 58% 34%))`;
+  }
+
+  /** Logo colour hue: golden-angle step on the logo mark index → every campaign gets a clearly different colour. */
+  private logoHue(r: CampaignRow): number {
+    const at = LOGO_MARKS.findIndex(([re]) => re.test(r.code));
+    return at >= 0 ? (at * 137 + 250) % 360 : this.seedOf(r.code) % 360;
+  }
+
+  /** Logo mark gradient stops (0 = light, 1 = deep). */
+  logoColor(r: CampaignRow, stop: 0 | 1): string {
+    const h = this.logoHue(r);
+    return stop === 0 ? `hsl(${h} 72% 56%)` : `hsl(${(h + 28) % 360} 68% 38%)`;
+  }
+
+  /** Real profile photo for an owner ('' → initials only). */
+  ownerPhoto(name: string): string {
+    return OWNER_PHOTOS[name] ?? '';
+  }
+
+  /** Image failed to load → hide it so the gradient + icon / initials underneath show instead. */
+  imgFail(event: Event): void {
+    (event.target as HTMLImageElement).style.display = 'none';
+  }
+
+  /** Campaign logo mark (icon) picked from the campaign code; falls back to a heart. */
+  logoIcon(r: CampaignRow): string {
+    return LOGO_MARKS.find(([re]) => re.test(r.code))?.[1] ?? 'heart';
+  }
+
+  /** Small stable hash for a string (drives avatar / logo hues). */
+  private seedOf(text: string): number {
+    let h = 0;
+    for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) >>> 0;
+    return h;
   }
 
   /** Days between launch and end ("33 days"). */
@@ -421,7 +525,6 @@ export class CampaignRegister {
     }
   }
 
-  /** Register row → workspace CampaignInfo (so the detail page can render it). */
   private toInfo(r: CampaignRow): CampaignInfo {
     return {
       code: r.code,
@@ -443,7 +546,6 @@ export class CampaignRegister {
     };
   }
 
-  /** "01 Feb 2027" → "2027-02-01". */
   private toIso(display: string): string {
     const m: Record<string, string> = {
       Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',

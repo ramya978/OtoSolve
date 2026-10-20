@@ -1,0 +1,277 @@
+<!-- =====================================================================================
+     MENU CONFIGURATION — menu list ↔ selected menu (record style)
+     heading · save bar · toolbar (scope, role, search) ·
+     left: every top-level menu as a simple list (narrow screens: a menu dropdown) ·
+     right: the selected menu — eyebrow + big name + status, label/value facts, its items as clean rows
+     (order, name + route, permission, change, move, in-use switch, edit) · create / edit offcanvas
+     ===================================================================================== -->
+<div class="mc-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / Menus</span>
+      <h1>Menu configuration</h1>
+      <p>Pick a menu on the left to see its items. Rename, reorder or switch them off — nothing is published until you save.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="createTop()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create menu</button>
+    </div>
+  </header>
+
+  <!-- save bar -->
+  <section class="i-card mc-savebar" aria-live="polite">
+    <div class="mc-savebar-text">
+      <strong [class.mc-warn]="!saved()">{{ saved() ? 'All changes saved' : changes() + ' unsaved change' + (changes() === 1 ? '' : 's') }}</strong>
+      <small>{{ saved() ? 'The sidebar matches what is published.' : 'Working copy — save to publish it to everyone.' }}</small>
+    </div>
+    <div class="mc-savebar-facts">
+      <span><b>{{ inUseItems() }}</b> of {{ totalItems() }} in the sidebar</span>
+      <span class="mc-hide-sm"><b>{{ topInUse() }}</b> of {{ topCount() }} menus on</span>
+    </div>
+    <button type="button" class="i-btn" [disabled]="saved()" (click)="discard()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>Cancel changes</button>
+    <button type="button" class="i-btn i-btn--primary" [disabled]="saved()" (click)="save()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save changes</button>
+  </section>
+
+  <!-- toolbar -->
+  <div class="mc-toolbar">
+    <div class="mc-seg" role="radiogroup" aria-label="View">
+      <button type="button" role="radio" [class.is-on]="scope() === 'org'" [attr.aria-checked]="scope() === 'org'" (click)="scope.set('org')">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>Whole organisation</button>
+      <button type="button" role="radio" [class.is-on]="scope() === 'role'" [attr.aria-checked]="scope() === 'role'" (click)="scope.set('role')">
+        <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>As a role sees it</button>
+    </div>
+    @if (scope() === 'role') {
+      <div class="mc-role"><iam-select [options]="roleOptions" [value]="viewRole()" placeholder="Choose a role" (valueChange)="viewRole.set($event)" /></div>
+    }
+    <span class="i-spacer"></span>
+    <label class="i-search mc-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+      <input type="search" placeholder="Search menu, route or permission" aria-label="Search menus" [value]="query()"
+             (input)="query.set($any($event.target).value)" />
+    </label>
+  </div>
+
+  <div class="mc-layout">
+    <!-- ============ menu list ============ -->
+    <nav class="i-card mc-menus" aria-label="Menus">
+      <header class="mc-menus-head">
+        <strong>Menus</strong>
+        <small>{{ shownMenus().length }} of {{ topCount() }}</small>
+      </header>
+      <ul>
+        @for (m of shownMenus(); track m.code) {
+          <li>
+            <button type="button" class="mc-mrow" [class.is-on]="m.code === group().code" [class.is-off]="!m.inUse" [class.is-hidden]="!visibleTo(m)"
+                    [attr.aria-current]="m.code === group().code ? 'true' : null" (click)="select(m.code)">
+              <svg class="mc-mico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(m.icon)" /></svg>
+              <span class="mc-mtext">
+                <strong>{{ m.name }}</strong>
+                <small>{{ m.inUse ? (m.items.length ? onCount(m) + ' of ' + m.items.length + ' items on' : 'Single page') : 'Switched off' }}</small>
+              </span>
+              @if (groupChange(m) !== 'Saved baseline') { <span class="mc-mchg">{{ groupChange(m) }}</span> }
+              <svg class="mc-mchev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg>
+            </button>
+          </li>
+        } @empty {
+          <li class="mc-none">No menu matches “{{ query() }}”.</li>
+        }
+      </ul>
+      <button type="button" class="mc-addmenu" (click)="createTop()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Add a menu</button>
+    </nav>
+
+    <!-- ============ selected menu ============ -->
+    <section class="i-card mc-detail" aria-labelledby="mc-detail-name">
+      <!-- narrow screens: pick the menu here instead of the list -->
+      <div class="mc-pick">
+        <span class="i-field-label">Menu</span>
+        <iam-select [options]="menuOptions()" [value]="group().code" (valueChange)="select($event)" />
+      </div>
+
+      <div class="mc-dhead">
+        <div class="mc-dtitle">
+          <span class="mc-eyebrow">Menu {{ pad(groupIndex() + 1) }} · {{ group().module }}</span>
+          <h2 id="mc-detail-name">{{ group().name }}</h2>
+        </div>
+        <span class="mc-pill" [class.is-ok]="group().inUse && visibleTo(group())">
+          {{ !group().inUse ? 'Switched off' : visibleTo(group()) ? 'In the sidebar' : 'Hidden from this role' }}</span>
+      </div>
+
+      <dl class="mc-kv">
+        <div><dt>Items</dt><dd>{{ group().items.length || 'None — opens one page' }}</dd></div>
+        <div><dt>Switched on</dt><dd>{{ onCount(group()) }} of {{ group().items.length }}</dd></div>
+        <div><dt>Permission</dt><dd>{{ group().permission || 'Everyone' }}</dd></div>
+        <div><dt>Changes</dt><dd [class.mc-warn]="groupChange(group()) !== 'Saved baseline'">{{ groupChange(group()) === 'Saved baseline' ? 'None' : groupChange(group()) }}</dd></div>
+      </dl>
+
+      <div class="mc-dactions">
+        <span class="i-switch-wrap">
+          <button type="button" class="i-switch" role="switch" [class.is-on]="group().inUse" [attr.aria-checked]="group().inUse"
+                  [attr.aria-label]="'Show ' + group().name + ' in the sidebar'" (click)="toggleGroup(group())"></button>
+          Show in sidebar
+        </span>
+        <span class="i-spacer"></span>
+        <button type="button" class="i-btn" (click)="editGroup()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit menu</button>
+        <button type="button" class="i-btn i-btn--primary" (click)="createItem()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Add item</button>
+      </div>
+
+      <!-- items -->
+      <div class="mc-items" role="list" aria-label="Items in this menu">
+        @if (itemsOf(group()).length) {
+          <div class="mc-irow mc-ihead" aria-hidden="true">
+            <span class="c-no">No.</span><span>Item</span><span class="c-perm">Permission</span><span class="c-chg">Change</span>
+            <span class="c-move">Order</span><span>In use</span><span></span>
+          </div>
+        }
+        @for (it of itemsOf(group()); track it.code; let i = $index) {
+          <div class="mc-irow" role="listitem" [class.is-off]="!it.inUse || !group().inUse" [class.is-hidden]="!visibleTo(it)">
+            <span class="c-no mc-no">{{ pad(group().items.indexOf(it) + 1) }}</span>
+            <span class="mc-itext">
+              <strong>{{ it.name }}</strong>
+              <small class="i-mono">{{ it.route || 'Heading only — no page' }}</small>
+              @if (scope() === 'role' && !visibleTo(it)) { <small class="mc-warn">Hidden from this role</small> }
+            </span>
+            <span class="c-perm mc-perm">{{ it.permission || 'Everyone' }}</span>
+            <span class="c-chg mc-chg" [class.is-changed]="itemChange(group(), it) !== 'Saved baseline'">
+              {{ itemChange(group(), it) === 'Saved baseline' ? 'No change' : itemChange(group(), it) }}</span>
+            <span class="c-move mc-move">
+              <button type="button" class="i-icon-btn i-icon-btn--bare" [attr.aria-label]="'Move ' + it.name + ' up'" [disabled]="isFirst(it) || !!query()" (click)="move(it, -1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronUp')" /></svg></button>
+              <button type="button" class="i-icon-btn i-icon-btn--bare" [attr.aria-label]="'Move ' + it.name + ' down'" [disabled]="isLast(it) || !!query()" (click)="move(it, 1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronDown')" /></svg></button>
+            </span>
+            <button type="button" class="i-switch" role="switch" [class.is-on]="it.inUse" [attr.aria-checked]="it.inUse"
+                    [attr.aria-label]="'Use ' + it.name" (click)="toggleItem(it)"></button>
+            <button type="button" class="i-icon-btn i-icon-btn--bare" [attr.aria-label]="'Edit ' + it.name" (click)="editItem(it)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg></button>
+          </div>
+        } @empty {
+          <div class="mc-empty">
+            <strong>{{ query() ? 'No item matches “' + query() + '”' : 'No items in this menu yet' }}</strong>
+            <p>{{ query() ? 'Try another name, route or permission.' : 'It opens a single page. Add items to turn it into a group.' }}</p>
+            @if (!query()) {
+              <button type="button" class="i-btn" (click)="createItem()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Add the first item</button>
+            }
+          </div>
+        }
+      </div>
+
+      <p class="mc-note">A permission only hides an item — it grants nothing on its own. Switching a menu off hides all of its items.</p>
+    </section>
+  </div>
+</div>
+
+<!-- ================= create / edit offcanvas — record style: plain header (title + close),
+     eyebrow + live name + status, where-it-sits facts, simple form, grey note, actions ================= -->
+@if (drawer()) {
+  <div class="i-overlay" (click)="close()">
+    <aside class="i-drawer mc-dr" role="dialog" aria-modal="true" aria-labelledby="mc-dr-title" (click)="$event.stopPropagation()">
+      <header class="mc-dr-head">
+        <h2 id="mc-dr-title">{{ draft().editing ? (draft().parent ? 'Edit menu item' : 'Edit menu') : (draft().parent ? 'New menu item' : 'New menu') }}</h2>
+        <button type="button" class="mc-x" aria-label="Close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <div class="mc-dr-body">
+        <div class="mc-dhead">
+          <div class="mc-dtitle">
+            <span class="mc-eyebrow">Sidebar · {{ draft().parent ? parentName() : 'Top-level menu' }}</span>
+            <h3>
+              @if (!draft().parent) { <svg class="mc-dr-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(draft().icon || 'grid')" /></svg> }
+              <span [class.is-empty]="!draft().name.trim()">{{ draft().name.trim() || 'Untitled' }}</span>
+            </h3>
+          </div>
+          <span class="mc-pill" [class.is-ok]="!!draft().editing">{{ draft().editing ? 'In the sidebar' : 'Not added yet' }}</span>
+        </div>
+
+        <dl class="mc-kv mc-kv--3">
+          <div><dt>Appears under</dt><dd>{{ draft().parent ? parentName() : 'Sidebar' }}</dd></div>
+          <div><dt>Position</dt><dd>{{ draft().position ? 'No. ' + draft().position : 'Last' }}</dd></div>
+          <div><dt>Who sees it</dt><dd>{{ draft().permission ? 'With permission' : 'Everyone' }}</dd></div>
+        </dl>
+
+        <div class="mc-form">
+          <label class="i-field">
+            <span class="i-field-label">Display name <em>*</em></span>
+            <input class="i-input" placeholder="e.g. Monthly reports" [class.is-invalid]="tried() && errors().name"
+                   [value]="draft().name" (input)="setName($any($event.target).value)" />
+            @if (tried() && errors().name) { <span class="i-err">{{ errors().name }}</span> }
+            @else { <span class="i-help">What people read in the sidebar.</span> }
+          </label>
+
+          <label class="i-field">
+            <span class="i-field-label">Code <em>*</em></span>
+            <input class="i-input i-mono" placeholder="REPORTS_MONTHLY" [readOnly]="!!draft().editing" [class.is-invalid]="tried() && errors().code"
+                   [value]="draft().code" (input)="patch('code', $any($event.target).value.toUpperCase())" />
+            @if (tried() && errors().code) { <span class="i-err">{{ errors().code }}</span> }
+            @else { <span class="i-help">{{ draft().editing ? 'Fixed once created.' : 'Filled from the name.' }}</span> }
+          </label>
+
+          <div class="i-field">
+            <span class="i-field-label">Module <em>*</em></span>
+            <iam-select [options]="moduleOptions" [value]="draft().module" placeholder="Choose a module"
+                        [invalid]="tried() && !!errors().module" [disabled]="!!draft().parent" (valueChange)="patch('module', $event)" />
+            @if (tried() && errors().module) { <span class="i-err">{{ errors().module }}</span> }
+            @else { <span class="i-help">{{ draft().parent ? 'Same as its menu.' : 'Product area it belongs to.' }}</span> }
+          </div>
+
+          <div class="i-field">
+            <span class="i-field-label">Position</span>
+            <div class="i-num">
+              <button type="button" aria-label="Move earlier" (click)="bumpPosition(-1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('minus')" /></svg></button>
+              <input aria-label="Position" readonly [value]="draft().position ?? 'Auto'" />
+              <button type="button" aria-label="Move later" (click)="bumpPosition(1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg></button>
+            </div>
+            <span class="i-help">1 comes first. Auto = last.</span>
+          </div>
+
+          @if (draft().parent) {
+            <label class="i-field mc-full">
+              <span class="i-field-label">Route</span>
+              <span class="i-input-wrap">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('link')" /></svg>
+                <input class="i-input i-mono" placeholder="/app/reports/monthly" [class.is-invalid]="tried() && errors().route"
+                       [value]="draft().route" (input)="patch('route', $any($event.target).value)" />
+              </span>
+              @if (tried() && errors().route) { <span class="i-err">{{ errors().route }}</span> }
+              @else { <span class="i-help">The page it opens. Leave empty for a heading only.</span> }
+            </label>
+          } @else {
+            <div class="i-field mc-full">
+              <span class="i-field-label">Icon</span>
+              <iam-select [options]="iconOptions" [value]="draft().icon" placeholder="No icon" (valueChange)="patch('icon', $event)" />
+              <span class="i-help">Shown beside the name in the sidebar.</span>
+            </div>
+          }
+
+          <div class="i-field mc-full">
+            <span class="i-field-label">Required permission</span>
+            <iam-select [options]="permissionOptions" [value]="draft().permission" placeholder="No permission — everyone given the item sees it"
+                        searchPlaceholder="Search permissions" (valueChange)="patch('permission', $event)" />
+            <span class="i-help">Only people holding this permission see it.</span>
+          </div>
+        </div>
+
+        <p class="mc-note">A permission only hides a menu — it grants nothing on its own. The change goes into the working copy;
+          nothing is published until you save.</p>
+      </div>
+
+      <footer class="mc-dr-foot">
+        <button type="button" class="mc-btn" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+        <button type="button" class="mc-btn is-primary" (click)="submit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(draft().editing ? 'save' : 'plus')" /></svg>
+          {{ draft().editing ? 'Save changes' : (draft().parent ? 'Add item' : 'Create menu') }}</button>
+      </footer>
+    </aside>
+  </div>
+}

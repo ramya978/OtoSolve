@@ -79,16 +79,16 @@
   gap: 7px;
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid var(--fu-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--fu-btn-radius);
-  background: var(--fu-card);
-  color: var(--fu-heading) !important;
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879)) !important;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.fu-btn:hover:not(:disabled) { border-color: var(--fu-primary-line); background: var(--fu-soft); }
+.fu-btn:hover:not(:disabled) { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .fu-btn svg { flex: none; width: 15px; height: 15px; }
 .fu-btn.sm { min-height: 30px; padding: 0 11px; font-size: 12px; }
 .fu-btn.is-primary { border-color: var(--cc-btn, var(--fu-primary)); background: var(--cc-btn, var(--fu-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }

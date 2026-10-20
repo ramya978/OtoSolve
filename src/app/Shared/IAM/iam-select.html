@@ -1,0 +1,66 @@
+<div class="is" [class.is-open]="open()" [class.is-disabled]="disabled()" [class.is-invalid]="invalid()"
+     [class.is-lg]="size() === 'lg'" [class.is-multi]="multiple()">
+  <button type="button" class="is-btn" [disabled]="disabled()" aria-haspopup="listbox"
+          [attr.aria-expanded]="open()" [attr.aria-label]="ariaLabel() || placeholder()" (click)="toggle()">
+    @if (icon()) {
+      <svg class="is-lead" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn(icon())" /></svg>
+    }
+    @if (multiple()) {
+      @if (picked().length) {
+        <span class="is-chips">
+          @for (c of chips(); track c.value) {
+            <span class="is-chip">{{ c.label }}
+              <span class="is-chip-x" role="button" tabindex="0" [attr.aria-label]="'Remove ' + c.label"
+                    (click)="remove(c.value, $event)" (keydown.enter)="remove(c.value, $event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('close')" /></svg>
+              </span>
+            </span>
+          }
+          @if (more()) { <span class="is-more">+{{ more() }}</span> }
+        </span>
+      } @else {
+        <span class="is-ph">{{ placeholder() }}</span>
+      }
+    } @else {
+      @if (current(); as c) {
+        @if (c.icon) { <svg class="is-opt-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn(c.icon)" /></svg> }
+        <span class="is-val">{{ c.label }}</span>
+      } @else {
+        <span class="is-ph">{{ placeholder() }}</span>
+      }
+    }
+    <svg class="is-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('chevronDown')" /></svg>
+  </button>
+
+  @if (open()) {
+    <div class="is-pop">
+      @if (hasSearch()) {
+        <label class="is-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('search')" /></svg>
+          <input type="search" [placeholder]="searchPlaceholder()" [attr.aria-label]="searchPlaceholder()"
+                 [value]="query()" (input)="setQuery($any($event.target).value)" />
+        </label>
+      }
+      <ul class="is-list" role="listbox" [attr.aria-multiselectable]="multiple()">
+        @for (o of shown(); track o.value) {
+          <li role="option" tabindex="0" [attr.aria-selected]="isOn(o)" [class.is-on]="isOn(o)" [class.is-off]="o.disabled"
+              (click)="pick(o)" (keydown.enter)="pick(o)">
+            @if (multiple()) {
+              <span class="is-box" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path [attr.d]="icn('check')" /></svg>
+              </span>
+            }
+            @if (o.initials) { <span class="is-init" aria-hidden="true">{{ o.initials }}</span> }
+            @if (o.icon) { <svg class="is-opt-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn(o.icon)" /></svg> }
+            <span class="is-opt"><span>{{ o.label }}</span>@if (o.hint) { <small>{{ o.hint }}</small> }</span>
+            @if (!multiple()) {
+              <svg class="is-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icn('check')" /></svg>
+            }
+          </li>
+        } @empty {
+          <li class="is-empty">No match</li>
+        }
+      </ul>
+    </div>
+  }
+</div>

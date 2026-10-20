@@ -1383,21 +1383,21 @@ export const MENU_DATA: MenuItem[] = [
         "isGroupOnly": false,
         "hasChildren": false
       },
-      {
-        "id": "4d866e9a-83d5-5de5-8c36-1f10328cf12b",
-        "code": "ADMIN_MY_PROFILE",
-        "name": "My Profile & Access",
-        "level": "subMenu",
-        "moduleCode": "IAM",
-        "route": "/app/administration/access/user-profile-and-access",
-        "icon": "user",
-        "displayOrder": 80,
-        "opensInNewTab": false,
-        "isLandingPage": false,
-        "children": [],
-        "isGroupOnly": false,
-        "hasChildren": false
-      },
+      // {
+      //   "id": "4d866e9a-83d5-5de5-8c36-1f10328cf12b",
+      //   "code": "ADMIN_MY_PROFILE",
+      //   "name": "My Profile & Access",
+      //   "level": "subMenu",
+      //   "moduleCode": "IAM",
+      //   "route": "/app/administration/access/user-profile-and-access",
+      //   "icon": "user",
+      //   "displayOrder": 80,
+      //   "opensInNewTab": false,
+      //   "isLandingPage": false,
+      //   "children": [],
+      //   "isGroupOnly": false,
+      //   "hasChildren": false
+      // },
       {
         "id": "042852c8-c581-5123-a3b8-a4f0dc181c3e",
         "code": "ADMIN_MY_SECURITY",
@@ -1412,22 +1412,22 @@ export const MENU_DATA: MenuItem[] = [
         "children": [],
         "isGroupOnly": false,
         "hasChildren": false
-      },
-      {
-        "id": "bcef3b63-e089-534e-bfed-f1cf6f2d5469",
-        "code": "ADMIN_MFA_ENROL",
-        "name": "MFA Enrolment",
-        "level": "subMenu",
-        "moduleCode": "IAM",
-        "route": "/app/administration/access/my-security/mfa-enrol",
-        "icon": "key",
-        "displayOrder": 100,
-        "opensInNewTab": false,
-        "isLandingPage": false,
-        "children": [],
-        "isGroupOnly": false,
-        "hasChildren": false
       }
+      // {
+      //   "id": "bcef3b63-e089-534e-bfed-f1cf6f2d5469",
+      //   "code": "ADMIN_MFA_ENROL",
+      //   "name": "MFA Enrolment",
+      //   "level": "subMenu",
+      //   "moduleCode": "IAM",
+      //   "route": "/app/administration/access/my-security/mfa-enrol",
+      //   "icon": "key",
+      //   "displayOrder": 100,
+      //   "opensInNewTab": false,
+      //   "isLandingPage": false,
+      //   "children": [],
+      //   "isGroupOnly": false,
+      //   "hasChildren": false
+      // }
     ],
     "isGroupOnly": true,
     "hasChildren": true

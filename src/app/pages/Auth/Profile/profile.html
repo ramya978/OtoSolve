@@ -49,7 +49,7 @@
   <div class="pf-hero-main">
     <div class="pf-hero-name">
       <h2>{{ profile.name }}</h2>
-      <span class="pf-chip green">Active · sample</span>
+      <span [class]="heroTone ? 'pf-chip ' + heroTone : 'pf-chip'">{{ heroStatus }}</span>
     </div>
     <p class="pf-hero-role">{{ profile.designation }} <span class="pf-dot">·</span> <code>{{ profile.reference }}</code></p>
     <p class="pf-hero-meta">
@@ -93,7 +93,7 @@
       </button>
     }
   </nav>
-  <span class="pf-tabbar-note">Sample account · local preview</span>
+  <span class="pf-tabbar-note">{{ viewed ? 'User record · ' + viewed.ref : 'Sample account · local preview' }}</span>
 </div>
 
 <!-- security banner sits above both columns -->
@@ -166,7 +166,7 @@
             <span class="pf-tile"><ng-container *ngTemplateOutlet="ico; context: { $implicit: 'shield' }" /></span>
             <div class="pf-glance-text">
               <strong>{{ profile.primaryRole }}</strong>
-              <small>{{ profile.organisation }} · whole organisation</small>
+              <small>{{ profile.organisation }} · {{ profile.scopeNote }}</small>
             </div>
             <span class="pf-chip">Permissions not loaded</span>
           </div>
@@ -181,7 +181,7 @@
               <h3>Assigned roles</h3>
               <p>Role, scope and assignment term belong together.</p>
             </div>
-            <span class="pf-chip">1 assignment · sample</span>
+            <span class="pf-chip">{{ visibleRoles().length }} {{ visibleRoles().length === 1 ? 'assignment' : 'assignments' }}{{ viewed ? '' : ' · sample' }}</span>
           </header>
 
           <div class="pf-toolbar">

@@ -473,9 +473,10 @@ col.c-st { width: auto; }
   gap: 7px;
   height: 36px;
   padding: 0 14px;
-  border: 1px solid var(--bu-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--bu-btn-radius);
-  background: var(--bu-card);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 500;
   text-decoration: none;
@@ -485,7 +486,7 @@ col.c-st { width: auto; }
 }
 
 .bu-btn svg { width: 15px; height: 15px; }
-.bu-btn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--bu-primary) 35%, var(--bu-line)); color: var(--bu-primary); }
+.bu-btn:hover:not(:disabled) { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)); }
 .bu-btn:hover:not(:disabled) svg { animation: bu-nudge .5s ease; }
 .bu-btn.is-primary { border-color: var(--cc-btn, var(--bu-primary)); background: var(--cc-btn, var(--bu-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .bu-btn.is-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--cc-btn, var(--bu-primary)) 88%, #000); color: var(--cc-btn-ink, var(--primary-on, #fff)); }

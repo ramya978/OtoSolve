@@ -1,0 +1,250 @@
+<!-- =====================================================================================
+     ACCESS REQUESTS — Workspace Kit "Record workbench"
+     heading · summary strip card · workbench: review queue (search, status tabs, request rows) |
+     selected request (role, details, journey, decision) · new-request drawer
+     ===================================================================================== -->
+<div class="ar-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / Requests</span>
+      <h1>Access request and approval</h1>
+      <p>Work through the review queue: pick a request on the left, check it on the right, then decide.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>New request</button>
+    </div>
+  </header>
+
+  <section class="i-card ar-sumcard" aria-label="Request summary">
+    <div class="i-sum ar-sum">
+      <div><span>Total requests</span><strong>{{ filtered().length }}</strong><small>Current results</small></div>
+      <div><span>Approved</span><strong>{{ approved() }}</strong><small>Access granted</small></div>
+      <div><span>Pending</span><strong [class.ar-warn]="pending() > 0">{{ pending() }}</strong><small>Awaiting action</small></div>
+      <div class="ar-sum-users"><span>Users involved</span><strong>{{ people() }}</strong><small>Unique users</small></div>
+      <div class="ar-sum-top"><span>Most active user</span><strong class="is-text">{{ mostActive().name || '—' }}</strong>
+        <small>{{ mostActive().count }} request{{ mostActive().count === 1 ? '' : 's' }}</small></div>
+    </div>
+  </section>
+
+  <div class="ar-bench">
+    <!-- ============ review queue (redesigned) ============ -->
+    <section class="i-card ar-queue" aria-label="Review queue">
+      <div class="ar-qtools">
+        <label class="i-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search by name, role, reference or reason" aria-label="Search requests" [value]="query()"
+                 (input)="query.set($any($event.target).value)" />
+        </label>
+        <div class="ar-tabs" role="tablist" aria-label="Filter by status">
+          @for (t of tabs(); track t.label) {
+            <button type="button" role="tab" class="ar-tab" [attr.aria-selected]="status() === t.value"
+                    [class.is-on]="status() === t.value" (click)="status.set(t.value)">
+              {{ t.label }}<span class="ar-tab-n">{{ t.count }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (filtered().length) {
+        <ul class="ar-list" role="listbox" aria-label="Requests">
+          @for (r of filtered(); track r.ref) {
+            <li role="option" tabindex="0" [attr.aria-selected]="selected()?.ref === r.ref" [class.is-on]="selected()?.ref === r.ref"
+                (click)="selectedRef.set(r.ref)" (keydown.enter)="selectedRef.set(r.ref)">
+              <span class="ar-tk-line">
+                <span class="ar-tk-ref i-mono">{{ r.ref }}</span>
+                <span class="ar-tk-date">{{ fmtDate(r.createdAt) }}</span>
+              </span>
+              <strong class="ar-tk-name">{{ r.person }}</strong>
+              <span class="ar-tk-role">
+                {{ roleName(r.role) }}
+                @if (isPrivileged(r.role)) { <span class="ar-flag">Privileged</span> }
+              </span>
+              <span class="ar-tk-line ar-tk-foot">
+                <span [class]="'i-st i-st--' + tone(r.status)">{{ statusLabel(r.status) }}</span>
+                <span class="ar-tk-date">{{ r.until ? 'Until ' + fmtDate(r.until) : 'Permanent access' }}</span>
+              </span>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="i-empty ar-qempty">
+          <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('docSearch')" /></svg></span>
+          <strong>No requests found</strong>
+          <p>No access requests match the current filters.</p>
+        </div>
+      }
+
+      <footer class="ar-qfoot">
+        <span>Showing <strong>{{ filtered().length }}</strong> of {{ requests().length }} request{{ requests().length === 1 ? '' : 's' }}</span>
+        @if (status() || query()) {
+          <button type="button" class="ar-qclear" (click)="status.set(''); query.set('')">Clear filters</button>
+        }
+      </footer>
+    </section>
+
+    <!-- ============ selected record ============ -->
+    <section class="i-card ar-record" aria-label="Selected request">
+      @if (selected(); as r) {
+        <header class="ar-rhead">
+          <div>
+            <span class="i-kicker">Selected record</span>
+            <h2>{{ r.person }}</h2>
+            <small class="i-mono">{{ r.ref }}</small>
+          </div>
+          <span [class]="'i-st i-st--' + tone(r.status)">{{ statusLabel(r.status) }}</span>
+        </header>
+
+        <div class="ar-rbody">
+          <div class="ar-big">
+            <strong>{{ roleName(r.role) }}</strong>
+            <small>Role requested{{ isPrivileged(r.role) ? ' · privileged — reviewers see it flagged' : '' }}</small>
+          </div>
+
+          <dl class="i-kv ar-kv">
+            <div><dt>Person</dt><dd>{{ r.person }}</dd></div>
+            <div><dt>E-mail</dt><dd>{{ personOf(r.person)?.email || '—' }}</dd></div>
+            <div><dt>Requested</dt><dd>{{ fmtDate(r.createdAt) }}</dd></div>
+            <div><dt>Access until</dt><dd>{{ r.until ? fmtDate(r.until) : 'Open — permanent' }}</dd></div>
+            <div class="is-wide"><dt>Reason</dt><dd>{{ r.reason }}</dd></div>
+          </dl>
+
+          <h3 class="ar-h3">Request journey</h3>
+          <ol class="i-journey">
+            <li class="is-done">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg></span>
+              <span class="i-journey-text"><strong>Request created</strong><small>{{ fmtDate(r.createdAt) }} · for {{ r.person }}</small></span>
+            </li>
+            <li [class.is-now]="r.status === 'pending'" [class.is-done]="r.status !== 'pending'">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+              <span class="i-journey-text"><strong>Awaiting decision</strong><small>An approver checks the role and the reason.</small></span>
+            </li>
+            <li [class.is-done]="r.status !== 'pending'">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(r.status === 'approved' ? 'check' : r.status === 'pending' ? 'shield' : 'close')" /></svg></span>
+              <span class="i-journey-text"><strong>{{ r.status === 'pending' ? 'Decision' : statusLabel(r.status) }}</strong>
+                <small>{{ r.status === 'approved' ? 'Role added to the person.' : r.status === 'pending' ? 'Approve, reject or withdraw below.' : 'No access was granted.' }}</small></span>
+            </li>
+          </ol>
+        </div>
+
+        @if (r.status === 'pending') {
+          <footer class="ar-rfoot">
+            <button type="button" class="i-btn" (click)="decide(r, 'withdrawn')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>Withdraw</button>
+            <span class="i-spacer"></span>
+            <button type="button" class="i-btn i-btn--danger" (click)="decide(r, 'rejected')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Reject</button>
+            <button type="button" class="i-btn i-btn--primary" (click)="decide(r, 'approved')">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Approve</button>
+          </footer>
+        }
+      } @else {
+        <!-- nothing selected: how the workbench works -->
+        <header class="ar-rhead">
+          <div>
+            <span class="i-kicker">Selected record</span>
+            <h2>Nothing to review</h2>
+            <small>Requests appear in the queue as soon as they are created.</small>
+          </div>
+        </header>
+        <div class="ar-rbody">
+          <ol class="i-journey">
+            <li>
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg></span>
+              <span class="i-journey-text"><strong>Someone asks for a role</strong><small>Choose the person, the role, an access window and the reason.</small></span>
+            </li>
+            <li>
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+              <span class="i-journey-text"><strong>It waits in this queue</strong><small>Privileged roles are flagged for a closer look.</small></span>
+            </li>
+            <li>
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shieldCheck')" /></svg></span>
+              <span class="i-journey-text"><strong>An approver decides</strong><small>Approve, reject or withdraw — each decision lands in the audit trail.</small></span>
+            </li>
+          </ol>
+        </div>
+        <footer class="ar-rfoot">
+          <span class="i-spacer"></span>
+          <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create the first request</button>
+        </footer>
+      }
+    </section>
+  </div>
+</div>
+
+<!-- ================= new request drawer ================= -->
+@if (drawer()) {
+  <div class="i-overlay" (click)="close()">
+    <aside class="i-drawer" role="dialog" aria-modal="true" aria-labelledby="ar-dr-title" (click)="$event.stopPropagation()">
+      <header class="i-drawer-head">
+        <span class="i-drawer-tile" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('key')" /></svg></span>
+        <div>
+          <span class="i-eyebrow">New access request</span>
+          <h2 id="ar-dr-title">{{ draft().role ? roleName(draft().role) : 'Request a role' }}</h2>
+          <div class="i-meta">
+            <span>{{ draft().person || 'Choose a person' }}</span>
+            <span class="i-chip">Pending on create</span>
+          </div>
+        </div>
+        <button type="button" class="i-icon-btn i-icon-btn--bare" aria-label="Close" (click)="close()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+        </button>
+      </header>
+
+      <div class="i-drawer-body">
+        <section class="i-block">
+          <div class="i-sec">
+            <span class="i-ibox i-ibox--sm i-ibox--tint"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('person')" /></svg></span>
+            <div><h3>Who and what</h3><p>The person and the role they need.</p></div>
+          </div>
+          <div class="i-field">
+            <span class="i-field-label">Person <em>*</em></span>
+            <iam-select [options]="personOptions" [value]="draft().person" placeholder="Choose a person" [invalid]="tried() && !!errors().person"
+                        (valueChange)="patch('person', $event)" />
+            @if (tried() && errors().person) { <span class="i-err">{{ errors().person }}</span> }
+          </div>
+          <div class="i-field ar-mt">
+            <span class="i-field-label">Role requested <em>*</em></span>
+            <iam-select [options]="roleOptions" [value]="draft().role" placeholder="Choose a role" [invalid]="tried() && !!errors().role"
+                        (valueChange)="patch('role', $event)" />
+            @if (tried() && errors().role) { <span class="i-err">{{ errors().role }}</span> }
+            @else if (draft().role && isPrivileged(draft().role)) {
+              <span class="i-help ar-priv"><svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Privileged role — reviewers see this flagged as sensitive.</span>
+            }
+          </div>
+        </section>
+
+        <section class="i-block">
+          <div class="i-sec">
+            <span class="i-ibox i-ibox--sm i-ibox--tint"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+            <div><h3>Access window</h3><p>Leave the end open for permanent access.</p></div>
+          </div>
+          <iam-date-range [start]="draft().from" [end]="draft().until" [today]="today" (rangeChange)="setWindow($event)" />
+        </section>
+
+        <section class="i-block">
+          <div class="i-sec">
+            <span class="i-ibox i-ibox--sm i-ibox--tint"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg></span>
+            <div><h3>Reason</h3><p>Reviewers read this before deciding.</p></div>
+          </div>
+          <label class="i-field">
+            <span class="i-field-label">Why is the access needed? <em>*</em></span>
+            <textarea class="i-textarea" placeholder="e.g. Covering campaign approvals while Ritu is on leave…" [class.is-invalid]="tried() && errors().reason"
+                      [value]="draft().reason" (input)="patch('reason', $any($event.target).value)"></textarea>
+            @if (tried() && errors().reason) { <span class="i-err">{{ errors().reason }}</span> }
+          </label>
+        </section>
+      </div>
+
+      <footer class="i-drawer-foot">
+        <span class="i-foot-note">The request waits for an approver.</span>
+        <button type="button" class="i-btn" (click)="close()">Cancel</button>
+        <button type="button" class="i-btn i-btn--primary" (click)="submit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
+      </footer>
+    </aside>
+  </div>
+}

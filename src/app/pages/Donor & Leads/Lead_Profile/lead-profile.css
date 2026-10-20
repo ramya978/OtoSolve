@@ -101,10 +101,10 @@
   gap: 8px;
   min-height: 38px;
   padding: 8px 14px;
-  border: 1px solid var(--lp-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--btn-radius);
-  background: var(--white);
-  color: var(--lp-ink);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 550;
   white-space: nowrap;
@@ -113,13 +113,15 @@
 
 .lp-btn:hover:not(:disabled),
 .lp-btn.is-open {
-  background: var(--secondary-hover);
-  border-color: var(--secondary-line);
-  color: var(--secondary-ink)
+  background: var(--cc-sec-hover, var(--btn-secondary-hover));
+  border-color: var(--cc-sec-hover, var(--btn-secondary-hover));
+  color: var(--cc-sec-hover-ink, var(--secondary-on, #fff))
 }
 
 .lp-btn:active:not(:disabled) {
-  background: var(--secondary-press)
+  background: var(--cc-sec-press, var(--btn-secondary-press));
+  border-color: var(--cc-sec-press, var(--btn-secondary-press));
+  color: var(--cc-sec-press-ink, var(--secondary-on, #fff))
 }
 
 .lp-btn-primary {

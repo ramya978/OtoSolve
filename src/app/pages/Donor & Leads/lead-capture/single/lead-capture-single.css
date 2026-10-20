@@ -514,9 +514,10 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
   gap: 7px;
   height: 38px;
   padding: 0 14px;
-  border: 1px solid var(--sl-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--sl-btn-radius);
-  background: var(--sl-card);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   font-size: calc(13px * var(--font-scale, 1));
   font-weight: 500;
   text-decoration: none;
@@ -526,7 +527,7 @@ textarea.inp { height: auto; min-height: 104px; padding: 10px 12px; line-height:
 }
 
 .sl-btn svg { width: 15px; height: 15px; }
-.sl-btn:hover { border-color: color-mix(in srgb, var(--sl-primary) 35%, var(--sl-line)); color: var(--sl-primary); }
+.sl-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)); }
 .sl-btn:hover svg { animation: sl-spin .5s ease; }
 .sl-btn.is-primary { border-color: var(--cc-btn, var(--sl-primary)); background: var(--cc-btn, var(--sl-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)); }
 .sl-btn.is-primary:hover { background: color-mix(in srgb, var(--cc-btn, var(--sl-primary)) 88%, #000); color: var(--cc-btn-ink, var(--primary-on, #fff)); }

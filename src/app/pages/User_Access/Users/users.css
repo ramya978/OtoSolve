@@ -1,0 +1,159 @@
+/* Users — "People directory" (Workspace Kit pattern 08) on top of iam-shared.css */
+.us-page { container: us-page / inline-size; }
+.us-card { container: us-card / inline-size; overflow: visible; }
+.us-warn { color: var(--i-warning) !important; }
+.us-search { width: 280px; }
+
+/* cards ↔ list switch */
+.us-views { display: inline-flex; padding: 3px; border: 1px solid var(--i-line); border-radius: var(--i-btn-radius); background: color-mix(in srgb, var(--i-line) 20%, #fff); }
+
+.us-views button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--i-muted);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 550;
+}
+
+.us-views .i-ico { width: 15px; height: 15px; }
+.us-views button.is-on { background: var(--i-surface); color: var(--i-primary-ink); box-shadow: 0 1px 3px #10131c1a; }
+
+/* ---------- people cards ---------- */
+.us-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(416px, 1fr));
+  gap: 16px;
+  padding: 20px 24px;
+  background: color-mix(in srgb, var(--i-line) 12%, #fff);
+}
+
+.us-person {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--i-line);
+  border-radius: var(--i-radius);
+  background: var(--i-surface);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.us-person:hover { border-color: color-mix(in srgb, var(--i-primary) 40%, var(--i-line)); box-shadow: 0 6px 18px #10131c0d; }
+.us-person.is-open { border-color: var(--i-primary); }
+
+.us-person header { display: flex; align-items: center; gap: 12px; }
+
+.us-av {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--i-line);
+  border-radius: 10px;
+  background: var(--i-surface);
+  color: var(--i-heading);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+.us-av--lg { width: 52px; height: 52px; border-radius: 14px; background: var(--i-tint); color: var(--i-primary-ink); font-size: calc(16px * var(--font-scale, 1)); }
+
+.us-person-id { display: grid; flex: 1; min-width: 0; line-height: 1.35; }
+.us-person-id .i-link { overflow: hidden; color: var(--i-heading); font-size: calc(14px * var(--font-scale, 1)); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.us-person-id small { color: var(--i-muted); font-size: calc(11px * var(--font-scale, 1)); }
+
+.us-flag { color: var(--i-muted); }
+.us-flag.is-warn { color: var(--i-warning); }
+.us-flag .i-ico { width: 17px; height: 17px; }
+
+.us-where { display: grid; gap: 2px; margin: 16px 0 14px; line-height: 1.4; }
+.us-where strong { overflow: hidden; color: var(--i-ink); font-size: calc(13.5px * var(--font-scale, 1)); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.us-where small { overflow: hidden; color: var(--i-muted); font-size: calc(12px * var(--font-scale, 1)); text-overflow: ellipsis; white-space: nowrap; }
+
+.us-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 12px 0; border-top: 1px solid var(--i-line); border-bottom: 1px solid var(--i-line); }
+.us-split > div { display: grid; gap: 4px; min-width: 0; }
+.us-split > div + div { padding-left: 14px; border-left: 1px solid var(--i-line); }
+.us-split span { color: var(--i-muted); font-size: calc(12px * var(--font-scale, 1)); }
+.us-split strong { overflow: hidden; color: var(--i-heading); font-size: calc(14px * var(--font-scale, 1)); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+.us-person footer { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 14px; font-size: calc(12.5px * var(--font-scale, 1)); }
+
+.us-open { padding: 0; border: 0; background: none; color: var(--i-primary-ink); font-size: calc(12.5px * var(--font-scale, 1)); font-weight: 600; }
+.us-open:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- compact list ---------- */
+.us-table { --cols: 52px minmax(0, 1fr) 18% 19% 11% 12% 64px; }
+.us-table tbody tr { cursor: pointer; }
+.us-table th:first-child,
+.us-table td:first-child { padding-right: 0; }
+.t-act { text-align: right; }
+
+.us-pageof { margin-right: 8px; }
+
+/* ---------- detail drawer ---------- */
+.us-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--i-line); }
+.us-hero > div { display: grid; flex: 1; min-width: 0; line-height: 1.4; }
+.us-hero strong { color: var(--i-heading); font-size: calc(19px * var(--font-scale, 1)); font-weight: 600; letter-spacing: -.3px; }
+.us-hero small { overflow-wrap: anywhere; color: var(--i-muted); font-size: calc(12.5px * var(--font-scale, 1)); }
+.us-mt { margin-top: 16px; }
+.us-top { z-index: 61; }
+
+/* ---------- select-all next to Cards/List tabs ---------- */
+.us-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--i-line);
+  border-radius: var(--i-btn-radius);
+  background: var(--i-surface);
+  color: var(--i-muted);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 550;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.us-select-all:hover { border-color: var(--i-primary); color: var(--i-primary-ink); }
+
+/* ---------- bulk count on primary button (theme-aware) ---------- */
+.i-count--on-primary {
+  background: var(--i-secondary-on, #fff);
+  color: var(--i-secondary, var(--i-primary));
+}
+
+/* ---------- checkboxes follow theme ---------- */
+.i-check {
+  accent-color: var(--i-primary);
+  width: 17px; height: 17px;
+  cursor: pointer;
+}
+.us-person.is-checked {
+  border-color: var(--i-primary);
+  background: var(--i-tint);
+}
+
+/* ---------- responsive ---------- */
+@container us-card (max-width: 1180px) { .us-f-dept { display: none; } }
+@container us-card (max-width: 980px) {
+  .us-f-unit { display: none; }
+  .us-sum-never { display: none; }
+  .h-unit { display: none; }
+  .us-table { --cols: 52px minmax(0, 1fr) 22% 14% 16% 64px; }
+}
+@container us-card (max-width: 700px) {
+  .h-role, .h-sign { display: none; }
+  .us-table { --cols: 44px minmax(0, 1fr) 90px 56px; }
+  .us-cards { padding: 16px; }
+}
+@container us-card (max-width: 520px) {
+  .us-sum-mfa { display: none; }
+  .us-views { width: 100%; }
+  .us-views button { flex: 1; justify-content: center; }
+  .us-pageof { display: none; }
+}

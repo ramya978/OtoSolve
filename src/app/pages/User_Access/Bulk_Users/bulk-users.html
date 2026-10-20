@@ -1,0 +1,170 @@
+<!-- =====================================================================================
+     BULK USER ADMINISTRATION · DESIGN 4 — classic (screenshot layout, kit look)
+     heading with Back · action cards grid + the extra input · selected users (status chips, list,
+     totals) beside business justification · footer bar · preview
+     ===================================================================================== -->
+<div class="bu-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Users &amp; Access / Bulk action</span>
+      <h1>Bulk user administration</h1>
+      <p>Apply one action to several accounts at once. Nothing runs until an independent approver signs it off.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn" (click)="cancel()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrowLeft')" /></svg>Back</button>
+    </div>
+  </header>
+
+  @if (submitted()) {
+    <p class="bu-note bu-note--ok bu-top">Request {{ submitted() }} · {{ current().label }} for {{ affected() }} {{ affected() === 1 ? 'person' : 'people' }} sent for approval. The result file is available once it has run.</p>
+  }
+
+  <section class="i-card bu-c-card">
+    <header class="bu-c-head"><h2>Choose a bulk action</h2><p>One action is applied to every selected account.</p></header>
+    <div class="bu-c-grid" role="radiogroup" aria-label="Bulk action">
+      @for (a of actions; track a.key) {
+        <button type="button" role="radio" class="bu-c-act" [class.is-on]="action() === a.key" [attr.aria-checked]="action() === a.key" (click)="pick(a)">
+          <svg class="bu-c-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg>
+          <span class="bu-c-text"><strong>{{ a.label }}</strong><small>{{ a.hint }}</small></span>
+          <span class="i-radio" aria-hidden="true"></span>
+        </button>
+      }
+    </div>
+    @if (current().extra) {
+      <div class="bu-c-extra">
+        @switch (current().extra) {
+          @case ('reason') {
+            <label class="i-field bu-field-gap">
+              <span class="i-field-label">Reason for {{ action() === 'suspend' ? 'suspension' : 'deactivation' }} <em>*</em></span>
+              <textarea class="i-textarea bu-short" placeholder="Provide a detailed reason…" [class.is-invalid]="tried() && errors().reason"
+                        [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+              @if (tried() && errors().reason) { <span class="i-err">{{ errors().reason }}</span> }
+              @else { <span class="i-help">Shown to the approver and kept on each person's record.</span> }
+            </label>
+          }
+          @case ('role') {
+            <div class="i-field bu-field-gap">
+              <span class="i-field-label">Role to {{ action() === 'addRole' ? 'add' : 'remove' }} <em>*</em></span>
+              <iam-select [options]="roleOptions" [value]="role()" placeholder="Choose a role" [invalid]="tried() && !!errors().role" (valueChange)="role.set($event)" />
+              @if (tried() && errors().role) { <span class="i-err">{{ errors().role }}</span> }
+              @else { <span class="i-help">{{ action() === 'addRole' ? 'People who already hold it are skipped.' : 'People who do not hold it are skipped.' }}</span> }
+            </div>
+          }
+          @case ('date') {
+            <div class="i-field bu-field-gap">
+              <span class="i-field-label">New access end date <em>*</em></span>
+              <iam-select [options]="dateOptions" [value]="endDate()" placeholder="Pick a date" icon="calendar" [invalid]="tried() && !!errors().date" (valueChange)="endDate.set($event)" />
+              @if (tried() && errors().date) { <span class="i-err">{{ errors().date }}</span> }
+              @else { <span class="i-help">Access ends at midnight on this day.</span> }
+            </div>
+          }
+        }
+      </div>
+    }
+  </section>
+
+  <div class="bu-c-two">
+    <section class="i-card bu-c-card bu-c-users">
+      <header class="bu-c-head bu-c-head--row">
+        <div><h2>Selected users</h2><p>Passed from Users.</p></div>
+        <span class="bu-c-n">{{ people().length }}</span>
+      </header>
+      <dl class="bu-c-chips">
+        @for (s of statusCounts(); track s.label) { <div><dt>{{ s.label }}</dt><dd>{{ s.value }}</dd></div> }
+      </dl>
+      <ul class="bu-people">
+        @for (u of people(); track u.id) {
+          <li [class.is-skip]="!outcome(u).ok">
+            <span class="bu-av" aria-hidden="true">{{ initials(u.name) }}</span>
+            <span class="bu-ptext"><strong>{{ u.name }}</strong><small>{{ u.ref }} · {{ statusLabel(u.status) }}</small></span>
+            <span class="bu-out" [class.is-ok]="outcome(u).ok">{{ outcome(u).text }}</span>
+            <button type="button" class="i-icon-btn i-icon-btn--bare" [attr.aria-label]="'Remove ' + u.name" (click)="removePerson(u.id)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+          </li>
+        }
+      </ul>
+      <div class="bu-c-add"><iam-select [options]="addOptions()" value="" placeholder="Add a person…" searchPlaceholder="Search people" [searchable]="true" (valueChange)="addPerson($event)" /></div>
+      <div class="bu-c-totals">
+        <div><span>Total</span><strong>{{ people().length }}</strong></div>
+        <div><span>Skipped</span><strong [class.bu-warn]="excluded() > 0">{{ excluded() }}</strong></div>
+        <div><span>Will change</span><strong class="bu-ok">{{ affected() }}</strong></div>
+        <button type="button" class="i-btn" (click)="previewOpen.set(true)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>Preview</button>
+      </div>
+    </section>
+
+    <section class="i-card bu-c-card">
+      <header class="bu-c-head"><h2>Business justification <em>*</em></h2><p>The approver reads this before execution.</p></header>
+      <label class="i-field">
+        <textarea class="i-textarea bu-c-just" maxlength="1000" aria-label="Business justification" placeholder="Explain why this bulk action is necessary (10–1000 characters)"
+                  [class.is-invalid]="tried() && errors().justification" [value]="justification()" (input)="justification.set($any($event.target).value)"></textarea>
+        <span class="bu-under">
+          @if (tried() && errors().justification) { <span class="i-err">{{ errors().justification }}</span> } @else { <span></span> }
+          <span class="i-help">{{ justification().length }} / 1000</span>
+        </span>
+      </label>
+      <p class="bu-note">Bulk actions need independent approval. The result file is available after completion.</p>
+    </section>
+  </div>
+
+  <section class="i-card bu-c-bar">
+    <div class="bu-c-bar-text">
+      <strong>{{ current().label }} · {{ affected() }} {{ affected() === 1 ? 'user' : 'users' }}</strong>
+      <small>{{ ready() ? 'Submitting sends this request for approval.' : missing() + ' left to complete.' }}</small>
+    </div>
+        @if (submitted()) {
+          <button type="button" class="bu-btn" (click)="startAgain()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>Start another</button>
+          <button type="button" class="bu-btn is-primary" (click)="cancel()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('people')" /></svg>Back to users</button>
+        } @else {
+          <button type="button" class="bu-btn is-secondary" (click)="cancel()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+          <button type="button" class="bu-btn is-primary" (click)="submit()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Submit</button>
+        }
+  </section>
+</div>
+
+<!-- ================= preview offcanvas (record style) ================= -->
+@if (previewOpen()) {
+  <div class="i-overlay" (click)="previewOpen.set(false)">
+    <aside class="i-drawer bu-dr" role="dialog" aria-modal="true" aria-labelledby="bu-pv-title" (click)="$event.stopPropagation()">
+      <header class="bu-dr-head">
+        <h2 id="bu-pv-title">Preview</h2>
+        <button type="button" class="bu-x" aria-label="Close" (click)="previewOpen.set(false)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+      <div class="bu-dr-body">
+        <div class="bu-dr-intro">
+          <div>
+            <span class="bu-eyebrow">Bulk action · {{ current().group }}</span>
+            <h3>{{ current().label }}</h3>
+          </div>
+          <span class="bu-pill" [class.is-ok]="ready()" [class.is-warning]="!ready()">{{ ready() ? 'Ready to submit' : 'Not ready' }}</span>
+        </div>
+        <dl class="bu-dr-kv">
+          <div><dt>Will change</dt><dd>{{ affected() }}</dd></div>
+          <div><dt>Skipped</dt><dd>{{ excluded() }}</dd></div>
+          <div><dt>{{ current().extra === 'role' ? 'Role' : current().extra === 'date' ? 'New end date' : current().extra === 'reason' ? 'Reason' : 'Runs' }}</dt>
+            <dd>{{ current().extra ? extraLabel() : 'After approval' }}</dd></div>
+        </dl>
+        <ul class="bu-people bu-people--pv">
+          @for (u of people(); track u.id) {
+            <li [class.is-skip]="!outcome(u).ok">
+              <span class="bu-av" aria-hidden="true">{{ initials(u.name) }}</span>
+              <span class="bu-ptext"><strong>{{ u.name }}</strong><small>{{ u.ref }} · {{ statusLabel(u.status) }}</small></span>
+              <span class="bu-out" [class.is-ok]="outcome(u).ok">{{ outcome(u).text }}</span>
+            </li>
+          }
+        </ul>
+        <p class="bu-note">Nothing has run yet. After approval each person's record shows the change and the request number.</p>
+      </div>
+      <footer class="bu-dr-foot">
+        <button type="button" class="bu-btn" (click)="previewOpen.set(false)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Close</button>
+      </footer>
+    </aside>
+  </div>
+}

@@ -75,15 +75,15 @@
   align-items: center;
   gap: 7px;
   padding: 8px 14px;
-  border: 1px solid var(--ad-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--ad-btn-radius);
-  background: var(--ad-card);
-  color: var(--ad-ink);
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879));
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 
-.ad-btn:hover { border-color: var(--ad-primary-line); color: var(--ad-primary); background: var(--ad-primary-soft); }
+.ad-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); }
 .ad-btn.sm { padding: 6px 12px; font-size: 12px; }
 .ad-btn svg { width: 15px; height: 15px; }
 

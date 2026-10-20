@@ -65,16 +65,16 @@
   gap: 7px;
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid var(--lc-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--lc-btn-radius);
-  background: var(--lc-card);
-  color: var(--lc-heading) !important;
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879)) !important;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.lc-btn:hover { border-color: var(--lc-primary-line); background: var(--lc-soft); }
+.lc-btn:hover { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .lc-btn svg { flex: none; width: 15px; height: 15px; }
 .lc-btn.sm { min-height: 32px; padding: 0 12px; font-size: 12px; }
 .lc-btn.is-primary { border-color: var(--cc-btn, var(--lc-primary)); background: var(--cc-btn, var(--lc-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }

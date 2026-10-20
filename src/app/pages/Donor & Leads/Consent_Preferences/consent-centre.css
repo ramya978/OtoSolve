@@ -134,16 +134,16 @@
   gap: 7px;
   min-height: 36px;
   padding: 0 14px;
-  border: 1px solid var(--cc-line);
+  border: 1px solid var(--btn-secondary, var(--teal, #138879));
   border-radius: var(--cc-btn-radius);
-  background: var(--cc-card);
-  color: var(--cc-heading) !important;
+  background: none;
+  color: var(--btn-secondary, var(--teal, #138879)) !important;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.cc-btn:hover:not(:disabled) { border-color: var(--cc-primary); }
+.cc-btn:hover:not(:disabled) { border-color: var(--cc-sec-hover, var(--btn-secondary-hover)); background: var(--cc-sec-hover, var(--btn-secondary-hover)); color: var(--cc-sec-hover-ink, var(--secondary-on, #fff)) !important; }
 .cc-btn svg { flex: none; width: 15px; height: 15px; }
 .cc-btn.is-primary { border-color: var(--cc-btn, var(--cc-primary)); background: var(--cc-btn, var(--cc-primary)); color: var(--cc-btn-ink, var(--primary-on, #fff)) !important; }
 .cc-btn.is-danger { border-color: var(--cc-red); background: var(--cc-red); color: #fff !important; }

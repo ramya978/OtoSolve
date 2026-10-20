@@ -1,0 +1,293 @@
+<!-- =====================================================================================================
+     NEW DONATION  (Record-donation look)
+     Page header → intro banner → reference line
+     → Gift & cause · About you · Receipt address · Confirm & pay   |   Donation overview (live summary)
+     ===================================================================================================== -->
+<div class="nd">
+  <!-- ===== page header ===== -->
+  <header class="nd-page">
+    <div>
+      <span class="nd-eyebrow">Donations / New donation</span>
+      <h1>New donation</h1>
+      <p>Choose a cause, enter your gift and receipt details. The summary updates while you fill in the form.</p>
+    </div>
+    <div class="nd-page-actions">
+      <span class="nd-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg>Secure checkout</span>
+      <button type="button" class="nd-btn" (click)="reset()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5" /></svg> Clear form
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== intro banner ===== -->
+  <section class="nd-card nd-intro">
+    <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z" /></svg></span>
+    <div>
+      <b>Your gift goes straight to the cause you choose.</b>
+      <p>Fields marked * are required. We record your pledge first, then open the payment provider's secure checkout.</p>
+    </div>
+    <span class="nd-tag">{{ missingCount() ? missingCount() + ' to fill' : 'Ready' }}</span>
+  </section>
+
+  <div class="nd-ref">
+    <span>Pledge ID <code>{{ pledgeId() ?? 'Assigned when you donate' }}</code></span>
+    <span>Receipts are issued in the donor's name.</span>
+  </div>
+
+  <div class="nd-grid">
+    <div class="nd-main">
+      <!-- ===== gift & cause ===== -->
+      <section class="nd-card">
+        <header class="nd-card-head">
+          <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9 M2 7h20v5H2z M12 21V7 M12 7H7.5a2.5 2.5 0 1 1 0-5C11 2 12 7 12 7z M12 7h4.5a2.5 2.5 0 1 0 0-5C13 2 12 7 12 7z" /></svg></span>
+          <div><h2>Gift &amp; cause</h2><p>Pick the campaign or appeal and how much you would like to give.</p></div>
+          <span class="nd-count">{{ progress().gift.done }}/{{ progress().gift.total }}</span>
+        </header>
+        <div class="nd-body">
+          <div class="nd-field nd-span">
+            <span class="nd-lbl">Your cause <em>*</em></span>
+            <div class="nd-dd" [class.is-open]="menu() === 'cause'">
+              <button type="button" class="nd-input nd-dd-btn nd-cause-btn" [class.has-err]="!!bad('cause')" (click)="toggleMenu('cause', $event)" [attr.aria-expanded]="menu() === 'cause'">
+                <span class="nd-cause-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22V12 M12 12C12 7 8 4 3 4c0 5 4 8 9 8z M12 12c0-4 3-7 8-7 0 4-3 7-8 7z" /></svg></span>
+                @if (causeInfo(); as c) {
+                  <span class="nd-cause-txt"><b>{{ c.name }}</b><small>{{ c.org }} · <code>{{ c.code }}</code></small></span>
+                } @else {
+                  <span class="nd-ph nd-cause-txt">Choose a campaign or appeal</span>
+                }
+                <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              @if (menu() === 'cause') {
+                <div class="nd-menu nd-menu-wide" (click)="$event.stopPropagation()">
+                  <label class="nd-menu-search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3" /></svg>
+                    <input type="text" placeholder="Search campaigns" [value]="causeQuery()" (input)="setText('causeQuery', $event)" />
+                  </label>
+                  <ul role="listbox">
+                    @for (c of causeList(); track c.code) {
+                      <li><button type="button" [class.is-on]="cause() === c.code" (click)="pickCause(c)"><span><b>{{ c.name }}</b><small>{{ c.org }} · {{ c.code }}</small></span></button></li>
+                    } @empty {
+                      <li class="nd-menu-none">No campaign matches "{{ causeQuery() }}".</li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+            @if (bad('cause')) { <p class="nd-err">{{ bad('cause') }}</p> }
+          </div>
+
+          <div class="nd-field">
+            <span class="nd-lbl">Paid in <em>*</em></span>
+            <div class="nd-dd" [class.is-open]="menu() === 'currency'">
+              <button type="button" class="nd-input nd-dd-btn" [class.has-err]="!!bad('currency')" (click)="toggleMenu('currency', $event)">
+                <span [class.nd-ph]="!currencyInfo()">@if (currencyInfo(); as c) { {{ c.code }} · {{ c.label }} } @else { Select currency }</span>
+                <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              @if (menu() === 'currency') {
+                <div class="nd-menu" (click)="$event.stopPropagation()">
+                  <ul role="listbox">
+                    @for (c of currencies; track c.code) {
+                      <li><button type="button" [class.is-on]="currency() === c.code" (click)="pickCurrency(c)"><span class="nd-sym">{{ c.symbol }}</span>{{ c.code }}<small>{{ c.label }}</small></button></li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
+            @if (bad('currency')) { <p class="nd-err">{{ bad('currency') }}</p> }
+          </div>
+
+          <div class="nd-field">
+            <span class="nd-lbl">Your gift <em>*</em></span>
+            <label class="nd-input nd-amount" [class.has-err]="!!bad('amount')">
+              <span class="nd-cur">{{ currencyInfo()?.symbol ?? '' }}</span>
+              <input type="text" inputmode="decimal" placeholder="0.00" [value]="amount()" (input)="setText('amount', $event)" />
+            </label>
+            @if (bad('amount')) { <p class="nd-err">{{ bad('amount') }}</p> } @else { <span class="nd-hint">Greater than zero; up to two decimal places.</span> }
+          </div>
+
+          <div class="nd-quick nd-span">
+            <span class="nd-lbl">Quick amounts</span>
+            <div>
+              @for (q of quickAmounts; track q) {
+                <button type="button" [class.is-on]="amountValue() === q" (click)="setQuick(q)">{{ quickLabel(q) }}</button>
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== about you ===== -->
+      <section class="nd-card">
+        <header class="nd-card-head">
+          <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" /></svg></span>
+          <div><h2>About you</h2><p>Name and e-mail come from your profile and appear on the receipt.</p></div>
+          <span class="nd-count">{{ progress().you.done }}/{{ progress().you.total }}</span>
+        </header>
+        <div class="nd-body">
+          <div class="nd-field">
+            <span class="nd-lbl">Full name <em>*</em></span>
+            <div class="nd-input nd-locked"><span>{{ donorName }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4" /></svg></div>
+          </div>
+          <div class="nd-field">
+            <span class="nd-lbl">E-mail <em>*</em></span>
+            <div class="nd-input nd-locked"><span>{{ donorEmail }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4" /></svg></div>
+          </div>
+          <div class="nd-field">
+            <span class="nd-lbl">Mobile number <em>*</em></span>
+            <label class="nd-input nd-phone" [class.has-err]="!!bad('mobile')">
+              <span class="nd-dial">{{ countryInfo()?.dial ?? '+' }}</span>
+              <input type="tel" inputmode="numeric" placeholder="Enter mobile number" [value]="mobile()" (input)="setText('mobile', $event)" />
+            </label>
+            @if (bad('mobile')) { <p class="nd-err">{{ bad('mobile') }}</p> }
+          </div>
+          <div class="nd-field">
+            <span class="nd-lbl">PAN or tax identifier <small>Optional</small></span>
+            <input class="nd-input" type="text" placeholder="Enter PAN or tax identifier" [class.has-err]="!!bad('pan')" [value]="pan()" (input)="setText('pan', $event)" />
+            @if (bad('pan')) { <p class="nd-err">{{ bad('pan') }}</p> } @else { <span class="nd-hint">Needed for an 80G tax receipt in India.</span> }
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== receipt address ===== -->
+      <section class="nd-card">
+        <header class="nd-card-head">
+          <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s7-6.3 7-12a7 7 0 1 0-14 0c0 5.7 7 12 7 12z M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" /></svg></span>
+          <div><h2>Receipt address</h2><p>Printed on your receipt. Choose the country first, then state and city.</p></div>
+          <span class="nd-count">{{ progress().address.done }}/{{ progress().address.total }}</span>
+        </header>
+        <div class="nd-body">
+          <div class="nd-field">
+            <span class="nd-lbl">Address line 1 <em>*</em></span>
+            <input class="nd-input" type="text" placeholder="House, street, area" [class.has-err]="!!bad('line1')" [value]="line1()" (input)="setText('line1', $event)" />
+            @if (bad('line1')) { <p class="nd-err">{{ bad('line1') }}</p> }
+          </div>
+          <div class="nd-field">
+            <span class="nd-lbl">Address line 2 <small>Optional</small></span>
+            <input class="nd-input" type="text" placeholder="Landmark, building" [value]="line2()" (input)="setText('line2', $event)" />
+          </div>
+
+          <div class="nd-four nd-span">
+            <div class="nd-field">
+              <span class="nd-lbl">Country <em>*</em></span>
+              <div class="nd-dd" [class.is-open]="menu() === 'country'">
+                <button type="button" class="nd-input nd-dd-btn" [class.has-err]="!!bad('country')" (click)="toggleMenu('country', $event)">
+                  <span [class.nd-ph]="!country()">{{ country() ?? 'Select country' }}</span>
+                  <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                @if (menu() === 'country') {
+                  <div class="nd-menu is-up" (click)="$event.stopPropagation()">
+                    <ul role="listbox">
+                      @for (c of countries; track c.name) { <li><button type="button" [class.is-on]="country() === c.name" (click)="pickCountry(c)">{{ c.name }}<small>{{ c.dial }}</small></button></li> }
+                    </ul>
+                  </div>
+                }
+              </div>
+              @if (bad('country')) { <p class="nd-err">{{ bad('country') }}</p> }
+            </div>
+            <div class="nd-field">
+              <span class="nd-lbl">State <em>*</em></span>
+              <div class="nd-dd" [class.is-open]="menu() === 'state'">
+                <button type="button" class="nd-input nd-dd-btn" [class.has-err]="!!bad('state')" [disabled]="!country()" (click)="toggleMenu('state', $event)">
+                  <span [class.nd-ph]="!state()">{{ state() ?? 'Select state' }}</span>
+                  <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                @if (menu() === 'state') {
+                  <div class="nd-menu is-up" (click)="$event.stopPropagation()">
+                    <ul role="listbox">
+                      @for (s of stateList(); track s.name) { <li><button type="button" [class.is-on]="state() === s.name" (click)="pickState(s.name)">{{ s.name }}</button></li> }
+                    </ul>
+                  </div>
+                }
+              </div>
+              @if (bad('state')) { <p class="nd-err">{{ bad('state') }}</p> }
+            </div>
+            <div class="nd-field">
+              <span class="nd-lbl">City <em>*</em></span>
+              <div class="nd-dd" [class.is-open]="menu() === 'city'">
+                <button type="button" class="nd-input nd-dd-btn" [class.has-err]="!!bad('city')" [disabled]="!state()" (click)="toggleMenu('city', $event)">
+                  <span [class.nd-ph]="!city()">{{ city() ?? (state() ? 'Select city' : 'Choose a state first') }}</span>
+                  <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                @if (menu() === 'city') {
+                  <div class="nd-menu is-up is-right" (click)="$event.stopPropagation()">
+                    <ul role="listbox">
+                      @for (c of cityList(); track c) { <li><button type="button" [class.is-on]="city() === c" (click)="pickCity(c)">{{ c }}</button></li> }
+                    </ul>
+                  </div>
+                }
+              </div>
+              @if (bad('city')) { <p class="nd-err">{{ bad('city') }}</p> }
+            </div>
+            <div class="nd-field">
+              <span class="nd-lbl">PIN / ZIP code <em>*</em></span>
+              <input class="nd-input" type="text" [attr.inputmode]="isIndia() ? 'numeric' : 'text'" placeholder="Enter PIN / ZIP code" [class.has-err]="!!bad('pin')" [value]="pin()" (input)="setText('pin', $event)" />
+              @if (bad('pin')) { <p class="nd-err">{{ bad('pin') }}</p> }
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== confirm & pay ===== -->
+      <section class="nd-card">
+        <header class="nd-card-head">
+          <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg></span>
+          <div><h2>Confirm &amp; pay</h2><p>Check the summary, accept the notice and continue to the secure checkout.</p></div>
+          <span class="nd-count">{{ progress().confirm.done }}/{{ progress().confirm.total }}</span>
+        </header>
+        <div class="nd-body nd-confirm">
+          <label class="nd-check" [class.has-err]="!!bad('privacy')">
+            <input type="checkbox" [checked]="privacy()" (change)="privacy.set($any($event.target).checked)" />
+            <span class="nd-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg></span>
+            <span>I acknowledge the <a href="#" (click)="$event.preventDefault()">Privacy Notice</a> <em>*</em></span>
+          </label>
+          <button type="button" class="nd-donate" [class.is-off]="missingCount() > 0" [disabled]="saving()" (click)="submit()">
+            <span>{{ saving() ? 'Recording pledge…' : 'Donate now' }}</span>
+            <b>{{ amountLabel() }}</b>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14 M13 6l6 6-6 6" /></svg>
+          </button>
+          @if (bad('privacy')) { <p class="nd-err nd-span">{{ bad('privacy') }}</p> }
+          <ul class="nd-trust nd-span">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg>Secure provider checkout</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z M3 6l9 7 9-7" /></svg>Receipt by e-mail</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18 M10.6 10.6a2 2 0 0 0 2.8 2.8 M9.4 5.2A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2 M6.1 6.1A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.9-2.1" /></svg>Shown as anonymous by default</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===== live summary ===== -->
+    <aside class="nd-card nd-side">
+      <header class="nd-side-head">
+        <div><span class="nd-eyebrow">Live entry summary</span><h2>Donation overview</h2></div>
+        <span class="nd-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z" /></svg></span>
+      </header>
+      <div class="nd-side-body">
+        <div class="nd-total">
+          <b>{{ amountLabel() }}</b>
+          <span>Amount in {{ currencyInfo()?.label ?? 'the chosen currency' }}</span>
+        </div>
+        <dl class="nd-sum">
+          <div><dt>Donor</dt><dd>{{ donorName }}</dd></div>
+          <div><dt>Receipt to</dt><dd>{{ donorEmail }}</dd></div>
+          <div><dt>Cause</dt><dd [class.is-empty]="!causeInfo()">{{ causeInfo()?.name ?? 'Not selected' }}</dd></div>
+          <div><dt>Paid in</dt><dd [class.is-empty]="!currency()">{{ currency() ?? 'Not selected' }}</dd></div>
+          <div><dt>City</dt><dd [class.is-empty]="!city()">{{ city() ? city() + ', ' + state() : 'Not selected' }}</dd></div>
+        </dl>
+        <div class="nd-next">
+          <span class="nd-tag">What happens next</span>
+          <ol>
+            <li [class.is-done]="!!pledgeId()"><i>1</i>We record your pledge</li>
+            <li><i>2</i>You pay securely</li>
+            <li><i>3</i>Your receipt arrives</li>
+          </ol>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <p class="nd-note">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 8v4 M12 16h.01" /></svg>
+    Your card or bank details are entered only on the payment provider's page - never on this form.
+  </p>
+
+  @if (toast()) { <div class="nd-toast" role="status">{{ toast() }}</div> }
+</div>
