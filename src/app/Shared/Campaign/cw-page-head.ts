@@ -1,14 +1,11 @@
 import { Component, inject, input } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CW_ICONS, CwIcon } from './cw-icons';
 import { CW_PATHS } from './cw-paths';
-import { CwSelect } from './cw-select';
 import { CampaignWorkspaceStore } from './cw.store';
 import { LIFECYCLE_LABEL, LIFECYCLE_TONE, fmtDate, fmtTime } from './cw.data';
 
 @Component({
   selector: 'cw-page-head',
-  imports: [RouterLink, RouterLinkActive, CwSelect],
   templateUrl: './cw-page-head.html',
   styleUrls: ['./cw-shared.css', './cw-page-head.css']
 })
