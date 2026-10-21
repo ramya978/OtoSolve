@@ -2,6 +2,8 @@ import { ApplicationConfig, Injectable, provideBrowserGlobalErrorListeners, inje
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
+import { authInterceptor } from './Shared/interceptors/auth.interceptor';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 /**
  * Keeps the browser-tab title fixed to the app name. Every route in this app carries a `title`
@@ -21,6 +23,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    { provide: TitleStrategy, useClass: AppTitleStrategy }
+    { provide: TitleStrategy, useClass: AppTitleStrategy },
+provideHttpClient(withInterceptors([authInterceptor]))
   ]
 };

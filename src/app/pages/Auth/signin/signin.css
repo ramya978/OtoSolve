@@ -1,0 +1,19 @@
+
+:host { display: block; min-height: 100vh; }
+.signin-container { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; background: #f3f4f6; font-family: Arial, sans-serif; }
+.signin-card { width: 100%; max-width: 400px; padding: 32px; background: #fff; border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08); }
+h1 { margin: 0 0 8px; color: #111827; font-size: 28px; text-align: center; }
+.subtitle { margin: 0 0 28px; color: #6b7280; text-align: center; }
+.form-group { margin-bottom: 20px; }
+label { display: block; margin-bottom: 8px; color: #374151; font-size: 14px; font-weight: 600; }
+input { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; outline: none; font-size: 14px; }
+input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12); }
+.password-wrapper { position: relative; }
+.password-wrapper input { padding-right: 64px; }
+.toggle-password { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); padding: 4px; border: 0; background: transparent; color: #2563eb; cursor: pointer; }
+.signin-button { width: 100%; padding: 13px; border: 0; border-radius: 6px; background: #2563eb; color: #fff; font-size: 15px; font-weight: 600; cursor: pointer; }
+.signin-button:hover:not(:disabled) { background: #1d4ed8; }
+.signin-button:disabled { cursor: not-allowed; opacity: 0.6; }
+.message { margin-bottom: 16px; padding: 10px 12px; border-radius: 6px; font-size: 14px; }
+.error { background: #fef2f2; color: #b91c1c; }
+.success { background: #f0fdf4; color: #15803d; }
