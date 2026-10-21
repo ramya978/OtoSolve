@@ -46,6 +46,8 @@ import { AuditTrail } from './pages/User_Access/Audit_Trail/audit-trail';
 import { MySecurity } from './pages/User_Access/My_Security/my-security';
 import { CreateUser } from './pages/User_Access/Create_User/create-user';
 import { BulkUsers } from './pages/User_Access/Bulk_Users/bulk-users';
+import { Login } from './pages/Auth/Login/login';
+import { authGuard, guestGuard } from './Shared/Auth/auth.guard';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -85,7 +87,7 @@ const menuRoutes: Routes = flatten(MENU_DATA)
     data: { name: item.name, route: item.route }
   }));
 
-export const routes: Routes = [
+const APP_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
 
   // Campaign Routes
@@ -266,4 +268,20 @@ export const routes: Routes = [
   { path: 'app/auth/profile', component: Profile, title: 'Profile', data: { name: 'Profile', route: '/app/auth/profile' } },
   { path: 'app/fundraising/Lead/Lead-view', component: LeadProfile, title: 'Lead_Profile', data: { name: 'Lead_Profile', route: '/app/fundraising/Lead/Lead-view' } },
   ...menuRoutes
+];
+
+/**
+ * Public sign-in screen first, then every workspace page behind the auth guard —
+ * without a session any /app/** URL lands on /login (with a `returnUrl` back), and
+ * after signing in (or signing out) the router shows the right screen again.
+ * Unknown URLs fall back to the dashboard, which the guard protects as well.
+ */
+export const routes: Routes = [
+  { path: 'login', component: Login, canActivate: [guestGuard], title: 'Sign in' },
+  ...APP_ROUTES.map((route) =>
+    route.redirectTo === undefined
+      ? { ...route, canActivate: [...(route.canActivate ?? []), authGuard] }
+      : route
+  ),
+  { path: '**', redirectTo: 'app/dashboard' }
 ];

@@ -1,4 +1,5 @@
 import { ApplicationConfig, Injectable, provideBrowserGlobalErrorListeners, inject } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
@@ -20,6 +21,7 @@ export class AppTitleStrategy extends TitleStrategy {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
+    provideHttpClient(),
     provideRouter(routes),
     { provide: TitleStrategy, useClass: AppTitleStrategy }
   ]
