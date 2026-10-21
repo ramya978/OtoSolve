@@ -1,0 +1,162 @@
+<!-- Sign-in screen · split card: illustration on the left, sign-in form on the right.
+     Colours and typography come from the workspace theme (styles.css), so the page follows
+     Theme Settings (accent, dark mode, fonts) like every other screen. -->
+<main class="lg-shell">
+  <section class="lg-card">
+    <!-- left: illustration panel -->
+    <aside class="lg-art" aria-hidden="true">
+      <svg class="lg-art-svg" viewBox="0 0 520 600" focusable="false">
+        <!-- soft background blob -->
+        <path class="art-blob" d="M259 63c85-14 178 24 205 103 26 77-15 160-70 219-53 57-124 96-200 84-73-11-137-64-160-138-24-76-3-166 55-217 55-48 96-40 170-51z" />
+
+        <!-- leaves · left cluster -->
+    
+        <g class="art-leaf-deep">
+          <path d="M112 320c-8-26 4-50 26-56 0 20-10 46-26 56z" />
+          <path d="M132 372c-24-10-32-36-22-56 14 16 26 40 22 56z" />
+        </g>
+
+        <!-- leaves · right cluster -->
+    
+        <g class="art-leaf-deep">
+          <path d="M408 308c8-26-4-50-26-56 0 20 10 46 26 56z" />
+        </g>
+
+        <!-- monitor -->
+        <rect class="art-frame" x="106" y="128" width="308" height="232" rx="20" />
+        <rect class="art-screen" x="122" y="144" width="276" height="200" rx="12" />
+
+        <!-- screen content · avatar -->
+        <circle class="art-avatar-bg" cx="260" cy="212" r="34" />
+        <circle class="art-avatar" cx="260" cy="203" r="12" />
+        <path class="art-avatar" d="M238 228c2-12 11-19 22-19s20 7 22 19z" />
+
+        <!-- screen content · fields + button -->
+        <rect class="art-pill" x="176" y="262" width="168" height="22" rx="11" />
+        <circle class="art-pill-dot" cx="192" cy="273" r="5" />
+        <rect class="art-pill-bar" x="204" y="269" width="88" height="8" rx="4" />
+        <rect class="art-pill" x="176" y="294" width="168" height="22" rx="11" />
+        <circle class="art-pill-dot" cx="192" cy="305" r="5" />
+        <rect class="art-pill-bar" x="204" y="301" width="64" height="8" rx="4" />
+        <rect class="art-btn" x="216" y="324" width="88" height="16" rx="8" />
+
+        <!-- stand -->
+        <rect class="art-stand" x="243" y="360" width="34" height="34" />
+        <rect class="art-stand" x="204" y="390" width="112" height="14" rx="7" />
+
+        <!-- padlock -->
+        <path class="art-shackle" d="M120 420v-28c0-24 19-43 43-43s43 19 43 43v28" />
+        <rect class="art-gold" x="96" y="418" width="134" height="104" rx="16" />
+        <circle class="art-gold-deep" cx="163" cy="456" r="14" />
+        <path class="art-gold-deep" d="M157 462h12l-4 26h-4z" />
+
+        <!-- key -->
+        <g transform="rotate(-32 400 470)">
+          <circle class="art-gold" cx="400" cy="470" r="17" />
+          <circle class="art-screen" cx="400" cy="470" r="6" />
+          <rect class="art-gold" x="415" y="464" width="76" height="12" rx="6" />
+          <rect class="art-gold" x="467" y="476" width="9" height="16" rx="3" />
+          <rect class="art-gold" x="481" y="476" width="9" height="16" rx="3" />
+        </g>
+      </svg>
+    </aside>
+
+    <!-- right: form panel -->
+    <section class="lg-form-side">
+      <header class="lg-brand-row">
+        <span class="lg-mark" aria-hidden="true">O</span>
+        <span class="lg-brand-name">OtoSolve</span>
+      </header>
+
+      <h1 class="lg-title">Welcome Back</h1>
+      <p class="lg-sub">Sign in to access your dashboard, manage data, and explore analytics</p>
+
+      <!-- accessible toast: success or danger message with timed dismissal + dismiss control -->
+      @if (toast(); as t) {
+        <div
+          class="lg-toast lg-toast-{{ t.tone }}"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span class="lg-toast-icon" aria-hidden="true">
+            @if (t.tone === 'ok') {
+              <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+            } @else {
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            }
+          </span>
+          <div class="lg-toast-body">
+            <span class="lg-toast-text">{{ t.text }}</span>
+          </div>
+          <button type="button" class="lg-toast-dismiss" aria-label="Dismiss" (click)="dismissToast()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          </button>
+        </div>
+      }
+
+      <form (submit)="submit($event)" novalidate>
+        <!-- identifier -->
+        <div class="lg-field">
+          <input #identifierBox class="lg-input" type="text" name="identifier" autocomplete="username"
+                 placeholder="User name or e-mail" aria-label="User name or e-mail"
+                 [value]="identifier()" (input)="identifier.set(identifierBox.value)"
+                 [class.is-invalid]="!!fieldErrors().identifier">
+          @if (fieldErrors().identifier; as err) {
+            <p class="field-error" role="alert">{{ err }}</p>
+          }
+        </div>
+
+        <!-- password -->
+        <div class="lg-field">
+          <div class="lg-control">
+            <input #passwordBox class="lg-input" [type]="showPassword() ? 'text' : 'password'"
+                   name="password" autocomplete="current-password" placeholder="Password" aria-label="Password"
+                   [value]="password()" (input)="password.set(passwordBox.value)"
+                   [class.is-invalid]="!!fieldErrors().password">
+            <button type="button" class="lg-eye" (click)="showPassword.set(!showPassword())"
+                    [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+              @if (showPassword()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94 M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19 M14.12 14.12a3 3 0 1 1-4.24-4.24 M1 1l22 22" />
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              }
+            </button>
+          </div>
+          @if (fieldErrors().password; as err) {
+            <p class="field-error" role="alert">{{ err }}</p>
+          }
+        </div>
+
+        <!-- remember this device -->
+        <label class="lg-remember">
+          <input #rememberBox type="checkbox" [checked]="remember()" (change)="remember.set(rememberBox.checked)">
+          <span class="lg-remember-text">
+            <span class="lg-remember-title">Remember this device</span>
+            <span class="lg-remember-help">Keeps you signed in here and skips the code next time. Remove it any time from My&nbsp;Security.</span>
+          </span>
+        </label>
+
+        <div class="lg-forgot-row">
+          <button type="button" class="lg-forgot">Forgot password?</button>
+        </div>
+
+        <button type="submit" class="lg-submit" [disabled]="!canSubmit()">
+          @if (busy()) {
+            <span class="lg-spinner" aria-hidden="true"></span>
+            Signing in…
+          } @else {
+            Sign In
+          }
+        </button>
+      </form>
+
+      <p class="lg-foot">No account yet? Ask your administrator to invite you from Users &amp; Access.</p>
+    </section>
+  </section>
+</main>

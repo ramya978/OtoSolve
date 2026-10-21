@@ -1,9 +1,12 @@
 import { Component, DestroyRef, HostListener, ViewEncapsulation, computed, inject, signal } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Sidebar } from './Shared/layout/Sidebar/sidebar';
 import { ThemeSettingsService, profileImageSrc } from './pages/Auth/Profile/theme-settings';
 import { ThemeSettings } from './pages/Auth/Profile/settings';
 import { ClockSettingsService, ClockZone, cityOf } from './Shared/studio/data/clock-settings';
+import { AuthService } from './Shared/Auth/auth.service';
 
 export interface Organisation {
   id: string;
@@ -73,6 +76,38 @@ export class App {
   protected readonly title = signal('OtoSolve');
 
   private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
+
+  /** The routed URL as a signal — no extra wiring needed to know where we are. */
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects)
+    ),
+    { initialValue: this.router.url }
+  );
+
+  /** True while the router shows the sign-in screen: the shell then hides sidebar + top bar. */
+  protected readonly onAuthScreen = computed(() => this.currentUrl().startsWith('/login'));
+
+  /** The signed-in user for the top bar and account menu (placeholders while signed out). */
+  protected readonly sessionUser = this.auth.user;
+  protected readonly userName = computed(() => this.sessionUser()?.name ?? 'Signed out');
+  protected readonly userRole = computed(() => this.sessionUser()?.role ?? '—');
+  protected readonly userEmail = computed(() => this.sessionUser()?.email ?? '');
+  protected readonly userInitials = computed(() => {
+    const user = this.sessionUser();
+    if (user?.initials) return user.initials;
+    return (
+      user?.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]!.toUpperCase())
+        .join('') || '--'
+    );
+  });
+
   protected readonly theme = inject(ThemeSettingsService);
   /** Shared with Theme Settings → Workspace (Clock presentation). */
   private readonly clock = inject(ClockSettingsService);
@@ -275,6 +310,16 @@ export class App {
   protected openProfile(): void {
     this.closeUserMenu();
     void this.router.navigateByUrl('/app/auth/profile');
+  }
+
+  /**
+   * Account menu → Sign out (and Sign out everywhere): ends the session on this device
+   * and returns to the sign-in screen. Wire "everywhere" to a session-revoke API later.
+   */
+  protected signOut(): void {
+    this.closeAll();
+    this.auth.logout();
+    void this.router.navigateByUrl('/login');
   }
 
   /** Account menu → Preferences: opens the shared Appearance studio popup (no navigation). */

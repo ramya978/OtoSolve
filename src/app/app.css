@@ -2537,3 +2537,47 @@ html[data-cc="on"] .topbar.hd-bar {
 @media print {
   .topbar.hd-bar { display: none !important }
 }
+/* ============================================================
+   Auth screens (e.g. /login): the shell shows only the routed
+   page — no sidebar, no top bar, no inner padding, no extra
+   scroll containers. Layout lives in login.css.
+   ============================================================ */
+.app.no-chrome #sidebar,
+.app.no-chrome .topbar.hd-bar,
+.app.no-chrome #content {
+  display: none !important
+}
+
+/* The sidebar element is removed from the DOM on auth screens (@if in app.html), so the
+   shell grid must collapse to a single column — otherwise .main auto-places into the
+   narrow 264px sidebar track and the sign-in screen is squeezed against the left edge. */
+.app.no-chrome {
+  grid-template-columns: 1fr
+}
+
+/* Same for the horizontal-menu layout, which turns the shell into rows (and may also
+   carry the collapsed-rail class): drop the empty auto row and keep it a clean grid. */
+html[data-layout="horizontal"] .app.no-chrome,
+html[data-layout="horizontal"] .app.no-chrome.sidebar-collapsed {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr
+}
+
+/* Auth screens own the full viewport: ignore the Theme Settings content column and let
+   the page scroll (instead of clipping) when a short window can't fit the whole card. */
+.app.no-chrome .content.route-page {
+  padding: 0;
+  overflow: auto;
+  height: 100dvh;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: none
+}
+
+/* safety net: the studio's routed-page paddings/margins must not leak onto auth screens */
+.app.no-chrome .route-page,
+.app.no-chrome .route-page > * {
+  margin: 0 !important;
+  padding: 0 !important
+}

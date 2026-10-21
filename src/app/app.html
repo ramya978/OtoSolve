@@ -1,12 +1,15 @@
 <!-- The application shell: sidebar component, top bar, routed page, and the studio content.
      The studio engine renders the page content, the modal and the toast into the ids below.
      Top bar functions are in app.ts · top bar styles in header.css. -->
-<div class="app" [class.sidebar-collapsed]="sidebarCollapsed()">
+<div class="app" [class.sidebar-collapsed]="sidebarCollapsed()" [class.no-chrome]="onAuthScreen()">
   <!-- the sidebar: Shared/layout/Sidebar (sidebar.html / sidebar.css / sidebar.ts) -->
-  <app-sidebar [collapsed]="sidebarCollapsed()" (expandRequest)="setSidebarCollapsed(false)" />
+  @if (!onAuthScreen()) {
+    <app-sidebar [collapsed]="sidebarCollapsed()" (expandRequest)="setSidebarCollapsed(false)" />
+  }
 
   <div class="main">
     <!-- TOP HEADER. #crumb and #top-avatar are read / filled by the studio engine - keep the ids. -->
+    @if (!onAuthScreen()) {
     <header class="topbar hd-bar">
 
       <!-- sidebar expand / collapse (on a phone: opens the menu overlay) -->
@@ -252,8 +255,8 @@
       <div class="hd-account">
         <button type="button" class="hd-user" aria-haspopup="menu" [attr.aria-expanded]="userMenuOpen()"
                 (click)="toggleUserMenu($event)">
-          <span class="hd-avatar" [style.background]="avatarBg() ?? ''" aria-hidden="true">{{ avatarBg() ? '' : 'VA' }}</span>
-          <span class="hd-user-meta"><strong>Vikram Anand</strong><small>Super admin</small></span>
+          <span class="hd-avatar" [style.background]="avatarBg() ?? ''" aria-hidden="true">{{ avatarBg() ? '' : userInitials() }}</span>
+          <span class="hd-user-meta"><strong>{{ userName() }}</strong><small>{{ userRole() }}</small></span>
           <svg class="hd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
         </button>
         <!-- the studio engine writes the preview-role initials here; kept out of sight -->
@@ -263,11 +266,11 @@
           <div class="hd-pop hd-menu" role="menu">
             <!-- who is signed in -->
             <div class="hd-menu-head">
-              <span class="hd-avatar xl" [style.background]="avatarBg() ?? ''" aria-hidden="true">{{ avatarBg() ? '' : 'VA' }}</span>
+              <span class="hd-avatar xl" [style.background]="avatarBg() ?? ''" aria-hidden="true">{{ avatarBg() ? '' : userInitials() }}</span>
               <div class="hd-menu-who">
-                <strong>Vikram Anand</strong>
-                <span>vikram.anand&#64;ngoplanet.test</span>
-                <em class="hd-role">Super admin</em>
+                <strong>{{ userName() }}</strong>
+                <span>{{ userEmail() }}</span>
+                <em class="hd-role">{{ userRole() }}</em>
               </div>
             </div>
 
@@ -306,23 +309,24 @@
             <div class="hd-menu-sep"></div>
 
             <div class="hd-menu-group">
-              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="closeUserMenu()">
+              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut()">
                 <svg class="hd-row-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('logout')" /></svg>
                 <span class="hd-row-text"><strong>Sign out</strong><small>This device only</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
               </button>
-              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="closeUserMenu()">
+              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut()">
                 <svg class="hd-row-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg>
                 <span class="hd-row-text"><strong>Sign out everywhere</strong><small>All devices and active sessions</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
               </button>
             </div>
 
-            <div class="hd-pop-foot">OtoSolve · Sample account</div>
+            <div class="hd-pop-foot">OtoSolve · {{ userEmail() || 'Sample account' }}</div>
           </div>
         }
       </div>
     </header>
+    }
 
     <div class="content route-page"><router-outlet /></div>
     <main class="content" id="content" tabindex="-1"></main>
