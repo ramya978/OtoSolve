@@ -4,7 +4,7 @@ import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './Shared/interceptors/auth.interceptor';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import {  withInterceptors } from '@angular/common/http';
 
 /**
  * Keeps the browser-tab title fixed to the app name. Every route in this app carries a `title`
