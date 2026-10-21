@@ -23,9 +23,8 @@ export class AppTitleStrategy extends TitleStrategy {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(),
     provideRouter(routes),
     { provide: TitleStrategy, useClass: AppTitleStrategy },
-provideHttpClient(withInterceptors([authInterceptor]))
+    provideHttpClient(withInterceptors([authInterceptor]))
   ]
 };
