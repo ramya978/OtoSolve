@@ -2,39 +2,11 @@
    STATES - master configuration and sample rows
    Drives the states list page (states.html) and the create / edit page (state-form.html):
    table columns, filters, overview metrics, form sections with their rules, live preview and the
-   view-drawer details. Sample rows are fictional review values; replace them with the API.
+   view-drawer details. Records come from the API (see MastersStore).
    ===================================================================================================== */
 import {
-  JURISDICTIONS, MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_DAI, STATUS_LABEL, dash, notes, numOr, s, sortOrder, statusChoice, statusColumn, statusFilter, yesNo
+  MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_DAI, STATUS_LABEL, dash, notes, numOr, s, sortOrder, statusChoice, statusColumn, statusFilter, yesNo
 } from '../../../Shared/Masters/masters.types';
-
-const state = (
-  code: string, name: string, countryCode: string, jurisdiction: string, gst: string, tz: string,
-  postal = '', status: MasterStatus = 'active'
-): MasterRow => ({
-  id: `st-${countryCode}-${code}`, code, name, display: `${name} (${code})`, country: countryCode, jurisdiction,
-  federal: jurisdiction === 'Union territory', postal, addressFormat: '', gst, taxCode: '', timezone: tz,
-  status, sort: 0, notes: ''
-});
-
-export const SEED_STATES: MasterRow[] = [
-  state('TN', 'Tamil Nadu', 'IN', 'State', '33', 'Asia/Kolkata', '^6[0-4][0-9]{4}$'),
-  state('KA', 'Karnataka', 'IN', 'State', '29', 'Asia/Kolkata', '^5[6-9][0-9]{4}$'),
-  state('KL', 'Kerala', 'IN', 'State', '32', 'Asia/Kolkata', '^6[7-9][0-9]{4}$'),
-  state('MH', 'Maharashtra', 'IN', 'State', '27', 'Asia/Kolkata', '^4[0-4][0-9]{4}$'),
-  state('DL', 'Delhi', 'IN', 'Union territory', '07', 'Asia/Kolkata', '^11[0-9]{4}$'),
-  state('TG', 'Telangana', 'IN', 'State', '36', 'Asia/Kolkata', '^5[0-3][0-9]{4}$', 'draft'),
-  state('CA', 'California', 'US', 'State', '', 'America/Los_Angeles'),
-  state('NY', 'New York', 'US', 'State', '', 'America/New_York'),
-  state('TX', 'Texas', 'US', 'State', '', 'America/Chicago'),
-  state('ON', 'Ontario', 'CA', 'Province', '', 'America/Toronto'),
-  state('BC', 'British Columbia', 'CA', 'Province', '', 'America/Vancouver'),
-  state('QC', 'Quebec', 'CA', 'Province', '', 'America/Toronto', '', 'inactive'),
-  state('NSW', 'New South Wales', 'AU', 'State', '', 'Australia/Sydney'),
-  state('VIC', 'Victoria', 'AU', 'State', '', 'Australia/Sydney'),
-  state('ENG', 'England', 'GB', 'Constituent country', '', 'Europe/London'),
-  state('BY', 'Bavaria', 'DE', 'State', '', 'Europe/Berlin')
-];
 
 export const STATE: MasterConfig = {
   key: 'state',
@@ -51,7 +23,7 @@ export const STATE: MasterConfig = {
   searchKeys: ['code', 'name', 'display', 'gst'],
   filters: [
     { key: 'country', title: 'Country', allLabel: 'All countries', optionsFrom: 'countries', match: (r, v) => r['country'] === v },
-    { key: 'jurisdiction', title: 'Jurisdiction', allLabel: 'All jurisdictions', options: JURISDICTIONS, match: (r, v) => r['jurisdiction'] === v },
+    { key: 'jurisdiction', title: 'Jurisdiction', allLabel: 'All jurisdictions', optionsFrom: 'jurisdictions', match: (r, v) => r['jurisdiction'] === v },
     statusFilter(STATUS_DAI)
   ],
   columns: [
@@ -87,7 +59,7 @@ export const STATE: MasterConfig = {
       no: '02', title: 'Country & jurisdiction', note: 'Where the region sits and what kind of division it is.',
       fields: [
         { key: 'country', label: 'Country', kind: 'select', required: true, optionsFrom: 'countries', placeholder: 'Select country' },
-        { key: 'jurisdiction', label: 'Jurisdiction type', kind: 'select', required: true, options: JURISDICTIONS, placeholder: 'Select jurisdiction type' },
+        { key: 'jurisdiction', label: 'Jurisdiction type', kind: 'select', required: true, optionsFrom: 'jurisdictions', placeholder: 'Select jurisdiction type' },
         { key: 'federal', label: 'Federal jurisdiction', hint: 'Governed directly by the union', kind: 'choice', options: yesNo('Federal', 'Not federal') }
       ]
     },

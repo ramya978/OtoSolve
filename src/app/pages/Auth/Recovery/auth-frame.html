@@ -1,0 +1,70 @@
+<!-- Shared frame of the account-recovery screens (MFA, forgot / reset password, confirm it is you):
+     the same split card as the sign-in screen - illustration left, content right. -->
+<main class="lg-shell">
+  <section class="lg-card">
+    <aside class="lg-art" aria-hidden="true">
+      <svg class="lg-art-svg" viewBox="0 0 520 600" focusable="false">
+        <!-- soft background blob -->
+        <path class="art-blob" d="M259 63c85-14 178 24 205 103 26 77-15 160-70 219-53 57-124 96-200 84-73-11-137-64-160-138-24-76-3-166 55-217 55-48 96-40 170-51z" />
+
+        <!-- leaves · left cluster -->
+    
+        <g class="art-leaf-deep">
+          <path d="M112 320c-8-26 4-50 26-56 0 20-10 46-26 56z" />
+          <path d="M132 372c-24-10-32-36-22-56 14 16 26 40 22 56z" />
+        </g>
+
+        <!-- leaves · right cluster -->
+    
+        <g class="art-leaf-deep">
+          <path d="M408 308c8-26-4-50-26-56 0 20 10 46 26 56z" />
+        </g>
+
+        <!-- monitor -->
+        <rect class="art-frame" x="106" y="128" width="308" height="232" rx="20" />
+        <rect class="art-screen" x="122" y="144" width="276" height="200" rx="12" />
+
+        <!-- screen content · avatar -->
+        <circle class="art-avatar-bg" cx="260" cy="212" r="34" />
+        <circle class="art-avatar" cx="260" cy="203" r="12" />
+        <path class="art-avatar" d="M238 228c2-12 11-19 22-19s20 7 22 19z" />
+
+        <!-- screen content · fields + button -->
+        <rect class="art-pill" x="176" y="262" width="168" height="22" rx="11" />
+        <circle class="art-pill-dot" cx="192" cy="273" r="5" />
+        <rect class="art-pill-bar" x="204" y="269" width="88" height="8" rx="4" />
+        <rect class="art-pill" x="176" y="294" width="168" height="22" rx="11" />
+        <circle class="art-pill-dot" cx="192" cy="305" r="5" />
+        <rect class="art-pill-bar" x="204" y="301" width="64" height="8" rx="4" />
+        <rect class="art-btn" x="216" y="324" width="88" height="16" rx="8" />
+
+        <!-- stand -->
+        <rect class="art-stand" x="243" y="360" width="34" height="34" />
+        <rect class="art-stand" x="204" y="390" width="112" height="14" rx="7" />
+
+        <!-- padlock -->
+        <path class="art-shackle" d="M120 420v-28c0-24 19-43 43-43s43 19 43 43v28" />
+        <rect class="art-gold" x="96" y="418" width="134" height="104" rx="16" />
+        <circle class="art-gold-deep" cx="163" cy="456" r="14" />
+        <path class="art-gold-deep" d="M157 462h12l-4 26h-4z" />
+
+        <!-- key -->
+        <g transform="rotate(-32 400 470)">
+          <circle class="art-gold" cx="400" cy="470" r="17" />
+          <circle class="art-screen" cx="400" cy="470" r="6" />
+          <rect class="art-gold" x="415" y="464" width="76" height="12" rx="6" />
+          <rect class="art-gold" x="467" y="476" width="9" height="16" rx="3" />
+          <rect class="art-gold" x="481" y="476" width="9" height="16" rx="3" />
+        </g>
+      </svg>
+    </aside>
+
+    <section class="lg-form-side">
+      <header class="lg-brand-row">
+        <span class="lg-mark" aria-hidden="true">O</span>
+        <span class="lg-brand-name">OtoSolve</span>
+      </header>
+      <ng-content />
+    </section>
+  </section>
+</main>

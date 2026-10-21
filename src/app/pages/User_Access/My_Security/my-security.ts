@@ -1,7 +1,13 @@
-import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import QRCode from 'qrcode';
+import { SecurityApiService } from '../../../Service/security-api.service';
+import { AuthService } from '../../../Shared/Auth/auth.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { UserSecurityResponse } from '../../../Shared/models/iam-contract.model';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  IAM_NOW, IamSession, ME, SECURITY_ACTIVITY, SESSIONS, SecurityActivity, fmtDate, fmtDateTime, fmtTime, initialsOf
+  IAM_NOW, IamSession, SecurityActivity, fmtDate, fmtDateTime, fmtTime, initialsOf
 } from '../../../Shared/IAM/iam-data';
 
 type Dialog = 'methods' | 'app' | 'email' | 'password' | 'codes' | null;
@@ -21,18 +27,42 @@ const CODE_TTL = 120; // seconds a verification code stays valid
   templateUrl: './my-security.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './my-security.css']
 })
-export class MySecurity {
+export class MySecurity implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly api = inject(SecurityApiService);
+  private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private timer: ReturnType<typeof setInterval> | null = null;
+  private pendingMethodId = '';
+  private pendingUri = '';
 
-  readonly me = ME;
+  readonly loading = signal(false);
+  readonly busy = signal(false);
+  private readonly sec = signal<UserSecurityResponse | null>(null);
+
+  private readonly meC = computed(() => {
+    const u = this.auth.user();
+    const sec = this.sec();
+    const email = u?.email ?? '';
+    return {
+      name: u?.name ?? sec?.displayName ?? '',
+      username: email.split('@')[0] ?? '',
+      email,
+      passwordChanged: sec?.passwordChangedAtUtc ?? '',
+      mfaRequirement: sec?.mfaRequirementDisplay ?? '',
+      failedSignIns: sec?.accessFailedCount ?? 0,
+      attemptsLeft: sec?.attemptsRemaining ?? 0,
+      recoveryCodesLeft: sec?.recoveryCodesRemaining ?? 0,
+    };
+  });
+  get me() { return this.meC(); }
   readonly initials = initialsOf;
   readonly fmtDateTime = fmtDateTime;
   readonly fmtTime = fmtTime;
 
-  readonly passwordChanged = signal(ME.passwordChanged);
-  readonly sessions = signal<IamSession[]>(SESSIONS.map((s) => ({ ...s })));
-  readonly activity = signal<SecurityActivity[]>([...SECURITY_ACTIVITY]);
+  readonly passwordChanged = signal('');
+  readonly sessions = signal<IamSession[]>([]);
+  readonly activity = signal<SecurityActivity[]>([]);
   readonly methods = signal<MfaMethod[]>([]);
   readonly recoveryCodes = signal<string[]>([]);
   readonly rememberedDevices = signal(0);
@@ -58,13 +88,55 @@ export class MySecurity {
     this.destroyRef.onDestroy(() => this.stopTimer());
   }
 
+  ngOnInit(): void {
+    this.reload();
+  }
+
+  private reload(): void {
+    this.loading.set(true);
+    this.api.getMySecurity().subscribe({
+      next: (r) => {
+        this.sec.set(r);
+        this.passwordChanged.set(r.passwordChangedAtUtc ?? '');
+        this.sessions.set((r.activeSessions ?? []).map((x) => ({
+          id: x.id ?? '', device: x.deviceName || [x.browser, x.operatingSystem].filter(Boolean).join(' on ') || 'Device',
+          detail: [x.browser, x.operatingSystem].filter(Boolean).join(' on ') + (x.ipAddress ? ' · ' + x.ipAddress : ''),
+          lastActive: x.lastActivityAtUtc ?? '', current: !!x.isCurrent,
+        })));
+        this.methods.set((r.mfaMethods ?? []).filter((m) => m.status !== 'revoked' && m.status !== 'pending').map((m) => ({
+          id: m.id ?? '', kind: m.methodType === 'email' ? 'email' as const : 'app' as const,
+          label: m.methodTypeDisplay ?? (m.methodType === 'email' ? 'E-mail OTP' : 'Authenticator app'),
+          device: m.label || m.maskedDestination || '', addedAt: m.verifiedAtUtc ?? m.createdAtUtc ?? '',
+        })));
+        if (!this.recoveryCodes().length && (r.recoveryCodesRemaining ?? 0) > 0) {
+          this.recoveryCodes.set(Array.from({ length: r.recoveryCodesRemaining ?? 0 }, () => '••••-••••'));
+        }
+        this.activity.set((r.recentAttempts ?? []).map((a) => ({
+          id: a.id ?? '', title: a.succeeded ? 'Signed in' : (a.headline || a.outcomeDisplay || 'Sign-in attempt'),
+          detail: [a.browser, a.operatingSystem].filter(Boolean).join(' on ') + (a.ipAddress ? ' · from ' + a.ipAddress : ''),
+          at: a.attemptedAtUtc ?? '',
+        })));
+        this.loading.set(false);
+      },
+      error: (e) => {
+        this.loading.set(false);
+        this.toast.show('Could not load', apiErrorMessage(e, 'Your security details could not be loaded.'), 'error');
+      },
+    });
+  }
+
+  private fail(e: unknown, fallback: string): void {
+    this.busy.set(false);
+    this.toast.show('Not saved', apiErrorMessage(e, fallback), 'error');
+  }
+
   icon(name: string): string {
     return IAM_ICONS[name] ?? '';
   }
 
   // ---------------------------------------------------------------- status
   readonly mfaOn = computed(() => this.methods().length > 0);
-  readonly passwordGood = computed(() => (IAM_NOW.getTime() - new Date(this.passwordChanged()).getTime()) / 86400000 <= 90);
+  readonly passwordGood = computed(() => !!this.passwordChanged() && (IAM_NOW.getTime() - new Date(this.passwordChanged()).getTime()) / 86400000 <= 90);
 
   /** four checks behind the security level */
   readonly checks = computed(() => [
@@ -100,14 +172,31 @@ export class MySecurity {
 
   // ---------------------------------------------------------------- MFA enrolment
   startApp(): void {
-    let s = '';
-    for (let i = 0; i < 32; i++) s += B32[Math.floor(Math.random() * 32)];
-    this.secret.set(s);
-    this.beginCode('app');
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.api.beginMfaEnrolment('authenticatorApp').subscribe({
+      next: (r) => {
+        this.busy.set(false);
+        this.pendingMethodId = r.methodId ?? '';
+        this.pendingUri = r.provisioningUri ?? '';
+        this.secret.set(r.sharedSecret ?? '');
+        this.beginCode('app');
+      },
+      error: (e) => this.fail(e, 'Authenticator set-up could not be started.'),
+    });
   }
 
   startEmail(): void {
-    this.beginCode('email');
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.api.beginMfaEnrolment('email').subscribe({
+      next: (r) => {
+        this.busy.set(false);
+        this.pendingMethodId = r.methodId ?? '';
+        this.beginCode('email');
+      },
+      error: (e) => this.fail(e, 'A code could not be sent.'),
+    });
   }
 
   private beginCode(kind: 'app' | 'email'): void {
@@ -129,31 +218,19 @@ export class MySecurity {
   readonly secretGroups = computed(() => this.secret().match(/.{1,4}/g)?.join(' ') ?? '');
   readonly expires = computed(() => `${Math.floor(this.secondsLeft() / 60)}:${String(this.secondsLeft() % 60).padStart(2, '0')}`);
   readonly codeFull = computed(() => this.code().every((c) => /^\d$/.test(c)));
-  readonly maskedEmail = computed(() => ME.email.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.min(6, b.length)) + c));
+  readonly maskedEmail = computed(() => this.meC().email.replace(/^(.)(.*)(@.*)$/, (_, a, b, c) => a + '*'.repeat(Math.min(6, b.length)) + c));
 
-  /** QR-style matrix for the secret (visual only — use your QR library with the real otpauth:// URI). */
+  /** The real otpauth:// URI as a QR matrix, drawn into the existing 25×25 viewBox. */
   readonly qrPath = computed(() => {
-    const n = 25;
-    let seed = 0;
-    for (const ch of this.secret()) seed = (seed * 33 + ch.charCodeAt(0)) >>> 0;
-    const rnd = (): number => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
-    const finder = (x: number, y: number): boolean | null => {
-      for (const [fx, fy] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
-        const dx = x - fx;
-        const dy = y - fy;
-        if (dx >= -1 && dx <= 7 && dy >= -1 && dy <= 7) {
-          if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return false;
-          const ring = Math.max(Math.abs(dx - 3), Math.abs(dy - 3));
-          return ring !== 2;
-        }
-      }
-      return null;
-    };
+    const text = this.pendingUri || '';
+    if (!this.secret() || !text) return '';
+    const qr = QRCode.create(text, { errorCorrectionLevel: 'M' });
+    const n = qr.modules.size;
+    const k = 25 / n;
     let d = '';
     for (let y = 0; y < n; y++) {
       for (let x = 0; x < n; x++) {
-        const f = finder(x, y);
-        if (f === true || (f === null && rnd() > 0.52)) d += `M${x} ${y}h1v1h-1z`;
+        if (qr.modules.get(x, y)) d += `M${+(x * k).toFixed(3)} ${+(y * k).toFixed(3)}h${+k.toFixed(3)}v${+k.toFixed(3)}h-${+k.toFixed(3)}z`;
       }
     }
     return d;
@@ -192,44 +269,53 @@ export class MySecurity {
     boxes?.[i]?.focus();
   }
 
-  /** Demo verification: any 6 digits before expiry. In production send code + secret to the API. */
   verify(): void {
     this.verifyTried.set(true);
-    if (!this.codeFull() || this.secondsLeft() === 0) return;
-    const kind = this.dialog() === 'email' ? 'email' : 'app';
-    this.methods.update((m) => [...m, {
-      id: 'm' + Date.now(), kind,
-      label: kind === 'app' ? 'Authenticator app' : 'E-mail OTP',
-      device: kind === 'app' ? (this.deviceName().trim() || 'Authenticator') : this.maskedEmail(),
-      addedAt: IAM_NOW.toISOString()
-    }]);
-    this.log(kind === 'app' ? 'Authenticator app enrolled' : 'E-mail OTP enrolled');
-    if (!this.recoveryCodes().length) this.generateCodes(false);
-    this.stopTimer();
-    this.dialog.set('codes');
+    if (!this.codeFull() || this.secondsLeft() === 0 || this.busy() || !this.pendingMethodId) return;
+    this.busy.set(true);
+    this.api.confirmMfaEnrolment(this.pendingMethodId, this.code().join('')).subscribe({
+      next: () => {
+        this.stopTimer();
+        const afterwards = (): void => {
+          this.busy.set(false);
+          this.pendingMethodId = '';
+          this.reload();
+          this.dialog.set('codes');
+        };
+        if (!this.recoveryCodes().length) {
+          this.api.generateRecoveryCodes().subscribe({
+            next: (c) => { this.recoveryCodes.set(c.codes ?? []); afterwards(); },
+            error: () => afterwards(),
+          });
+        } else {
+          afterwards();
+        }
+      },
+      error: (e) => this.fail(e, 'That code was not accepted.'),
+    });
   }
 
   removeMethod(m: MfaMethod): void {
-    this.methods.update((list) => list.filter((x) => x.id !== m.id));
-    this.log(m.label + ' removed');
+    this.api.revokeMyMfaMethod(m.id, 'Removed from My security').subscribe({
+      next: () => { this.toast.show('Removed', m.label, 'success'); this.reload(); },
+      error: (e) => this.fail(e, 'The method could not be removed.'),
+    });
   }
 
   // ---------------------------------------------------------------- recovery codes
-  generateCodes(logIt = true): void {
-    const codes: string[] = [];
-    for (let i = 0; i < 10; i++) {
-      let c = '';
-      for (let k = 0; k < 8; k++) c += B32[Math.floor(Math.random() * 32)];
-      codes.push(c.slice(0, 4) + '-' + c.slice(4));
-    }
-    this.recoveryCodes.set(codes);
-    if (logIt) this.log('Recovery codes generated');
+  generateCodes(_logIt = true): void {
+    this.api.generateRecoveryCodes().subscribe({
+      next: (c) => { this.recoveryCodes.set(c.codes ?? []); this.reload(); },
+      error: (e) => this.fail(e, 'Recovery codes could not be generated.'),
+    });
   }
 
   // ---------------------------------------------------------------- sessions
   revoke(s: IamSession): void {
-    this.sessions.update((list) => list.filter((x) => x.id !== s.id));
-    this.log('Session revoked');
+    this.api.revokeMySession(s.id, 'Revoked from My security').subscribe({
+      next: () => { this.toast.show('Session revoked', s.device, 'success'); this.reload(); },
+      error: (e) => this.fail(e, 'The session could not be revoked.'),
+    });
   }
 
   // ---------------------------------------------------------------- password
@@ -265,16 +351,23 @@ export class MySecurity {
 
   changePassword(): void {
     this.pwTried.set(true);
-    if (!this.canChange()) return;
-    this.passwordChanged.set(IAM_NOW.toISOString());
-    this.log('Password changed');
-    this.dialog.set(null);
+    if (!this.canChange() || this.busy()) return;
+    this.busy.set(true);
+    const p = this.pw();
+    this.api.changeMyPassword({
+      currentPassword: p.current, newPassword: p.next, confirmPassword: p.confirm, signOutOtherSessions: false,
+    }).subscribe({
+      next: (o) => {
+        this.busy.set(false);
+        this.toast.show('Password changed', o.message ?? 'Your password has been updated.', 'success');
+        this.dialog.set(null);
+        this.reload();
+      },
+      error: (e) => this.fail(e, 'The password could not be changed.'),
+    });
   }
 
   // ---------------------------------------------------------------- activity
-  private log(title: string): void {
-    this.activity.update((a) => [{ id: 'a' + Date.now(), title, detail: 'Chrome on Windows · from 172.18.0.1', at: IAM_NOW.toISOString() }, ...a]);
-  }
 
   /** activity grouped by day for the journal tab */
   readonly activityDays = computed(() => {

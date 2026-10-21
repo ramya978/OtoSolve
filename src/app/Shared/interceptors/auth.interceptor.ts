@@ -164,8 +164,8 @@ function handleUnauthorised(
       refreshedToken$.next(null);
       tokens.clear();
 
-      const returnUrl = router.url && !router.url.startsWith('/auth') ? router.url : undefined;
-      void router.navigate(['/auth/sign-in'], returnUrl ? { queryParams: { returnUrl } } : undefined);
+      const returnUrl = router.url && !(router.url.startsWith('/auth') || router.url.startsWith('/login')) ? router.url : undefined;
+      void router.navigate(['/login'], returnUrl ? { queryParams: { returnUrl } } : undefined);
 
       return throwError(() => describe(refreshError));
     }),

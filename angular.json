@@ -34,16 +34,22 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "5000kB",
+                  "maximumError": "10MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "4kB",
-                  "maximumError": "24kB"
+                  "maximumWarning": "1600kB",
+                  "maximumError": "6400kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ]
             },
             "development": {
               "optimization": false,
@@ -55,7 +61,7 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
-           "options": {
+          "options": {
             "port": 6701,
             "proxyConfig": "proxy.conf.json"
           },

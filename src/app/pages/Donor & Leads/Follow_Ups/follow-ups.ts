@@ -5,6 +5,7 @@ import {
   MONTHS, MONTHS_LONG, WEEKDAYS, addDays, channelOf, dayDiff, fmtDate, fmtTime, initials, isOpen, isoDay, monthWeeks,
   priorityOf, statusOf, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 /* =====================================================================================================
    FOLLOW-UPS  (route /app/fundraising/relationships/follow-up-queue)
@@ -42,7 +43,7 @@ export class FollowUps {
   protected readonly channels = FU_CHANNELS;
   protected readonly priorities = FU_PRIORITIES;
   protected readonly campaigns = FU_CAMPAIGNS;
-  protected readonly owners = this.store.owners.map((o) => o.name);
+  protected get owners(): string[] { return this.store.owners.map((o) => o.name); }
   protected readonly managers = this.store.managers;
   protected readonly rowOptions = [10, 20, 50];
   protected readonly sorts: { key: FuSort; label: string }[] = [
@@ -169,7 +170,7 @@ export class FollowUps {
   /* ---------- my queue (hero card) ---------- */
   protected readonly me = computed(() => {
     const name = this.store.currentUser;
-    const mine = this.open().filter((f) => f.owner === name);
+    const mine = this.open().filter((f) => f.mine ?? f.owner === name);
     return {
       name,
       ini: initials(name),
@@ -177,7 +178,7 @@ export class FollowUps {
       open: mine.length,
       overdue: mine.filter((f) => this.isOverdue(f)).length,
       today: mine.filter((f) => this.isDueToday(f)).length,
-      ready: mine.filter((f) => this.canRun(f)).length
+      ready: mine.filter((f) => this.isReady(f)).length
     };
   });
   /** Next open item on today's agenda (for the hero side panel). */
@@ -193,7 +194,7 @@ export class FollowUps {
   /* ---------- tabs + list ---------- */
   private matchTab(f: FollowUp, t: FuTab): boolean {
     switch (t) {
-      case 'mine': return f.owner === this.store.currentUser;
+      case 'mine': return f.mine ?? f.owner === this.store.currentUser;
       case 'today': return this.isDueToday(f);
       case 'overdue': return this.isOverdue(f);
       case 'upcoming': return this.isUpcoming(f);
@@ -469,30 +470,48 @@ export class FollowUps {
   confirmReassign(): void {
     this.tried.set(true);
     if (this.rError()) return;
-    this.store.reassign(this.targets(), this.rOwner()!, this.rReason().trim());
-    this.flash(`${this.targets().length === 1 ? 'Follow-up' : this.targets().length + ' follow-ups'} reassigned to ${this.rOwner()}.`);
-    this.selected.set([]);
-    this.dialog.set(null);
+    const count = this.targets().length;
+    const owner = this.rOwner();
+    this.store.reassign(this.targets(), owner!, this.rReason().trim()).subscribe({
+      next: () => {
+        this.flash(`${count === 1 ? 'Follow-up' : count + ' follow-ups'} reassigned to ${owner}.`);
+        this.selected.set([]);
+        this.dialog.set(null);
+      },
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
   }
   confirmEscalate(): void {
     this.tried.set(true);
     const e = this.eErrors();
     if (e.to || e.reason) return;
-    this.store.escalate(this.targets(), this.eTo()!, this.eReason().trim() + (this.eNotes().trim() ? ' (' + this.eNotes().trim() + ')' : ''));
-    this.flash(`Escalated to ${this.eTo()}.`);
-    this.selected.set([]);
-    this.dialog.set(null);
+    const to = this.eTo();
+    this.store.escalate(this.targets(), to!, this.eReason().trim() + (this.eNotes().trim() ? ' (' + this.eNotes().trim() + ')' : '')).subscribe({
+      next: () => {
+        this.flash(`Escalated to ${to}.`);
+        this.selected.set([]);
+        this.dialog.set(null);
+      },
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
   }
-  markDone(id: string): void { this.store.complete(id); this.flash('Marked completed.'); }
+  markDone(id: string): void {
+    this.store.complete(id).subscribe({
+      next: () => this.flash('Marked completed.'),
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
+  }
 
   /* ---------- page actions ---------- */
-  refresh(): void { this.now.set(new Date()); this.flash('Queue refreshed.'); }
+  refresh(): void { this.now.set(new Date()); this.store.reload(); this.flash('Queue refreshed.'); }
   newFollowUp(): void { this.router.navigate([this.newPath]); }
 
   /** Play button: your own open follow-up that is due today or overdue, and not blocked. */
-  canRun(f: FollowUp): boolean {
-    return isOpen(f) && !f.blocked && f.owner === this.store.currentUser && f.dueAt.slice(0, 10) <= this.todayIso();
+  isReady(f: FollowUp): boolean {
+    return isOpen(f) && !f.blocked && (f.mine ?? f.owner === this.store.currentUser) && f.dueAt.slice(0, 10) <= this.todayIso();
   }
+  /** Execute is offered on every open (pending / rescheduled) follow-up; the server decides who may complete it. */
+  canRun(f: FollowUp): boolean { return isOpen(f); }
   run(f: FollowUp): void { this.menu.set(null); this.router.navigate([this.runPath], { queryParams: { id: f.id } }); }
   openAgenda(): void { this.setTab('today'); this.view.set('list'); }
 

@@ -112,7 +112,7 @@ export class AuthSessionService {
       this.removeStored(AuthSessionService.IDLE_MINUTES_KEY);
       this.reauthRequiredState.set(false);
       this.stopIdleTimer();
-      void this.router.navigate(['/auth/sign-in']);
+      void this.router.navigate(['/login']);
     };
 
     if (this.tokens.getAccessToken()) {
@@ -168,7 +168,7 @@ export class AuthSessionService {
     this.toast.show('Confirm it is you', reason, 'warning');
 
     // Back to the same page afterwards, as the route guard already arranges.
-    const returnUrl = this.router.url && !this.router.url.startsWith('/auth') ? this.router.url : undefined;
+    const returnUrl = this.router.url && !(this.router.url.startsWith('/auth') || this.router.url.startsWith('/login')) ? this.router.url : undefined;
     void this.router.navigate(['/auth/reauthenticate'], returnUrl ? { queryParams: { returnUrl } } : undefined);
   }
 

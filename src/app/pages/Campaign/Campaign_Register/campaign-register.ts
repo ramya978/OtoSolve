@@ -28,28 +28,6 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export const fmtDate = (d: Date): string =>
   `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 
-const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d);
-
-export const CAMPAIGNS: CampaignRow[] = [
-  { id: 'c1', name: 'Walkathon for Elders 2027', code: 'HAI-WALKATHON-2027', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2027, 2, 1))), ends: fmtDate(new Date(utc(2027, 2, 3))), received: 42000, target: 200000, delivered: 18, replies: 4, overdue: 2 },
-  { id: 'c2', name: 'Palliative Care at Home', code: 'HAI-PALLIATIVE-2027', status: 'draft', progress: 0, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2027, 3, 13))), ends: fmtDate(new Date(utc(2027, 9, 9))), received: 18500, target: 150000, delivered: 9, replies: 1, overdue: 1 },
-  { id: 'c3', name: 'Elder Self-Help Groups - Livelihood Fund', code: 'HAI-LIVELIHOOD-2027', status: 'submitted', progress: 0, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2027, 1, 7))), ends: fmtDate(new Date(utc(2027, 7, 6))), received: 96400, target: 300000, delivered: 34, replies: 9, overdue: 3 },
-  { id: 'c4', name: 'Corporate Champions for Elder Care FY 2026-27', code: 'HAI-CSR-2027', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 11, 18))), ends: fmtDate(new Date(utc(2027, 4, 6))), received: 152300, target: 500000, delivered: 41, replies: 12, overdue: 2 },
-  { id: 'c5', name: 'Winter Relief - Warmth for Elders', code: 'HAI-WINTER-2026', status: 'scheduled', progress: 0, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 26))), ends: fmtDate(new Date(utc(2027, 1, 17))), received: 88400, target: 250000, delivered: 29, replies: 6, overdue: 4 },
-  { id: 'c6', name: 'Restore Sight - Cataract Surgeries 2026', code: 'HAI-SIGHT-2026', status: 'paused', progress: 35, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 8, 5))), ends: fmtDate(new Date(utc(2027, 3, 3))), received: 96500, target: 275000, delivered: 33, replies: 8, overdue: 3 },
-  { id: 'c7', name: 'Physiotherapy at Home', code: 'HAI-PHYSIO-2026', status: 'closing', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 6, 24))), ends: fmtDate(new Date(utc(2026, 10, 10))), received: 61200, target: 180000, delivered: 22, replies: 5, overdue: 1 },
-  { id: 'c8', name: 'Mobile Healthcare Units - Care at the Doorstep', code: 'HAI-MOBILECARE-2026', status: 'active', progress: 47, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 7, 26))), ends: fmtDate(new Date(utc(2027, 1, 22))), received: 74300, target: 220000, delivered: 27, replies: 7, overdue: 2 },
-
-  { id: 'c9', name: 'Elder Helpline - Keep the Line Open', code: 'HAI-HELPLINE-2026', status: 'scheduled', progress: 3, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 10, 12))), ends: fmtDate(new Date(utc(2027, 5, 2))), received: 33800, target: 120000, delivered: 15, replies: 3, overdue: 5 },
-  { id: 'c10', name: 'Heatwave Relief for Elders 2026', code: 'HAI-HEATWAVE-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 5, 2))), ends: fmtDate(new Date(utc(2026, 10, 7))), received: 52100, target: 160000, delivered: 19, replies: 4, overdue: 0 },
-  { id: 'c11', name: 'Nutrition Kits for Homebound Seniors', code: 'HAI-NUTRITION-2026', status: 'paused', progress: 62, owner: 'Aditya Ganesh', launch: fmtDate(new Date(utc(2026, 4, 18))), ends: fmtDate(new Date(utc(2026, 12, 20))), received: 68900, target: 190000, delivered: 24, replies: 6, overdue: 2 },
-  { id: 'c12', name: 'Safe Drinking Water - Rural Elders', code: 'HAI-WATER-2026', status: 'draft', progress: 0, owner: 'Ritu Anil', launch: fmtDate(new Date(utc(2026, 11, 2))), ends: fmtDate(new Date(utc(2027, 3, 28))), received: 12700, target: 140000, delivered: 6, replies: 1, overdue: 1 },
-  { id: 'c13', name: 'Diabetes Screening Camps', code: 'HAI-DIABETES-2026', status: 'submitted', progress: 0, owner: 'Priyanka Naveen +1', launch: fmtDate(new Date(utc(2026, 9, 9))), ends: fmtDate(new Date(utc(2027, 2, 14))), received: 29400, target: 110000, delivered: 12, replies: 3, overdue: 2 },
-  { id: 'c14', name: 'Hearing Aid Support Programme', code: 'HAI-HEARING-2026', status: 'closing', progress: 96, owner: 'Aditya Ganesh +1', launch: fmtDate(new Date(utc(2026, 3, 5))), ends: fmtDate(new Date(utc(2026, 11, 30))), received: 57600, target: 175000, delivered: 21, replies: 5, overdue: 1 },
-  { id: 'c15', name: 'Monthly Pension Top-Up Drive', code: 'HAI-PENSION-2026', status: 'active', progress: 78, owner: 'Ritu Anil +1', launch: fmtDate(new Date(utc(2026, 2, 11))), ends: fmtDate(new Date(utc(2026, 12, 31))), received: 81900, target: 210000, delivered: 26, replies: 7, overdue: 2 },
-  { id: 'c16', name: 'Shelter Upgrade - Monsoon Ready', code: 'HAI-SHELTER-2026', status: 'closed', progress: 100, owner: 'Priyanka Naveen', launch: fmtDate(new Date(utc(2026, 1, 20))), ends: fmtDate(new Date(utc(2026, 8, 15))), received: 47200, target: 130000, delivered: 17, replies: 4, overdue: 1 }
-];
-
 /** Label + theme status tone for each campaign state. */
 const STATUS_META: Record<CampaignStatus, { label: string; tone: string }> = {
   draft: { label: 'Draft', tone: 'neutral' },
@@ -157,7 +135,20 @@ export class CampaignRegister {
   private readonly store = inject(CampaignWorkspaceStore);
   protected readonly paths = CW_PATHS;
 
-  protected readonly campaigns = CAMPAIGNS;
+  private readonly rows = computed<CampaignRow[]>(() =>
+    this.store.campaigns().map((c) => {
+      const owners = c.owners;
+      const startDate = c.start ? new Date(c.start + 'T00:00:00Z') : null;
+      const endDate = c.end ? new Date(c.end + 'T00:00:00Z') : null;
+      return {
+        id: c.id ?? c.code, name: c.name, code: c.code, status: c.lifecycle,
+        progress: c.target ? Math.min(100, Math.round((c.raised / c.target) * 100)) : 0,
+        owner: owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : (owners[0] ?? '—'),
+        launch: startDate ? fmtDate(startDate) : '—', ends: endDate ? fmtDate(endDate) : '—',
+        received: c.raised, target: c.target, delivered: 0, replies: 0, overdue: 0
+      };
+    }));
+  protected get campaigns(): CampaignRow[] { return this.rows(); }
   protected readonly statusOrder = STATUS_ORDER;
 
   readonly query = signal('');
@@ -173,11 +164,11 @@ export class CampaignRegister {
   /** Which custom dropdown is open ('owner' | 'rows' | null). */
   readonly openMenu = signal<'owner' | 'rows' | null>(null);
 
-  readonly total = CAMPAIGNS.length;
+  get total(): number { return this.rows().length; }
   readonly pageSizes = [10, 25, 50];
 
   /** Distinct owners (base name before "+n") for the owner dropdown. */
-  readonly owners = Array.from(new Set(CAMPAIGNS.map((c) => ownerBase(c.owner)))).sort();
+  get owners(): string[] { return Array.from(new Set(this.rows().map((c) => ownerBase(c.owner)))).sort(); }
 
   readonly statusLabel = (s: CampaignStatus): string => STATUS_META[s].label;
   readonly statusTone = (s: CampaignStatus): string => STATUS_META[s].tone;
@@ -257,7 +248,7 @@ export class CampaignRegister {
   private readonly baseRows = computed(() => {
     const q = this.query().trim().toLowerCase();
     const owner = this.ownerFilter();
-    return CAMPAIGNS.filter(
+    return this.rows().filter(
       (c) =>
         (owner === 'all' || ownerBase(c.owner) === owner) &&
         (!q || c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
@@ -501,10 +492,9 @@ export class CampaignRegister {
       return;
     }
     if (action === 'duplicate') {
-      this.store.ensureCampaign(this.toInfo(r));
-      const next = this.store.duplicateCampaign(r.code);
-      this.router.navigate([CW_PATHS.detailFor(next)]);
-      return;
+      // The icon on this button is labelled "Readiness checklist" in the screen, so it opens
+      // that campaign's checklist (a campaign is no longer duplicated from the list).
+      return this.rowAction(r, 'readiness');
     }
     if (action === 'delete') {
       this.store.removeCampaign(r.code);
@@ -514,7 +504,7 @@ export class CampaignRegister {
     if (action === 'readiness') {
       this.store.ensureCampaign(this.toInfo(r));
       this.store.select(r.code);
-      this.router.navigate([CW_PATHS.readiness]);
+      this.router.navigate([CW_PATHS.readiness], { queryParams: { code: r.code } });
       return;
     }
     if (action === 'launch') {

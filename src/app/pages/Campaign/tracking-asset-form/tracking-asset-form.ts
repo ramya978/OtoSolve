@@ -59,7 +59,11 @@ export class TrackingAssetForm {
   protected readonly campaignOptions = computed<CwOption[]>(() =>
     this.store.campaigns().filter((c) => this.eligible(c.lifecycle)).map((c) => ({ value: c.code, label: c.name, hint: c.code }))
   );
-  protected readonly mediumOptions: CwOption[] = MEDIUMS.map((m) => ({ value: m, label: m }));
+  private readonly mediumOptionsC = computed<CwOption[]>(() => {
+    const names = this.store.channelNames();
+    return (names.length ? names : MEDIUMS).map((m) => ({ value: m, label: m }));
+  });
+  protected get mediumOptions(): CwOption[] { return this.mediumOptionsC(); }
 
   protected readonly campaign = computed(() => this.store.findCampaign(this.draft().campaign) ?? null);
   protected readonly campaignHint = computed(() => {

@@ -1,3 +1,4 @@
+import { ActivatedRoute } from '@angular/router';
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
@@ -33,8 +34,12 @@ export class ReadinessChecklist {
   protected readonly fmtTime = fmtTime;
   protected readonly initials = initials;
 
+  private readonly route = inject(ActivatedRoute);
+
   constructor() {
-    this.store.select(this.store.selectedCode());
+    // The register passes the campaign on the link, so a refresh or a shared link still opens it.
+    const code = this.route.snapshot.queryParamMap.get('code');
+    this.store.select(code || this.store.selectedCode());
   }
 
   // ---- data ----

@@ -44,12 +44,48 @@ export abstract class MasterFormBase implements OnInit {
   protected readonly submitted = signal(false);
   protected readonly confirmLeave = signal(false);
 
+  /** True while the form's record is being read, and while a save is in flight. */
+  protected readonly loading = signal(false);
+  protected readonly saving = signal(false);
+  /** Messages the server gave for a field (cleared as the field is edited). */
+  private readonly serverErrors = signal<Record<string, string>>({});
+
   ngOnInit(): void {
     this.fields = this.cfg.sections.flatMap((s) => s.fields);
     this.requiredFields = this.fields.filter((f) => f.required);
     this.fieldMap = new Map(this.fields.map((f) => [f.key, f]));
-    this.editing = this.store.find(this.cfg.key, String(this.route.snapshot.paramMap.get('id') ?? ''));
-    this.initial = this.editing ? this.cfg.toForm(this.editing) : { ...this.cfg.defaults };
+    this.initial = { ...this.cfg.defaults };
+    this.values.set({ ...this.initial });
+
+    // The dropdowns (countries, states, currencies ...) and the record to edit come from the API.
+    this.store.ensureLoaded();
+    const id = String(this.route.snapshot.paramMap.get('id') ?? '');
+    this.loading.set(true);
+    this.store.whenReady().subscribe(() => {
+      this.loading.set(false);
+      if (!id) return;
+      const row = this.store.find(this.cfg.key, id);
+      if (!row) {
+        // A stale link: there is nothing to edit.
+        this.leave();
+        return;
+      }
+      this.open(row);
+      // The list omits notes, patterns etc.; read the full record and refresh the form from it
+      // unless the person has already started typing.
+      this.store.loadDetail(this.cfg.key, id).subscribe({
+        next: (full) => {
+          if (full && !this.dirty()) this.open(full);
+          else if (full) this.editing = full;
+        },
+        error: () => undefined
+      });
+    });
+  }
+
+  private open(row: MasterRow): void {
+    this.editing = row;
+    this.initial = this.cfg.toForm(row);
     this.values.set({ ...this.initial });
   }
 
@@ -68,8 +104,9 @@ export abstract class MasterFormBase implements OnInit {
   protected readonly errors = computed<Record<string, string>>(() => {
     const v = this.values();
     const out: Record<string, string> = {};
+    const server = this.serverErrors();
     for (const f of this.fields) {
-      const msg = this.check(f, (v[f.key] ?? '').trim(), v);
+      const msg = this.check(f, (v[f.key] ?? '').trim(), v) ?? server[f.key];
       if (msg) out[f.key] = msg;
     }
     return out;
@@ -135,6 +172,10 @@ export abstract class MasterFormBase implements OnInit {
     const f = this.field(key);
     const value = f.upper ? raw.toUpperCase() : raw;
     const next = { ...this.values(), [key]: value };
+    if (this.serverErrors()[key]) {
+      const { [key]: _gone, ...rest } = this.serverErrors();
+      this.serverErrors.set(rest);
+    }
     // a dependent list (state) is cleared when its parent (country) changes to one that lacks it
     for (const d of this.fields) {
       if (d.dependsOn === key && d.optionsFrom) {
@@ -215,22 +256,35 @@ export abstract class MasterFormBase implements OnInit {
   }
 
   protected save(): void {
+    if (this.saving()) return;
     this.submitted.set(true);
     if (this.errorList().length) {
       setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('.mf-errors')?.focus());
       return;
     }
-    const id = this.editing?.id ?? this.store.newId(this.cfg.key);
-    const row = this.cfg.toRow(this.values(), id);
-    const name = String(row[this.cfg.nameKey] ?? '');
-    if (this.editing) this.store.update(this.cfg.key, row);
-    else this.store.add(this.cfg.key, row);
-    this.store.notice.set({
-      key: this.cfg.key,
-      text: this.editing ? `${name} was saved.` : `${name} was added to ${this.cfg.plural.toLowerCase()}.`,
-      tone: 'ok'
+    const editing = this.editing;
+    const row = this.cfg.toRow(this.values(), editing?.id ?? '');
+    this.saving.set(true);
+    this.store.save(this.cfg.key, row, editing).subscribe({
+      next: (saved) => {
+        this.saving.set(false);
+        const name = String(saved[this.cfg.nameKey] ?? '');
+        this.store.notice.set({
+          key: this.cfg.key,
+          text: editing ? `${name} was saved.` : `${name} was added to ${this.cfg.plural.toLowerCase()}.`,
+          tone: 'ok'
+        });
+        this.leave();
+      },
+      error: (error: unknown) => {
+        this.saving.set(false);
+        const { message, fields } = this.store.describeError(this.cfg.key, error);
+        // Field messages from the server show beside their fields; anything else goes on the
+        // name field so it appears in the error summary.
+        this.serverErrors.set(Object.keys(fields).length ? fields : { [this.cfg.nameKey]: message });
+        setTimeout(() => this.host.nativeElement.querySelector<HTMLElement>('.mf-errors')?.focus());
+      }
     });
-    this.leave();
   }
 
   protected cancel(): void {

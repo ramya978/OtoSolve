@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import {
   FU_CAMPAIGNS, FU_ICONS, FollowUp, FollowUpStore, FuPerson, FuRecordType, fmtDate, fmtTime, initials, isoDay, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type AbTab = 'all' | 'unassigned' | 'assigned';
 type AbSla = 'breached' | 'today' | 'track' | 'none';
@@ -20,7 +21,7 @@ export class AssignmentBoard {
   protected readonly store = inject(FollowUpStore);
 
   protected readonly planPath = '/app/fundraising/relationships/follow-up-queue/plan';
-  protected readonly owners = this.store.owners;
+  protected get owners() { return this.store.owners; }
   protected readonly campaigns = FU_CAMPAIGNS;
   protected readonly rowOptions = [10, 20, 50];
   protected readonly slaOptions: { key: AbSla; label: string; tone: string }[] = [
@@ -229,10 +230,16 @@ export class AssignmentBoard {
     this.tried.set(true);
     if (this.aError()) return;
     const n = this.targets().length;
-    this.store.assignPerson(this.targets(), this.aOwner()!);
-    this.showToast(`${n} record${n === 1 ? '' : 's'} assigned to ${this.aOwner()}`);
-    this.selected.set([]);
-    this.closeDialog();
+    const owner = this.aOwner()!;
+    const note = this.aNote().trim();
+    this.store.assignPerson(this.targets(), owner, note.length >= 10 ? note : undefined).subscribe({
+      next: () => {
+        this.showToast(`${n} record${n === 1 ? '' : 's'} assigned to ${owner}`);
+        this.selected.set([]);
+        this.closeDialog();
+      },
+      error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
   }
   showHistory(p: FuPerson): void { this.historyOf.set(p.code); this.dialog.set('history'); }
   schedule(p: FuPerson): void { this.router.navigate([this.planPath], { queryParams: { ref: p.code } }); }

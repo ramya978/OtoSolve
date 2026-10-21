@@ -1,0 +1,30 @@
+<app-auth-frame>
+  <h1 class="lg-title">Confirm it's you</h1>
+  <p class="lg-sub">{{ summary() }}@if (displayName()) { Signed in as {{ displayName() }}. }</p>
+
+  @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
+
+  @if (!loading()) {
+    <form (submit)="confirm($event)" novalidate>
+      <div class="lg-field">
+        <div class="lg-control">
+          <input #pw class="lg-input" [type]="showPassword() ? 'text' : 'password'" name="password" autocomplete="current-password"
+                 placeholder="Password" aria-label="Password" [value]="password()" (input)="password.set(pw.value)">
+          <button type="button" class="lg-eye" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></svg>
+          </button>
+        </div>
+      </div>
+      @if (needsCode()) {
+        <div class="lg-field">
+          <input #cd class="lg-input" type="text" inputmode="numeric" name="code" autocomplete="one-time-code" maxlength="8"
+                 placeholder="Verification code" aria-label="Verification code" [value]="verificationCode()" (input)="verificationCode.set(cd.value)">
+        </div>
+      }
+      <button type="submit" class="lg-submit" [disabled]="!canSubmit()">
+        @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Confirming… } @else { Confirm }
+      </button>
+    </form>
+  }
+  <div class="lg-forgot-row"><button type="button" class="lg-forgot" (click)="signOut()">Sign out instead</button></div>
+</app-auth-frame>

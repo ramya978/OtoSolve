@@ -1,10 +1,14 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DonorApiService } from '../../../../Service/donor-api.service';
+import { GeoMasterService } from '../../../../Shared/services/geo-master.service';
+import { ToastService } from '../../../../Shared/services/toast.service';
+import { CreateLeadRequest, DonLookupItem } from '../../../../Shared/models/donor-contract.model';
+import { CountryLookup } from '../../../../Shared/models/geo-lookup.model';
+import { MasterLookup } from '../../../../Shared/models/global-master.model';
+import { apiErrorMessage, apiFieldErrors } from '../../../../Shared/models/api-response.model';
 import { LcSelect } from '../lc-select';
-import {
-  CAMPAIGNS, CAPTURE_CHANNELS, CITIES, CONSENT_STATES, CONTACT_CHANNELS, COUNTRIES, LANGUAGES, LC_ICONS, LC_PATHS,
-  LcOpt, SOURCES, STATES,
-} from '../lc-shared';
+import { CONTACT_CHANNELS, LC_ICONS, LC_PATHS, LcOpt } from '../lc-shared';
 
 /** Everything the single-lead form holds. */
 interface LeadForm {
@@ -49,15 +53,35 @@ const ZIP = /^\d{6}$/;
   templateUrl: './lead-capture-single.html',
   styleUrl: './lead-capture-single.css',
 })
-export class LeadCaptureSingle {
-  // ---- option lists ----
-  protected readonly languages = LANGUAGES;
-  protected readonly countries = COUNTRIES;
-  protected readonly states = STATES;
-  protected readonly sources = SOURCES;
-  protected readonly campaigns = CAMPAIGNS;
-  protected readonly consentStates = CONSENT_STATES;
-  protected readonly captureChannels = CAPTURE_CHANNELS;
+export class LeadCaptureSingle implements OnInit {
+  private readonly api = inject(DonorApiService);
+  private readonly geo = inject(GeoMasterService);
+  private readonly toast = inject(ToastService);
+
+  // ---- option lists (loaded from the API) ----
+  private readonly languageList = signal<LcOpt[]>([]);
+  private readonly sourceList = signal<LcOpt[]>([]);
+  private readonly campaignList = signal<LcOpt[]>([]);
+  private readonly consentStateList = signal<LcOpt[]>([]);
+  private readonly captureChannelList = signal<LcOpt[]>([]);
+  private readonly countryRows = signal<CountryLookup[]>([]);
+  private readonly stateRows = signal<MasterLookup[]>([]);
+  private readonly cityRows = signal<MasterLookup[]>([]);
+  private diallingCode = '+91';
+  private readonly serverErrors = signal<Record<string, string>>({});
+  protected readonly saving = signal(false);
+
+  protected get languages(): LcOpt[] { return this.languageList(); }
+  protected get sources(): LcOpt[] { return this.sourceList(); }
+  protected get campaigns(): LcOpt[] { return this.campaignList(); }
+  protected get consentStates(): LcOpt[] { return this.consentStateList(); }
+  protected get captureChannels(): LcOpt[] { return this.captureChannelList(); }
+  protected readonly countryOpts = computed<LcOpt[]>(() =>
+    this.countryRows().filter((c) => c.status === 'active').map((c) => ({ value: c.name, label: c.name })));
+  protected get countries(): LcOpt[] { return this.countryOpts(); }
+  protected readonly stateOpts = computed<LcOpt[]>(() =>
+    this.stateRows().filter((r) => r.status === 'active').map((r) => ({ value: r.name, label: r.name })));
+  protected get states(): LcOpt[] { return this.stateOpts(); }
   protected readonly contactChannels = CONTACT_CHANNELS;
   protected readonly queuePath = LC_PATHS.queue;
 
@@ -78,7 +102,7 @@ export class LeadCaptureSingle {
   protected readonly saved = signal<{ ref: string; name: string } | null>(null);
   protected readonly active = signal<SectionId>('identity');
 
-  protected readonly cityOpts = computed<LcOpt[]>(() => (CITIES[this.f().state] ?? []).map((c) => ({ value: c, label: c })));
+  protected readonly cityOpts = computed<LcOpt[]>(() => this.cityRows().filter((r) => r.status === 'active').map((r) => ({ value: r.name, label: r.name })));
   protected readonly isIndia = computed(() => this.f().country === 'India');
 
   /** Field -> error message ('' when fine). Consent fields are only checked when consent is switched on. */
@@ -122,7 +146,7 @@ export class LeadCaptureSingle {
       if (f.consentState === 'Granted' && !f.evidence) e['evidence'] = 'Evidence is needed when consent is granted';
       if (f.purpose.trim().length < 10) e['purpose'] = f.purpose.trim() ? 'Use at least 10 characters' : 'Required';
     }
-    return e;
+    return { ...e, ...this.serverErrors() };
   });
 
   /** Per section: done / has error (shown only after a submit or a blur) / untouched. */
@@ -157,8 +181,8 @@ export class LeadCaptureSingle {
       email: f.email.trim(),
       place: [f.city, f.state].filter(Boolean).join(', '),
       language: f.language,
-      campaign: CAMPAIGNS.find((c) => c.value === f.campaign)?.label ?? '',
-      source: SOURCES.find((s) => s.value === f.source)?.label ?? '',
+      campaign: this.campaignList().find((c) => c.value === f.campaign)?.label ?? '',
+      source: this.sourceList().find((s) => s.value === f.source)?.label ?? '',
       consent,
       channels: f.consentOn ? f.channels.length : 0,
     };
@@ -172,6 +196,40 @@ export class LeadCaptureSingle {
       case 'off': return 'Optional';
       default: return 'To do';
     }
+  }
+
+  ngOnInit(): void {
+    const opts = (list: DonLookupItem[] | undefined, withHint = false): LcOpt[] =>
+      (list ?? []).map((o) => ({ value: o.value, label: o.label, ...(withHint && o.description ? { hint: o.description } : {}) }));
+    this.api.getLeadCaptureForm().subscribe({
+      next: (r) => {
+        this.languageList.set(opts(r.languageOptions));
+        this.sourceList.set(opts(r.sourceOptions));
+        this.campaignList.set(opts(r.campaignOptions, true));
+        this.consentStateList.set(opts(r.consentStateOptions));
+        this.captureChannelList.set(opts(r.consentChannelOptions));
+        this.diallingCode = r.defaultDiallingCode || '+91';
+      },
+      error: (e: unknown) => this.toast.show('Lead capture unavailable', apiErrorMessage(e), 'error')
+    });
+    this.geo.getCountries().subscribe((c) => {
+      this.countryRows.set(c);
+      this.loadStates(this.f().country);
+    });
+  }
+
+  private loadStates(countryName: string): void {
+    const c = this.countryRows().find((x) => x.name === countryName);
+    this.stateRows.set([]);
+    this.cityRows.set([]);
+    if (c) this.geo.getStates(c.id).subscribe((r) => this.stateRows.set(r));
+  }
+
+  private loadCities(stateName: string): void {
+    const c = this.countryRows().find((x) => x.name === this.f().country);
+    const st = this.stateRows().find((x) => x.name === stateName);
+    this.cityRows.set([]);
+    if (st) this.geo.getCities(st.id, c?.id).subscribe((r) => this.cityRows.set(r));
   }
 
   // ---- helpers for the template ----
@@ -199,6 +257,9 @@ export class LeadCaptureSingle {
       if (k === 'state') next.city = '';
       return next;
     });
+    if (k === 'country') this.loadStates(v as string);
+    if (k === 'state') this.loadCities(v as string);
+    if (Object.keys(this.serverErrors()).length) this.serverErrors.set({});
   }
 
   setDisplay(v: string): void {
@@ -248,12 +309,79 @@ export class LeadCaptureSingle {
 
   // ---- actions ----
   submit(): void {
+    // Messages from an earlier attempt must not keep blocking the form once it is fixed.
+    this.serverErrors.set({});
     this.submitted.set(true);
     const st = this.sectionState();
     const first = this.sections.find((s) => st[s.id] === 'error');
     if (first) { this.go(first.id); return; }
-    const n = 85 + Math.floor(Math.random() * 900);
-    this.saved.set({ ref: 'LED-2026-' + String(n).padStart(6, '0'), name: this.f().displayName });
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.api.saveLead(this.buildRequest()).subscribe({
+      next: (lead) => {
+        this.saving.set(false);
+        this.saved.set({ ref: lead.leadReference, name: lead.displayName || this.f().displayName });
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        const fields = apiFieldErrors(e);
+        const map: Record<string, string> = {
+          firstName: 'firstName', lastName: 'lastName', displayName: 'displayName', mobileNumber: 'phone0',
+          emailAddress: 'email', preferredLanguage: 'language', addressLine: 'address1', country: 'country',
+          geographyCode: 'state', city: 'city', source: 'source', campaignId: 'campaign', notes: 'sourceDetails'
+        };
+        const mapped: Record<string, string> = {};
+        for (const [field, message] of Object.entries(fields)) {
+          const key = map[field.charAt(0).toLowerCase() + field.slice(1)];
+          if (key) mapped[key] = message;
+        }
+        this.serverErrors.set(mapped);
+        this.toast.show('Lead not saved', apiErrorMessage(e), 'error');
+      }
+    });
+  }
+
+  private buildRequest(): CreateLeadRequest {
+    const f = this.f();
+    const e164 = (p: string) => (p.replace(/\D/g, '') ? this.diallingCode + p.replace(/\D/g, '') : null);
+    const [primary, ...others] = f.phones.map(e164).filter((p): p is string => !!p);
+    let consent: CreateLeadRequest['consent'] = null;
+    if (f.consentOn) {
+      let hour = Number(f.hh) % 12;
+      if (f.ampm === 'PM') hour += 12;
+      const at = new Date(`${f.effDate}T${String(hour).padStart(2, '0')}:${String(Number(f.mm)).padStart(2, '0')}:00+05:30`);
+      consent = {
+        collectConsent: true,
+        emailConsent: f.channels.includes('email'),
+        smsConsent: f.channels.includes('sms'),
+        whatsAppConsent: f.channels.includes('whatsapp'),
+        phoneCallConsent: f.channels.includes('phone'),
+        doNotContact: false,
+        consentState: f.consentState || null,
+        consentSource: this.captureChannelList().find((o) => o.value === f.capturedThrough)?.label ?? null,
+        consentDateUtc: Number.isNaN(at.getTime()) ? null : at.toISOString(),
+        publicRecognitionPreference: f.recognition === 'Recognised',
+        consentEvidenceReference: f.evidence || null,
+        purpose: f.purpose.trim() || null
+      };
+    }
+    return {
+      firstName: f.firstName.trim(),
+      lastName: f.lastName.trim() || null,
+      displayName: f.displayName.trim() || null,
+      mobileNumber: primary ?? null,
+      alternateMobileNumbers: others,
+      emailAddress: f.email.trim() || null,
+      preferredLanguage: f.language || null,
+      country: f.country || null,
+      city: f.city || null,
+      geographyCode: f.state || null,
+      addressLine: [f.address1, f.address2, f.zip].map((x) => x.trim()).filter(Boolean).join(', ') || null,
+      campaignId: f.campaign,
+      source: f.source || 'Manual',
+      notes: f.sourceDetails.trim() || f.notes.trim() || null,
+      consent
+    };
   }
 
   startOver(): void {

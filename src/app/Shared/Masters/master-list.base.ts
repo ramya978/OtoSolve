@@ -1,4 +1,4 @@
-import { DestroyRef, Directive, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Directive, HostListener, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { ColumnDef, FilterDef, IconName, MasterConfig, MasterRow, MasterStatus, Option, STATUS_LABEL } from './masters.types';
 import { MASTER_ICONS, TRASH_LID } from './masters-icons';
@@ -43,11 +43,37 @@ export abstract class MasterListBase implements OnInit {
   protected readonly toast = signal<string | null>(null);
   private toastTimer = 0;
 
+  /** Rows whose full record (notes, patterns ...) has been read for the view drawer. */
+  private readonly detailed = new Set<string>();
+
   constructor() {
     inject(DestroyRef).onDestroy(() => clearTimeout(this.toastTimer));
+
+    // A failed read of the masters is told once, as a toast.
+    effect(() => {
+      const error = this.store.loadError();
+      if (error) untracked(() => this.showToast(error));
+    });
+
+    // The list carries the headline fields only; opening the drawer reads the full record.
+    effect(() => {
+      const row = this.viewing();
+      if (!row || this.detailed.has(row.id)) return;
+      this.detailed.add(row.id);
+      untracked(() =>
+        this.store.loadDetail(this.cfg.key, row.id).subscribe({
+          next: (full) => {
+            if (full && this.viewing()?.id === row.id) this.viewing.set(full);
+          },
+          error: () => undefined
+        })
+      );
+    });
   }
 
   ngOnInit(): void {
+    this.store.ensureLoaded();
+
     // a notice left by the form (created / saved) shows once as a toast
     const n = this.store.notice();
     if (n && n.key === this.cfg.key) {
@@ -198,20 +224,32 @@ export abstract class MasterListBase implements OnInit {
   }
 
   protected togglePower(r: MasterRow): void {
-    const next = this.store.toggleStatus(this.cfg.key, r.id);
-    if (next) this.showToast(`${this.title(r)} is now ${STATUS_LABEL[next].toLowerCase()}.`);
-    const v = this.viewing();
-    if (v && v.id === r.id) this.viewing.set(this.store.find(this.cfg.key, r.id));
+    this.store.toggleStatus(this.cfg.key, r).subscribe({
+      next: (next) => {
+        this.showToast(`${this.title(r)} is now ${STATUS_LABEL[next].toLowerCase()}.`);
+        const v = this.viewing();
+        if (v && v.id === r.id) this.viewing.set(this.store.find(this.cfg.key, r.id));
+      },
+      error: (error: unknown) => this.showToast(this.store.describeError(this.cfg.key, error).message)
+    });
   }
 
   protected confirmDelete(): void {
     const r = this.deleting();
     if (!r) return;
-    this.store.remove(this.cfg.key, r.id);
-    this.deleting.set(null);
-    this.viewing.set(null);
-    if (this.page() > this.totalPages()) this.page.set(this.totalPages());
-    this.showToast(`${this.title(r)} was deleted.`);
+    this.store.remove(this.cfg.key, r).subscribe({
+      next: () => {
+        this.deleting.set(null);
+        this.viewing.set(null);
+        if (this.page() > this.totalPages()) this.page.set(this.totalPages());
+        this.showToast(`${this.title(r)} was deleted.`);
+      },
+      error: (error: unknown) => {
+        // The server refuses (and says why) when the record is still in use.
+        this.deleting.set(null);
+        this.showToast(this.store.describeError(this.cfg.key, error).message);
+      }
+    });
   }
 
   protected exportCsv(): void {

@@ -20,7 +20,10 @@ export interface Option {
 }
 
 /** Lists that come from another master (a state's country, a city's state ...). */
-export type OptionSource = 'countries' | 'states' | 'currencies' | 'timezones';
+export type OptionSource =
+  | 'countries' | 'states' | 'currencies' | 'timezones'
+  /** The server's own option lists (labels as the API names them). */
+  | 'regions' | 'jurisdictions' | 'currencyTypes' | 'roundingModes';
 
 export interface FieldDef {
   key: string;

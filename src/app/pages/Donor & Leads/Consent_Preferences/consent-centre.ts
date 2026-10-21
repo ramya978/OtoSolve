@@ -1,4 +1,8 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { ConsentListItem } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 
 export type ConsentState = 'Granted' | 'Withdrawn' | 'Pending';
@@ -20,6 +24,9 @@ export interface ConsentRecord {
   expiry: string | null;    // yyyy-mm-dd
   recognition: Recognition;
   restrictions: string;
+  /** API id and version of the consent row. */
+  id?: string;
+  version?: number;
 }
 
 export interface ConsentHistory { state: ConsentState; channel: ConsentChannel; purpose: string; by: string; date: string; notice: string; reason?: string; }
@@ -46,25 +53,37 @@ export const CC_ACTIONS: { key: CcAction; label: string; text: string }[] = [
 export const REASON_MIN = 10;
 export const REASON_MAX = 2000;
 
-const SAMPLE: ConsentRecord = {
-  donorRef: '5eed413f-1b7b-e945-c073-c2c790503ac8',
-  donorCode: 'DON-2026-000053',
-  purpose: 'Fundraising updates, impact reports and appeal communication.',
-  channel: 'E-mail',
-  state: 'Granted',
-  notice: 'PN-2026-01',
-  evidence: 'Online donation form',
-  effective: '2026-10-13',
-  expiry: null,
-  recognition: 'Anonymous',
-  restrictions: 'None'
+const BLANK: ConsentRecord = {
+  donorRef: '', donorCode: '', purpose: '', channel: 'E-mail', state: 'Pending', notice: '', evidence: '',
+  effective: '', expiry: null, recognition: 'Anonymous', restrictions: 'None'
 };
 
-const HISTORY: ConsentHistory[] = [
-  { state: 'Granted', channel: 'Call', purpose: 'Fundraising updates, impact reports and appeal communication.', by: 'Imran Iqbal', date: '2026-10-13', notice: 'PN-2026-01' },
-  { state: 'Granted', channel: 'E-mail', purpose: 'Fundraising updates, impact reports and appeal communication.', by: 'Imran Iqbal', date: '2026-10-13', notice: 'PN-2026-01' },
-  { state: 'Granted', channel: 'E-mail', purpose: 'Contact about the campaign the lead enquired about.', by: 'Imran Iqbal', date: '2026-09-16', notice: 'PN-2026-01' }
-];
+const nk = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+const dayOf = (utc: string | null | undefined): string => (utc ? utc.slice(0, 10) : '');
+
+function channelOf(v: string): ConsentChannel {
+  const k = nk(v);
+  return k.includes('whatsapp') ? 'WhatsApp' : k.includes('sms') ? 'SMS' : k.includes('mail') ? 'E-mail' : k.includes('post') ? 'Post' : 'Call';
+}
+function stateOf(v: string): ConsentState {
+  const k = nk(v);
+  return k.startsWith('grant') ? 'Granted' : k.startsWith('withdr') ? 'Withdrawn' : 'Pending';
+}
+function toRecord(c: ConsentListItem, code: string): ConsentRecord {
+  return {
+    id: c.id, version: c.version,
+    donorRef: c.donorId ?? '', donorCode: code, purpose: c.purpose, channel: channelOf(c.channel), state: stateOf(c.consentState),
+    notice: c.noticeVersion, evidence: [c.evidenceSource, c.evidenceReference].filter(Boolean).join(' · '),
+    effective: dayOf(c.effectiveAtUtc), expiry: c.expiryAtUtc ? dayOf(c.expiryAtUtc) : null,
+    recognition: c.publicRecognitionPreference ? 'Name only' : 'Anonymous', restrictions: c.contactRestrictions || 'None'
+  };
+}
+function toHistory(c: ConsentListItem): ConsentHistory {
+  return {
+    state: stateOf(c.consentState), channel: channelOf(c.channel), purpose: c.purpose, by: c.capturedByName ?? '',
+    date: dayOf(c.effectiveAtUtc || c.createdAtUtc), notice: c.noticeVersion, reason: c.withdrawalReason ?? c.correctionReason ?? undefined
+  };
+}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -97,7 +116,12 @@ const ICONS: Record<string, string> = {
   templateUrl: './consent-centre.html',
   styleUrl: './consent-centre.css'
 })
-export class ConsentCentre {
+export class ConsentCentre implements OnInit {
+  private readonly api = inject(DonorApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly code = this.route.snapshot.queryParamMap.get('ref') ?? '';
+  private donorId = '';
+
   protected readonly channels = CC_CHANNELS;
   protected readonly states = CC_STATES;
   protected readonly recognitions = CC_RECOGNITION;
@@ -108,10 +132,11 @@ export class ConsentCentre {
   protected readonly reasonMax = REASON_MAX;
 
   /** Saved record and the editable copy (edits are applied with "Correct consent"). */
-  protected readonly record = signal<ConsentRecord>({ ...SAMPLE });
-  protected readonly draft = signal<ConsentRecord>({ ...SAMPLE });
-  protected readonly history = signal<ConsentHistory[]>([...HISTORY]);
-  protected readonly updatedAt = signal(new Date(2026, 9, 19, 17, 16));
+  protected readonly record = signal<ConsentRecord>({ ...BLANK, donorCode: this.code });
+  protected readonly draft = signal<ConsentRecord>({ ...BLANK, donorCode: this.code });
+  protected readonly history = signal<ConsentHistory[]>([]);
+  protected readonly updatedAt = signal(new Date());
+  protected readonly loading = signal(false);
 
   protected readonly menu = signal<CcMenu>(null);
   protected readonly view = signal<CcView>('all');
@@ -123,7 +148,40 @@ export class ConsentCentre {
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   /* calendar (expiry) */
-  protected readonly calMonth = signal(new Date(2026, 9, 1));
+  protected readonly calMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+
+  ngOnInit(): void {
+    if (!this.code) { this.flash('Open the consent centre from a donor profile.'); return; }
+    this.loading.set(true);
+    this.api.searchDonors({ search: this.code, pageSize: 10 }).subscribe({
+      next: (p) => {
+        const hit = p.items.find((x) => x.displayCode === this.code) ?? p.items[0];
+        if (!hit) { this.loading.set(false); this.flash('That donor could not be found.'); return; }
+        this.donorId = hit.id;
+        this.load();
+      },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
+
+  private load(): void {
+    this.loading.set(true);
+    this.api.getConsentCentre({ donorId: this.donorId, page: 1, pageSize: 50 }).subscribe({
+      next: (r) => {
+        const rows = r.consents.items;
+        const current = rows.find((c) => stateOf(c.consentState) === 'Granted') ?? rows[0];
+        if (current) {
+          const rec = toRecord(current, this.code);
+          this.record.set(rec);
+          this.draft.set({ ...rec });
+        }
+        this.history.set((r.consentHistory?.length ? r.consentHistory : rows).map(toHistory));
+        this.updatedAt.set(new Date());
+        this.loading.set(false);
+      },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
 
   /* ---------- derived ---------- */
   protected readonly reference = computed(() => `${this.record().channel} consent - ${this.record().donorCode}`);
@@ -260,15 +318,35 @@ export class ConsentCentre {
     if (!k) return;
     this.tried.set(true);
     if (this.reasonError()) return;
-    const now = new Date();
-    // TODO: call the API with { action: k, record: this.draft(), reason: this.reason().trim() }
-    const next: ConsentRecord = k === 'withdraw' ? { ...this.record(), state: 'Withdrawn' } : { ...this.draft() };
-    this.record.set(next);
-    this.draft.set({ ...next });
-    this.history.update((h) => [{ state: next.state, channel: next.channel, purpose: next.purpose, by: 'You', date: isoOf(now), notice: next.notice, reason: this.reason().trim() }, ...h]);
-    this.updatedAt.set(now);
-    this.dialog.set(null);
-    this.flash(k === 'withdraw' ? 'Consent withdrawn.' : 'Consent corrected. The original is kept in the trail.');
+    const rec = this.record();
+    if (!rec.id) { this.flash('There is no consent record to change.'); return; }
+    const reason = this.reason().trim();
+    const done = (message: string) => {
+      this.dialog.set(null);
+      this.load();
+      this.flash(message);
+    };
+    const fail = (e: unknown) => this.flash(apiErrorMessage(e));
+    if (k === 'withdraw') {
+      this.api.withdrawConsent(rec.id, { reason, expectedVersion: rec.version }).subscribe({
+        next: () => done('Consent withdrawn.'), error: fail
+      });
+      return;
+    }
+    const d = this.draft();
+    if (d.channel !== rec.channel || d.state !== rec.state || d.notice.trim() !== rec.notice.trim()) {
+      this.flash('Channel, state and notice version cannot be corrected. Withdraw this consent and record a new one.');
+      return;
+    }
+    this.api.correctConsent(rec.id, {
+      correctionReason: reason,
+      purpose: d.purpose.trim(),
+      effectiveAtUtc: d.effective ? new Date(d.effective + 'T00:00:00').toISOString() : null,
+      expiryAtUtc: d.expiry ? new Date(d.expiry + 'T23:59:00').toISOString() : null,
+      publicRecognitionPreference: d.recognition !== 'Anonymous',
+      contactRestrictions: d.restrictions.trim() === 'None' ? null : d.restrictions.trim(),
+      expectedVersion: rec.version
+    }).subscribe({ next: () => done('Consent corrected. The original is kept in the trail.'), error: fail });
   }
 
   private flash(m: string): void {

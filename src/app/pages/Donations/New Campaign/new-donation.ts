@@ -1,57 +1,32 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { PaymentApiService } from '../../../Service/payment-api.service';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
+import { GatewayCheckoutService } from '../../../Shared/services/gateway-checkout.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { AuthService } from '../../../Shared/Auth/auth.service';
+import { AuthTokenService } from '../../../Shared/services/auth-token.service';
+import { CheckoutSession, PublicCampaignSummary, PublicDonationFormSettings } from '../../../Shared/models/payment.model';
+import { CountryLookup } from '../../../Shared/models/geo-lookup.model';
+import { MasterLookup } from '../../../Shared/models/global-master.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 type NdMenu = 'cause' | 'currency' | 'country' | 'state' | 'city' | null;
 type NdErr = 'cause' | 'currency' | 'amount' | 'mobile' | 'pan' | 'line1' | 'country' | 'state' | 'city' | 'pin' | 'privacy';
 
-interface NdCause { code: string; name: string; org: string; }
+interface NdCause { code: string; name: string; org: string; id: string; }
 interface NdCurrency { code: string; symbol: string; label: string; }
-interface NdCountry { name: string; dial: string; states: { name: string; cities: string[] }[]; }
+interface NdCountry { name: string; dial: string; id: string; }
 
-const CAUSES: NdCause[] = [
-  { code: 'HAI-ELDERCARE-2026', name: 'Care for the Elderly - Annual Appeal', org: 'Unity for Change' },
-  { code: 'HAI-PHYSIO-2026', name: 'Mobile Healthcare Units - Care at the Doorstep', org: 'Unity for Change' },
-  { code: 'HAI-CATARACT-2026', name: 'Cataract Surgery Drive', org: 'Unity for Change' },
-  { code: 'HAI-HELPLINE-2026', name: 'Elder Helpline - Keep the Line Open', org: 'Unity for Change' },
-  { code: 'HAI-DAYCARE-2026', name: 'Adopt a Day-Care Centre', org: 'Unity for Change' },
-  { code: 'HAI-WATER-2026', name: 'Village Water Points', org: 'Community Care' }
-];
-
-const CURRENCIES: NdCurrency[] = [
-  { code: 'INR', symbol: '₹', label: 'Indian rupee' },
-  { code: 'USD', symbol: '$', label: 'US dollar' },
-  { code: 'GBP', symbol: '£', label: 'Pound sterling' },
-  { code: 'EUR', symbol: '€', label: 'Euro' },
-  { code: 'AED', symbol: 'AED', label: 'UAE dirham' }
-];
-
-const COUNTRIES: NdCountry[] = [
-  {
-    name: 'India', dial: '+91', states: [
-      { name: 'Tamil Nadu', cities: ['Chennai', 'Coimbatore', 'Madurai', 'Tirunelveli', 'Tenkasi'] },
-      { name: 'Karnataka', cities: ['Bengaluru', 'Mysuru', 'Mangaluru'] },
-      { name: 'Kerala', cities: ['Kochi', 'Thiruvananthapuram', 'Kozhikode'] },
-      { name: 'Maharashtra', cities: ['Mumbai', 'Pune', 'Nagpur'] },
-      { name: 'West Bengal', cities: ['Kolkata', 'Siliguri'] }
-    ]
-  },
-  {
-    name: 'United States', dial: '+1', states: [
-      { name: 'California', cities: ['San Francisco', 'Los Angeles', 'San Diego'] },
-      { name: 'New York', cities: ['New York City', 'Buffalo'] }
-    ]
-  },
-  {
-    name: 'United Kingdom', dial: '+44', states: [
-      { name: 'England', cities: ['London', 'Manchester', 'Birmingham'] },
-      { name: 'Scotland', cities: ['Edinburgh', 'Glasgow'] }
-    ]
-  },
-  {
-    name: 'United Arab Emirates', dial: '+971', states: [
-      { name: 'Dubai', cities: ['Dubai'] },
-      { name: 'Abu Dhabi', cities: ['Abu Dhabi', 'Al Ain'] }
-    ]
+/** The symbol a currency code is written with ("INR" -> "₹"); the code itself when the browser has none. */
+function symbolOf(code: string): string {
+  try {
+    const part = new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+      .formatToParts(0).find((x) => x.type === 'currency');
+    return part?.value ?? code;
+  } catch {
+    return code;
   }
-];
+}
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
 
@@ -61,13 +36,29 @@ const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
   templateUrl: './new-donation.html',
   styleUrls: ['./new-donation.css']
 })
-export class NewDonation {
-  protected readonly donorName = 'Vikram Anand';
-  protected readonly donorEmail = 'vikram.anand@ngoplanet.test';
+export class NewDonation implements OnInit {
+  private readonly api = inject(PaymentApiService);
+  private readonly geo = inject(GeoMasterService);
+  private readonly checkout = inject(GatewayCheckoutService);
+  private readonly toasts = inject(ToastService);
+  private readonly auth = inject(AuthService);
+  private readonly tokens = inject(AuthTokenService);
+  private readonly router = inject(Router);
 
-  protected readonly causes = CAUSES;
-  protected readonly currencies = CURRENCIES;
-  protected readonly countries = COUNTRIES;
+  protected get donorName(): string { return this.auth.user()?.name ?? ''; }
+  protected get donorEmail(): string { return this.auth.user()?.email ?? ''; }
+
+  private readonly causeRows = signal<NdCause[]>([]);
+  private readonly currencyRows = signal<NdCurrency[]>([]);
+  private readonly countryRows = signal<(NdCountry & { raw: CountryLookup })[]>([]);
+  private readonly stateRows = signal<MasterLookup[]>([]);
+  private readonly cityRows = signal<MasterLookup[]>([]);
+  private settings: PublicDonationFormSettings | null = null;
+  private campaigns: PublicCampaignSummary[] = [];
+
+  protected get causes(): NdCause[] { return this.causeRows(); }
+  protected get currencies(): NdCurrency[] { return this.currencyRows(); }
+  protected get countries(): NdCountry[] { return this.countryRows(); }
   protected readonly quickAmounts = QUICK_AMOUNTS;
 
   /* ---------- form ---------- */
@@ -93,15 +84,15 @@ export class NewDonation {
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   /* ---------- derived ---------- */
-  protected readonly causeInfo = computed(() => CAUSES.find((c) => c.code === this.cause()) ?? null);
+  protected readonly causeInfo = computed(() => this.causeRows().find((c) => c.code === this.cause()) ?? null);
   protected readonly causeList = computed(() => {
     const q = this.causeQuery().trim().toLowerCase();
-    return q ? CAUSES.filter((c) => `${c.name} ${c.code} ${c.org}`.toLowerCase().includes(q)) : CAUSES;
+    return q ? this.causeRows().filter((c) => `${c.name} ${c.code} ${c.org}`.toLowerCase().includes(q)) : this.causeRows();
   });
-  protected readonly currencyInfo = computed(() => CURRENCIES.find((c) => c.code === this.currency()) ?? null);
-  protected readonly countryInfo = computed(() => COUNTRIES.find((c) => c.name === this.country()) ?? null);
-  protected readonly stateList = computed(() => this.countryInfo()?.states ?? []);
-  protected readonly cityList = computed(() => this.stateList().find((s) => s.name === this.state())?.cities ?? []);
+  protected readonly currencyInfo = computed(() => this.currencyRows().find((c) => c.code === this.currency()) ?? null);
+  protected readonly countryInfo = computed(() => this.countryRows().find((c) => c.name === this.country()) ?? null);
+  protected readonly stateList = computed(() => this.stateRows().filter((r) => r.status === 'active').map((r) => ({ name: r.name })));
+  protected readonly cityList = computed(() => this.cityRows().filter((r) => r.status === 'active').map((r) => r.name));
   protected readonly isIndia = computed(() => this.country() === 'India');
 
   protected readonly amountValue = computed(() => {
@@ -151,6 +142,40 @@ export class NewDonation {
     };
   });
 
+  ngOnInit(): void {
+    this.api.getPublicCampaigns().subscribe({
+      next: (list) => {
+        this.campaigns = list;
+        const org = this.tokens.tenant()?.tenantName ?? '';
+        this.causeRows.set(list.map((c) => ({ id: c.id, code: c.code, name: c.name, org })));
+      },
+      error: (e: unknown) => this.toasts.show('Campaigns unavailable', apiErrorMessage(e), 'error')
+    });
+    this.api.getPublicCurrencies().subscribe({
+      next: (list) => this.currencyRows.set(list.map((c) => ({ code: c.reference, symbol: symbolOf(c.reference), label: c.label }))),
+      error: (e: unknown) => this.toasts.show('Currencies unavailable', apiErrorMessage(e), 'error')
+    });
+    this.api.getPublicFormSettings().subscribe({ next: (r) => (this.settings = r), error: () => undefined });
+    this.geo.getCountries().subscribe((list) => {
+      this.countryRows.set(list.filter((c) => c.status === 'active').map((c) => ({ id: c.id, name: c.name, dial: c.phoneCountryCode ?? '', raw: c })));
+      this.loadStates();
+    });
+  }
+
+  private loadStates(): void {
+    const c = this.countryRows().find((x) => x.name === this.country());
+    this.stateRows.set([]);
+    this.cityRows.set([]);
+    if (c) this.geo.getStates(c.id).subscribe((r) => this.stateRows.set(r));
+  }
+
+  private loadCities(): void {
+    const c = this.countryRows().find((x) => x.name === this.country());
+    const st = this.stateRows().find((x) => x.name === this.state());
+    this.cityRows.set([]);
+    if (st) this.geo.getCities(st.id, c?.id).subscribe((r) => this.cityRows.set(r));
+  }
+
   /* ---------- helpers ---------- */
   bad(k: NdErr): string { return this.tried() ? this.errors()[k] : ''; }
   quickLabel(n: number): string {
@@ -171,8 +196,14 @@ export class NewDonation {
     if (this.country() !== c.name) { this.state.set(null); this.city.set(null); }
     this.country.set(c.name);
     this.menu.set(null);
+    this.loadStates();
   }
-  pickState(s: string): void { if (this.state() !== s) this.city.set(null); this.state.set(s); this.menu.set(null); }
+  pickState(s: string): void {
+    if (this.state() !== s) this.city.set(null);
+    this.state.set(s);
+    this.menu.set(null);
+    this.loadCities();
+  }
   pickCity(c: string): void { this.city.set(c); this.menu.set(null); }
   setQuick(n: number): void { this.amount.set(String(n)); }
   setText(sig: 'amount' | 'mobile' | 'pan' | 'line1' | 'line2' | 'pin' | 'causeQuery', e: Event): void {
@@ -190,13 +221,73 @@ export class NewDonation {
       return;
     }
     this.saving.set(true);
-    // TODO: POST the pledge, then hand over to the payment provider's secure checkout.
-    const id = 'PLG-2026-' + String(Math.floor(100000 + Math.random() * 899999));
-    setTimeout(() => {
-      this.pledgeId.set(id);
-      this.saving.set(false);
-      this.flash(`Pledge ${id} recorded. Opening secure checkout…`);
-    }, 600);
+    const cause = this.causeInfo();
+    const country = this.countryRows().find((x) => x.name === this.country());
+    const state = this.stateRows().find((x) => x.name === this.state());
+    const city = this.cityRows().find((x) => x.name === this.city());
+    const mobile = this.mobile().replace(/\s+/g, '');
+    this.api.initiateDonation({
+      donorName: this.donorName,
+      email: this.donorEmail,
+      amount: this.amountValue(),
+      currencyCode: this.currency()!,
+      mobile: (country?.dial ?? '') + mobile,
+      campaignId: cause?.id ?? null,
+      taxIdentifier: this.pan().trim() || null,
+      addressLine1: this.line1().trim(),
+      addressLine2: this.line2().trim() || null,
+      countryId: country?.id ?? null,
+      stateId: state?.id ?? null,
+      cityId: city?.id ?? null,
+      postalCode: this.pin().trim(),
+      consentGiven: this.privacy(),
+      consentVersion: this.settings?.consentNoticeVersion ?? null
+    }).subscribe({
+      next: (intent) => {
+        this.pledgeId.set(intent.intentReference);
+        this.flash(`Pledge ${intent.intentReference} recorded. Opening secure checkout…`);
+        this.startPayment(intent.intentReference, intent.version);
+      },
+      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
+
+  /** Opens the organisation's checkout; falls back to a payment link when there is no in-page form. */
+  private startPayment(reference: string, version: number): void {
+    this.api.createCheckoutSession(reference, { expectedVersion: version }).subscribe({
+      next: (session) => this.openCheckout(session),
+      error: () => this.fallbackToLink(reference)
+    });
+  }
+
+  private openCheckout(session: CheckoutSession): void {
+    void this.checkout.open(session, this.causeInfo()?.name || 'Donation', {
+      onSucceeded: (confirmation) => {
+        this.api.confirmCheckout(session.intentReference, confirmation).subscribe({ next: () => undefined, error: () => undefined });
+        this.saving.set(false);
+        this.router.navigate(['/give/result'], { queryParams: { intent: session.intentReference } });
+      },
+      onFailed: () => {
+        this.saving.set(false);
+        this.router.navigate(['/give/result'], { queryParams: { intent: session.intentReference } });
+      },
+      onDismissed: () => {
+        this.saving.set(false);
+        this.flash('The payment form was closed. Your pledge is saved - press Donate to pay it.');
+      }
+    }).then((outcome) => {
+      if (outcome !== 'opened') this.fallbackToLink(session.intentReference);
+    });
+  }
+
+  private fallbackToLink(reference: string): void {
+    this.api.getPublicIntent(reference).subscribe({
+      next: (detail) => this.api.createPaymentLink(reference, { expectedVersion: detail.version }).subscribe({
+        next: (link) => window.location.assign(link.paymentLinkUrl),
+        error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+      }),
+      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+    });
   }
 
   reset(): void {

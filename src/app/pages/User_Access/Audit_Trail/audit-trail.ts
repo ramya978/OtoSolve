@@ -1,10 +1,16 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  AUDIT_EVENTS, AuditEvent, AuditOutcome, IAM_NOW, IamOption, dayLabel, fmtDate, fmtDateTime, fmtTime, initialsOf
+  AuditEvent, AuditOutcome, IAM_NOW, IamOption, dayLabel, fmtDate, fmtDateTime, fmtTime, initialsOf
 } from '../../../Shared/IAM/iam-data';
+import { IamAdminApiService } from '../../../Service/iam-admin-api.service';
+import { fetchPages } from '../../../Shared/services/paging';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { AuditEventResponse } from '../../../Shared/models/iam-contract.model';
+
+const TYPE_ICON: Record<string, string> = { User: 'personPlus', Role: 'role', Menu: 'layout', Tenant: 'fingerprint', Organisation: 'building', 'Business unit': 'unit' };
 
 const OUTCOME_LABEL: Record<AuditOutcome, string> = { succeeded: 'Succeeded', denied: 'Denied', failed: 'Failed' };
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -19,8 +25,35 @@ const SLOT_RANGE = ['12 AM – 6 AM', '6 AM – 12 PM', '12 PM – 6 PM', '6 PM 
   templateUrl: './audit-trail.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './audit-trail.css']
 })
-export class AuditTrail {
-  readonly events = AUDIT_EVENTS.slice().sort((a, b) => b.at.localeCompare(a.at));
+export class AuditTrail implements OnInit {
+  private readonly api = inject(IamAdminApiService);
+  private readonly all = signal<AuditEvent[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal('');
+  get events(): AuditEvent[] { return this.all(); }
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    fetchPages((page, pageSize) => this.api.searchAuditEvents({ page, pageSize }), 100, 1000).subscribe({
+      next: ({ items }) => {
+        this.all.set(items.map((e) => this.toEvent(e)).sort((a, b) => b.at.localeCompare(a.at)));
+        this.loading.set(false);
+      },
+      error: (e) => {
+        this.loadError.set(apiErrorMessage(e, 'The audit trail could not be loaded.'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private toEvent(e: AuditEventResponse): AuditEvent {
+    const type = e.targetType ?? '';
+    return {
+      id: e.id ?? '', at: e.occurredAtUtc ?? '', action: e.actionDisplay ?? e.actionCode ?? '', code: e.actionCode ?? '',
+      by: e.actorDisplayName ?? 'System', byRole: e.actorScopeDisplay ?? '', on: e.targetDisplayName ?? '', onType: type,
+      outcome: (e.result ?? 'succeeded') as AuditOutcome, icon: TYPE_ICON[type] ?? 'doc'
+    };
+  }
 
   readonly query = signal('');
   readonly recordType = signal('');
@@ -38,10 +71,11 @@ export class AuditTrail {
   readonly fmtDateTime = fmtDateTime;
   readonly initials = initialsOf;
 
-  readonly typeOptions: IamOption[] = [
+  private readonly typeOptionsC = computed<IamOption[]>(() => [
     { value: '', label: 'All records' },
-    ...Array.from(new Set(AUDIT_EVENTS.map((e) => e.onType))).sort().map((t) => ({ value: t, label: t }))
-  ];
+    ...Array.from(new Set(this.all().map((e) => e.onType).filter(Boolean))).sort().map((t) => ({ value: t, label: t }))
+  ]);
+  get typeOptions(): IamOption[] { return this.typeOptionsC(); }
   readonly outcomeOptions: IamOption[] = [
     { value: '', label: 'All outcomes' },
     { value: 'succeeded', label: 'Succeeded', icon: 'checkCircle' },
@@ -50,25 +84,25 @@ export class AuditTrail {
   ];
 
   // ---------------------------------------------------------------- all-time summary
-  readonly total = this.events.length;
-  readonly succeeded = this.events.filter((e) => e.outcome === 'succeeded').length;
-  readonly deniedFailed = this.total - this.succeeded;
+  get total(): number { return this.all().length; }
+  get succeeded(): number { return this.all().filter((e) => e.outcome === 'succeeded').length; }
+  get deniedFailed(): number { return this.total - this.succeeded; }
   readonly pct = (n: number): number => (this.total ? Math.round((n / this.total) * 100) : 0);
-  readonly actors = Array.from(new Set(this.events.map((e) => e.by)));
-  readonly top = (() => {
+  get actors(): string[] { return Array.from(new Set(this.all().map((e) => e.by))); }
+  get top(): { name: string; count: number } {
     const by = new Map<string, number>();
-    for (const e of this.events) by.set(e.by, (by.get(e.by) ?? 0) + 1);
+    for (const e of this.all()) by.set(e.by, (by.get(e.by) ?? 0) + 1);
     let name = '';
     let n = 0;
     by.forEach((v, k) => { if (v > n) { name = k; n = v; } });
     return { name, count: n };
-  })();
+  }
 
   // ---------------------------------------------------------------- filtered
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const { start, end } = this.range();
-    return this.events.filter((e) => {
+    return this.all().filter((e) => {
       const day = e.at.slice(0, 10);
       return (!this.recordType() || e.onType === this.recordType()) &&
         (!this.outcome() || e.outcome === this.outcome()) &&

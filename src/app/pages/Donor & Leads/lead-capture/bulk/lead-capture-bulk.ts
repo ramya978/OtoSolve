@@ -1,6 +1,11 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CAMPAIGNS, LC_ICONS, LC_PATHS, TEMPLATE_COLUMNS } from '../lc-shared';
+import { DonorApiService } from '../../../../Service/donor-api.service';
+import { ToastService } from '../../../../Shared/services/toast.service';
+import { readXlsxRows } from '../../../../Shared/services/spreadsheet';
+import { BulkLeadImportRow } from '../../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../../Shared/models/api-response.model';
+import { LC_ICONS, LC_PATHS, TEMPLATE_COLUMNS } from '../lc-shared';
 
 type Step = 1 | 2 | 3;
 
@@ -14,7 +19,6 @@ interface UploadRow {
 const MAX_BYTES = 10 * 1024 * 1024;
 const MOBILE = /^[6-9]\d{9}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const CAMPAIGN_CODES = new Set(CAMPAIGNS.map((c) => c.value));
 
 /** "First name", "first_name", "FirstName" -> "firstname" for header matching. */
 const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -25,7 +29,15 @@ const norm = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   templateUrl: './lead-capture-bulk.html',
   styleUrl: './lead-capture-bulk.css',
 })
-export class LeadCaptureBulk {
+export class LeadCaptureBulk implements OnInit {
+  private readonly api = inject(DonorApiService);
+  private readonly toast = inject(ToastService);
+  /** Campaign codes and names the caller may import into (lower case), from the API. */
+  private campaignKeys = new Set<string>();
+  private campaignCodes: string[] = [];
+  private diallingCode = '+91';
+  protected readonly importError = signal('');
+
   protected readonly columns = TEMPLATE_COLUMNS;
   protected readonly queuePath = LC_PATHS.queue;
   protected readonly steps: { no: Step; label: string; hint: string }[] = [
@@ -48,6 +60,17 @@ export class LeadCaptureBulk {
   protected readonly okCount = computed(() => this.rows().filter((r) => !r.errors.length).length);
   protected readonly badCount = computed(() => this.rows().length - this.okCount());
   protected readonly shownRows = computed(() => (this.errorsOnly() ? this.rows().filter((r) => r.errors.length) : this.rows()));
+
+  ngOnInit(): void {
+    this.api.getLeadCaptureForm().subscribe({
+      next: (r) => {
+        this.campaignKeys = new Set(r.campaignOptions.flatMap((o) => [o.label, o.description ?? '', o.value].filter(Boolean).map((x) => x.toLowerCase())));
+        this.campaignCodes = r.campaignOptions.map((o) => o.description ?? o.label);
+        this.diallingCode = r.defaultDiallingCode || '+91';
+      },
+      error: (e: unknown) => this.toast.show('Lead capture unavailable', apiErrorMessage(e), 'error')
+    });
+  }
 
   icon(n: string): string { return LC_ICONS[n] ?? ''; }
 
@@ -80,9 +103,11 @@ export class LeadCaptureBulk {
     if (f.size > MAX_BYTES) { this.fileError.set('The file is larger than 10 MB.'); return; }
     this.file.set({ name: f.name, size: f.size, kind });
     if (kind === 'xlsx') {
-      // XLSX is checked on the server; no row preview in the browser.
       this.rows.set([]);
       this.unknownHeaders.set([]);
+      readXlsxRows(f).then((grid) => this.ingest(grid)).catch((e: unknown) => {
+        this.fileError.set(e instanceof Error ? e.message : 'Could not read that workbook. Save it as CSV and attach that.');
+      });
       return;
     }
     const reader = new FileReader();
@@ -92,13 +117,14 @@ export class LeadCaptureBulk {
 
   /** Small built-in sample so the flow can be tried without a file. */
   useSample(): void {
+    const code = (i: number) => this.campaignCodes[i % Math.max(1, this.campaignCodes.length)] ?? '';
     const lines = [
       TEMPLATE_COLUMNS.map((c) => c.label).join(','),
-      'Anita,Raman,9876543210,anita.raman@example.com,English (India),Chennai,HAI-DAYCARE-2026,Website,Met at the Chennai donor meet',
-      'Karthik,Iyer,9845012345,karthik.iyer@example.com,Tamil,Coimbatore,HAI-MOBILECARE-2026,Event,',
-      'Meera,,9812345678,meera@example,Hindi,Mumbai,HAI-WINTER-2026,Referral,Referred by Priya',
-      'Rahul,Menon,12345,rahul.menon@example.com,Malayalam,Kochi,HAI-UNKNOWN,QR poster,',
-      'Divya,Nair,+91 98450 33221,,English (India),Bengaluru,HAI-SIGHT-2026,Inbound call,Wants a call on Sunday',
+      `Anita,Raman,9876543210,anita.raman@example.com,English (India),Chennai,${code(0)},Website,Met at the Chennai donor meet`,
+      `Karthik,Iyer,9845012345,karthik.iyer@example.com,Tamil,Coimbatore,${code(1)},Event,`,
+      `Meera,,9812345678,meera@example,Hindi,Mumbai,${code(2)},Referral,Referred by Priya`,
+      'Rahul,Menon,12345,rahul.menon@example.com,Malayalam,Kochi,UNKNOWN-CAMPAIGN,QR poster,',
+      `Divya,Nair,+91 98450 33221,,English (India),Bengaluru,${code(0)},Inbound call,Wants a call on Sunday`,
       'Suresh,Pillai,9790011223,suresh.p@example.com,Tamil,Madurai,,WhatsApp,',
     ];
     this.fileError.set('');
@@ -107,7 +133,11 @@ export class LeadCaptureBulk {
   }
 
   private load(text: string): void {
-    const table = this.parseCsv(text).filter((r) => r.some((c) => c.trim()));
+    this.ingest(this.parseCsv(text));
+  }
+
+  private ingest(grid: string[][]): void {
+    const table = grid.filter((r) => r.some((c) => (c ?? '').trim()));
     if (table.length < 2) {
       this.rows.set([]);
       this.fileError.set('No rows found under the header row.');
@@ -135,7 +165,7 @@ export class LeadCaptureBulk {
     else if (!MOBILE.test(mobile)) e.push('Mobile is not a 10-digit number');
     else v['mobile'] = mobile;
     if (v['email'] && !EMAIL.test(v['email'])) e.push('E-mail is not valid');
-    if (v['campaign'] && !CAMPAIGN_CODES.has(v['campaign'])) e.push('Unknown campaign code');
+    if (v['campaign'] && this.campaignKeys.size && !this.campaignKeys.has(v['campaign'].toLowerCase())) e.push('Unknown campaign code');
     return e;
   }
 
@@ -193,12 +223,36 @@ export class LeadCaptureBulk {
 
   private runImport(): void {
     this.importing.set(true);
+    this.importError.set('');
     this.step.set(3);
-    window.setTimeout(() => {
-      const xlsx = this.file()?.kind === 'xlsx';
-      this.result.set({ imported: xlsx ? 0 : this.okCount(), skipped: xlsx ? 0 : this.badCount() });
-      this.importing.set(false);
-    }, 900);
+    const rows: BulkLeadImportRow[] = this.rows().filter((r) => !r.errors.length).map((r) => ({
+      rowNumber: r.n,
+      firstName: r.v['first_name'] || null,
+      lastName: r.v['last_name'] || null,
+      mobileNumber: r.v['mobile'] ? this.diallingCode + r.v['mobile'] : null,
+      emailAddress: r.v['email'] || null,
+      preferredLanguage: r.v['language'] || null,
+      city: r.v['city'] || null,
+      campaignNameOrCode: r.v['campaign'] || null,
+      source: r.v['source'] || null,
+      notes: r.v['notes'] || null,
+    }));
+    this.api.bulkImportLeads({ rows, defaultCampaignId: null, defaultSource: null }).subscribe({
+      next: (res) => {
+        // Rows the server rejected are reported with its reason, next to the ones rejected here.
+        const reasons = new Map(res.results.filter((x) => !x.imported).map((x) => [x.rowNumber, x.reason ?? 'Rejected by the server']));
+        this.rows.update((list) => list.map((r) => (reasons.has(r.n) ? { ...r, errors: [reasons.get(r.n)!] } : r)));
+        this.result.set({ imported: res.importedCount, skipped: this.badCount() });
+        this.importing.set(false);
+        this.toast.show('Upload processed', res.message, res.rejectedCount > 0 ? 'warning' : 'success');
+      },
+      error: (e: unknown) => {
+        this.importing.set(false);
+        this.importError.set(apiErrorMessage(e));
+        this.step.set(2);
+        this.toast.show('Import failed', apiErrorMessage(e), 'error');
+      }
+    });
   }
 
   startOver(): void {

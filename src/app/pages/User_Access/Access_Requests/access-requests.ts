@@ -1,12 +1,23 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  ACCESS_REQUESTS, AccessRequest, IAM_NOW, IamOption, REQUEST_STATUS_LABEL, ROLES, RequestStatus, USERS,
+  AccessRequest, IAM_NOW, IamOption, REQUEST_STATUS_LABEL, RequestStatus,
   fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
-import { SEED_USERS, SEED_ROLES, SEED_REQUESTS } from '../../../Shared/IAM/access-requests.seed';
+import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
+import { IamRolesStore } from '../../../Shared/IAM/iam-roles.store';
+import { AccessRequestApiService } from '../../../Service/access-request-api.service';
+import { fetchAllPages } from '../../../Shared/services/paging';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { AccessRequestListItemResponse, AccessRequestStatus } from '../../../Shared/models/iam-contract.model';
+
+const STATUS_MAP: Record<AccessRequestStatus, RequestStatus> = {
+  draft: 'pending', submitted: 'pending', returned: 'pending', approved: 'approved',
+  rejected: 'rejected', withdrawn: 'withdrawn', expired: 'withdrawn'
+};
 
 
 interface RequestDraft {
@@ -27,11 +38,17 @@ type Tone = 'success' | 'warning' | 'danger' | 'muted';
   templateUrl: './access-requests.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './access-requests.css']
 })
-export class AccessRequests {
-  private readonly allUsers = [...USERS, ...SEED_USERS.filter((s) => !USERS.some((u) => u.name === s.name))];
-  private readonly allRoles = [...ROLES, ...SEED_ROLES.filter((s) => !ROLES.some((r) => r.code === s.code))];
+export class AccessRequests implements OnInit {
+  private readonly api = inject(AccessRequestApiService);
+  private readonly usersStore = inject(IamDirectoryStore);
+  private readonly rolesStore = inject(IamRolesStore);
+  private readonly toast = inject(ToastService);
+  private readonly meta = new Map<string, { id: string; version: number }>();
 
-  readonly requests = signal<AccessRequest[]>(ACCESS_REQUESTS.length ? [...ACCESS_REQUESTS] : [...SEED_REQUESTS]);
+  readonly requests = signal<AccessRequest[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal('');
+  readonly saving = signal(false);
   readonly query = signal('');
   readonly status = signal<'' | RequestStatus>('');
   readonly selectedRef = signal('');
@@ -44,15 +61,65 @@ export class AccessRequests {
   readonly fmtDate = fmtDate;
   readonly initials = initialsOf;
   readonly statusLabel = (s: RequestStatus): string => (REQUEST_STATUS_LABEL as Record<string, string>)[s] ?? s;
-  readonly roleName = (code: string): string => this.allRoles.find((r) => r.code === code)?.name ?? code;
+  readonly roleName = (code: string): string => code;
 
   readonly tone = (s: RequestStatus): Tone =>
     s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'muted';
 
-  readonly personOptions: IamOption[] = this.allUsers.map((u) => ({ value: u.name, label: u.name, hint: u.email, initials: initialsOf(u.name) }));
-  readonly roleOptions: IamOption[] = this.allRoles.map((r) => ({
-    value: r.code, label: r.name, hint: r.privileged ? r.code + ' · Privileged' : r.code, initials: initialsOf(r.name)
-  }));
+  private readonly personOptionsC = computed<IamOption[]>(() =>
+    this.usersStore.users().map((u) => ({ value: u.id, label: u.name, hint: u.email, initials: initialsOf(u.name) })));
+  get personOptions(): IamOption[] { return this.personOptionsC(); }
+  private readonly roleOptionsC = computed<IamOption[]>(() =>
+    this.rolesStore.roles().map((r) => ({
+      value: r.id ?? '', label: r.name, hint: r.privileged ? r.code + ' · Privileged' : r.code, initials: initialsOf(r.name)
+    })));
+  get roleOptions(): IamOption[] { return this.roleOptionsC(); }
+
+  constructor() {
+    // the reason is only on the detail record: fetch it when a request is opened
+    effect(() => {
+      const r = this.selected();
+      const m = r ? this.meta.get(r.ref) : undefined;
+      if (r && m && !r.reason) {
+        this.api.get(m.id).subscribe({
+          next: (d) => this.requests.update((l) => l.map((x) => (x.ref === r.ref ? { ...x, reason: d.businessJustification ?? '' } : x))),
+          error: () => undefined,
+        });
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    if (!this.usersStore.users().length) this.usersStore.load();
+    if (!this.rolesStore.roles().length) this.rolesStore.load();
+    this.load();
+  }
+
+  private load(): void {
+    this.loading.set(true);
+    this.loadError.set('');
+    fetchAllPages((page, pageSize) => this.api.search({ page, pageSize })).subscribe({
+      next: (items) => {
+        this.meta.clear();
+        this.requests.set(items.map((i) => this.toRequest(i)));
+        this.loading.set(false);
+      },
+      error: (e) => {
+        this.loadError.set(apiErrorMessage(e, 'Access requests could not be loaded.'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private toRequest(i: AccessRequestListItemResponse): AccessRequest {
+    const ref = i.requestNumber ?? i.id ?? '';
+    this.meta.set(ref, { id: i.id ?? '', version: i.version ?? 0 });
+    return {
+      ref, person: i.requestedForName ?? '', role: i.roleName ?? i.permissionName ?? i.permissionCode ?? '', reason: '',
+      status: STATUS_MAP[i.status ?? 'submitted'] ?? 'pending',
+      createdAt: i.submittedAtUtc ?? i.accessStartsAtUtc ?? '', until: i.accessEndsAtUtc ?? ''
+    };
+  }
 
   // ---- widgets ----
   private readonly searched = computed(() => {
@@ -94,11 +161,11 @@ export class AccessRequests {
   }
 
   isPrivileged(code: string): boolean {
-    return !!this.allRoles.find((r) => r.code === code)?.privileged;
+    return !!this.rolesStore.roles().find((r) => r.name === code)?.privileged;
   }
 
   personOf(name: string) {
-    return this.allUsers.find((u) => u.name === name);
+    return this.usersStore.users().find((u) => u.name === name);
   }
 
   stage(r: AccessRequest): number {
@@ -106,7 +173,25 @@ export class AccessRequests {
   }
 
   decide(r: AccessRequest, status: RequestStatus): void {
-    this.requests.update((list) => list.map((x) => (x.ref === r.ref ? { ...x, status } : x)));
+    const m = this.meta.get(r.ref);
+    if (!m || this.saving()) return;
+    this.saving.set(true);
+    const call = status === 'approved'
+      ? this.api.approve(m.id, m.version, 'Approved from the access requests queue')
+      : status === 'rejected'
+        ? this.api.reject(m.id, m.version, 'Rejected from the access requests queue')
+        : this.api.withdraw(m.id, { expectedVersion: m.version, reason: 'Withdrawn from the access requests queue' });
+    call.subscribe({
+      next: (o) => {
+        this.saving.set(false);
+        this.toast.show('Request ' + status, o.message ?? r.ref, 'success');
+        this.load();
+      },
+      error: (e) => {
+        this.saving.set(false);
+        this.toast.show('Not saved', apiErrorMessage(e, 'The decision could not be saved.'), 'error');
+      },
+    });
   }
 
   // ---- create drawer ----
@@ -140,16 +225,28 @@ export class AccessRequests {
   submit(): void {
     this.tried.set(true);
     const e = this.errors();
-    if (e.person || e.role || e.reason) return;
+    if (e.person || e.role || e.reason || this.saving()) return;
     const d = this.draft();
-    const ref = 'ACR-' + String(this.requests().length + 1).padStart(4, '0');
-    this.requests.update((list) => [{
-      ref, person: d.person, role: d.role, reason: d.reason.trim(), status: 'pending',
-      createdAt: IAM_NOW.toISOString(), until: d.until
-    }, ...list]);
-    this.status.set('');
-    this.selectedRef.set(ref);
-    this.drawer.set(false);
+    this.saving.set(true);
+    this.api.create({
+      requestedForUserId: d.person, requestType: 'roleAssignment', roleId: d.role,
+      businessJustification: d.reason.trim(), scopeType: 'organisation',
+      accessStartsAtUtc: d.from ? new Date(d.from).toISOString() : null,
+      accessEndsAtUtc: d.until ? new Date(d.until).toISOString() : null,
+      submitImmediately: true,
+    }).subscribe({
+      next: (o) => {
+        this.saving.set(false);
+        this.toast.show('Request submitted', o.message ?? 'The request is waiting for a decision.', 'success');
+        this.status.set('');
+        this.drawer.set(false);
+        this.load();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.toast.show('Not submitted', apiErrorMessage(err, 'The request could not be submitted.'), 'error');
+      },
+    });
   }
 
   @HostListener('document:keydown.escape')

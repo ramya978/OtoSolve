@@ -268,9 +268,9 @@
                   <td class="c-st"><span [class]="'fq-status tone-' + st(f).tone">{{ st(f).label }}</span></td>
                   <td class="c-act">
                     <div class="fq-acts">
-                      @if (canRun(f)) {
+                      <!-- @if (canRun(f)) {
                         <button type="button" class="fu-icon fq-run" (click)="run(f)" [attr.aria-label]="'Execute follow-up for ' + f.name" title="Execute follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg></button>
-                      }
+                      } -->
                       <div class="fu-dd fq-row-dd">
                         <button type="button" class="fu-icon" (click)="toggleMenu('row', $event, f.id)" [attr.aria-expanded]="menu() === 'row' && menuRow() === f.id" [attr.aria-label]="'Actions for ' + f.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('more')" /></svg></button>
                         @if (menu() === 'row' && menuRow() === f.id) {

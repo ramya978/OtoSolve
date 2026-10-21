@@ -1,12 +1,22 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  COUNTRY_CODES, DATA_SCOPES, DEPARTMENTS, IAM_NOW, IAM_PATHS, IamOption, LANGUAGES, ROLES, TIME_ZONES, TITLES, UNITS, USERS,
+  COUNTRY_CODES, DATA_SCOPES, IAM_NOW, IAM_PATHS, IamOption, LANGUAGES, TIME_ZONES, TITLES,
   fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
+import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
+import { UserAdminApiService } from '../../../Service/user-admin-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
+import { CreateUserRequest } from '../../../Shared/models/iam-contract.model';
+
+const CULTURE: Record<string, string> = {
+  'English (India)': 'en-IN', Hindi: 'hi-IN', Tamil: 'ta-IN', Telugu: 'te-IN',
+  Kannada: 'kn-IN', Malayalam: 'ml-IN', Marathi: 'mr-IN', Bengali: 'bn-IN'
+};
 
 type SectionKey = 'identity' | 'organisation' | 'access' | 'review';
 
@@ -63,8 +73,17 @@ const JUSTIFY_MAX = 1000;
   templateUrl: './create-user.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './create-user.css']
 })
-export class CreateUser {
+export class CreateUser implements OnInit {
   private readonly router = inject(Router);
+  private readonly store = inject(IamDirectoryStore);
+  private readonly api = inject(UserAdminApiService);
+  private readonly toast = inject(ToastService);
+  readonly submitting = signal(false);
+  readonly serverError = signal('');
+
+  ngOnInit(): void {
+    this.store.load();
+  }
 
   readonly form = signal<UserForm>({ ...EMPTY });
   /** fields the person has left at least once (errors show after touch or after a submit attempt) */
@@ -90,18 +109,22 @@ export class CreateUser {
   // ---------------------------------------------------------------- options
   readonly titleOptions: IamOption[] = TITLES.map((t) => ({ value: t, label: t }));
   readonly codeOptions: IamOption[] = COUNTRY_CODES.map((c) => ({ value: c.code, label: c.code, hint: c.country }));
-  readonly unitOptions: IamOption[] = UNITS.map((u) => ({ value: u, label: u, icon: 'unit' }));
-  readonly deptOptions: IamOption[] = DEPARTMENTS.map((d) => ({ value: d, label: d, icon: 'building' }));
+  private readonly unitOptionsC = computed<IamOption[]>(() => this.store.units().map((u) => ({ value: u.id ?? '', label: u.name ?? '', icon: 'unit' })));
+  private readonly deptOptionsC = computed<IamOption[]>(() => this.store.departments().map((d) => ({ value: d.id ?? '', label: d.name ?? '', icon: 'building' })));
   readonly languageOptions: IamOption[] = LANGUAGES.map((l) => ({ value: l, label: l }));
   readonly zoneOptions: IamOption[] = TIME_ZONES.map((z) => ({ value: z, label: z }));
-  readonly roleOptions: IamOption[] = ROLES.filter((r) => r.status === 'active').map((r) => ({
-    value: r.code, label: r.name, hint: r.code + (r.privileged ? ' · Privileged' : ''), initials: initialsOf(r.name)
-  }));
+  private readonly roleOptionsC = computed<IamOption[]>(() => this.store.roles().filter((r) => r.isActive !== false).map((r) => ({
+    value: r.id ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '')
+  })));
   readonly scopeOptions: IamOption[] = DATA_SCOPES.map((s) => ({ value: s.value, label: s.label, hint: s.hint }));
   readonly mfaOptions: IamOption[] = [
     { value: 'required', label: 'Required', hint: 'They set up a second factor during activation', icon: 'shieldCheck' },
     { value: 'optional', label: 'Optional (organisation default)', hint: 'They may add one later', icon: 'shield' }
   ];
+
+  get unitOptions(): IamOption[] { return this.unitOptionsC(); }
+  get deptOptions(): IamOption[] { return this.deptOptionsC(); }
+  get roleOptions(): IamOption[] { return this.roleOptionsC(); }
 
   icon(name: string): string {
     return IAM_ICONS[name] ?? '';
@@ -144,10 +167,10 @@ export class CreateUser {
     if (!f.displayName.trim()) e.displayName = 'Display name is required.';
     if (!f.email.trim()) e.email = 'Login e-mail is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'Enter a valid e-mail address.';
-    else if (USERS.some((u) => u.email.toLowerCase() === f.email.trim().toLowerCase())) e.email = 'Someone already signs in with this e-mail.';
+    else if (this.store.users().some((u) => u.email.toLowerCase() === f.email.trim().toLowerCase())) e.email = 'Someone already signs in with this e-mail.';
     if (!f.username.trim()) e.username = 'Username is required.';
     else if (!/^[a-z0-9._-]{3,}$/.test(f.username.trim())) e.username = 'Use 3 or more lower-case letters, digits, dots, - or _.';
-    else if (USERS.some((u) => u.username === f.username.trim())) e.username = 'This username is taken.';
+    else if (this.store.users().some((u) => u.username === f.username.trim())) e.username = 'This username is taken.';
     if (f.mobile && !/^\d{6,12}$/.test(f.mobile.replace(/\s/g, ''))) e.mobile = 'Use 6–12 digits, without the country code.';
     if (!f.unit) e.unit = 'Choose an organisation unit.';
     if (!f.department) e.department = 'Choose a department.';
@@ -181,8 +204,8 @@ export class CreateUser {
   readonly percent = computed(() => Math.round((this.requiredDone() / this.requiredTotal) * 100));
 
   // ---------------------------------------------------------------- review helpers
-  readonly roleName = computed(() => ROLES.find((r) => r.code === this.form().role)?.name ?? '');
-  readonly rolePrivileged = computed(() => !!ROLES.find((r) => r.code === this.form().role)?.privileged);
+  readonly roleName = computed(() => this.store.roles().find((r) => r.id === this.form().role)?.name ?? '');
+  readonly rolePrivileged = computed(() => false);
   readonly scopeName = computed(() => DATA_SCOPES.find((s) => s.value === this.form().dataScope)?.label ?? '');
   readonly mfaName = computed(() => this.mfaOptions.find((m) => m.value === this.form().mfa)?.label ?? '');
   readonly fullMobile = computed(() => (this.form().mobile ? `${this.form().countryCode} ${this.form().mobile}` : ''));
@@ -198,7 +221,10 @@ export class CreateUser {
   }
 
   saveDraft(): void {
-    this.status.set('draft');
+    this.tried.set(true);
+    const e = this.errors();
+    if (e.firstName || e.lastName || e.displayName || e.email || e.username) { this.go('identity'); return; }
+    this.submit(false);
   }
 
   create(): void {
@@ -208,8 +234,61 @@ export class CreateUser {
       if (first) this.go(first);
       return;
     }
-    // hand the record to your API here (invite e-mail is sent server-side)
-    this.status.set('sent');
+    this.submit(true);
+  }
+
+  private submit(sendInvitation: boolean): void {
+    const f = this.form();
+    const request: CreateUserRequest = {
+      title: f.title.trim() || null,
+      firstName: f.firstName.trim(),
+      lastName: f.lastName.trim(),
+      displayName: f.displayName.trim(),
+      preferredName: f.preferredName.trim() || null,
+      email: f.email.trim().toLowerCase(),
+      username: f.username.trim().toLowerCase() || null,
+      employeeNumber: f.employeeNo.trim() || null,
+      mobileCountryCode: f.mobile ? f.countryCode : null,
+      mobileNumber: f.mobile ? f.mobile.replace(/\s/g, '') : null,
+      organisationUnitId: f.unit || null,
+      departmentId: f.department || null,
+      designation: f.designation.trim() || null,
+      workLocation: f.workLocation.trim() || null,
+      preferredCulture: CULTURE[f.language] ?? null,
+      timeZone: f.timeZone.split(' (')[0] || null,
+      accessStartsAtUtc: f.accessFrom ? new Date(f.accessFrom).toISOString() : null,
+      accessEndsAtUtc: f.accessUntil ? new Date(f.accessUntil).toISOString() : null,
+      mfaRequirement: f.mfa === 'required' ? 'required' : 'inherited',
+      roleIds: f.role ? [f.role] : [],
+      dataScopes: f.dataScope === 'own' ? [{ scopeType: 'assignment', scopeValue: '' }] : [],
+      justification: f.justification.trim() || null,
+      credentialSetupMethod: 'invitationLink',
+      sendInvitation,
+      invitationMessage: f.message.trim() || null,
+    };
+    this.submitting.set(true);
+    this.serverError.set('');
+    this.api.createUser(request).subscribe({
+      next: (user) => {
+        this.submitting.set(false);
+        this.status.set(sendInvitation ? 'sent' : 'draft');
+        const delivered = user.invitationSent === true;
+        this.toast.show(
+          'Account created',
+          !sendInvitation ? `${user.displayName} was saved as a draft.`
+            : delivered ? `${user.displayName} has been e-mailed an invitation link.`
+            : user.deliveryMessage || `${user.displayName} was created, but the invitation e-mail could not be sent.`,
+          delivered || !sendInvitation ? 'success' : 'warning');
+        this.store.load();
+      },
+      error: (e) => {
+        this.submitting.set(false);
+        const msg = apiErrorMessage(e, 'The account could not be created.');
+        this.serverError.set(msg);
+        this.toast.show('Could not create', msg, 'error');
+        void apiFieldErrors;
+      },
+    });
   }
 
   startAnother(): void {

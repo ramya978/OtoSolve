@@ -1,5 +1,8 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { Donor360Response } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type FollowFilter = 'all' | 'open' | 'overdue' | 'closed';
 
@@ -33,43 +36,93 @@ export interface D360Donor {
   latestDocument: string | null;
 }
 
-const SAMPLE: D360Donor = {
-  code: 'DON-2026-000053',
-  name: 'Abhijit Tarun',
-  status: 'Active',
-  updated: '14 Oct 2026',
-  phone: '+919831047265',
-  email: 'abhijit.tarun@mail.test',
-  owner: 'Imran Iqbal',
-  language: 'bn-IN',
-  contactBy: ['Email', 'PhoneCall'],
-  pledged: 0,
-  documents: 0,
-  stages: [{ label: 'Received', amount: 12000, asOf: '14 Oct 2026', tone: 'primary' }],
-  gifts: [
-    { ref: 'DON-V9DNEK5WDN74', date: '2026-10-14', campaign: 'Mobile Healthcare Units - Care at the Doorstep', amount: 12000, status: 'Recorded' }
-  ],
-  campaigns: [
-    { name: 'Mobile Healthcare Units - Care at the Doorstep', code: 'HAI-MOBILECARE-2026', via: 'LED-2026-000087', converted: '14 Oct 2026', given: 12000, gifts: 1, status: 'Converted' }
-  ],
-  promises: [],
-  followUps: [
-    { due: '2026-10-13', title: 'Send the payment link', owner: 'Imran Iqbal', priority: 'Urgent', status: 'Completed' },
-    { due: '2026-10-05', title: 'Make first contact', owner: 'Imran Iqbal', priority: 'Urgent', status: 'Completed' }
-  ],
-  consent: { state: 'Granted', doNotContact: false, lastRecorded: '13 Oct 2026', notice: 'PN-2026-01' },
-  channels: [
-    { channel: 'E-mail', state: 'Granted', since: '13 Oct 2026', publicThanks: false },
-    { channel: 'Call', state: 'Granted', since: '13 Oct 2026', publicThanks: false }
-  ],
-  activity: [
-    { date: '2026-10-19', text: 'DON-2026-000053 opened on Donor 360 with elevated visibility.', by: 'Vikram Anand', kind: 'view' },
-    { date: '2026-10-19', text: 'DON-2026-000053 opened on Donor 360 with elevated visibility.', by: 'Vikram Anand', kind: 'view' },
-    { date: '2026-10-19', text: 'DON-2026-000053 opened on Donor 360 with elevated visibility.', by: 'Vikram Anand', kind: 'view' },
-    { date: '2026-10-19', text: 'DON-2026-000053 opened on Donor 360 with elevated visibility.', by: 'Vikram Anand', kind: 'view' }
-  ],
-  latestDocument: null
+const EMPTY: D360Donor = {
+  code: '', name: '', status: 'Active', updated: '', phone: '', email: '', owner: '', language: '', contactBy: [],
+  pledged: 0, documents: 0, stages: [], gifts: [], campaigns: [], promises: [], followUps: [],
+  consent: { state: 'Unknown', doNotContact: false, lastRecorded: '', notice: '' }, channels: [], activity: [], latestDocument: null
 };
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmt = (utc: string | null | undefined): string => {
+  if (!utc) return '';
+  const d = new Date(utc);
+  return d.getDate() + ' ' + SHORT_MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+};
+const dayOf = (utc: string | null | undefined): string => {
+  if (!utc) return '';
+  const d = new Date(utc);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
+const n = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+
+function toD360(r: Donor360Response): D360Donor {
+  const d = r.donor;
+  const tones: D360Donor['stages'][number]['tone'][] = ['primary', 'green', 'amber', 'blue'];
+  const statusOf = (s: string): D360Donor['status'] => {
+    const k = n(s);
+    return k === 'prospect' ? 'Prospect' : k === 'restricted' ? 'Restricted' : k === 'archived' ? 'Archived' : k === 'merged' ? 'Merged' : 'Active';
+  };
+  const consentState = (s: string): 'Granted' | 'Withdrawn' | 'Unknown' => {
+    const k = n(s);
+    return k.startsWith('grant') || k.startsWith('partial') ? 'Granted' : k.startsWith('withdr') ? 'Withdrawn' : 'Unknown';
+  };
+  const chState = (s: string): 'Granted' | 'Withdrawn' | 'Pending' => {
+    const k = n(s);
+    return k.startsWith('grant') ? 'Granted' : k.startsWith('withdr') ? 'Withdrawn' : 'Pending';
+  };
+  const giftStatus = (s: string): D360Gift['status'] => {
+    const k = n(s);
+    return k.includes('reconcil') ? 'Reconciled' : k.includes('pend') ? 'Pending' : 'Recorded';
+  };
+  const prefs = r.communicationPreferences ?? [];
+  return {
+    code: r.donorReference || d.donorNumber,
+    name: d.displayName,
+    status: statusOf(d.status),
+    updated: fmt(d.updatedAtUtc ?? d.createdAtUtc),
+    phone: d.primaryPhone ?? '',
+    email: d.primaryEmail ?? '',
+    owner: d.relationshipOwnerName ?? '',
+    language: d.preferredLanguage ?? '',
+    contactBy: prefs.filter((p) => consentState(p.consentState) === 'Granted').map((p) => p.channel),
+    pledged: (r.donationTotalsByStage ?? []).filter((t) => n(t.stage).includes('pledge')).reduce((x, t) => x + t.totalAmount, 0),
+    documents: (r.documents ?? []).length,
+    stages: (r.donationTotalsByStage ?? []).map((t, i) => ({
+      label: t.stage, amount: t.totalAmount, asOf: fmt(t.asAtUtc), tone: tones[i % tones.length]
+    })),
+    gifts: (r.donations ?? []).map((g) => ({
+      ref: g.reference, date: dayOf(g.donatedAtUtc), campaign: g.campaignName ?? '', amount: g.amount - (g.refundedAmount ?? 0),
+      status: giftStatus(g.statusLabel ?? g.status)
+    })),
+    campaigns: (r.campaignHistory ?? []).map((c) => ({
+      name: c.campaignName, code: c.campaignCode, via: c.leadReference, converted: fmt(c.convertedAtUtc),
+      given: c.amount, gifts: c.giftCount, status: c.convertedAtUtc ? 'Converted' as const : c.giftCount ? 'Open' as const : 'Lost' as const
+    })),
+    promises: (r.promises ?? []).map((p) => ({
+      due: dayOf(p.dueAtUtc), amount: p.amount, status: n(p.statusLabel ?? p.status).startsWith('fulfil') ? 'Fulfilled' as const : 'Pending' as const
+    })),
+    followUps: (r.followUps ?? []).map((f) => ({
+      due: dayOf(f.dueAtUtc), title: f.nextAction ?? f.purpose ?? f.followUpReference, owner: f.relationshipOwnerName ?? '',
+      priority: n(f.priority) === 'urgent' ? 'Urgent' as const : n(f.priority) === 'high' ? 'High' as const : 'Normal' as const,
+      status: f.isOpen ? 'Open' as const : 'Completed' as const
+    })),
+    consent: {
+      state: consentState(r.consentStatus?.overallState ?? ''),
+      doNotContact: d.doNotContact,
+      lastRecorded: fmt(r.consentStatus?.lastRecordedAtUtc),
+      notice: r.consentStatus?.noticeVersion ?? ''
+    },
+    channels: prefs.map((p) => ({
+      channel: p.channelLabel ?? p.channel, state: chState(p.consentState), since: fmt(p.effectiveAtUtc), publicThanks: p.publicRecognitionPreference
+    })),
+    activity: (r.activityHistory ?? []).map((a) => ({
+      date: dayOf(a.occurredAtUtc), text: a.reason ? `${a.actionCode} - ${a.reason}` : a.actionCode, by: a.actorName ?? '',
+      kind: n(a.actionCode).includes('view') ? 'view' as const : n(a.actionCode).includes('consent') ? 'consent' as const
+        : n(a.actionCode).includes('donation') || n(a.actionCode).includes('gift') ? 'gift' as const : 'note' as const
+    })),
+    latestDocument: (r.documents ?? [])[0]?.name ?? null
+  };
+}
 
 const ICONS: Record<string, string> = {
   phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z',
@@ -153,9 +206,12 @@ const parse = (iso: string): Date => new Date(iso + 'T00:00:00');
   templateUrl: './donor-360.html',
   styleUrl: './donor-360.css'
 })
-export class Donor360 {
+export class Donor360 implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly api = inject(DonorApiService);
+  private donorId = '';
+  protected readonly loading = signal(false);
 
   protected readonly rupees = rupees;
   protected readonly listPath = '/app/fundraising/relationships/all-donors';
@@ -163,8 +219,29 @@ export class Donor360 {
   /** "today" for overdue checks - the server date in the real app */
   private readonly today = new Date().toISOString().slice(0, 10);
 
-  /** Donor on screen - the ref from the URL is kept; the rest is sample data for now. */
-  protected readonly d = signal<D360Donor>({ ...SAMPLE, code: this.route.snapshot.queryParamMap.get('ref') ?? SAMPLE.code });
+  /** Donor on screen - loaded from the API for the reference in the URL. */
+  protected readonly d = signal<D360Donor>({ ...EMPTY, code: this.route.snapshot.queryParamMap.get('ref') ?? '' });
+
+  ngOnInit(): void { this.load(); }
+
+  /** Resolves the reference to the donor's id, then loads the one Donor 360 payload. */
+  private load(done?: () => void): void {
+    const ref = this.route.snapshot.queryParamMap.get('ref') ?? '';
+    this.loading.set(true);
+    const fetch = (id: string) => this.api.getDonor360(id).subscribe({
+      next: (r) => { this.donorId = r.donor.id; this.d.set(toD360(r)); this.loading.set(false); done?.(); },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+    });
+    if (this.donorId) { fetch(this.donorId); return; }
+    this.api.searchDonors({ search: ref, pageSize: 10 }).subscribe({
+      next: (p) => {
+        const hit = p.items.find((x) => x.displayCode === ref) ?? p.items[0];
+        if (!hit) { this.loading.set(false); this.flash('That donor could not be found.'); return; }
+        fetch(hit.id);
+      },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
 
   protected readonly followFilter = signal<FollowFilter>('all');
   protected readonly followQuery = signal('');
@@ -396,13 +473,20 @@ export class Donor360 {
     this.iTried.set(true);
     if (!this.iValid()) return;
     const amount = this.iAmountNum();
-    this.d.update((d) => ({
-      ...d,
-      promises: [...d.promises, { due: this.iDate(), amount, status: 'Pending' as const }],
-      activity: [{ date: this.today, text: 'Donation intent of ' + this.iSymbol() + this.iAmountText() + ' recorded.', by: 'You', kind: 'gift' as const }, ...d.activity]
-    }));
-    this.closeIntent();
-    this.flash('Donation intent of ' + this.iSymbol() + this.iAmountText() + ' recorded for ' + this.d().name + '.');
+    const label = this.iSymbol() + this.iAmountText();
+    this.api.createDonorIntent(this.donorId, {
+      amount,
+      currency: this.iCurrency(),
+      dueAtUtc: this.iDate() ? new Date(this.iDate() + 'T23:59:00').toISOString() : null,
+      notes: this.iNotes().trim()
+    }).subscribe({
+      next: (r) => {
+        this.d.set(toD360(r));
+        this.closeIntent();
+        this.flash('Donation intent of ' + label + ' recorded for ' + this.d().name + '.');
+      },
+      error: (e: unknown) => this.flash(apiErrorMessage(e))
+    });
   }
 
   /** Left menu: one entry per section card. */
@@ -447,13 +531,29 @@ export class Donor360 {
   // ---------- actions (wire to the real dialogs / services) ----------
   /** Timeline button: scroll to the activity card. */
   timeline(): void { this.go('activity'); }
-  schedule(): void { this.flash('Schedule a follow-up for ' + this.d().name + '.'); }
-  exportHistory(): void { this.flash('History export queued for ' + this.d().name + '.'); }
+  schedule(): void {
+    this.router.navigate(['/app/fundraising/relationships/follow-up-queue/plan'], { queryParams: { ref: this.d().code } });
+  }
+  exportHistory(): void {
+    this.api.exportDonorHistory(this.donorId).subscribe({
+      next: ({ blob, fileName }) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        this.flash('History exported for ' + this.d().name + '.');
+      },
+      error: (e: unknown) => this.flash(apiErrorMessage(e))
+    });
+  }
   editProfile(): void {
     this.router.navigate([this.editPath], { queryParams: { ref: this.d().code } });
   }
-  manageConsent(): void { this.flash('Manage consent opened.'); }
-  refresh(): void { this.flash('Donor record refreshed.'); }
+  manageConsent(): void {
+    this.router.navigate(['/app/fundraising/relationships/consent-and-preference-centre'], { queryParams: { ref: this.d().code } });
+  }
+  refresh(): void { this.load(() => this.flash('Donor record refreshed.')); }
 
   copy(text: string): void {
     navigator.clipboard?.writeText(text);

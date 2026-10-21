@@ -1,9 +1,14 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { AuthService } from '../../Auth/auth.service';
+import { DonLookupItem, FollowUp as ApiFollowUp, FollowUpQueueResponse } from '../../models/donor-contract.model';
+import { fetchPages } from '../../services/paging';
 
 /* =====================================================================================================
-   FOLLOW-UP STORE - shared by Follow-ups (queue), New follow-up, Follow-up planner and Assignment board.
-   Holds follow-ups, people (leads / donors) and owners as signals, so a follow-up scheduled in the
-   planner or reassigned on the board shows everywhere straight away. Sample data until the API is wired.
+   FOLLOW-UP STORE - shared by Follow-ups (queue), New follow-up, Follow-up planner, Follow-up execution
+   and Assignment board. Holds follow-ups, people (leads / donors) and owners as signals, loaded from the
+   donor API, so a follow-up scheduled in the planner or reassigned on the board shows everywhere.
    ===================================================================================================== */
 
 export type FuChannel = 'call' | 'email' | 'sms' | 'whatsapp' | 'post';
@@ -33,6 +38,11 @@ export interface FollowUp {
   escalatedTo: string | null;
   completedAt: string | null;
   history: FuHistory[];
+  /** API id and concurrency version (the `id` above is the readable reference). */
+  uid?: string;
+  version?: number;
+  mine?: boolean;
+  recordId?: string;
 }
 
 export interface FuPerson {
@@ -50,6 +60,8 @@ export interface FuPerson {
   consent: Partial<Record<FuChannel, boolean>>;
   slaDue: string | null;    // next action due (yyyy-mm-ddThh:mm)
   source: string;
+  /** API id of the lead or donor. */
+  id?: string;
 }
 
 export type FuMethod = 'call' | 'email' | 'sms' | 'whatsapp' | 'meeting' | 'visit';
@@ -96,24 +108,13 @@ export const FU_STATUSES: { key: FuStatus; label: string; tone: string; open: bo
   { key: 'cancelled', label: 'Cancelled', tone: 'muted', open: false }
 ];
 
-export const FU_OWNERS: FuOwner[] = [
-  { name: 'Arvind Murali', team: 'INSTITUTIONAL' },
-  { name: 'Gaurav Deepak', team: 'NORTH' },
-  { name: 'Vivek Sridhar', team: 'NATIONAL' },
-  { name: 'Imran Iqbal', team: 'DONOR_SERVICES' },
-  { name: 'Shalini Balaji', team: 'DONOR_SERVICES' },
-  { name: 'Nisha Karthik', team: 'SOUTH' }
-];
-export const FU_MANAGERS = ['Meera Raghavan', 'Sanjay Kulkarni', 'Farah Siddiqui'];
-export const CURRENT_USER = 'Vivek Sridhar';
+/** Filled in place from the API (owner options), so pages that captured the array see the data. */
+export const FU_OWNERS: FuOwner[] = [];
+export const FU_MANAGERS: string[] = [];
+export const CURRENT_USER = '';
 
-export const FU_CAMPAIGNS = [
-  'Adopt a Day-Care Centre',
-  'Care for the Elderly - Annual Appeal 2026',
-  'Elder Helpline - Keep the Line Open',
-  'Mobile Healthcare Units - Care at the Doorstep',
-  'Cataract Surgery Drive'
-];
+/** Campaign names, filled in place from the API. */
+export const FU_CAMPAIGNS: string[] = [];
 
 export const FU_ICONS: Record<string, string> = {
   phone: 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z',
@@ -207,99 +208,98 @@ export function monthWeeks(month: Date): { iso: string; day: number; out: boolea
     }));
 }
 
-/* ---------- sample data (generated around today) ---------- */
-const NAMES = [
-  ['Nilanjana Amit', 'donor'], ['Sameer Ishwar', 'donor'], ['Sahyadri Cement Limited', 'donor'], ['Saroj Naresh', 'lead'],
-  ['Pranab Subrata', 'lead'], ['Arnab Sukumar', 'donor'], ['Sushma Raghunath', 'donor'], ['Bhuvan Prem', 'lead'],
-  ['Moloy Tapan', 'donor'], ['Lalit Pramod', 'lead'], ['Coromandel Logistics Private Limited', 'donor'], ['Prakash Subhash', 'donor'],
-  ['Chandra Mohan', 'lead'], ['Neelima Shankar', 'lead'], ['Ajay Sekar', 'lead'], ['Poonam Ashok', 'lead'],
-  ['Kavya Prabhu', 'lead'], ['Tanuja Mohan', 'lead'], ['Rajib Supriyo', 'donor'], ['Charu Vivek', 'lead'],
-  ['Rahul Devraj', 'donor'], ['Santosh Vinay', 'donor'], ['Jatin Varun', 'lead'], ['Abhijit Tarun', 'donor'],
-  ['Prabha Senthil', 'lead'], ['Gopal Krishnan', 'lead'], ['Geeta Ramesh', 'lead'], ['Dinesh Kailash', 'lead'],
-  ['Sarita Mahesh', 'lead'], ['Ramakant Bhushan', 'donor'], ['Fathima Ismail', 'lead'], ['Ishita Rakesh', 'donor'],
-  ['Arun Selvam', 'donor'], ['Ankita Lalit', 'lead'], ['Vinod Kishore', 'donor'], ['Sudipta Arup', 'lead'],
-  ['Kunal Mahendra', 'donor'], ['Ritika Sunder', 'lead'], ['Kamala Sundar', 'donor'], ['Kakoli Ashim', 'lead'],
-  ['Pushpa Girish', 'donor'], ['Ananya Sourav', 'lead'], ['Usha Govind', 'donor'], ['Varsha Dilip', 'lead'],
-  ['Geetha Raman', 'donor'], ['Pallavi Harsh', 'lead'], ['Yamini Prasad', 'donor'], ['Rajan Mathew', 'donor'],
-  ['Mousumi Debasish', 'lead'], ['Kanta Subhash', 'donor'], ['Irfan Hameed', 'lead'], ['Raghu Madhavan', 'donor'],
-  ['Wasim Akbar', 'lead'], ['Mukul Anup', 'lead'], ['Elizabeth George', 'donor'], ['Shyamal Ranjan', 'lead']
-] as const;
+/* ---------- API mapping ---------- */
+const norm = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const PURPOSES: [string, string][] = [
-  ['Offer the monthly giving option after the donor’s second gift.', 'Explain the monthly plan and share the sign-up link'],
-  ['Talk about renewing the donor’s support for the next financial year.', 'Agree the renewal amount and timing'],
-  ['Present the half-year impact review to the partner’s CSR committee.', 'Send the impact review and book the committee meeting'],
-  ['Keep in touch until the lead is ready to give.', 'Share a short update and ask about timing'],
-  ['Send the consolidated 80G statement before the filing season.', 'Send the statement and confirm receipt'],
-  ['Invite a volunteering donor to help at the Guwahati day-care centre.', 'Share dates and confirm a slot'],
-  ['Share the cataract surgery report the partner asked for.', 'Send the report and answer questions'],
-  ['Follow up on the conversation and answer the lead’s open questions.', 'Answer the questions and suggest a gift'],
-  ['Agree the gift and send the payment link.', 'Send the payment link and confirm the amount'],
-  ['Make first contact with the lead after capture.', 'Introduce the campaign and learn their interest'],
-  ['Welcome a first-time donor and learn how they would like to hear from us.', 'Record their contact preferences']
-];
+function channelKey(v: string | null | undefined): FuChannel {
+  const n = norm(v);
+  if (n.includes('whatsapp')) return 'whatsapp';
+  if (n.includes('sms') || n.includes('text')) return 'sms';
+  if (n.includes('mail') && !n.includes('post')) return 'email';
+  if (n.includes('post') || n.includes('letter')) return 'post';
+  return 'call';
+}
 
-function seed(): { follow: FollowUp[]; people: FuPerson[] } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const owners = ['Imran Iqbal', 'Shalini Balaji', 'Arvind Murali', 'Vivek Sridhar', 'Nisha Karthik', 'Gaurav Deepak'];
-  const chans: FuChannel[] = ['call', 'email', 'whatsapp', 'call', 'email', 'sms', 'call', 'whatsapp', 'post'];
-  const pris: FuPriority[] = ['normal', 'normal', 'high', 'low', 'normal', 'low', 'high', 'urgent', 'normal', 'low'];
-  // due offsets (days from today) - a mix of overdue, today, upcoming and done
-  const offsets = [40, 37, 35, 35, 33, 31, 30, 27, 23, 21, 0, 0, 0, 1, 1, -1, -2, -2, -2, -3, -6, -6, -6, -6, -6, -9, -8, -7, -7, -6,
-    -6, -5, -4, -4, -3, -3, -15, -14, -14, -13, -13, -12, -11, -11, -10, -10, 2, 1, 3, 4, 7, 2, -16, -19, -20, -14];
-  const follow: FollowUp[] = [];
-  const people: FuPerson[] = [];
-  NAMES.forEach(([name, type], i) => {
-    const off = offsets[i % offsets.length];
-    const due = addDays(today, off);
-    due.setHours(9 + ((i * 3) % 11), [0, 15, 30, 45, 3][i % 5]);
-    const done = (i >= 20 && i < 25) || i === 55;
-    const status: FuStatus = done ? (i === 55 ? 'completed' : 'completed')
-      : i === 4 ? 'rescheduled' : i === 17 ? 'escalated' : i === 30 ? 'no-response' : i === 44 ? 'cancelled' : 'pending';
-    const p = PURPOSES[i % PURPOSES.length];
-    const owner = owners[i % owners.length];
-    const code = (type === 'lead' ? 'LED' : 'DON') + '-2026-' + String(1 + i * 3).padStart(6, '0');
-    const created = addDays(due, -(3 + (i % 20)));
-    const email = name.toLowerCase().replace(/[^a-z ]/g, '').split(' ').slice(0, 2).join('.') + '@mail.test';
-    const phone = '+9198' + String(30000000 + i * 104729).slice(0, 8);
-    const campaign = FU_CAMPAIGNS[i % FU_CAMPAIGNS.length];
-    follow.push({
-      id: 'FUP-2026-' + String(682 - i).padStart(6, '0'),
-      name, recordType: type, recordCode: code, purpose: p[0], nextAction: p[1],
-      channel: chans[i % chans.length], dueAt: isoAt(due), createdAt: isoDay(created < today ? created : addDays(today, -1)),
-      owner, priority: pris[i % pris.length], status, campaign, phone, email,
-      blocked: i === 9 || i === 26, escalatedTo: status === 'escalated' ? 'Meera Raghavan' : null,
-      completedAt: done ? isoAt(addDays(due, 0)) : null,
-      history: [
-        { at: isoAt(created), text: 'Follow-up scheduled', by: owner },
-        ...(status === 'rescheduled' ? [{ at: isoAt(addDays(created, 2)), text: 'Rescheduled to a later date', by: owner }] : []),
-        ...(status === 'escalated' ? [{ at: isoAt(addDays(created, 3)), text: 'Escalated to Meera Raghavan', by: owner }] : []),
-        ...(done ? [{ at: isoAt(due), text: 'Marked completed', by: owner }] : [])
-      ]
-    });
-    people.push({
-      code, name, type, stage: type === 'lead' ? ['Contacted', 'New', 'Assigned', 'Qualified'][i % 4] : ['Active', 'Lapsing', 'Active'][i % 3],
-      owner: i % 9 === 4 ? null : owner, email, phone, language: ['bn-IN', 'ta-IN', 'hi-IN', 'en-IN'][i % 4], bestTime: i % 3 === 0 ? 'Evenings after 6 pm' : null,
-      campaign, region: ['NORTH', 'SOUTH', 'NATIONAL', 'EAST'][i % 4] + ' · ' + ['Hindi', 'Tamil', 'English', 'Bengali'][i % 4],
-      consent: { call: i !== 9, email: true, sms: i % 5 !== 0, whatsapp: i % 4 !== 1, post: true },
-      slaDue: i % 3 === 0 ? isoAt(addDays(today, (i % 7) - 5)) : null,
-      source: ['Residents’ association QR', 'Walk-in enquiry', 'Website form', 'Event sign-up'][i % 4]
-    });
-  });
-  return { follow, people };
+function statusKey(v: string | null | undefined): FuStatus {
+  const n = norm(v);
+  if (n.startsWith('partial')) return 'partial';
+  if (n.startsWith('noresponse')) return 'no-response';
+  if (n.startsWith('resched')) return 'rescheduled';
+  if (n.startsWith('escal')) return 'escalated';
+  if (n.startsWith('complet')) return 'completed';
+  if (n.startsWith('cancel')) return 'cancelled';
+  return 'pending';
+}
+
+function priorityKey(v: string | null | undefined): FuPriority {
+  const n = norm(v);
+  return n === 'low' ? 'low' : n === 'high' ? 'high' : n === 'urgent' || n === 'critical' ? 'urgent' : 'normal';
+}
+
+const localIso = (utc: string | null | undefined): string => (utc ? isoAt(new Date(utc)) : '');
+
+function toFollowUp(r: ApiFollowUp): FollowUp {
+  const isLead = !!r.leadId;
+  const open = r.isOpen;
+  return {
+    id: r.followUpReference,
+    uid: r.id,
+    version: r.version,
+    mine: r.isAssignedToMe,
+    recordId: (isLead ? r.leadId : r.donorId) ?? undefined,
+    name: r.recordDisplayName ?? r.donorDisplayName ?? r.leadDisplayName ?? '',
+    recordType: isLead ? 'lead' : 'donor',
+    recordCode: (isLead ? r.leadReference : r.donorReference) ?? '',
+    purpose: r.purpose ?? '',
+    nextAction: r.nextAction ?? '',
+    channel: channelKey(r.permittedChannel),
+    dueAt: localIso(r.dueAtUtc),
+    createdAt: r.createdAtUtc ? isoDay(new Date(r.createdAtUtc)) : '',
+    owner: r.relationshipOwnerName ?? '',
+    priority: priorityKey(r.priority),
+    status: statusKey(r.queueStatus || r.status),
+    campaign: r.campaignName ?? '',
+    phone: r.contactPhone ?? '',
+    email: r.contactEmail ?? '',
+    blocked: open && !!r.consentWarning?.hasWarning &&
+      (r.consentWarning.prohibitedChannels ?? []).some((c) => channelKey(c) === channelKey(r.permittedChannel)),
+    escalatedTo: r.escalatedAtUtc ? (r.escalationReason ? 'Manager' : 'Manager') : null,
+    completedAt: r.completedAtUtc ? localIso(r.completedAtUtc) : null,
+    history: [...(r.history ?? [])].reverse().map((h) => ({
+      at: localIso(h.occurredAtUtc),
+      text: h.detail ? `${h.action} - ${h.detail}` : h.action,
+      by: h.actorName ?? ''
+    }))
+  };
 }
 
 @Injectable({ providedIn: 'root' })
 export class FollowUpStore {
-  private readonly data = seed();
-  readonly followUps = signal<FollowUp[]>(this.data.follow);
-  readonly people = signal<FuPerson[]>(this.data.people);
+  private readonly api = inject(DonorApiService);
+  private readonly auth = inject(AuthService);
+
+  readonly followUps = signal<FollowUp[]>([]);
+  readonly people = signal<FuPerson[]>([]);
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  /** The server's lists (channels, execution statuses, reasons, dispositions ...). */
+  readonly options = signal<FollowUpQueueResponse | null>(null);
+
+  /** Same arrays as the exported constants - filled in place. */
   readonly owners = FU_OWNERS;
   readonly managers = FU_MANAGERS;
-  readonly currentUser = CURRENT_USER;
+  readonly campaigns = FU_CAMPAIGNS;
 
-  /** Open work per owner (follow-ups that are not closed). */
+  private readonly ownerIds = new Map<string, string>();
+  private readonly managerIds = new Map<string, string>();
+
+  get currentUser(): string { return this.auth.user()?.name ?? ''; }
+
+  constructor() {
+    this.reload();
+  }
+
+  /** Open work per owner (people each owner looks after). */
   readonly load = computed(() => {
     const map = new Map<string, number>();
     for (const o of FU_OWNERS) map.set(o.name, 0);
@@ -310,45 +310,200 @@ export class FollowUpStore {
   person(code: string | null): FuPerson | null { return this.people().find((p) => p.code === code) ?? null; }
   find(id: string): FollowUp | null { return this.followUps().find((f) => f.id === id) ?? null; }
 
-  private patch(id: string, fn: (f: FollowUp) => FollowUp): void {
-    // TODO: PATCH the follow-up through the API, then refresh.
-    this.followUps.update((list) => list.map((f) => (f.id === id ? fn(f) : f)));
-  }
-  private stamp(text: string, by = CURRENT_USER): FuHistory { return { at: isoAt(new Date()), text, by }; }
+  ownerId(name: string): string { return this.ownerIds.get(name) ?? this.managerIds.get(name) ?? ''; }
 
-  reassign(ids: string[], owner: string, reason: string): void {
-    for (const id of ids) this.patch(id, (f) => ({ ...f, owner, history: [...f.history, this.stamp(`Reassigned to ${owner}${reason ? ' - ' + reason : ''}`)] }));
+  /** The server's value for one of the screen's channel keys (falls back to the key's word). */
+  channelValue(key: FuChannel): string {
+    const list = this.options()?.channelOptions ?? [];
+    return list.find((o) => channelKey(o.value) === key || channelKey(o.label) === key)?.value
+      ?? { call: 'Call', email: 'Email', sms: 'Sms', whatsapp: 'WhatsApp', post: 'Post' }[key];
   }
-  escalate(ids: string[], to: string, reason: string): void {
-    for (const id of ids) this.patch(id, (f) => ({ ...f, status: 'escalated', escalatedTo: to, history: [...f.history, this.stamp(`Escalated to ${to} - ${reason}`)] }));
+
+  /** The server option that matches a word the screen shows (by value or label), else the word itself. */
+  pick(list: DonLookupItem[] | undefined, word: string): string {
+    const n = norm(word);
+    return (list ?? []).find((o) => norm(o.value) === n || norm(o.label) === n)?.value ?? word;
   }
-  complete(id: string): void {
-    this.patch(id, (f) => ({ ...f, status: 'completed', completedAt: isoAt(new Date()), history: [...f.history, this.stamp('Marked completed')] }));
+
+  reload(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.api.getFollowUpQueue({}).subscribe({
+      next: (r) => {
+        this.options.set(r);
+        this.followUps.set((r.followUps ?? []).map(toFollowUp));
+        this.fillLists(r);
+        this.loading.set(false);
+      },
+      error: (e: unknown) => {
+        this.loading.set(false);
+        this.error.set(e instanceof Error ? e.message : 'The follow-ups could not be loaded.');
+      }
+    });
+    this.loadPeople();
   }
-  /** Records what happened on a follow-up and closes it (completed / partial / no response). */
-  execute(id: string, r: FuExecution): void {
-    // TODO: POST the execution report to the API, then refresh.
-    const label = r.status === 'completed' ? 'Completed' : r.status === 'partial' ? 'Partially completed' : 'No response';
-    this.patch(id, (f) => ({
-      ...f,
-      status: r.status,
-      completedAt: r.executedAt,
-      history: [...f.history, this.stamp(`${label} by ${r.method} - ${r.outcome}${r.files.length ? ` · ${r.files.length} file(s)` : ''}`)]
+
+  private fillLists(r: FollowUpQueueResponse): void {
+    FU_OWNERS.length = 0;
+    FU_MANAGERS.length = 0;
+    this.ownerIds.clear();
+    this.managerIds.clear();
+    for (const o of r.ownerOptions ?? []) {
+      FU_OWNERS.push({ name: o.label, team: o.description ?? '' });
+      FU_MANAGERS.push(o.label);
+      this.ownerIds.set(o.label, o.value);
+      this.managerIds.set(o.label, o.value);
+    }
+    FU_CAMPAIGNS.length = 0;
+    for (const c of r.campaignOptions ?? []) FU_CAMPAIGNS.push(c.label);
+  }
+
+  private loadPeople(): void {
+    const donors$ = fetchPages((page, size) => this.api.searchDonors({ page, pageSize: size }), 100, 1000).pipe(
+      map(({ items }) => items.map((d): FuPerson => ({
+        id: d.id, code: d.displayCode, name: d.displayName, type: 'donor', stage: d.status,
+        owner: d.relationshipOwnerName, email: d.emailAddress ?? '', phone: d.mobileNumber ?? '', language: '',
+        bestTime: null, campaign: d.campaignName ?? '', region: '', consent: {},
+        slaDue: d.nextFollowUpDueUtc ? localIso(d.nextFollowUpDueUtc) : null, source: ''
+      }))),
+      catchError(() => of([] as FuPerson[]))
+    );
+    const leads$ = fetchPages(
+      (page, size) => this.api.getLeadWorkQueue({ page, pageSize: size }).pipe(map((r) => r.leads)), 100, 1000
+    ).pipe(
+      map(({ items }) => items.map((l): FuPerson => ({
+        id: l.id, code: l.leadReference, name: l.name, type: 'lead', stage: l.status,
+        owner: l.ownerName, email: l.emailAddress ?? '', phone: l.mobileNumber ?? '', language: l.preferredLanguage ?? '',
+        bestTime: null, campaign: l.campaignName ?? '', region: '', consent: {},
+        slaDue: l.nextActionDueUtc ? localIso(l.nextActionDueUtc) : null, source: l.source ?? ''
+      }))),
+      catchError(() => of([] as FuPerson[]))
+    );
+    forkJoin([leads$, donors$]).subscribe(([leads, donors]) => this.people.set([...leads, ...donors]));
+  }
+
+  private replace(updated: ApiFollowUp): void {
+    const next = toFollowUp(updated);
+    this.followUps.update((list) => list.map((f) => (f.uid === next.uid ? next : f)));
+  }
+
+  private byRef(id: string): FollowUp {
+    const f = this.find(id);
+    if (!f?.uid) throw new Error('That follow-up is no longer in the list. Refresh and try again.');
+    return f;
+  }
+
+  /** Reassigns each follow-up; the list is refreshed from what the server returns. */
+  reassign(ids: string[], owner: string, reason: string): Observable<unknown> {
+    const userId = this.ownerId(owner);
+    return forkJoin(ids.map((id) => {
+      const f = this.byRef(id);
+      return this.api.assignFollowUp(f.uid!, {
+        relationshipOwnerUserId: userId, relationshipOwnerName: owner,
+        reason: reason.length >= 10 ? reason : (reason + ' - reassigned from the follow-up queue').trim(),
+        expectedVersion: f.version
+      }).pipe(tap((u) => this.replace(u)));
     }));
   }
-  assignPerson(codes: string[], owner: string): void {
-    // TODO: POST the assignment.
-    this.people.update((list) => list.map((p) => (codes.includes(p.code) ? { ...p, owner } : p)));
+
+  escalate(ids: string[], to: string, reason: string): Observable<unknown> {
+    const userId = this.ownerId(to);
+    return forkJoin(ids.map((id) => {
+      const f = this.byRef(id);
+      return this.api.escalateFollowUp(f.uid!, {
+        escalateToUserId: userId, escalateToName: to,
+        reason: reason.length >= 10 ? reason : (reason + ' - escalated from the follow-up queue').trim(),
+        expectedVersion: f.version
+      }).pipe(tap((u) => this.replace(u)));
+    }));
   }
 
-  add(f: Omit<FollowUp, 'id' | 'history' | 'createdAt' | 'escalatedTo' | 'completedAt' | 'blocked'>): FollowUp {
-    // TODO: POST to the API.
-    const next = Math.max(...this.followUps().map((x) => Number(x.id.slice(-6)))) + 1;
-    const item: FollowUp = {
-      ...f, id: 'FUP-2026-' + String(next).padStart(6, '0'), createdAt: isoDay(new Date()), escalatedTo: null, completedAt: null, blocked: false,
-      history: [this.stamp('Follow-up scheduled')]
-    };
-    this.followUps.update((list) => [item, ...list]);
-    return item;
+  /** "Mark done" from the queue: completes with a standard outcome note. */
+  complete(id: string): Observable<unknown> {
+    const f = this.byRef(id);
+    const o = this.options();
+    return this.api.completeFollowUp(f.uid!, {
+      completionOutcome: 'Marked completed from the follow-up queue.',
+      completedAtUtc: new Date().toISOString(),
+      expectedVersion: f.version,
+      executionStatus: this.pick(o?.executionStatusOptions, 'Completed')
+    }).pipe(tap((u) => this.replace(u)));
+  }
+
+  /** Records what happened on a follow-up and closes it (completed / partial / no response). */
+  execute(id: string, r: FuExecution): Observable<unknown> {
+    const f = this.byRef(id);
+    const o = this.options();
+    const statusWord = r.status === 'completed' ? 'Completed' : r.status === 'partial' ? 'Partially completed' : 'No response';
+    const methodWord = { call: 'Call', email: 'Email', sms: 'SMS', whatsapp: 'WhatsApp', meeting: 'Meeting', visit: 'Visit' }[r.method];
+    const qualityWord = r.quality.charAt(0).toUpperCase() + r.quality.slice(1);
+    const engagementWord = r.engagement.charAt(0).toUpperCase() + r.engagement.slice(1);
+    return this.api.completeFollowUp(f.uid!, {
+      completionOutcome: (r.notes + (r.files.length ? '\nAttachments: ' + r.files.join(', ') : '')).slice(0, 2000),
+      completedAtUtc: new Date(r.executedAt).toISOString(),
+      expectedVersion: f.version,
+      outcome: r.outcome,
+      interactionType: this.pick(o?.contactChannelOptions, methodWord),
+      direction: 'Outgoing',
+      notes: r.internalNotes.trim() || null,
+      engagementLevel: engagementWord,
+      quality: qualityWord,
+      attachmentName: r.files.length ? r.files.join(', ').slice(0, 260) : null,
+      executionStatus: this.pick(o?.executionStatusOptions, statusWord),
+      completionReason: this.pick(o?.completionReasonOptions, r.reason),
+      disposition: this.pick(o?.dispositionOptions, r.disposition)
+    }).pipe(tap((u) => this.replace(u)));
+  }
+
+  /** Assigns leads / donors to an owner (the Assignment board's own endpoint does the audited write). */
+  assignPerson(codes: string[], owner: string, reason = 'Assigned from the assignment board.'): Observable<unknown> {
+    const userId = this.ownerId(owner);
+    return forkJoin(codes.map((code) => {
+      const p = this.person(code);
+      if (!p?.id) throw new Error('That record is no longer in the list.');
+      const call = {
+        recordType: p.type === 'donor' ? 'Donor' as const : 'Lead' as const,
+        leadId: p.id, newOwnerUserId: userId, newOwnerName: owner, assignmentReason: reason
+      };
+      return (p.owner ? this.api.reassignFromBoard(call) : this.api.assignFromBoard(call)).pipe(
+        tap(() => this.people.update((list) => list.map((x) => (x.code === code ? { ...x, owner } : x)))));
+    }));
+  }
+
+  /** Schedules a follow-up. Resolves to the created follow-up; rejects with the server's message. */
+  create(f: {
+    person: FuPerson; owner: string; channel: FuChannel; dueAt: string; priority: FuPriority;
+    purpose: string; nextAction: string; acknowledged: boolean;
+  }): Observable<FollowUp> {
+    const personId = f.person.id ?? '';
+    return this.api.scheduleFollowUp({
+      donorId: f.person.type === 'donor' ? personId : null,
+      leadId: f.person.type === 'lead' ? personId : null,
+      relationshipOwnerUserId: this.ownerId(f.owner) || null,
+      relationshipOwnerName: f.owner,
+      purpose: f.purpose,
+      permittedChannel: this.channelValue(f.channel),
+      preferredLanguage: f.person.language || null,
+      nextAction: f.nextAction,
+      dueAtUtc: new Date(f.dueAt).toISOString(),
+      priority: this.pick(this.options()?.priorityOptions, f.priority),
+      consentWarningAcknowledged: f.acknowledged
+    }).pipe(map((created) => {
+      const item = toFollowUp(created);
+      this.followUps.update((list) => [item, ...list]);
+      return item;
+    }));
+  }
+
+  /** Whether each channel is permitted for a person: ok, caution (acknowledge) or blocked. */
+  consentFor(p: FuPerson): Observable<Record<FuChannel, 'ok' | 'caution' | 'blocked'>> {
+    const keys: FuChannel[] = ['call', 'email', 'sms', 'whatsapp', 'post'];
+    return forkJoin(keys.map((k) => this.api.getConsentWarning(
+      p.type === 'donor' ? p.id : undefined, p.type === 'lead' ? p.id : undefined, this.channelValue(k)
+    ).pipe(
+      map((w) => (!w?.hasWarning ? 'ok'
+        : w.level === 'Blocking' || (w.prohibitedChannels ?? []).some((c) => channelKey(c) === k) ? 'blocked' : 'caution') as 'ok' | 'caution' | 'blocked'),
+      catchError(() => of('ok' as const))
+    ))).pipe(map((res) => Object.fromEntries(keys.map((k, i) => [k, res[i]])) as Record<FuChannel, 'ok' | 'caution' | 'blocked'>));
   }
 }

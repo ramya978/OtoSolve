@@ -1,6 +1,7 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 
 type LcMenu = 'hh' | 'mm' | 'cal' | null;
@@ -45,6 +46,7 @@ export class LogCommunication {
   protected readonly minutes = Array.from({ length: 12 }, (_, i) => pad2(i * 5));
 
   private readonly ref = this.route.snapshot.queryParamMap.get('ref');
+  private readonly loadedOnce = this.store.load(this.ref);
   protected readonly lead = computed(() => this.store.lead(this.ref));
   protected readonly history = computed(() => this.store.entriesFor(this.lead().code));
   protected readonly today = new Date();
@@ -251,9 +253,10 @@ export class LogCommunication {
       by: this.lead().owner,
       important: this.important(),
       attachment: this.file()?.name ?? null
+    }).subscribe({
+      next: () => { this.saving.set(false); this.leave(); },
+      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
     });
-    this.saving.set(false);
-    this.leave();
   }
 
   private flash(m: string): void {

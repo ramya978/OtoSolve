@@ -1,9 +1,17 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
-import {
-  IamOption, MENUS, MENU_MODULES, MenuGroup, MenuItem, ORG_NAME, PERMISSIONS, PERM_AREAS, ROLES, initialsOf, slugCode
-} from '../../../Shared/IAM/iam-data';
+import { IamOption, MenuGroup, MenuItem, initialsOf, slugCode } from '../../../Shared/IAM/iam-data';
+import { IamRolesStore } from '../../../Shared/IAM/iam-roles.store';
+import { IamAdminApiService } from '../../../Service/iam-admin-api.service';
+import { NavigationService } from '../../../Shared/services/navigation.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { RoleMenuNodeResponse, TenantMenuItemRequest, TenantMenuNodeResponse } from '../../../Shared/models/iam-contract.model';
+
+interface NodeMeta {
+  id: string; version: number; level: string; parentId: string | null; catalogueName: string; iconBase: string; order: number;
+}
 
 type Scope = 'org' | 'role';
 
@@ -21,9 +29,6 @@ interface MenuDraft {
   icon: string;
 }
 
-/** permission prefix → permission area (for the role-visibility preview) */
-const PREFIX_AREA: Record<string, string> = Object.fromEntries(PERM_AREAS.map((a) => [a.prefix, a.key]));
-
 const clone = (list: MenuGroup[]): MenuGroup[] => list.map((g) => ({ ...g, items: g.items.map((i) => ({ ...i })) }));
 
 /** Menu configuration — Workspace Kit "Planning worksheet": every sidebar menu and item as an editable
@@ -35,21 +40,92 @@ const clone = (list: MenuGroup[]): MenuGroup[] => list.map((g) => ({ ...g, items
   templateUrl: './menu-configuration.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './menu-configuration.css']
 })
-export class MenuConfiguration {
+export class MenuConfiguration implements OnInit {
+  private readonly api = inject(IamAdminApiService);
+  private readonly rolesStore = inject(IamRolesStore);
+  private readonly nav = inject(NavigationService);
+  private readonly toast = inject(ToastService);
+  private readonly meta = new Map<string, NodeMeta>();
+
+  readonly loading = signal(false);
+  readonly loadError = signal('');
+  readonly saving = signal(false);
+  private readonly permissionCodes = signal<{ code: string; name: string }[]>([]);
+  private readonly roleVisible = signal<Set<string> | null>(null);
+
   /** saved baseline (what is published) */
-  private readonly base = signal<MenuGroup[]>(clone(MENUS));
+  private readonly base = signal<MenuGroup[]>([]);
   private get original(): MenuGroup[] {
     return this.base();
   }
-  readonly menus = signal<MenuGroup[]>(clone(MENUS));
-  readonly orgName = ORG_NAME;
+  readonly menus = signal<MenuGroup[]>([]);
+  get orgName(): string { return this.nav.organisationName(); }
+
+  constructor() {
+    // the role picker sets viewRole directly; load that role's visible entries when it changes
+    effect(() => {
+      const code = this.viewRole();
+      const roles = this.rolesStore.roles();
+      if (code && roles.length) this.setViewRole(code);
+    });
+  }
+
+  ngOnInit(): void {
+    if (!this.rolesStore.roles().length) this.rolesStore.load();
+    this.api.getMenuPermissionCodes().subscribe({ next: (l) => this.permissionCodes.set(l), error: () => undefined });
+    this.load();
+  }
+
+  private load(): void {
+    this.loading.set(true);
+    this.loadError.set('');
+    this.api.getMenuConfiguration().subscribe({
+      next: (cfg) => {
+        this.meta.clear();
+        const groups = (cfg.nodes ?? []).slice().sort((a, b) => (a.resolvedOrder ?? 0) - (b.resolvedOrder ?? 0)).map((n) => this.toGroup(n));
+        this.base.set(clone(groups));
+        this.menus.set(clone(groups));
+        this.saved.set(true);
+        if (!groups.some((g) => g.code === this.selected())) this.selected.set(groups[0]?.code ?? '');
+        this.loading.set(false);
+      },
+      error: (e) => {
+        this.loadError.set(apiErrorMessage(e, 'The menu could not be loaded.'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private remember(n: TenantMenuNodeResponse, parentId: string | null): void {
+    this.meta.set(n.code ?? '', {
+      id: n.menuDefinitionId ?? '', version: n.version ?? 0, level: n.level ?? 'menu', parentId,
+      catalogueName: n.catalogueName ?? n.resolvedName ?? '', iconBase: n.resolvedIcon ?? '', order: n.resolvedOrder ?? 0,
+    });
+  }
+
+  private toGroup(n: TenantMenuNodeResponse): MenuGroup {
+    this.remember(n, null);
+    const items: MenuItem[] = [];
+    const walk = (list: TenantMenuNodeResponse[] | null | undefined, parent: string): void => {
+      for (const c of (list ?? []).slice().sort((a, b) => (a.resolvedOrder ?? 0) - (b.resolvedOrder ?? 0))) {
+        this.remember(c, parent);
+        items.push({ code: c.code ?? '', name: c.resolvedName ?? c.catalogueName ?? '', route: c.route ?? '', permission: c.requiredPermissionCode ?? '', inUse: !!c.isEnabled });
+        walk(c.children, c.menuDefinitionId ?? parent);
+      }
+    };
+    walk(n.children, n.menuDefinitionId ?? '');
+    return {
+      code: n.code ?? '', name: n.resolvedName ?? n.catalogueName ?? '', icon: n.resolvedIcon ?? 'grid',
+      permission: n.requiredPermissionCode ?? '', inUse: !!n.isEnabled, module: n.moduleCode ?? '', items,
+    };
+  }
 
   readonly scope = signal<Scope>('org');
-  readonly viewRole = signal('CAMPAIGN_MANAGER');
+  readonly viewRole = signal('');
   readonly query = signal('');
-  readonly selected = signal('DONORS_LEADS');
+  readonly selected = signal('');
   /** expanded menu groups in the worksheet */
-  readonly openGroups = signal<Set<string>>(new Set(['DONORS_LEADS']));
+  readonly openGroups = signal<Set<string>>(new Set());
   readonly saved = signal(true);
   readonly added = signal<string[]>([]);
 
@@ -57,17 +133,22 @@ export class MenuConfiguration {
   readonly draft = signal<MenuDraft>(this.blank(''));
   readonly tried = signal(false);
 
-  readonly roleOptions: IamOption[] = ROLES.map((r) => ({ value: r.code, label: r.name, hint: r.code, initials: initialsOf(r.name) }));
-  readonly moduleOptions: IamOption[] = MENU_MODULES.map((m) => ({ value: m, label: m, icon: 'layers' }));
+  private readonly roleOptionsC = computed<IamOption[]>(() =>
+    this.rolesStore.roles().map((r) => ({ value: r.code, label: r.name, hint: r.code, initials: initialsOf(r.name) })));
+  get roleOptions(): IamOption[] { return this.roleOptionsC(); }
+  private readonly moduleOptionsC = computed<IamOption[]>(() =>
+    Array.from(new Set(this.menus().map((m) => m.module).filter(Boolean))).map((m) => ({ value: m, label: m, icon: 'layers' })));
+  get moduleOptions(): IamOption[] { return this.moduleOptionsC(); }
   readonly iconOptions: IamOption[] = [
     { value: '', label: 'No icon', icon: 'image' },
     ...['grid', 'heart', 'flag', 'coin', 'chat', 'home', 'people', 'database', 'layout', 'wallet', 'box', 'doc', 'calendar', 'shield', 'key', 'star']
       .map((i) => ({ value: i, label: i.charAt(0).toUpperCase() + i.slice(1), icon: i }))
   ];
-  readonly permissionOptions: IamOption[] = [
+  private readonly permissionOptionsC = computed<IamOption[]>(() => [
     { value: '', label: 'No permission — everyone given the item sees it', icon: 'key' },
-    ...PERMISSIONS.map((p) => ({ value: p.code, label: p.code, hint: p.name, icon: 'key' }))
-  ];
+    ...this.permissionCodes().map((p) => ({ value: p.code, label: p.code, hint: p.name, icon: 'key' }))
+  ]);
+  get permissionOptions(): IamOption[] { return this.permissionOptionsC(); }
   readonly menuOptions = computed<IamOption[]>(() =>
     this.menus().map((m) => ({ value: m.code, label: m.name, hint: m.inUse ? `${this.onCount(m)}/${m.items.length} in use` : 'Off', icon: m.icon })));
 
@@ -235,12 +316,25 @@ export class MenuConfiguration {
   /** Can the chosen role open this item? (tenant admin sees all; otherwise the role needs a permission in the item's area) */
   visibleTo(item: MenuItem | MenuGroup): boolean {
     if (this.scope() !== 'role') return true;
-    const role = ROLES.find((r) => r.code === this.viewRole());
-    if (!role) return false;
-    if (role.all || !item.permission) return true;
-    const area = PREFIX_AREA[item.permission.split('.')[0].toLowerCase()];
-    if (!area) return false;
-    return PERMISSIONS.some((p) => p.area === area && role.grants.includes(p.code));
+    const visible = this.roleVisible();
+    return !!visible && visible.has(item.code);
+  }
+
+  /** loads which menu entries the chosen role can open */
+  private setViewRole(code: string): void {
+    const role = this.rolesStore.roles().find((r) => r.code === code);
+    if (!role?.id) { this.roleVisible.set(null); return; }
+    this.api.getRoleMenuMapping(role.id).subscribe({
+      next: (m) => {
+        const out = new Set<string>();
+        const walk = (l: RoleMenuNodeResponse[] | null | undefined): void => {
+          for (const n of l ?? []) { if (n.isVisible && n.isPermitted !== false) out.add(n.code ?? ''); walk(n.children); }
+        };
+        walk(m.nodes);
+        this.roleVisible.set(out);
+      },
+      error: () => this.roleVisible.set(new Set()),
+    });
   }
 
   readonly preview = computed(() =>
@@ -293,8 +387,39 @@ export class MenuConfiguration {
   }
 
   save(): void {
-    this.base.set(clone(this.menus()));
-    this.saved.set(true);
+    if (this.saving()) return;
+    const items: TenantMenuItemRequest[] = [];
+    this.menus().forEach((g, gi) => {
+      const gm = this.meta.get(g.code);
+      if (gm) items.push(this.requestFor(g.code, g.name, g.inUse, g.icon, gi + 1));
+      g.items.forEach((it, ii) => {
+        if (this.meta.get(it.code)) items.push(this.requestFor(it.code, it.name, it.inUse, '', ii + 1));
+      });
+    });
+    this.saving.set(true);
+    this.api.configureMenu({ items }).subscribe({
+      next: (o) => {
+        this.saving.set(false);
+        this.toast.show('Menu updated', o.message ?? 'The navigation has been saved.', 'success');
+        this.nav.load().subscribe({ error: () => undefined });
+        this.load();
+      },
+      error: (e) => {
+        this.saving.set(false);
+        this.toast.show('Not saved', apiErrorMessage(e, 'The menu could not be saved.'), 'error');
+      },
+    });
+  }
+
+  private requestFor(code: string, name: string, enabled: boolean, icon: string, order: number): TenantMenuItemRequest {
+    const m = this.meta.get(code)!;
+    return {
+      menuDefinitionId: m.id,
+      isEnabled: enabled,
+      displayNameOverride: name.trim() && name.trim() !== m.catalogueName ? name.trim() : null,
+      iconOverride: icon && icon !== m.iconBase ? icon : null,
+      displayOrderOverride: order,
+    };
   }
 
   // ---------------------------------------------------------------- drawer
@@ -373,45 +498,37 @@ export class MenuConfiguration {
     const e = this.errors();
     if (e.name || e.code || e.module || e.route) return;
     const d = this.draft();
-    const pos = (d.position ?? 0) - 1;
-
-    if (!d.parent) {
-      // top-level menu
-      this.change((list) => {
-        if (d.editing) {
-          const out = list.map((g) => (g.code === d.editing ? { ...g, name: d.name.trim(), module: d.module, permission: d.permission, icon: d.icon || g.icon } : g));
-          const from = out.findIndex((g) => g.code === d.editing);
-          if (pos >= 0 && pos !== from) out.splice(Math.min(pos, out.length - 1), 0, out.splice(from, 1)[0]);
-          return out;
-        }
-        const g: MenuGroup = { code: d.code, name: d.name.trim(), icon: d.icon || 'grid', permission: d.permission, inUse: true, module: d.module, items: [] };
-        if (pos >= 0) list.splice(pos, 0, g);
-        else list.push(g);
-        return list;
-      });
-      if (!d.editing) {
-        this.added.update((a) => [...a, d.code]);
-        this.selected.set(d.code);
-      }
-    } else {
-      // item inside a menu
-      this.change((list) => list.map((g) => {
-        if (g.code !== d.parent) return g;
-        const items = [...g.items];
-        if (d.editing) {
-          const from = items.findIndex((i) => i.code === d.editing);
-          items[from] = { ...items[from], name: d.name.trim(), route: d.route.trim(), permission: d.permission };
-          if (pos >= 0 && pos !== from) items.splice(Math.min(pos, items.length - 1), 0, items.splice(from, 1)[0]);
-        } else {
-          const item: MenuItem = { code: d.code, name: d.name.trim(), route: d.route.trim(), permission: d.permission, inUse: true };
-          if (pos >= 0) items.splice(pos, 0, item);
-          else items.push(item);
-        }
-        return { ...g, items };
-      }));
-      if (!d.editing) this.added.update((a) => [...a, d.code]);
+    const meta = this.meta.get(d.editing);
+    const order = d.position ?? 0;
+    this.saving.set(true);
+    const done = (msg: string): void => {
+      this.saving.set(false);
+      this.drawer.set(false);
+      this.toast.show(msg, d.name.trim(), 'success');
+      this.nav.load().subscribe({ error: () => undefined });
+      this.load();
+    };
+    const fail = (err: unknown): void => {
+      this.saving.set(false);
+      this.toast.show('Not saved', apiErrorMessage(err, 'That change could not be saved.'), 'error');
+    };
+    if (d.editing && meta) {
+      this.api.updateMenuDefinition(meta.id, {
+        expectedVersion: meta.version, name: d.name.trim(), route: d.route.trim(), icon: d.icon ?? '',
+        requiredPermissionCode: d.permission, displayOrder: order || null,
+      }).subscribe({ next: () => done('Menu item updated'), error: fail });
+      return;
     }
-    this.drawer.set(false);
+    const parent = d.parent ? this.meta.get(d.parent) : undefined;
+    this.api.createMenuDefinition({
+      code: d.code.trim().toUpperCase(), name: d.name.trim(), level: parent ? 'subMenu' : 'menu',
+      moduleCode: d.module, parentMenuId: parent?.id ?? null, route: d.route.trim() || null, icon: d.icon || null,
+      requiredPermissionCode: d.permission || null, displayOrder: order || 0,
+      isPlatformOnly: false, isEnabledByDefault: true, isMandatory: false, opensInNewTab: false,
+    }).subscribe({
+      next: () => { this.added.update((a) => [...a, d.code]); this.selected.set(parent ? d.parent : d.code); done('Menu item added'); },
+      error: fail,
+    });
   }
 
   @HostListener('document:keydown.escape')

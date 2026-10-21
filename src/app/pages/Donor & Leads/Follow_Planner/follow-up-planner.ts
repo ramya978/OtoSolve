@@ -1,9 +1,10 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FU_CHANNELS, FU_ICONS, FU_PRIORITIES, FollowUpStore, FuChannel, FuPriority, MONTHS, MONTHS_LONG, WEEKDAYS, addDays,
   fmtTime, initials, isoDay, monthWeeks, pad2, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 
 type PlMenu = 'owner' | 'date' | 'time' | null;
@@ -58,28 +59,37 @@ export class FollowUpPlanner {
   protected readonly saving = signal(false);
   protected readonly toast = signal('');
 
+  /** Per channel: ok, caution (no consent on record - acknowledged when scheduling) or blocked (withdrawn). */
+  private readonly consentMap = signal<Partial<Record<FuChannel, 'ok' | 'caution' | 'blocked'>>>({});
+
   constructor() {
-    const p = this.person();
-    if (p?.owner) this.owner.set(p.owner);
+    // People and owners arrive from the API after the page opens.
+    effect(() => {
+      const p = this.person();
+      if (p?.owner && this.owner() === null) this.owner.set(p.owner);
+    });
+    effect(() => {
+      const p = this.person();
+      this.consentMap.set({});
+      if (!p?.id) return;
+      this.store.consentFor(p).subscribe((m) => this.consentMap.set(m));
+    });
   }
 
   /* ---------- derived ---------- */
-  protected readonly ownerInfo = computed(() => this.owners.find((o) => o.name === this.owner()) ?? null);
+  protected readonly ownerInfo = computed(() => (this.store.options(), this.owners).find((o) => o.name === this.owner()) ?? null);
   protected readonly maxLoad = computed(() => Math.max(1, ...this.owners.map((o) => this.store.load().get(o.name) ?? 0)));
 
   protected readonly consentOk = computed(() => {
-    const p = this.person();
     const c = this.channel();
-    return !p || !c || p.consent[c] !== false;
+    return !c || this.consentMap()[c] !== 'blocked';
   });
-  protected readonly blockedChannels = computed(() => {
-    const p = this.person();
-    return p ? this.channels.filter((c) => p.consent[c.key] === false).map((c) => c.label) : [];
-  });
+  protected readonly blockedChannels = computed(() =>
+    this.channels.filter((c) => (this.consentMap()[c.key] ?? 'ok') !== 'ok').map((c) => c.label));
 
   protected readonly consentCount = computed(() => {
     const p = this.person();
-    return p ? this.channels.filter((c) => p.consent[c.key] !== false).length : 0;
+    return p ? this.channels.filter((c) => (this.consentMap()[c.key] ?? 'ok') === 'ok').length : 0;
   });
 
   /** Side-card checklist: what is filled in so far. */
@@ -130,7 +140,7 @@ export class FollowUpPlanner {
   ini(n: string): string { return initials(n); }
   load(name: string): number { return this.store.load().get(name) ?? 0; }
   timeLabel(t: string | null): string { return t ? fmtTime(`2000-01-01T${t}`) : 'Select a time'; }
-  hasConsent(k: FuChannel): boolean { const p = this.person(); return !p || p.consent[k] !== false; }
+  hasConsent(k: FuChannel): boolean { return (this.consentMap()[k] ?? 'ok') === 'ok'; }
   priTone(k: FuPriority): string { return this.priorities.find((p) => p.key === k)!.tone; }
   priLabel(k: FuPriority): string { return this.priorities.find((p) => p.key === k)!.label; }
   chLabel(k: FuChannel | null): string { return k ? this.channels.find((c) => c.key === k)!.label : ''; }
@@ -160,24 +170,25 @@ export class FollowUpPlanner {
     const p = this.person();
     if (!p || this.missing().length || this.saving()) return;
     this.saving.set(true);
-    // TODO: replace with the API call; the store mirrors it locally for now.
-    this.store.add({
-      name: p.name,
-      recordType: p.type,
-      recordCode: p.code,
-      purpose: this.purpose().trim(),
-      nextAction: this.outcome().trim() || this.purpose().trim(),
+    const caution = this.consentMap()[this.channel()!] === 'caution';
+    this.store.create({
+      person: p,
+      owner: this.owner()!,
       channel: this.channel()!,
       dueAt: `${this.date()}T${this.time()}`,
-      owner: this.owner()!,
       priority: this.priority(),
-      status: 'pending',
-      campaign: p.campaign,
-      phone: p.phone,
-      email: p.email
+      purpose: this.purpose().trim(),
+      nextAction: this.outcome().trim() || this.purpose().trim(),
+      acknowledged: caution
+    }).subscribe({
+      next: () => {
+        this.toast.set(caution
+          ? `Follow-up scheduled for ${p.name} - no consent is on record for this channel, confirm permission before contact`
+          : `Follow-up scheduled for ${p.name}`);
+        setTimeout(() => this.router.navigate([this.queuePath]), caution ? 1500 : 700);
+      },
+      error: (e: unknown) => { this.saving.set(false); this.toast.set(apiErrorMessage(e)); }
     });
-    this.toast.set(`Follow-up scheduled for ${p.name}`);
-    setTimeout(() => this.router.navigate([this.queuePath]), 700);
   }
 
   discard(): void { this.router.navigate([this.queuePath]); }
