@@ -1,0 +1,119 @@
+<!-- =====================================================================================
+     PLATFORM — Workspace Kit
+     heading · summary strip card · one card: tabs (Overview · Organisations · Onboarding) + panel
+     ===================================================================================== -->
+<div class="pl-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Administration / Platform</span>
+      <h1>{{ platform.name }}</h1>
+      <p>{{ platform.reference }} · {{ platform.rootDomain }} · Platform record</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn i-btn--primary" (click)="seeAll()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>See all organisations</button>
+    </div>
+  </header>
+
+  <section class="i-card pl-sumcard" aria-label="Platform summary">
+    <div class="i-sum pl-sum">
+      <div><span>Organisations</span><strong>{{ total() }}</strong><small>{{ limitText }}</small></div>
+      <div><span>Active</span><strong class="pl-ok">{{ count('active') }}</strong><small>Currently active</small></div>
+      <div><span>Awaiting review</span><strong class="pl-warn">{{ count('review') }}</strong><small>Under review</small></div>
+      <div><span>Onboarding</span><strong class="pl-info">{{ count('onboarding') }}</strong><small>Still onboarding</small></div>
+      <div><span>Suspended</span><strong class="pl-bad">{{ count('suspended') }}</strong><small>Temporarily suspended</small></div>
+    </div>
+  </section>
+
+  <section class="i-card pl-main" aria-label="Platform details">
+    <nav class="pl-tabs" role="tablist" aria-label="Platform sections">
+      @for (t of tabs; track t.key) {
+        <button type="button" role="tab" class="pl-tab" [class.is-on]="tab() === t.key" [attr.aria-selected]="tab() === t.key"
+                (click)="select(t.key)">
+          {{ t.label }}
+          @if (tabCount(t.key) !== null) { <span class="pl-tab-n">{{ tabCount(t.key) }}</span> }
+        </button>
+      }
+    </nav>
+
+    <!-- ============ OVERVIEW ============ -->
+    @if (tab() === 'overview') {
+      <div class="pl-grid">
+        <section class="pl-sec">
+          <h3 class="pl-h3">Platform record</h3>
+          <dl class="i-kv">
+            <div><dt>Reference</dt><dd>{{ platform.reference }}</dd></div>
+            <div><dt>Registered legal name</dt><dd>{{ platform.legalName }}</dd></div>
+            <div><dt>Status</dt><dd><span class="i-st i-st--success">{{ platform.status }}</span></dd></div>
+          </dl>
+        </section>
+
+        <section class="pl-sec">
+          <h3 class="pl-h3">Contact &amp; defaults</h3>
+          <dl class="i-kv">
+            <div class="is-wide"><dt>Contact</dt><dd>{{ platform.contact }}</dd></div>
+            <div class="is-wide"><dt>Support</dt><dd>{{ platform.support }}</dd></div>
+            <div class="is-wide"><dt>Defaults</dt><dd>{{ platform.defaults }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="pl-sec">
+          <h3 class="pl-h3">Root domain</h3>
+          <p class="pl-domain">{{ platform.rootDomain }}</p>
+          <p class="pl-note">Every organisation sits beneath this, so it cannot be changed here.</p>
+        </section>
+
+        <section class="pl-sec">
+          <h3 class="pl-h3">About</h3>
+          <p class="pl-about">{{ platform.about }}</p>
+        </section>
+      </div>
+    }
+
+    <!-- ============ ORGANISATIONS ============ -->
+    @if (tab() === 'organisations') {
+      <div class="pl-pad">
+        
+
+
+        <div class="pl-stages">
+          @for (s of stages; track s.key) {
+            <article class="pl-stage" [class.is-zero]="!s.count">
+              <div class="pl-stage-top">
+                <i [class]="'pl-dot pl-tone--' + s.tone"></i>
+                <span>{{ s.label }}</span>
+                <em>{{ share(s) }}%</em>
+              </div>
+              <strong [class]="'pl-stage-n pl-cnt--' + s.tone">{{ s.count }}</strong>
+              <div class="pl-mini" aria-hidden="true"><span [class]="'pl-tone--' + s.tone" [style.width.%]="share(s)"></span></div>
+            </article>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- ============ ONBOARDING ============ -->
+    @if (tab() === 'onboarding') {
+      <div class="pl-pad">
+        <h3 class="pl-h3">Where they are in onboarding <span class="pl-sub">Organisations by stage</span></h3>
+        <div class="pl-tablewrap">
+          <table class="pl-table">
+            <thead><tr><th>Stage</th><th>Share</th><th class="is-r">Organisations</th></tr></thead>
+            <tbody>
+              @for (s of stages; track s.key) {
+                <tr>
+                  <td><strong>{{ s.label }}</strong></td>
+                  <td>
+                    <span class="pl-track" aria-hidden="true"><span [class]="'pl-tone--' + s.tone" [style.width.%]="share(s)"></span></span>
+                    <span class="pl-pct">{{ share(s) }}%</span>
+                  </td>
+                  <td class="is-r"><span [class]="'pl-cnt pl-cnt--' + s.tone">{{ s.count }}</span></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+  </section>
+</div>

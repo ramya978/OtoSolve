@@ -1,0 +1,93 @@
+<!-- ============================== page intro ============================== -->
+<div class="st-intro">
+  <div>
+    <p class="st-eyebrow">Administration / Organisation</p>
+    <h1 class="st-title">Security settings</h1>
+  </div>
+
+</div>
+
+
+
+<!-- ============================== two-step verification ============================== -->
+<section class="og-card st-card" aria-labelledby="st-h1">
+  <div class="st-card-head">
+    <span class="st-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('shield')" /></svg></span>
+    <div>
+      <h3 id="st-h1">Two-step verification</h3>
+      <p>Whether a second factor is up to each person or required for all.</p>
+    </div>
+  </div>
+
+  <div class="st-body">
+    <div class="st-opts" role="radiogroup" aria-label="Two-step verification">
+      <button type="button" role="radio" class="st-opt" [class.is-on]="values().twoStep === 'optional'"
+              [attr.aria-checked]="values().twoStep === 'optional'" (click)="setTwoStep('optional')">
+        <svg class="st-optic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>
+        <span class="st-opttext"><b>Optional</b><small>People may add a second factor themselves.</small></span>
+        <i class="st-radio" aria-hidden="true"></i>
+      </button>
+      <button type="button" role="radio" class="st-opt" [class.is-on]="values().twoStep === 'required'"
+              [attr.aria-checked]="values().twoStep === 'required'" (click)="setTwoStep('required')">
+        <svg class="st-optic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>
+        <span class="st-opttext">
+          <b>Required <em>Recommended</em></b>
+          <small>Everyone must enrol a second factor before they can work.</small>
+        </span>
+        <i class="st-radio" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== numeric groups, side by side ============================== -->
+<div class="st-pair">
+  @for (g of groups; track g.title) {
+    <section class="og-card st-card" [attr.aria-label]="g.title">
+      <div class="st-card-head">
+        <span class="st-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(g.items[0].icon)" /></svg></span>
+        <div>
+          <h3>{{ g.title }}</h3>
+          <p>{{ g.desc }}</p>
+        </div>
+      </div>
+
+      <div class="st-body st-list">
+        @for (s of g.items; track s.key) {
+          <div class="st-item">
+            <svg class="st-optic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg>
+            <div class="st-itext">
+              <label [for]="'st-' + s.key">{{ s.label }} <i>*</i></label>
+              <small>{{ s.hint }}</small>
+            </div>
+            <div class="st-step">
+              <button type="button" [attr.aria-label]="'Decrease ' + s.label" [disabled]="values()[s.key] <= s.min" (click)="bump(s, -1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('minus')" /></svg>
+              </button>
+              <span class="st-val">
+                <input [id]="'st-' + s.key" type="number" [min]="s.min" [max]="s.max" [value]="values()[s.key]"
+                       (change)="setValue(s, $any($event.target).value)" />
+                <em>{{ s.unit }}</em>
+              </span>
+              <button type="button" [attr.aria-label]="'Increase ' + s.label" [disabled]="values()[s.key] >= s.max" (click)="bump(s, 1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>
+
+<!-- ============================== footer bar ============================== -->
+<div class="st-bar">
+  <p><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>Fields marked <i>*</i> are required.</p>
+  <div class="st-bar-acts">
+    @if (saved()) { <span class="st-saved" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Saved</span> }
+    <button type="button" class="pf-hbtn btn-primary" (click)="save()">
+      <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>
+      Save
+    </button>
+  </div>
+</div>

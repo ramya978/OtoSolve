@@ -1,5 +1,5 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from '../../../Shared/Auth/auth.service';
 
 interface FieldErrors {
@@ -22,7 +22,6 @@ interface Toast {
 export class Login implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
-  private readonly route = inject(ActivatedRoute);
 
   protected readonly identifier = signal('');
   protected readonly password = signal('');
@@ -35,15 +34,8 @@ export class Login implements OnDestroy {
   protected readonly toast = signal<Toast | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Where to go after signing in — set by the auth guard when a page was blocked. */
-  private readonly returnUrl: string | null = this.safeReturnUrl();
 
-  constructor() {
-    // already signed in? straight to the workspace (the guest guard also covers this)
-    if (this.auth.isAuthenticated()) {
-      void this.router.navigateByUrl('/app/dashboard', { replaceUrl: true });
-    }
-  }
+  constructor() {}
 
   protected readonly canSubmit = computed(
     () => this.identifier().trim().length > 0 && this.password().length > 0 && !this.busy()
@@ -67,7 +59,7 @@ export class Login implements OnDestroy {
     try {
       const user = await this.auth.signIn(identifier, this.password(), this.remember());
       this.showToast(`Welcome back, ${user.name}.`, 'ok');
-      void this.router.navigateByUrl(this.returnUrl ?? '/app/dashboard', { replaceUrl: true });
+      void this.router.navigateByUrl('/app/dashboard', { replaceUrl: true });
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign-in failed. Please try again.';
       this.showToast(message, 'danger');
@@ -95,9 +87,4 @@ export class Login implements OnDestroy {
     clearTimeout(this.toastTimer);
   }
 
-  /** Only same-app absolute URLs are accepted as a return target (no external/open redirects). */
-  private safeReturnUrl(): string | null {
-    const raw = this.route.snapshot.queryParamMap.get('returnUrl');
-    return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
-  }
 }

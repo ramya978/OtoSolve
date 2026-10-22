@@ -1,0 +1,228 @@
+<!-- =====================================================================================
+     ORGANISATION — Workspace Kit
+     heading · summary strip card · one card: tabs (Profile · Documents · Review & submit ·
+     Web addresses · History) + panel
+     ===================================================================================== -->
+<div class="og-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Administration / Organisation</span>
+      <h1>
+        {{ org.name }}
+        @if (org.verified) {
+          <span class="og-verified" title="Verified organisation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('verified')" /></svg>
+          </span>
+        }
+      </h1>
+      <p>{{ org.code }} · {{ org.host }} · {{ org.type }} · Since {{ org.since }}</p>
+    </div>
+    @if (tab() === 'profile') {
+      <div class="i-head-actions">
+        <button type="button" class="i-btn i-btn--primary" (click)="edit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+      </div>
+    }
+  </header>
+
+  <section class="i-card og-sumcard" aria-label="Organisation summary">
+    <div class="i-sum og-sum">
+      <div><span>People</span><strong>{{ org.people }} / {{ org.seats }}</strong><small>{{ org.seats - org.people }} seats free</small></div>
+      <div><span>Administrator</span><strong class="is-text">{{ org.administrator }}</strong><small>Primary contact</small></div>
+      <div><span>Status</span><strong class="is-text" [class.og-ok]="statusTone() === 'success'">{{ statusLabel() }}</strong><small>Registration</small></div>
+      <div class="og-sum-web"><span>Web address</span><strong class="is-text">{{ org.host }}</strong><small>{{ verifiedAddresses }} verified</small></div>
+      <div class="og-sum-upd"><span>Last updated</span><strong class="is-text">{{ org.lastUpdated }}</strong><small>Profile record</small></div>
+    </div>
+  </section>
+
+  <section class="i-card og-main" aria-label="Organisation details">
+    <nav class="og-tabs" role="tablist" aria-label="Organisation sections">
+      @for (t of tabs; track t.key) {
+        <button type="button" role="tab" class="og-tab" [class.is-on]="tab() === t.key" [attr.aria-selected]="tab() === t.key"
+                (click)="select(t.key)">
+          {{ t.label }}
+          @if (tabCount(t.key) !== null) { <span class="og-tab-n">{{ tabCount(t.key) }}</span> }
+        </button>
+      }
+    </nav>
+
+    <!-- ============ PROFILE ============ -->
+    @if (tab() === 'profile') {
+      <div class="og-grid">
+        <section class="og-sec">
+          <h3 class="og-h3">Registration</h3>
+          <dl class="i-kv">
+            @for (r of registration; track r.label) {
+              <div><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
+            }
+          </dl>
+        </section>
+
+        <section class="og-sec">
+          <h3 class="og-h3">Contact &amp; region</h3>
+          <dl class="i-kv">
+            @for (r of contact; track r.label) {
+              <div [class.is-wide]="r.label === 'E-mail' || r.label === 'Website'"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
+            }
+          </dl>
+        </section>
+
+        <section class="og-sec">
+          <h3 class="og-h3">Registered address</h3>
+          <address class="og-addr">
+            <strong>{{ address.line1 }}</strong>
+            <span>{{ address.line2 }}</span>
+            <span>{{ address.city }} {{ address.postcode }}</span>
+            <small>{{ address.country }}</small>
+          </address>
+        </section>
+
+        <section class="og-sec">
+          <h3 class="og-h3">About</h3>
+          <p class="og-about">{{ about }}</p>
+        </section>
+      </div>
+    }
+
+    <!-- ============ DOCUMENTS ============ -->
+    @if (tab() === 'documents') {
+      <div class="og-pad">
+        <h3 class="og-h3">Document submissions</h3>
+
+        @if (documents.length) {
+          <div class="og-tablewrap">
+            <table class="og-table">
+              <thead><tr><th>Document</th><th>Kind</th><th>Uploaded</th><th>Size</th></tr></thead>
+              <tbody>
+                @for (d of documents; track d.name) {
+                  <tr><td><strong>{{ d.name }}</strong></td><td>{{ d.kind }}</td><td>{{ d.uploaded }}</td><td>{{ d.size }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="i-empty og-empty">
+            <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
+            <strong>No documents were submitted</strong>
+            <p>This organisation's registration has already been decided, so its document set is closed.</p>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- ============ REVIEW & SUBMIT ============ -->
+    @if (tab() === 'review') {
+      <div class="og-split">
+        <!-- left: checklist -->
+        <section class="og-sec">
+          <h3 class="og-h3">Checklist <span class="og-count">{{ readyDone() }} of {{ readyTotal() }} ready</span></h3>
+          <ul class="og-checks">
+            @for (c of checks(); track c.no) {
+              <li class="og-check">
+                <span [class]="'og-check-ico og-check-ico--' + c.state">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.state === 'ok' ? 'check' : 'docAlert')" /></svg>
+                </span>
+                <span class="og-check-text">
+                  <strong>{{ c.title }}</strong>
+                  <small [class.og-warn]="c.state === 'warn'">{{ c.detail }}</small>
+                </span>
+                @if (c.state === 'ok') {
+                  <span class="i-st i-st--success">Ready</span>
+                } @else {
+                  <button type="button" class="i-btn" (click)="select(c.tab!)">{{ c.action }}</button>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+
+        <!-- right: readiness + submit -->
+        <section class="og-sec og-sec--form">
+          <h3 class="og-h3">Readiness</h3>
+          <div class="og-ring-row">
+            <div class="og-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="readyPct()">
+              <svg viewBox="0 0 80 80" aria-hidden="true">
+                <circle class="og-ring-bg" cx="40" cy="40" r="34" pathLength="100" />
+                <circle class="og-ring-fg" cx="40" cy="40" r="34" pathLength="100" [attr.stroke-dasharray]="readyPct() + ' 100'" />
+              </svg>
+              <strong>{{ readyPct() }}<small>%</small></strong>
+            </div>
+            <div class="og-ring-text">
+              <strong>{{ readyDone() }} of {{ readyTotal() }} items ready</strong>
+              <small>to send for approval</small>
+              <span [class]="'i-st i-st--' + statusTone()">{{ statusLabel() }}</span>
+            </div>
+          </div>
+          <div class="og-divider"></div>
+
+          @if (sent()) {
+            <div class="og-note is-ok">
+              <strong>Sent for approval</strong>
+              <p>A reviewer will look at it shortly. You will see the decision in History.</p>
+            </div>
+          } @else if (canSend()) {
+            <label class="i-field">
+              <span class="i-field-label">Note for the reviewer <span class="og-opt">optional</span>
+                <span class="og-count">{{ note().length }} / {{ maxNote }}</span></span>
+              <textarea class="i-textarea" placeholder="Anything the reviewer should know." [value]="note()"
+                        [attr.maxlength]="maxNote" (input)="setNote($any($event.target).value)"></textarea>
+            </label>
+            <div class="og-actions">
+              <button type="button" class="i-btn i-btn--primary" (click)="send()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>Send for approval</button>
+            </div>
+          } @else {
+            <div class="og-note">
+              <strong>Nothing to send right now</strong>
+              <p>This organisation is {{ statusLabel() }}, so no registration is waiting for review. The form opens again if it is rejected or returned to draft.</p>
+            </div>
+          }
+        </section>
+      </div>
+    }
+
+    <!-- ============ WEB ADDRESSES ============ -->
+    @if (tab() === 'web') {
+      <div class="og-pad">
+        <h3 class="og-h3">Web addresses</h3>
+        <div class="og-tablewrap">
+          <table class="og-table">
+            <thead><tr><th>Address</th><th>Kind</th><th>Primary</th><th>Verification</th></tr></thead>
+            <tbody>
+              @for (w of webAddresses; track w.address) {
+                <tr>
+                  <td><strong>{{ w.address }}</strong></td>
+                  <td>{{ w.kind }}</td>
+                  <td>@if (w.primary) { <span class="i-chip">Primary</span> } @else { — }</td>
+                  <td>
+                    @if (w.verifiedOn) { <span class="i-st i-st--success">Verified {{ w.verifiedOn }}</span> }
+                    @else { <span class="i-st i-st--warning">Not verified</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
+    <!-- ============ HISTORY ============ -->
+    @if (tab() === 'history') {
+      <div class="og-pad">
+        <h3 class="og-h3">History</h3>
+        <ol class="i-journey og-history">
+          @for (h of history; track $index) {
+            <li class="is-done">
+              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(h.tone === 'success' ? 'check' : h.tone === 'warning' ? 'clock' : 'plus')" /></svg></span>
+              <span class="i-journey-text">
+                <strong>{{ h.label }}</strong>
+                <small>{{ h.day }} {{ h.time }} · {{ h.by }}@if (h.from) { · from {{ h.from }} }</small>
+              </span>
+              <span [class]="'i-st i-st--' + h.tone + ' og-hist-st'">{{ h.label }}</span>
+            </li>
+          }
+        </ol>
+      </div>
+    }
+  </section>
+</div>

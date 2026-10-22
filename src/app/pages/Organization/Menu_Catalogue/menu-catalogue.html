@@ -1,0 +1,280 @@
+<div class="mc-page">
+
+  <!-- PAGE HEADER -->
+  <header class="mc-head">
+    <div>
+      <p class="mc-eyebrow">Administration / Platform</p>
+      <h1>Menu catalogue</h1>
+      <p class="mc-sub">
+        <b>{{ total() }}</b> items <i>·</i> <b>{{ modules().length }}</b> modules <i>·</i> <b>{{ live() }}</b> live
+        @if (total() - live()) { <i>·</i> <b>{{ total() - live() }}</b> retired }
+      </p>
+    </div>
+    <div class="mc-head-acts">
+      <button type="button" role="switch" class="mc-switch" [class.is-on]="showRetired()" [attr.aria-checked]="showRetired()" (click)="toggleRetired()">
+        <span class="mc-switch-track"><span class="mc-switch-knob"></span></span>
+        Show retired
+      </button>
+      <button type="button" class="mc-btn mc-btn--primary" (click)="create()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create
+      </button>
+    </div>
+  </header>
+
+
+
+  <!-- FILTERS -->
+  <div class="mc-tools">
+    <label class="mc-search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+      <input type="search" placeholder="Search by name, code, route or permission" aria-label="Search the menu"
+             [value]="query()" (input)="onSearch($event)" />
+    </label>
+
+    <label class="mc-select">
+      <span>Module</span>
+      <select aria-label="Module" (change)="onModule($event)">
+        <option value="" [selected]="module() === ''">All modules ({{ modules().length }})</option>
+        @for (m of moduleCounts(); track m.code) {
+          <option [value]="m.code" [selected]="module() === m.code">{{ m.code }} ({{ m.count }})</option>
+        }
+      </select>
+    </label>
+
+    @if (hasFilters()) { <button type="button" class="i-link mc-link" (click)="clearFilters()">Clear filters</button> }
+    <p class="mc-shown">Showing <b>{{ shownItems() }}</b> of <b>{{ total() }}</b></p>
+  </div>
+
+  <!-- BOARD: one tile per top-level menu, items as chips -->
+  @if (groups().length) {
+    <section class="mc-board" aria-label="Menus">
+      @for (g of groups(); track g.head.id) {
+        <article class="i-card mc-tile" [class.is-retired]="g.head.retired">
+          <button type="button" class="mc-tile-head" [class.is-on]="selectedId() === g.head.id" (click)="toggle(g.head.id)" [attr.aria-label]="'Details of ' + g.head.label">
+            <span class="mc-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('layers')" /></svg></span>
+            <span class="mc-tile-title">
+              <b>{{ g.head.label }}</b>
+              <small>{{ g.head.module }}@if (g.head.route) { · {{ g.head.route }} }</small>
+            </span>
+            @if (g.head.retired) { <span class="mc-tag">Retired</span> }
+            @else if (!g.head.defaultOn) { <span class="mc-tag mc-tag--off">Off by default</span> }
+            <span class="mc-n">{{ g.live }}</span>
+          </button>
+
+          <div class="mc-chipwrap">
+            @for (r of g.rows; track r.item.id) {
+              <button type="button" class="mc-item" [class.is-sub]="r.depth > 1" [class.is-retired]="r.item.retired"
+                      [class.is-on]="selectedId() === r.item.id" (click)="toggle(r.item.id)">
+                @if (r.depth > 1) { <svg class="mc-subic" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sub')" /></svg> }
+            
+                {{ r.item.label }}
+              </button>
+            } @empty {
+              <p class="mc-none">No items inside. This menu opens its own page.</p>
+            }
+          </div>
+        </article>
+      }
+    </section>
+  } @else {
+    <section class="i-card mc-empty">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+      <strong>No menu items match</strong>
+      <span>Try a different name, module or search term.</span>
+      <button type="button" class="i-link mc-link" (click)="clearFilters()">Clear filters</button>
+    </section>
+  }
+
+  <!-- DETAIL POPUP -->
+  @if (selected(); as s) {
+    <div class="mc-mwrap" (click)="close()">
+      <div class="mc-modal" role="dialog" aria-modal="true" aria-labelledby="mc-m-title" (click)="$event.stopPropagation()">
+
+        <header class="mc-m-head">
+          <h2 id="mc-m-title">Menu item</h2>
+          <button type="button" class="mc-mx" aria-label="Close" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+        </header>
+
+        <div class="mc-m-body">
+          <div class="mc-m-top">
+            <div>
+              <p class="mc-m-eyebrow">{{ selectedLevel() }} · {{ s.code }}@if (selectedParent(); as p) { · in {{ p.label }} }</p>
+              <h3 class="mc-m-name">{{ s.label }}</h3>
+            </div>
+            <span class="mc-badge" [class.is-off]="s.retired">{{ s.retired ? 'Retired' : 'Active' }}</span>
+          </div>
+
+          @if (s.description) { <p class="mc-m-desc">{{ s.description }}</p> }
+
+          <dl class="mc-m-facts">
+            <div><dt>Route</dt><dd>@if (s.route) { <span class="mc-mono">{{ s.route }}</span> } @else { <em>None — a heading</em> }</dd></div>
+            <div><dt>Permission</dt><dd>@if (s.permission) { <span class="mc-mono">{{ s.permission }}</span> } @else { <em>No permission check</em> }</dd></div>
+            <div><dt>Module</dt><dd>{{ s.module }}</dd></div>
+            <div><dt>Position</dt><dd>{{ s.position }}</dd></div>
+            <div><dt>New organisations</dt><dd>{{ s.defaultOn ? 'On by default' : 'Off by default' }}</dd></div>
+            <div><dt>Level</dt><dd>{{ selectedLevel() }}</dd></div>
+            <div><dt>Opens in</dt><dd>{{ s.newTab ? 'A new tab' : 'The current tab' }}</dd></div>
+            <div><dt>Offered to</dt><dd>{{ s.platformOnly ? 'Platform staff only' : 'Organisations' }}</dd></div>
+            <div><dt>Protection</dt><dd>{{ s.required ? 'Required' : 'Can be retired' }}</dd></div>
+          </dl>
+
+          <p class="mc-m-note">
+            This is the product's own menu, shared by every organisation. Editing, retiring or deleting this item changes it for all of them.
+            @if (s.required) { It is marked required, so it cannot be switched off, retired or deleted. }
+          </p>
+        </div>
+
+        <footer class="mc-m-foot">
+          <div class="mc-m-left">
+            @if (s.retired) {
+              <button type="button" class="mc-btn" (click)="setRetired(s.id, false)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('restore')" /></svg>Restore</button>
+            } @else {
+              <button type="button" class="mc-btn mc-btn--warn" [disabled]="s.required" [attr.title]="s.required ? 'Required items cannot be retired' : null" (click)="setRetired(s.id, true)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pause')" /></svg>Retire</button>
+            }
+            <button type="button" class="mc-btn mc-btn--danger" [disabled]="s.required" [attr.title]="s.required ? 'Required items cannot be deleted' : null" (click)="remove(s.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>Delete</button>
+          </div>
+          <div class="mc-m-right">
+            @if (s.level !== 'item') {
+              <button type="button" class="mc-btn" (click)="create(s.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Add inside</button>
+            }
+            <button type="button" class="mc-btn" (click)="edit(s.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+            <button type="button" class="mc-btn mc-btn--primary" (click)="close()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Close</button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- CREATE / EDIT OFFCANVAS -->
+  @if (formMode(); as mode) {
+    @let f = form();
+    @let err = errors();
+    <div class="mc-scrim" (click)="closeForm()"></div>
+    <aside class="mc-oc" role="dialog" aria-modal="true" aria-labelledby="mc-oc-title">
+      <header class="mc-oc-head">
+        <div>
+          <p class="mc-oc-eyebrow">Platform catalogue</p>
+          <h2 id="mc-oc-title">{{ mode === 'create' ? 'Create a menu item' : 'Edit menu item' }}</h2>
+        </div>
+        <button type="button" class="mc-x" aria-label="Close" (click)="closeForm()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+
+      <form class="mc-oc-body" novalidate (submit)="$event.preventDefault(); save()">
+
+        <!-- identity -->
+        <h3 class="mc-sec">Identity</h3>
+        <div class="mc-grid2">
+          <div class="mc-field">
+            <label for="mc-name">Name <i>*</i></label>
+            <input id="mc-name" class="mc-input" [class.bad]="submitted() && err['name']" type="text" maxlength="100"
+                   [value]="f.name" (input)="set('name', $any($event.target).value)" />
+          </div>
+          <div class="mc-field">
+            <label for="mc-code">Code <i>*</i></label>
+            <input id="mc-code" class="mc-input" [class.bad]="submitted() && err['code']" type="text" maxlength="40" placeholder="e.g. FR_DONOR_LIST"
+                   [disabled]="mode === 'edit'" [value]="f.code" (input)="set('code', $any($event.target).value.toUpperCase())" />
+            @if (submitted() && err['code']) { <small class="mc-fe">{{ err['code'] }}</small> }
+            @else { <small class="mc-fh">Upper case, digits, underscores or hyphens. Permanent once saved.</small> }
+          </div>
+        </div>
+        <div class="mc-field">
+          <label for="mc-desc">Description</label>
+          <input id="mc-desc" class="mc-input" type="text" maxlength="200" [value]="f.description" (input)="set('description', $any($event.target).value)" />
+        </div>
+
+        <!-- placement -->
+        <h3 class="mc-sec">Placement</h3>
+        <div class="mc-grid2 mc-grid2--lr">
+          <div class="mc-field">
+            <label for="mc-level">Level <i>*</i></label>
+            <select id="mc-level" class="mc-input" [class.bad]="submitted() && err['level']" [disabled]="mode === 'edit'" (change)="setLevel($any($event.target).value)">
+              <option value="" [selected]="!f.level">Select Level</option>
+              @for (l of levels; track l.key) { <option [value]="l.key" [selected]="f.level === l.key">{{ l.label }}</option> }
+            </select>
+            <small class="mc-fh">Three levels; a child submenu cannot have children.</small>
+          </div>
+          <div class="mc-field">
+            <label for="mc-parent">Sits under</label>
+            <select id="mc-parent" class="mc-input" [class.bad]="submitted() && err['parentId']" [disabled]="mode === 'edit' || !f.level || f.level === 'menu'"
+                    (change)="set('parentId', $any($event.target).value)">
+              <option value="" [selected]="!f.parentId">Select Parent Menu</option>
+              @for (p of parentOptions(); track p.id) { <option [value]="p.id" [selected]="f.parentId === p.id">{{ p.label }}</option> }
+            </select>
+            @if (submitted() && err['parentId']) { <small class="mc-fe">{{ err['parentId'] }}</small> }
+            @else { <small class="mc-fh">Leave unselected for a top-level menu.</small> }
+          </div>
+          <div class="mc-field">
+            <label for="mc-module">Module <i>*</i></label>
+            <input id="mc-module" class="mc-input" [class.bad]="submitted() && err['module']" type="text" maxlength="12" list="mc-modules"
+                   [value]="f.module" (input)="set('module', $any($event.target).value.toUpperCase())" />
+            <datalist id="mc-modules">@for (m of modules(); track m) { <option [value]="m"></option> }</datalist>
+          </div>
+          <div class="mc-field">
+            <label for="mc-route">Route</label>
+            <input id="mc-route" class="mc-input" [class.bad]="submitted() && err['route']" type="text" placeholder="/app/… — leave empty for a heading"
+                   [value]="f.route" (input)="set('route', $any($event.target).value)" />
+            @if (submitted() && err['route']) { <small class="mc-fe">{{ err['route'] }}</small> }
+            @else { <small class="mc-fh">No route: this is a heading that holds other items.</small> }
+          </div>
+        </div>
+
+        <!-- access & appearance -->
+        <h3 class="mc-sec">Access &amp; appearance</h3>
+        <div class="mc-grid3">
+          <div class="mc-field mc-span2">
+            <label for="mc-perm">Required permission</label>
+            <input id="mc-perm" class="mc-input" type="text" placeholder="Leave empty for no permission check"
+                   [value]="f.permission" (input)="set('permission', $any($event.target).value)" />
+            <small class="mc-fh">Checked against the permission catalogue when you save. Hiding the item is tidiness — the endpoint behind it enforces this regardless.</small>
+          </div>
+          <div class="mc-field">
+            <label for="mc-icon">Icon</label>
+            <div class="mc-addon">
+              <span class="mc-ring" aria-hidden="true"></span>
+              <input id="mc-icon" class="mc-input" type="text" placeholder="ri-user-line" [value]="f.icon" (input)="set('icon', $any($event.target).value)" />
+            </div>
+          </div>
+          <div class="mc-field">
+            <label for="mc-pos">Position</label>
+            <input id="mc-pos" class="mc-input" type="number" min="0" step="10" [value]="f.position" (change)="setPosition($any($event.target).value)" />
+          </div>
+        </div>
+        <div class="mc-field">
+          <label for="mc-badge">Badge key</label>
+          <input id="mc-badge" class="mc-input" type="text" [value]="f.badgeKey" (input)="set('badgeKey', $any($event.target).value)" />
+        </div>
+
+        <!-- behaviour -->
+        <h3 class="mc-sec">Behaviour</h3>
+        <div class="mc-checks">
+          <label class="mc-check" [class.is-on]="f.defaultOn">
+            <input type="checkbox" [checked]="f.defaultOn" (change)="set('defaultOn', $any($event.target).checked)" />
+            <span class="mc-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+            <span><b>On by default</b><small>for new organisations</small></span>
+          </label>
+          <label class="mc-check" [class.is-on]="f.newTab">
+            <input type="checkbox" [checked]="f.newTab" (change)="set('newTab', $any($event.target).checked)" />
+            <span class="mc-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+            <span><b>Opens in a new tab</b><small>instead of the current one</small></span>
+          </label>
+          <label class="mc-check" [class.is-on]="f.platformOnly">
+            <input type="checkbox" [checked]="f.platformOnly" (change)="set('platformOnly', $any($event.target).checked)" />
+            <span class="mc-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+            <span><b>Platform staff only</b><small>never offered to an organisation</small></span>
+          </label>
+          <label class="mc-check" [class.is-on]="f.required">
+            <input type="checkbox" [checked]="f.required" (change)="set('required', $any($event.target).checked)" />
+            <span class="mc-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+            <span><b>Required</b><small>cannot be switched off, retired or deleted</small></span>
+          </label>
+        </div>
+      </form>
+
+      <footer class="mc-oc-foot">
+        <p class="mc-oc-err" role="status"></p>
+        <button type="button" class="mc-btn" (click)="closeForm()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+        <button type="button" class="mc-btn mc-btn--primary" [disabled]="!canSave()" (click)="save()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(mode === 'create' ? 'plus' : 'check')" /></svg>{{ mode === 'create' ? 'Create' : 'Save changes' }}</button>
+      </footer>
+    </aside>
+  }
+</div>
