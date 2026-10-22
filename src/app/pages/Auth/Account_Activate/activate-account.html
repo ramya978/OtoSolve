@@ -1,0 +1,286 @@
+<!--
+  Accept invitation and activate account — one centred card, same look as the sign-in page.
+  Top: logo + close. Then a horizontal 4-step progress. Then the current step.
+  Every handler and signal below is the original activate-account.ts; only the markup changed.
+-->
+<div class="au-page">
+
+  @if (toastMsg(); as t) {
+    <div class="au-toast" role="status" aria-live="polite">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+      <div><b>{{ t.title }}</b><span>{{ t.text }}</span></div>
+      <button type="button" aria-label="Dismiss" (click)="dismissToast()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+    </div>
+  }
+
+  <div class="au-card">
+
+    <header class="au-top">
+      <a routerLink="/auth/sign-in" class="au-brand"><span class="au-mark" aria-hidden="true">O</span><b>{{ brand }}</b></a>
+ 
+    </header>
+
+    @if (!loading() && invitation()?.isValid) {
+      <ol class="au-steps" aria-label="Progress">
+        @for (label of stepLabels; track label; let i = $index) {
+          <li [class.is-now]="stepNumber() === i + 1" [class.is-done]="stepNumber() > i + 1" [attr.aria-current]="stepNumber() === i + 1 ? 'step' : null">
+            <span class="au-n">@if (stepNumber() > i + 1) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { {{ i + 1 }} }</span>
+            <span class="au-nl">{{ label }}</span>
+          </li>
+        }
+      </ol>
+    }
+
+    <main class="au-body">
+
+        <!-- loading -->
+        @if (loading()) {
+          <div class="au-center">
+            <span class="au-spin au-spin--dark" role="status"></span>
+            <p class="au-lead">Checking your invitation…</p>
+          </div>
+        }
+
+        <!-- invalid / expired -->
+        @else if (!invitation()?.isValid) {
+          <div class="au-center">
+            <span class="au-badge au-badge--warn" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('mailx')" /></svg></span>
+            <h1>This invitation cannot be used</h1>
+            <p class="au-lead">{{ errorMessage() || invitation()?.message }}</p>
+
+            @if (infoMessage()) {
+              <p class="au-alert au-alert--ok" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg><span>{{ infoMessage() }}</span></p>
+            }
+
+            @if (token() && !infoMessage()) {
+              <button type="button" class="au-btn au-btn--primary au-btn--block" [disabled]="submitting()" (click)="requestNewInvitation()">
+                {{ submitting() ? 'Sending…' : 'Send me a new invitation' }}
+              </button>
+            }
+            <button type="button" class="au-link au-mt" (click)="goToSignIn()">Return to sign in</button>
+          </div>
+        }
+
+        <!-- ================= 1 · YOUR DETAILS ================= -->
+        @else if (step() === 'details') {
+          <p class="au-eyebrow">Step 1 of 4 · {{ stepLabels[0] }}</p>
+          <h1>Welcome, {{ invitation()?.displayName }}</h1>
+          <p class="au-lead">{{ invitation()?.message }}</p>
+
+          <dl class="au-facts">
+            <div><dt>Full name</dt><dd>{{ invitation()?.displayName }}</dd></div>
+            <div><dt>Username</dt><dd>{{ invitation()?.username }}</dd></div>
+            <div class="is-wide"><dt>E-mail address</dt><dd>{{ invitation()?.email }}</dd></div>
+            <div><dt>Organisation</dt><dd>{{ invitation()?.tenantName || invitation()?.businessUnitName }}</dd></div>
+            <div><dt>Organisation unit</dt><dd>{{ invitation()?.organisationUnit }}</dd></div>
+            @if (invitation()?.department) { <div><dt>Department</dt><dd>{{ invitation()?.department }}</dd></div> }
+            @if (invitation()?.designation) { <div><dt>Designation</dt><dd>{{ invitation()?.designation }}</dd></div> }
+            <div><dt>Role</dt><dd>{{ invitation()?.invitedRoleSummary }}</dd></div>
+            <div><dt>Two-step verification</dt><dd>{{ mfaMandatory() ? 'Required' : 'Optional' }}</dd></div>
+            <div><dt>Access starts</dt><dd>{{ invitation()?.accessStartsAtUtc | date: 'mediumDate' }}</dd></div>
+            <div><dt>Access ends</dt><dd>{{ invitation()?.accessEndsAtUtc ? (invitation()?.accessEndsAtUtc | date: 'mediumDate') : 'No end date' }}</dd></div>
+          </dl>
+
+          <p class="au-help au-mt">This access was approved by your administrator, so it cannot be edited here.</p>
+
+          <p class="au-alert">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+            <span>This invitation expires on <strong>{{ invitation()?.expiresAtUtc | date: 'medium' }}</strong>.</span>
+          </p>
+
+          <button type="button" class="au-btn au-btn--primary au-btn--block" (click)="goToPassword()">These details are correct — continue</button>
+        }
+
+        <!-- ================= 2 · PASSWORD ================= -->
+        @else if (step() === 'password') {
+          <p class="au-eyebrow">Step 2 of 4 · {{ stepLabels[1] }}</p>
+          <h1>Create your password</h1>
+          <p class="au-lead">This is what you will use to sign in from now on.</p>
+
+          @if (errorMessage()) {
+            <p class="au-alert au-alert--bad" role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ errorMessage() }}</span></p>
+          }
+
+          <div class="au-field">
+            <label for="newPassword">Password <i>*</i></label>
+            <div class="au-pass">
+              <input id="newPassword" class="au-input" [class.bad]="!!passwordValue() && rulesMet() < 5" [type]="showPassword() ? 'text' : 'password'"
+                     autocomplete="new-password" [value]="password" (input)="onPasswordInput($any($event.target).value)" (keydown.enter)="onPasswordStepEnter('confirm', $event)" />
+              <button type="button" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" (click)="togglePassword()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(showPassword() ? 'eye' : 'eyeoff')" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <section class="au-panel" aria-label="Password strength">
+            <div class="au-meter" [attr.data-level]="rulesMet()">
+              <div class="au-segs" aria-hidden="true">@for (n of [1,2,3,4,5]; track n) { <i [class.on]="rulesMet() >= n"></i> }</div>
+              <span>{{ passwordValue() ? strengthLabel() : 'Strength' }}</span>
+            </div>
+            <ul class="au-rules" aria-label="Password rules">
+              <li [class.is-ok]="hasLength()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(hasLength() ? 'check' : 'cross')" /></svg>At least {{ minimumLength() }} characters</li>
+              <li [class.is-ok]="hasUpper()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(hasUpper() ? 'check' : 'cross')" /></svg>An upper-case letter</li>
+              <li [class.is-ok]="hasLower()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(hasLower() ? 'check' : 'cross')" /></svg>A lower-case letter</li>
+              <li [class.is-ok]="hasNumber()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(hasNumber() ? 'check' : 'cross')" /></svg>A digit</li>
+              <li [class.is-ok]="hasSymbol()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(hasSymbol() ? 'check' : 'cross')" /></svg>A symbol, such as ! &#64; # or ?</li>
+              <li [class.is-ok]="passwordsMatch()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(passwordsMatch() ? 'check' : 'cross')" /></svg>Both passwords match</li>
+            </ul>
+          </section>
+
+          <div class="au-field">
+            <label for="confirmPassword">Confirm password <i>*</i></label>
+            <div class="au-pass">
+              <input #confirmInput id="confirmPassword" class="au-input" [class.bad]="!!confirmValue() && !passwordsMatch()" [type]="showConfirm() ? 'text' : 'password'"
+                     autocomplete="new-password" [value]="confirmPassword" (input)="onConfirmInput($any($event.target).value)" (keydown.enter)="onPasswordStepEnter('submit', $event)" />
+              <button type="button" [attr.aria-label]="showConfirm() ? 'Hide password' : 'Show password'" (click)="toggleConfirm()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(showConfirm() ? 'eye' : 'eyeoff')" /></svg>
+              </button>
+            </div>
+            @if (confirmValue() && !passwordsMatch()) { <small class="au-err">The two passwords do not match.</small> }
+          </div>
+
+          <label class="au-check">
+            <input type="checkbox" [checked]="termsAccepted()" (change)="toggleTerms($any($event.target).checked)" />
+            <span class="au-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+            <span>I accept the terms of use and the privacy notice.</span>
+          </label>
+
+          <div class="au-actions">
+            <button type="button" class="au-btn au-btn--icon" aria-label="Back" (click)="backToDetails()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg></button>
+            <button #continueBtn type="button" class="au-btn au-btn--primary au-grow" [disabled]="!canLeavePasswordStep()" (click)="goToSecurity()">Continue</button>
+          </div>
+        }
+
+        <!-- ================= 3 · TWO-STEP ================= -->
+        @else if (step() === 'security') {
+          <p class="au-eyebrow">Step 3 of 4 · {{ stepLabels[2] }}</p>
+          <h1>Two-step verification</h1>
+          <p class="au-lead">
+            A second factor means a stolen password on its own is not enough to reach your account.
+            @if (!mfaMandatory()) { You can skip this and add one later from <b>My Security</b>. }
+          </p>
+
+          @if (errorMessage()) {
+            <p class="au-alert au-alert--bad" role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ errorMessage() }}</span></p>
+          }
+
+          <div class="au-toggle">
+            <div><b>Add a second factor</b><span>{{ mfaMandatory() ? 'Required for this account.' : 'Recommended, but optional.' }}</span></div>
+            <button type="button" role="switch" class="au-switch" aria-label="Add a second factor" [attr.aria-checked]="enrolMfa()" [disabled]="mfaMandatory()" (click)="toggleEnrolMfa(!enrolMfa())"><i></i></button>
+          </div>
+
+          @if (enrolMfa()) {
+            <p class="au-label au-mt">How would you like to receive your codes?</p>
+            <div class="au-methods" role="radiogroup" aria-label="Method">
+            @if (!setup()) {
+              @for (method of allowedMethods(); track method) {
+                <button type="button" role="radio" class="au-method" [class.is-on]="selectedMethod() === method" [attr.aria-checked]="selectedMethod() === method" (click)="chooseMethod(method)">
+                  <span class="au-mic" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(method === 'authenticatorApp' ? 'phone' : 'mail')" /></svg></span>
+                  <span class="au-mtx"><b>{{ methodLabel(method) }}</b><small>{{ methodHint(method) }}</small></span>
+                  <span class="au-radio" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('check')" /></svg></span>
+                </button>
+              }
+            }
+            </div>
+
+            @if (!setup()) {
+              <button type="button" class="au-btn au-btn--primary au-btn--block" [disabled]="settingUp()" (click)="startSetup()">{{ settingUp() ? 'Setting up…' : 'Set this up' }}</button>
+            }
+
+            @if (setup(); as s) {
+              @if (s.methodType === 'authenticatorApp') {
+                <section class="au-setup">
+                  <div class="au-qr">
+                    @if (qrDataUrl()) { <img [src]="qrDataUrl()" alt="Authenticator setup QR code" width="176" height="176" /> }
+                    @else if (qrFailed()) { <div class="au-qr-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg><span>QR preview is not drawn in sample mode. Use the key below.</span></div> }
+                    @else { <span class="au-spin au-spin--dark" role="status"></span> }
+                  </div>
+                  <div class="au-setup-text">
+                    <h2>1. Scan with your authenticator app</h2>
+                    <p>Google Authenticator, Microsoft Authenticator, Authy — any will do. Codes keep working with no signal.</p>
+                    <button type="button" class="au-link" [attr.aria-expanded]="secretVisible()" (click)="toggleSecret()">{{ secretVisible() ? 'Hide the setup key' : "Can't scan? Enter the key by hand" }}</button>
+                  </div>
+                </section>
+
+                @if (secretVisible()) {
+                  <div class="au-secret">
+                    <code>{{ s.sharedSecret }}</code>
+                    @if (s.maskedDestination) { <small>{{ s.maskedDestination }}</small> }
+                    <button type="button" class="au-btn au-btn--sm" (click)="copySecret()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>{{ secretCopied() ? 'Copied' : 'Copy key' }}</button>
+                  </div>
+                }
+
+                <h2 class="au-h2">2. Enter the code your app is showing</h2>
+                <p class="au-help">It changes every 30 seconds. Type whichever one is on screen now.</p>
+              } @else {
+                <p class="au-alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg><span><b>Check for your code.</b> {{ s.message }}</span></p>
+                <h2 class="au-h2 au-h2--first">Enter the code we e-mailed you</h2>
+                <p class="au-help">It can take a minute to arrive. Check your spam folder too.</p>
+              }
+
+              @if (!methodVerified()) {
+                <div class="au-field">
+                  <label for="verificationCode">Verification code</label>
+                  <input id="verificationCode" class="au-input au-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="000000"
+                         [value]="verificationCode()" (input)="verificationCode.set($any($event.target).value)" (keydown.enter)="onSetupCodeEnter($event)" />
+                </div>
+                <div class="au-actions au-actions--tight">
+                  <button type="button" class="au-btn au-btn--icon" [attr.aria-label]="isAuthenticatorSelected() ? 'Show a new key' : 'Send a new code'" [disabled]="settingUp()" (click)="startSetup()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg></button>
+                  <button #verifyCodeBtn type="button" class="au-btn au-btn--primary au-grow" [disabled]="!canVerifyMethod()" (click)="verifyMethod()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>{{ submitting() ? 'Checking…' : 'Verify this code' }}
+                  </button>
+                </div>
+              } @else {
+                <p class="au-alert au-alert--ok" role="status"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg><span>Your second factor is confirmed and ready.</span></p>
+              }
+            }
+          } @else {
+            <p class="au-alert au-mt"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>You are activating without a second factor. Your account will show <strong>Not enrolled</strong> in the user directory until you add one.</span></p>
+          }
+
+          <div class="au-actions">
+            <button type="button" class="au-btn au-btn--icon" aria-label="Back" (click)="backToPassword()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg></button>
+            <button type="button" class="au-btn au-btn--primary au-grow" [disabled]="!canActivate()" (click)="activateAccount()">{{ submitting() ? 'Activating…' : 'Activate account' }}</button>
+          </div>
+          @if (enrolMfa() && !methodVerified()) { <p class="au-help au-center-text">Confirm your second factor above before activating.</p> }
+        }
+
+        <!-- ================= 4 · DONE ================= -->
+        @else {
+          <div class="au-center">
+            <span class="au-badge au-badge--ok" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('check')" /></svg></span>
+            <h1>Your account is active</h1>
+            <p class="au-lead">Reference <strong>{{ userCode() }}</strong> &middot; Two-step verification is <strong>{{ mfaEnrolledResult() ? 'enrolled' : 'not enrolled' }}</strong>.</p>
+          </div>
+
+          @if (recoveryCodes().length > 0) {
+            <p class="au-alert au-alert--warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ recoveryNotice() }}</span></p>
+
+            <ol class="au-codes" aria-label="Recovery codes">
+              @for (code of recoveryCodes(); track code; let i = $index) { <li><em>{{ i + 1 }}</em><code>{{ code }}</code></li> }
+            </ol>
+            <div class="au-two">
+              <button type="button" class="au-btn au-btn--sm" (click)="copyRecoveryCodes()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>Copy</button>
+              <button type="button" class="au-btn au-btn--sm" (click)="downloadRecoveryCodes()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Download</button>
+            </div>
+
+            <label class="au-check au-mt">
+              <input type="checkbox" [checked]="recoveryAcknowledged()" (change)="acknowledgeRecoveryCodes($any($event.target).checked)" />
+              <span class="au-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+              <span>I have saved these codes somewhere safe. I understand they will not be shown again.</span>
+            </label>
+
+            <button type="button" class="au-btn au-btn--primary au-btn--block" [disabled]="!recoveryAcknowledged()" (click)="goToDashboard()">Go to my dashboard</button>
+          } @else {
+            <section class="au-panel au-panel--note">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
+              <p>No recovery codes were created because two-step verification was skipped. You can add it any time from <b>My Security</b>.</p>
+            </section>
+            @if (recoveryNotice()) { <p class="au-alert">{{ recoveryNotice() }}</p> }
+            <button type="button" class="au-btn au-btn--primary au-btn--block au-mt" (click)="goToDashboard()">Go to my dashboard</button>
+          }
+        }
+
+    </main>
+  </div>
+</div>

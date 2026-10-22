@@ -5,13 +5,15 @@ import { Donor360Response } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type FollowFilter = 'all' | 'open' | 'overdue' | 'closed';
+export type D360Tab = 'overview' | 'giving' | 'activity' | 'profile' | 'documents';
+export type ActivityKind = D360Activity['kind'];
 
 export interface D360Gift { ref: string; date: string; campaign: string; amount: number; status: 'Recorded' | 'Reconciled' | 'Pending'; }
 export interface D360Campaign { name: string; code: string; via: string; converted: string; given: number; gifts: number; status: 'Converted' | 'Open' | 'Lost'; }
 export interface D360Promise { due: string; amount: number; status: 'Pending' | 'Fulfilled'; }
 export interface D360FollowUp { due: string; title: string; owner: string; priority: 'Urgent' | 'High' | 'Normal'; status: 'Open' | 'Completed'; }
 export interface D360Channel { channel: string; state: 'Granted' | 'Withdrawn' | 'Pending'; since: string; publicThanks: boolean; }
-export interface D360Activity { date: string; text: string; by: string; kind: 'view' | 'gift' | 'note' | 'consent'; }
+export interface D360Activity { date: string; title: string; text: string; by: string; kind: 'view' | 'gift' | 'note' | 'consent'; }
 
 export interface D360Donor {
   code: string;
@@ -54,6 +56,12 @@ const dayOf = (utc: string | null | undefined): string => {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 };
 const n = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+const FULL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const humanize = (code: string | null | undefined): string => {
+  const last = (code ?? '').split('.').pop() ?? '';
+  const s = last.replace(/[-_]+/g, ' ').trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Activity';
+};
 
 function toD360(r: Donor360Response): D360Donor {
   const d = r.donor;
@@ -115,11 +123,18 @@ function toD360(r: Donor360Response): D360Donor {
     channels: prefs.map((p) => ({
       channel: p.channelLabel ?? p.channel, state: chState(p.consentState), since: fmt(p.effectiveAtUtc), publicThanks: p.publicRecognitionPreference
     })),
-    activity: (r.activityHistory ?? []).map((a) => ({
-      date: dayOf(a.occurredAtUtc), text: a.reason ? `${a.actionCode} - ${a.reason}` : a.actionCode, by: a.actorName ?? '',
-      kind: n(a.actionCode).includes('view') ? 'view' as const : n(a.actionCode).includes('consent') ? 'consent' as const
-        : n(a.actionCode).includes('donation') || n(a.actionCode).includes('gift') ? 'gift' as const : 'note' as const
-    })),
+    activity: (r.activityHistory ?? []).map((a) => {
+      const k = n(a.actionCode);
+      const kind = k.includes('view') ? 'view' as const
+        : k.includes('consent') ? 'consent' as const
+        : k.includes('donation') || k.includes('gift') ? 'gift' as const
+        : 'note' as const;
+      const title = kind === 'view' ? 'Donor record reviewed'
+        : kind === 'consent' ? 'Consent updated'
+        : kind === 'gift' ? 'Gift activity'
+        : humanize(a.actionCode);
+      return { date: dayOf(a.occurredAtUtc), title, text: a.reason || a.actionCode, by: a.actorName ?? '', kind };
+    }),
     latestDocument: (r.documents ?? [])[0]?.name ?? null
   };
 }
@@ -131,12 +146,18 @@ const ICONS: Record<string, string> = {
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
   timeline: 'M21 12a9 9 0 1 1-4.2-7.6L21 3v5h-5 M12 7v5l3 3',
   schedule: 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M16 2v4 M8 2v4 M3 10h18 M12 14v4 M10 16h4',
+  calendar: 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M16 2v4 M8 2v4 M3 10h18',
+  clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',
+  arrow: 'M5 12h14 M13 6l6 6-6 6',
+  spark: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.7 1.8 1.8.7-1.8.7L19 21l-.7-1.8-1.8-.7 1.8-.7z',
+  globe: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M2 12h20 M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20',
   download: 'M12 4v12 M7 11l5 5 5-5 M4 20h16',
   plus: 'M12 5v14 M5 12h14',
   edit: 'M12 20h9 M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
   refresh: 'M21 12a9 9 0 1 1-2.64-6.36 M21 3v6h-6',
   gift: 'M20 12v10H4V12 M2 7h20v5H2z M12 22V7 M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z',
   pledge: 'M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z',
+  heart: 'M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z',
   promise: 'M9 11l3 3 8-8 M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9',
   flag: 'M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7',
   file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M9 13h6 M9 17h6',
@@ -229,7 +250,11 @@ export class Donor360 implements OnInit {
     const ref = this.route.snapshot.queryParamMap.get('ref') ?? '';
     this.loading.set(true);
     const fetch = (id: string) => this.api.getDonor360(id).subscribe({
-      next: (r) => { this.donorId = r.donor.id; this.d.set(toD360(r)); this.loading.set(false); done?.(); },
+      next: (r) => {
+        // DEBUG: remove once the mapping is confirmed
+        console.log('D360 raw payload', r);
+        this.donorId = r.donor.id; this.d.set(toD360(r)); this.loading.set(false); done?.();
+      },
       error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
     });
     if (this.donorId) { fetch(this.donorId); return; }
@@ -244,10 +269,13 @@ export class Donor360 implements OnInit {
   }
 
   protected readonly followFilter = signal<FollowFilter>('all');
-  protected readonly followQuery = signal('');
+  protected readonly activityKind = signal<'all' | ActivityKind>('all');
+  /** search boxes (bound in the template) */
   protected readonly activityQuery = signal('');
+  protected readonly followQuery = signal('');
   protected readonly toast = signal<string | null>(null);
   private toastTimer = 0;
+
   // ---------- create donation intent (popup) ----------
   protected readonly currencies = INTENT_CURRENCIES;
   protected readonly quickAmounts = INTENT_QUICK;
@@ -264,11 +292,31 @@ export class Donor360 implements OnInit {
   protected readonly calOpen = signal(false);
   protected readonly calMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
 
-  /** Section highlighted in the left menu. */
-  protected readonly section = signal('overview');
+  // ---------- tabs ----------
+  protected readonly tab = signal<D360Tab>('overview');
+  protected readonly tabs = computed(() => [
+    { key: 'overview' as D360Tab, label: 'Overview', count: null as number | null },
+    { key: 'giving' as D360Tab, label: 'Giving & promises', count: this.d().gifts.length || null },
+    { key: 'activity' as D360Tab, label: 'Activity & follow-ups', count: null },
+    { key: 'profile' as D360Tab, label: 'Profile & consent', count: null },
+    { key: 'documents' as D360Tab, label: 'Documents', count: null }
+  ]);
+
+  setTab(t: D360Tab): void { this.tab.set(t); }
+
+  protected readonly showLeft = computed(() => ['overview', 'profile', 'documents'].includes(this.tab()));
+  protected readonly showProfile = computed(() => ['overview', 'profile'].includes(this.tab()));
+  protected readonly showDocuments = computed(() => ['overview', 'documents'].includes(this.tab()));
+  protected readonly showCentre = computed(() => ['overview', 'giving', 'activity'].includes(this.tab()));
+  protected readonly showGiving = computed(() => ['overview', 'giving'].includes(this.tab()));
+  protected readonly showTimeline = computed(() => ['overview', 'activity'].includes(this.tab()));
+  protected readonly showRight = computed(() => ['overview', 'giving'].includes(this.tab()));
+  protected readonly showNext = computed(() => this.tab() === 'overview');
+  protected readonly showFollow = computed(() => ['overview', 'activity'].includes(this.tab()));
 
   // ---------- giving ----------
   protected readonly received = computed(() => this.d().gifts.reduce((s, g) => s + g.amount, 0));
+  protected readonly avgGift = computed(() => (this.d().gifts.length ? this.received() / this.d().gifts.length : 0));
 
   protected readonly stages = computed(() => {
     const parts = this.d().stages;
@@ -276,23 +324,65 @@ export class Donor360 implements OnInit {
     return { total, parts: parts.map((p) => ({ ...p, pct: total ? Math.round((p.amount / total) * 100) : 0 })) };
   });
 
-  /** Giving journey for the overview: pledged -> promised -> received -> reconciled. */
+  private readonly giftsNewestFirst = computed(() => [...this.d().gifts].sort((a, b) => b.date.localeCompare(a.date)));
+  protected readonly latestGift = computed(() => this.giftsNewestFirst()[0] ?? null);
+  protected readonly firstGift = computed(() => { const g = this.giftsNewestFirst(); return g[g.length - 1] ?? null; });
+
+  /** Received per month, last three months - drives the small chart. */
+  protected readonly monthBars = computed(() => {
+    const base = new Date(this.today + 'T00:00:00');
+    const rows = [2, 1, 0].map((back) => {
+      const m = new Date(base.getFullYear(), base.getMonth() - back, 1);
+      const key = m.getFullYear() + '-' + String(m.getMonth() + 1).padStart(2, '0');
+      const total = this.d().gifts.filter((g) => g.date.startsWith(key)).reduce((s, g) => s + g.amount, 0);
+      return { label: MONTHS[m.getMonth()].toUpperCase(), total };
+    });
+    const max = Math.max(1, ...rows.map((r) => r.total));
+    return rows.map((r) => ({ ...r, h: r.total ? Math.max(8, Math.round((r.total / max) * 62)) : 3, mini: r.total ? Math.max(8, Math.round((r.total / max) * 27)) : 4 }));
+  });
+  protected readonly chartYear = computed(() => this.today.slice(0, 4));
+
+  /** Giving journey: pledged -> promised -> received -> reconciled (each step has icon + note for the template). */
   protected readonly journey = computed(() => {
     const d = this.d();
-    const promised = d.promises.filter((p) => p.status === 'Pending').reduce((s, p) => s + p.amount, 0);
-    const reconciled = d.gifts.filter((g) => g.status === 'Reconciled').reduce((s, g) => s + g.amount, 0);
-    return [
-      { key: 'pledged', label: 'Pledged', amount: d.pledged, note: d.pledged ? 'Open pledges' : 'None yet', icon: 'pledge' },
-      { key: 'promised', label: 'Promised', amount: promised, note: promised ? 'Awaiting payment' : 'No promises', icon: 'promise' },
-      { key: 'received', label: 'Received', amount: this.received(), note: d.gifts.length + (d.gifts.length === 1 ? ' gift' : ' gifts'), icon: 'gift' },
-      { key: 'reconciled', label: 'Reconciled', amount: reconciled, note: reconciled ? 'Matched to bank' : 'To reconcile', icon: 'check' }
-    ].map((s) => ({ ...s, on: s.amount > 0 }));
+    const pend = d.promises.filter((p) => p.status === 'Pending');
+    const promised = pend.reduce((s, p) => s + p.amount, 0);
+    const rec = d.gifts.filter((g) => g.status === 'Reconciled');
+    const reconciled = rec.reduce((s, g) => s + g.amount, 0);
+    const steps = [
+      { key: 'pledged',    label: 'Pledged',    amount: d.pledged,        icon: 'pledge',  note: d.pledged ? 'Open pledges' : 'None yet' },
+      { key: 'promised',   label: 'Promised',   amount: promised,         icon: 'promise', note: pend.length + (pend.length === 1 ? ' pending' : ' pending') },
+      { key: 'received',   label: 'Received',   amount: this.received(),  icon: 'gift',    note: d.gifts.length + (d.gifts.length === 1 ? ' gift' : ' gifts') },
+      { key: 'reconciled', label: 'Reconciled', amount: reconciled,       icon: 'check',   note: rec.length + (rec.length === 1 ? ' gift' : ' gifts') }
+    ];
+    const lastOn = steps.reduce((acc, s, i) => (s.amount > 0 ? i : acc), -1);
+    return steps.map((s, i) => ({ ...s, on: s.amount > 0, current: i === lastOn }));
   });
+
+  /** Share of promised + received money that has actually been received. */
+  protected readonly ringPct = computed(() => {
+    const pending = this.d().promises.filter((p) => p.status === 'Pending').reduce((s, p) => s + p.amount, 0);
+    const den = this.received() + pending;
+    return den ? Math.round((this.received() / den) * 100) : 0;
+  });
+  protected readonly ringDash = computed(() => ((this.ringPct() / 100) * 308).toFixed(1) + ' 308');
+
+  protected readonly awaiting = computed(() => this.d().gifts.filter((g) => g.status !== 'Reconciled').reduce((s, g) => s + g.amount, 0));
 
   protected readonly promiseCounts = computed(() => {
     const p = this.d().promises;
-    return { pending: p.filter((x) => x.status === 'Pending').length, fulfilled: p.filter((x) => x.status === 'Fulfilled').length };
+    const pending = p.filter((x) => x.status === 'Pending');
+    return {
+      pending: pending.length,
+      fulfilled: p.filter((x) => x.status === 'Fulfilled').length,
+      overdue: pending.filter((x) => x.due && x.due < this.today).length
+    };
   });
+
+  protected campaignShare(given: number): number {
+    const r = this.received();
+    return r ? Math.min(100, Math.round((given / r) * 100)) : 0;
+  }
 
   // ---------- follow-ups ----------
   private isOpen(f: D360FollowUp): boolean { return f.status !== 'Completed'; }
@@ -327,19 +417,62 @@ export class Donor360 implements OnInit {
       .sort((a, b) => b.due.localeCompare(a.due));
   });
 
-  // ---------- activity, grouped by month ----------
+  /** Next open follow-up. */
+  protected readonly nextFollow = computed(() =>
+    this.d().followUps.filter((f) => this.isOpen(f)).sort((a, b) => a.due.localeCompare(b.due))[0] ?? null);
+
+  /** Three "coming up" items under the journey (next follow-up, next promise, latest gift). */
+  protected readonly comingUp = computed(() => {
+    const nf = this.nextFollow();
+    const pr = this.d().promises
+      .filter((p) => p.status === 'Pending' && p.due)
+      .sort((a, b) => a.due.localeCompare(b.due))[0];
+    const lg = this.latestGift();
+    return [
+      { key: 'follow', icon: 'calendar', label: 'Next follow-up', text: nf ? nf.title + ' · ' + this.longDate(nf.due) : 'Nothing scheduled', empty: !nf },
+      { key: 'promise', icon: 'promise', label: 'Next promise', text: pr ? rupees(pr.amount) + ' · ' + this.longDate(pr.due) : 'No pending promise', empty: !pr },
+      { key: 'gift', icon: 'gift', label: 'Latest gift', text: lg ? rupees(lg.amount) + ' · ' + this.longDate(lg.date) : 'No gifts yet', empty: !lg }
+    ];
+  });
+
+  // ---------- activity timeline, grouped by month ----------
+  protected readonly activityTabs = computed(() => {
+    const a = this.d().activity;
+    const c = (k: ActivityKind) => a.filter((x) => x.kind === k).length;
+    return [
+      { key: 'all' as const, label: 'All activity', count: a.length },
+      { key: 'gift' as const, label: 'Giving', count: c('gift') },
+      { key: 'consent' as const, label: 'Contact', count: c('consent') },
+      { key: 'note' as const, label: 'Notes', count: c('note') },
+      { key: 'view' as const, label: 'System', count: c('view') }
+    ];
+  });
+
+  protected readonly activityShown = computed(() => {
+    const k = this.activityKind();
+    return this.d().activity.filter((a) => k === 'all' || a.kind === k).length;
+  });
+
   protected readonly activityGroups = computed(() => {
+    const k = this.activityKind();
     const q = this.activityQuery().trim().toLowerCase();
     const groups: { label: string; items: D360Activity[] }[] = [];
     for (const a of [...this.d().activity].sort((x, y) => y.date.localeCompare(x.date))) {
-      if (q && !(a.text + ' ' + a.by).toLowerCase().includes(q)) continue;
+      if (k !== 'all' && a.kind !== k) continue;
+      if (q && !(a.title + ' ' + a.text + ' ' + a.by).toLowerCase().includes(q)) continue;
       const dt = parse(a.date);
-      const label = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
+      const label = (FULL_MONTHS[dt.getMonth()] + ' ' + dt.getFullYear()).toUpperCase();
       const g = groups[groups.length - 1];
       if (g && g.label === label) g.items.push(a); else groups.push({ label, items: [a] });
     }
     return groups;
   });
+
+  protected readonly activityCount = computed(() => this.activityGroups().reduce((s, g) => s + g.items.length, 0));
+
+  protected activityIcon(kind: ActivityKind): string {
+    return kind === 'gift' ? 'gift' : kind === 'consent' ? 'shield' : kind === 'note' ? 'note' : 'user';
+  }
 
   // ---------- headline figures ----------
   protected readonly stats = computed(() => {
@@ -347,29 +480,45 @@ export class Donor360 implements OnInit {
     const pc = this.promiseCounts();
     const fc = this.followCounts();
     return [
-      { key: 'lifetime', label: 'Lifetime received', value: rupees(this.received()), note: d.gifts.length + (d.gifts.length === 1 ? ' gift' : ' gifts'), icon: 'gift', tone: 'primary' },
-      { key: 'pledged', label: 'Pledged', value: rupees(d.pledged), note: d.pledged ? 'Open pledges' : 'None yet', icon: 'pledge', tone: 'blue' },
-      { key: 'promises', label: 'Promises pending', value: String(pc.pending), note: pc.fulfilled + ' fulfilled', icon: 'promise', tone: 'amber' },
-      { key: 'followups', label: 'Open follow-ups', value: String(fc.open), note: fc.overdue + ' overdue', icon: 'flag', tone: fc.overdue ? 'red' : 'green' },
-      { key: 'documents', label: 'Documents', value: String(d.documents), note: d.documents ? 'On file' : 'None on file', icon: 'file', tone: 'muted' }
+      { key: 'lifetime', label: 'Lifetime received', value: rupees(this.received()), note: d.gifts.length + (d.gifts.length === 1 ? ' successful gift' : ' successful gifts'), icon: 'gift', tone: 'green', view: 'giving' as D360Tab },
+      { key: 'pledged', label: 'Pledged amount', value: rupees(d.pledged), note: d.pledged ? 'Open pledges' : 'No pledge recorded', icon: 'heart', tone: 'primary', view: 'giving' as D360Tab },
+      { key: 'promises', label: 'Pending promises', value: String(pc.pending), note: pc.pending ? pc.pending + ' awaiting payment' : 'Nothing awaiting payment', icon: 'calendar', tone: 'amber', view: 'giving' as D360Tab },
+      { key: 'followups', label: 'Open follow-ups', value: String(fc.open), note: fc.closed + ' completed · ' + fc.overdue + ' overdue', icon: 'clock', tone: 'blue', view: 'activity' as D360Tab },
+      { key: 'documents', label: 'Documents', value: String(d.documents), note: d.documents ? 'On file' : 'No files attached', icon: 'file', tone: 'red', view: 'documents' as D360Tab }
     ];
   });
 
-  protected readonly comingUp = computed(() => {
+  /** "Relationship next step" card - picks the most useful nudge. */
+  protected readonly next = computed(() => {
     const d = this.d();
-    const next = d.followUps.filter((f) => this.isOpen(f)).sort((a, b) => a.due.localeCompare(b.due))[0];
-    const promise = d.promises.find((p) => p.status === 'Pending');
-    return [
-      { key: 'followup', label: 'Next follow-up', text: next ? next.title + ' · ' + this.longDate(next.due) : 'Nothing scheduled.', empty: !next, icon: 'schedule' },
-      { key: 'promise', label: 'Promise due', text: promise ? rupees(promise.amount) + ' · ' + (promise.due ? this.longDate(promise.due) : 'no date set') : 'No pending promises.', empty: !promise, icon: 'promise' },
-      { key: 'document', label: 'Latest document', text: d.latestDocument ?? 'No documents uploaded.', empty: !d.latestDocument, icon: 'file' }
-    ];
+    const fc = this.followCounts();
+    const pc = this.promiseCounts();
+    const first = d.name.split(' ')[0] || 'this donor';
+    const gifts = d.gifts.length;
+    if (fc.overdue) {
+      return { title: 'A follow-up is overdue.', text: `Reach out to ${first} today and note how it went, so the relationship does not go quiet.`, reason: fc.overdue + (fc.overdue === 1 ? ' overdue follow-up' : ' overdue follow-ups') };
+    }
+    if (pc.pending) {
+      return { title: 'A promise is waiting to be paid.', text: `Send ${first} a gentle reminder and share the donation link.`, reason: pc.pending + (pc.pending === 1 ? ' pending promise' : ' pending promises') };
+    }
+    if (!fc.open) {
+      return {
+        title: gifts === 1 ? 'Turn a first gift into a lasting relationship.' : 'Keep the relationship warm.',
+        text: gifts ? `Schedule a personal thank-you and share how the campaign is progressing.` : `Make a first personal contact and learn what ${first} cares about.`,
+        reason: gifts + (gifts === 1 ? ' gift received' : ' gifts received') + ' · no upcoming follow-up'
+      };
+    }
+    return { title: 'Stay on track with the plan.', text: `A follow-up with ${first} is already scheduled. Add notes as you go.`, reason: fc.open + (fc.open === 1 ? ' open follow-up' : ' open follow-ups') };
   });
+
+  protected consentTitle(): string {
+    const s = this.d().consent.state;
+    return s === 'Granted' ? 'Contact permitted' : s === 'Withdrawn' ? 'Contact withdrawn' : 'Consent not recorded';
+  }
 
   // ---------- intent: derived values ----------
   protected readonly iSymbol = computed(() => INTENT_CURRENCIES.find((c) => c.code === this.iCurrency())?.symbol ?? '₹');
   protected readonly iAmountNum = computed(() => Number(this.iAmount().replace(/\D/g, '')) || 0);
-  /** Amount shown with grouping (Indian style for INR). */
   protected readonly iAmountText = computed(() => {
     const n = this.iAmountNum();
     if (!n) return '';
@@ -391,7 +540,6 @@ export class Donor360 implements OnInit {
   }));
   protected readonly iValid = computed(() => !Object.values(this.iErrors()).some((e) => e));
 
-  /** Calendar grid for the custom date picker: weeks of { iso, day, out (other month), past, today }. */
   protected readonly calWeeks = computed(() => {
     const m = this.calMonth();
     const first = new Date(m.getFullYear(), m.getMonth(), 1);
@@ -434,7 +582,6 @@ export class Donor360 implements OnInit {
   setAmount(v: string): void { this.iAmount.set(v.replace(/\D/g, '').slice(0, 12)); }
   pickCurrency(code: IntentCurrency): void { this.iCurrency.set(code); this.curOpen.set(false); }
 
-  /** Shortcut chips fill in the date. */
   setWhen(k: IntentWhen): void {
     const d = new Date(this.today + 'T00:00:00');
     if (k === '2w') d.setDate(d.getDate() + 14);
@@ -481,8 +628,6 @@ export class Donor360 implements OnInit {
       notes: this.iNotes().trim()
     }).subscribe({
       next: () => {
-        // Close the popup first, then read the donor again so the new intent shows - the create
-        // call's own answer is not relied on for the screen.
         this.closeIntent();
         this.load(() => this.flash('Donation intent of ' + label + ' recorded for ' + this.d().name + '.'));
       },
@@ -490,28 +635,7 @@ export class Donor360 implements OnInit {
     });
   }
 
-  /** Left menu: one entry per section card. */
-  protected readonly sections = computed(() => {
-    const d = this.d();
-    return [
-      { id: 'overview', label: 'Overview', icon: 'gift', count: null as number | null },
-      { id: 'profile', label: 'Profile', icon: 'user', count: null },
-      { id: 'activity', label: 'Activity', icon: 'timeline', count: d.activity.length },
-      { id: 'gifts', label: 'Gifts', icon: 'pledge', count: d.gifts.length },
-      { id: 'campaigns', label: 'Campaigns', icon: 'flag', count: d.campaigns.length },
-      { id: 'promises', label: 'Promises', icon: 'promise', count: d.promises.length },
-      { id: 'followups', label: 'Follow-ups', icon: 'schedule', count: d.followUps.length },
-      { id: 'consent', label: 'Consent', icon: 'shield', count: d.channels.length }
-    ];
-  });
-
-  /** Jump to a section card. */
-  go(id: string): void {
-    this.section.set(id);
-    document.getElementById('dx-' + id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  // ---------- template helpers ----------
+  // ---------- template helpers (all safe for empty dates) ----------
   icon(n: string): string { return ICONS[n] ?? ''; }
 
   initials(name: string): string {
@@ -519,22 +643,25 @@ export class Donor360 implements OnInit {
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase();
   }
 
-  /** '2026-10-13' -> '13', 'Oct 2026', 'Tue', '13 Oct 2026' */
-  day(iso: string): string { return String(parse(iso).getDate()).padStart(2, '0'); }
-  monthYear(iso: string): string { const d = parse(iso); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
-  weekday(iso: string): string { return DAYS[parse(iso).getDay()]; }
-  longDate(iso: string): string { const d = parse(iso); return this.day(iso) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+  pad(n: number): string { return String(n).padStart(2, '0'); }
+
+  day(iso: string): string { return iso ? String(parse(iso).getDate()).padStart(2, '0') : ''; }
+  monthShort(iso: string): string { return iso ? MONTHS[parse(iso).getMonth()] : ''; }
+  monthYear(iso: string): string { if (!iso) return ''; const d = parse(iso); return MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+  weekday(iso: string): string { return iso ? DAYS[parse(iso).getDay()] : ''; }
+  longDate(iso: string): string { if (!iso) return ''; const d = parse(iso); return this.day(iso) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
 
   consentTone(state: string): string {
     return state === 'Granted' ? 'tone-green' : state === 'Withdrawn' ? 'tone-red' : 'tone-amber';
   }
 
-  // ---------- actions (wire to the real dialogs / services) ----------
-  /** Timeline button: scroll to the activity card. */
-  timeline(): void { this.go('activity'); }
+  // ---------- actions ----------
+  timeline(): void { this.tab.set('activity'); }
   schedule(): void {
     this.router.navigate(['/app/fundraising/relationships/follow-up-queue/plan'], { queryParams: { ref: this.d().code } });
   }
+  logActivity(): void { this.tab.set('activity'); this.flash('Add the note from the timeline.'); }
+  addDocument(): void { this.flash('Document upload is not connected yet.'); }
   exportHistory(): void {
     this.api.exportDonorHistory(this.donorId).subscribe({
       next: ({ blob, fileName }) => {

@@ -1,0 +1,212 @@
+<!-- ========================================================================
+   Donor & Payment Details · auth/donorform
+   Brand bar → numbered form sections → maroon live summary card
+   ======================================================================== -->
+<div class="df">
+  <div class="df-wrap">
+
+    <!-- ===== brand bar ===== -->
+    <header class="df-top">
+      <span class="df-brand"><span class="df-mark" aria-hidden="true">O</span><b>OtoSolve</b></span>
+      <span class="df-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg>Secure &amp; encrypted</span>
+    </header>
+
+    <div class="df-title">
+      <span class="df-eyebrow">Donor &amp; Payment</span>
+      <h1>Public Donotion Form</h1>
+      <p>Enter the donor and payment details below. The summary on the right updates as you fill in the form.</p>
+    </div>
+
+    <div class="df-grid">
+
+      <!-- ===== numbered form sections ===== -->
+      <div class="df-main">
+
+        <!-- 1 · Campaign & amount -->
+        <section class="df-card">
+          <header class="df-head">
+            <span class="df-num" [class.is-done]="doneCampaign()">@if (doneCampaign()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> } @else { 1 }</span>
+            <div><h2>Campaign &amp; amount</h2><p>Choose the appeal you want to support, then the amount.</p></div>
+          </header>
+
+          <div class="df-body">
+            <div class="df-two">
+              <div class="df-field">
+                <span class="df-lbl">Campaign or appeal <em>*</em></span>
+                <div class="df-dd">
+                  <button type="button" class="df-input df-dd-btn" (click)="toggleCampaign($event)" [attr.aria-expanded]="campaignMenu()" aria-haspopup="listbox">
+                    <span [class.df-ph]="!campaignChosen()">{{ campaignChosen() ? campaign() : 'Select a campaign' }}</span>
+                    <svg class="df-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                  @if (campaignMenu()) {
+                    <div class="df-menu" role="listbox" (click)="$event.stopPropagation()">
+                      @for (c of campaigns; track c) {
+                        <button type="button" role="option" class="df-menu-item" [class.is-on]="campaign() === c" [attr.aria-selected]="campaign() === c" (click)="selectCampaign(c); closeMenu()">{{ c }}</button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="df-field">
+                <span class="df-lbl">Currency <em>*</em></span>
+                <div class="df-dd">
+                  <button type="button" class="df-input df-dd-btn" (click)="toggleCurrency($event)" [attr.aria-expanded]="currencyMenu()" aria-haspopup="listbox">
+                    <span>{{ currency().symbol }} {{ currency().code }}</span>
+                    <svg class="df-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+                  @if (currencyMenu()) {
+                    <div class="df-menu" role="listbox" (click)="$event.stopPropagation()">
+                      @for (c of currencies; track c.code) {
+                        <button type="button" role="option" class="df-menu-item" [class.is-on]="currency().code === c.code" [attr.aria-selected]="currency().code === c.code" (click)="pickCurrency(c)">{{ c.symbol }} {{ c.code }} · {{ c.label }}</button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="df-field">
+              <span class="df-lbl">Campaign amount</span>
+              <div class="df-amount" [class.is-off]="!campaignChosen()">
+                <span class="df-cur">{{ currency().symbol }}</span>
+                <input #amountBox type="text" inputmode="decimal" placeholder="{{ campaignChosen() ? '0' : 'Choose a campaign first' }}" [value]="amount()" (input)="amount.set(amountBox.value)" [disabled]="!campaignChosen()" />
+              </div>
+              <div class="df-quick">
+                @for (q of quickAmounts; track q) {
+                  <button type="button" class="df-qbtn" [class.is-on]="amountValue() === '' + q" (click)="setAmount(q)" [disabled]="!campaignChosen()">{{ currency().symbol }}{{ q }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2 · Donor details -->
+        <section class="df-card">
+          <header class="df-head">
+            <span class="df-num" [class.is-done]="doneDonor()">@if (doneDonor()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> } @else { 2 }</span>
+            <div><h2>Donor details</h2><p>Your receipt and account invitation are sent to the e-mail you enter.</p></div>
+          </header>
+
+          <div class="df-body">
+            <div class="df-two">
+              <div class="df-field">
+                <span class="df-lbl">Full name</span>
+                <input #nameBox type="text" class="df-input" placeholder="Enter your full name" autocomplete="name" [value]="fullName()" (input)="fullName.set(nameBox.value)" />
+              </div>
+              <div class="df-field">
+                <span class="df-lbl">E-mail <em>*</em></span>
+                <input #emailBox type="email" class="df-input" placeholder="name@example.com" autocomplete="email" [value]="email()" (input)="email.set(emailBox.value)" />
+              </div>
+              <div class="df-field">
+                <span class="df-lbl">Mobile number</span>
+                <input #mobileBox type="tel" class="df-input" placeholder="Enter mobile number" autocomplete="tel" [value]="mobile()" (input)="mobile.set(mobileBox.value)" />
+              </div>
+              <div class="df-field">
+                <span class="df-lbl">PAN or tax identifier</span>
+                <input #panBox type="text" class="df-input" placeholder="Required only for a tax receipt" [value]="pan()" (input)="pan.set(panBox.value)" />
+              </div>
+            </div>
+
+            <div class="df-field">
+              <span class="df-lbl">Send my receipt by</span>
+              <div class="df-seg" role="radiogroup" aria-label="Receipt">
+                @for (m of receiptModes; track m) {
+                  <button type="button" role="radio" class="df-segbtn" [class.is-on]="receipt() === m" [attr.aria-checked]="receipt() === m" (click)="setReceipt(m)">{{ m === 'e-mail' ? 'E-mail' : m === 'sms' ? 'SMS' : 'Print' }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3 · Address (optional, collapsible) -->
+        <section class="df-card">
+          <button type="button" class="df-head df-head--btn" (click)="addressExpanded.set(!addressExpanded())" [attr.aria-expanded]="addressExpanded()">
+            <span class="df-num" [class.is-done]="doneAddress()">@if (doneAddress()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> } @else { 3 }</span>
+            <span class="df-head-text"><span class="df-h2">Address <span class="df-opt">Optional</span></span><span class="df-sub">Used on your receipt exactly as you enter it.</span></span>
+            <svg class="df-chev df-chev--head" [class.is-open]="addressExpanded()" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+
+          @if (addressExpanded()) {
+            <div class="df-body">
+              <div class="df-field">
+                <span class="df-lbl">Street address</span>
+                <input #streetBox type="text" class="df-input" placeholder="House no., street, area" autocomplete="street-address" [value]="street()" (input)="street.set(streetBox.value)" />
+              </div>
+              <div class="df-three">
+                <div class="df-field">
+                  <span class="df-lbl">Country</span>
+                  <input #countryBox type="text" class="df-input" placeholder="Select country" [value]="country()" (input)="country.set(countryBox.value)" />
+                </div>
+                <div class="df-field">
+                  <span class="df-lbl">State</span>
+                  <input #stateBox type="text" class="df-input" placeholder="Select state" [value]="state()" (input)="state.set(stateBox.value)" />
+                </div>
+                <div class="df-field">
+                  <span class="df-lbl">City</span>
+                  <input #cityBox type="text" class="df-input" placeholder="Select city" [value]="city()" (input)="city.set(cityBox.value)" />
+                </div>
+              </div>
+              <div class="df-field df-narrow">
+                <span class="df-lbl">PIN / postal code</span>
+                <input #pinBox type="text" class="df-input" placeholder="Enter PIN code" autocomplete="postal-code" [value]="pin()" (input)="pin.set(pinBox.value)" />
+              </div>
+            </div>
+          }
+        </section>
+
+        <!-- 4 · Consent -->
+        <section class="df-card">
+          <header class="df-head">
+            <span class="df-num" [class.is-done]="privacy()">@if (privacy()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> } @else { 4 }</span>
+            <div><h2>Consent</h2><p>Required to process your donation.</p></div>
+          </header>
+          <div class="df-body">
+            <label class="df-check">
+              <input type="checkbox" [checked]="privacy()" (change)="privacy.set($any($event.target).checked)" />
+              <span class="df-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+              <span>I acknowledge the <a href="#" (click)="$event.preventDefault()">Privacy Notice</a> <em>*</em></span>
+            </label>
+            @if (!privacy()) { <p class="df-err">Please acknowledge the Privacy Notice to continue.</p> }
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== live summary ===== -->
+      <aside class="df-side" aria-label="Donation summary">
+        <span class="df-side-eyebrow">Donation summary</span>
+
+        <div class="df-total">
+          <b>{{ totalLabel() }}</b>
+          <span>Amount in {{ currencyLabel() }}</span>
+        </div>
+
+        <dl class="df-sum">
+          <div><dt>Campaign</dt><dd [class.is-empty]="!campaignChosen()">{{ campaign() }}</dd></div>
+          <div><dt>Donor</dt><dd [class.is-empty]="!fullName().trim()">{{ donorLabel() }}</dd></div>
+          <div><dt>Currency</dt><dd>{{ currencyLabel() }}</dd></div>
+          <div><dt>Receipt</dt><dd>By {{ receipt() }}</dd></div>
+        </dl>
+
+        <ul class="df-checklist">
+          <li [class.is-ok]="campaignChosen()"><span class="df-chip">@if (campaignChosen()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }</span>Campaign selected</li>
+          <li [class.is-ok]="email().includes('@')"><span class="df-chip">@if (email().includes('@')) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }</span>Valid e-mail</li>
+          <li [class.is-ok]="!!amountValue()"><span class="df-chip">@if (amountValue()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }</span>Amount entered</li>
+          <li [class.is-ok]="privacy()"><span class="df-chip">@if (privacy()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg> }</span>Privacy Notice acknowledged</li>
+        </ul>
+
+        <button type="button" class="df-submit" [disabled]="!canSubmit()" (click)="submit()">
+          <span>{{ saving() ? 'Recording donation…' : 'Submit donation' }}</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14 M12 5l7 7-7 7" /></svg>
+        </button>
+
+        <p class="df-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 8v4 M12 16h.01" /></svg>
+          Your information is protected. A receipt is issued for every donation.
+        </p>
+      </aside>
+    </div>
+  </div>
+
+  @if (submitError()) { <div class="df-toast" role="status">{{ submitError() }}</div> }
+</div>

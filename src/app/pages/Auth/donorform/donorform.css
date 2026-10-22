@@ -1,0 +1,787 @@
+/* Donor & Payment Details · auth/donorform
+   Same maroon theme as the sign-in and activation pages. Colours follow your theme variables when they exist. */
+:host {
+  --df-primary: var(--i-primary, var(--accent, #7b2d45));
+  --df-deep: color-mix(in srgb, var(--df-primary) 72%, #14070c);
+  --df-primary-soft: color-mix(in srgb, var(--df-primary) 8%, #fff);
+  --df-primary-line: color-mix(in srgb, var(--df-primary) 30%, #fff);
+  --df-ink: var(--i-heading, var(--ink, #1c2033));
+  --df-heading: var(--df-ink);
+  --df-muted: var(--i-muted, var(--muted, #6b7385));
+  --df-line: var(--i-line, var(--line, #e3e6ee));
+  --df-field: #eef1fa;
+  --df-card: #fff;
+  --df-red: #b3261e;
+  --df-green: #17803f;
+  --df-radius: 16px;
+  --df-btn-radius: 10px;
+
+  container: df / inline-size;
+  display: block;
+  min-width: 0;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f3eff2, color-mix(in srgb, var(--df-primary) 7%, #eeeaee));
+  color: var(--df-ink);
+  font: calc(14px * var(--font-scale, 1)) / 1.5 var(--font-body, Inter, "Segoe UI", Arial, sans-serif);
+}
+
+:host :where(button, input) {
+  font: inherit;
+  color: inherit;
+}
+
+:host *,
+:host *::before,
+:host *::after {
+  box-sizing: border-box;
+}
+
+:host svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+:host :where(button, input, a):focus-visible {
+  outline: 2px solid var(--df-primary);
+  outline-offset: 2px;
+}
+
+.df-wrap {
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+/* ---------- top bar ---------- */
+.df-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.df-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.df-brand b {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+
+.df-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--df-primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.df-secure {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--df-primary-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--df-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.df-secure svg {
+  width: 14px;
+  height: 14px;
+}
+
+.df-title {
+  margin-bottom: 22px;
+}
+
+.df-eyebrow {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--df-primary);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.df-title h1 {
+  margin: 0 0 6px;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+  line-height: 1.15;
+}
+
+.df-title p {
+  margin: 0;
+  max-width: 620px;
+  color: var(--df-muted);
+  font-size: 14px;
+}
+
+/* ---------- layout ---------- */
+.df-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 22px;
+  align-items: start;
+}
+
+.df-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* ---------- cards ---------- */
+.df-card {
+  min-width: 0;
+  border: 1px solid var(--df-line);
+  border-radius: var(--df-radius);
+  background: var(--df-card);
+  box-shadow: 0 6px 24px rgba(60, 30, 45, 0.05);
+}
+
+.df-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 18px 22px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.df-head--btn {
+  cursor: pointer;
+  border-radius: var(--df-radius);
+}
+
+.df-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+.df-head p {
+  margin: 2px 0 0;
+  color: var(--df-muted);
+  font-size: 13px;
+}
+
+.df-head-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.df-h2 {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.2px;
+}
+
+.df-sub {
+  color: var(--df-muted);
+  font-size: 13px;
+}
+
+.df-opt {
+  margin-left: 6px;
+  color: var(--df-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.df-num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--df-primary-soft);
+  box-shadow: inset 0 0 0 1.5px var(--df-primary-line);
+  color: var(--df-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.df-num svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.6;
+}
+
+.df-num.is-done {
+  background: var(--df-primary);
+  box-shadow: none;
+  color: #fff;
+}
+
+.df-body {
+  display: grid;
+  gap: 16px;
+  padding: 4px 22px 22px 70px;
+}
+
+.df-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.df-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.df-narrow {
+  max-width: 260px;
+}
+
+/* ---------- fields ---------- */
+.df-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.df-lbl {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.df-lbl em,
+.df-check em {
+  color: var(--df-red);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.df-input {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 0 14px;
+    border: 1.5px solid #0000000f;
+    border-radius: var(--df-btn-radius);
+    /* background: var(--df-field); */
+    color: var(--df-ink);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.df-input::placeholder {
+  color: var(--df-muted);
+  opacity: 0.75;
+}
+
+.df-input:focus {
+  border-color: var(--df-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--df-primary) 13%, transparent);
+}
+
+/* dropdowns */
+.df-dd {
+  position: relative;
+}
+
+.df-dd-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.df-ph {
+  color: var(--df-muted);
+  opacity: 0.85;
+}
+
+.df-chev {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  color: var(--df-muted);
+  transition: transform 0.15s;
+}
+
+.df-chev--head {
+  width: 18px;
+  height: 18px;
+}
+
+.df-chev.is-open {
+  transform: rotate(180deg);
+}
+
+.df-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  max-height: 260px;
+  padding: 6px;
+  overflow-y: auto;
+  border: 1px solid var(--df-line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(40, 20, 30, 0.16);
+}
+
+.df-menu-item {
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.df-menu-item:hover {
+  background: var(--df-primary-soft);
+  color: var(--df-primary);
+}
+
+.df-menu-item.is-on {
+  background: var(--df-primary-soft);
+  color: var(--df-primary);
+  font-weight: 650;
+}
+
+/* amount */
+.df-amount {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 62px;
+  padding: 0 18px;
+    border: 1.5px solid #0000000f;
+  border-radius: 12px;
+  /* background: var(--df-field); */
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+
+.df-amount:focus-within {
+  border-color: var(--df-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--df-primary) 13%, transparent);
+}
+
+.df-amount.is-off {
+  opacity: 0.65;
+}
+
+.df-cur {
+  color: var(--df-primary);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.df-amount input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  outline: none;
+}
+
+.df-amount input::placeholder {
+  color: var(--df-muted);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0;
+  opacity: 0.75;
+}
+
+.df-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.df-qbtn {
+  height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--df-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.df-qbtn:hover:not(:disabled) {
+  border-color: var(--df-primary);
+  color: var(--df-primary);
+}
+
+.df-qbtn.is-on {
+  border-color: var(--df-primary);
+  background: var(--df-primary);
+  color: #fff;
+}
+
+.df-qbtn:disabled {
+  background: #f4f5f8;
+  color: #a3a9b8;
+  cursor: not-allowed;
+}
+
+/* segmented receipt chooser */
+.df-seg {
+  display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    padding: 4px;
+    border-radius: 12px;
+    /* background: var(--df-field); */
+    border: 1px dashed #80808063;
+}
+
+.df-segbtn {
+  min-width: 84px;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--df-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.df-segbtn.is-on {
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(40, 20, 30, 0.14);
+  color: var(--df-primary);
+}
+
+/* consent */
+.df-check {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.df-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.df-check input:focus-visible+.df-box {
+  outline: 2px solid var(--df-primary);
+  outline-offset: 2px;
+}
+
+.df-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid #b9bfce;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.df-box svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 3;
+  color: transparent;
+}
+
+.df-check input:checked+.df-box {
+  border-color: var(--df-primary);
+  background: var(--df-primary);
+}
+
+.df-check input:checked+.df-box svg {
+  color: #fff;
+}
+
+.df-check a {
+  color: var(--df-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.df-err {
+  margin: 0;
+  color: var(--df-red);
+  font-size: 12.5px;
+}
+
+/* ---------- summary (maroon, like the sign-in artwork side) ---------- */
+.df-side {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px;
+  border-radius: 20px;
+  color: #fff;
+  overflow: hidden;
+  background:
+    radial-gradient(360px 260px at 110% -10%, rgba(255, 255, 255, 0.16), transparent 70%),
+    radial-gradient(320px 320px at -20% 115%, rgba(0, 0, 0, 0.26), transparent 70%),
+    linear-gradient(160deg, var(--df-primary), var(--df-deep));
+  box-shadow: 0 18px 44px color-mix(in srgb, var(--df-primary) 30%, transparent);
+}
+
+.df-side-eyebrow {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.df-total {
+  display: grid;
+  gap: 4px;
+}
+
+.df-total b {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.df-total span {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+}
+
+.df-sum {
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.df-sum>div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.df-sum dt {
+  flex: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+}
+
+.df-sum dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 650;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.df-sum dd.is-empty {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+}
+
+.df-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+}
+
+.df-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.df-checklist li.is-ok {
+  color: #fff;
+}
+
+.df-chip {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+}
+
+.df-chip svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 3.2;
+  color: var(--df-primary);
+}
+
+.df-checklist li.is-ok .df-chip {
+  border-color: #fff;
+  background: #fff;
+}
+
+.df-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--df-primary);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.df-submit:hover:not(:disabled) {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
+
+.df-submit:disabled {
+  background: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: not-allowed;
+}
+
+.df-submit svg {
+  width: 16px;
+  height: 16px;
+}
+
+.df-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.df-note svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 2px;
+}
+
+.df-toast {
+  position: fixed;
+  z-index: 1001;
+  bottom: 24px;
+  left: 50%;
+  max-width: calc(100vw - 32px);
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: var(--df-ink);
+  color: #fff;
+  transform: translateX(-50%);
+  font-size: 13px;
+}
+
+/* ---------- responsive ---------- */
+@container df (max-width: 940px) {
+  .df-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .df-side {
+    position: static;
+  }
+}
+
+@container df (max-width: 640px) {
+  .df-wrap {
+    padding: 16px 12px 40px;
+  }
+
+  .df-title h1 {
+    font-size: 24px;
+  }
+
+  .df-two,
+  .df-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .df-head {
+    padding: 16px 16px;
+  }
+
+  .df-body {
+    padding: 2px 16px 18px;
+  }
+
+  .df-total b {
+    font-size: 32px;
+  }
+}

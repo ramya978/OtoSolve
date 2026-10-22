@@ -3,6 +3,7 @@ import { MENU_DATA, MenuItem } from './Shared/layout/menu.data';
 import { MenuPage } from './Shared/layout/menu-page';
 import { PaymentsReceipts } from './pages/Donations/Payment_History/payments-receipts';
 import { Profile } from './pages/Auth/Profile/profile';
+import { DonorForm } from './pages/Auth/donorform/donorform';
 import { NewCampaign } from './pages/Campaign/Campaign_Wizard/new-campaign';
 import { CampaignRegister } from './pages/Campaign/Campaign_Register/campaign-register';
 import { LeadWorkQueue } from './pages/Donor & Leads/Lead_Work_Queue/lead-work-queue';
@@ -64,6 +65,7 @@ import { OrgAddOffice } from './pages/Organization/Add_Branch/add-office';
 import { OrgBranches } from './pages/Organization/Branch/branches';
 import { OrgDepartments } from './pages/Organization/Department/departments';
 import { OrgSettings } from './pages/Organization/Settings/settings';
+import { ActivateAccount } from './pages/Auth/Account_Activate/activate-account';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -345,11 +347,13 @@ const APP_ROUTES: Routes = [
  */
 export const routes: Routes = [
   { path: 'login', component: Login, canActivate: [guestGuard], title: 'Sign in' },
+  { path: 'auth/account-activate', component: ActivateAccount,title: 'Activate' },
 
   // Account recovery and second-factor screens. Public: they are reached mid sign-in or from an
   // e-mailed link, before (or without) a full session.
   { path: 'auth/sign-in', redirectTo: 'login', pathMatch: 'full' },
-  { path: 'auth/mfa', component: MfaChallenge, title: 'Verify it\'s you' },
+    { path: 'auth/donorform', component: DonorForm, title: 'Donor &amp; Payment Details' },
+  { path: 'auth/mfa', component: MfaChallenge,canActivate: [guestGuard], title: 'Verify it\'s you' },
   { path: 'auth/forgot-password', component: ForgotPassword,canActivate: [guestGuard], title: 'Forgot password' },
   { path: 'auth/reset-password', component: ResetPassword, title: 'Set a new password' },
   { path: 'auth/reset-password/:token', component: ResetPassword, title: 'Set a new password' },

@@ -17,8 +17,8 @@
 /* ---- the card ---- */
 .lg-card {
   display: grid;
-  grid-template-columns: minmax(0, 45fr) minmax(0, 55fr);
-  width: min(1080px, 100%);
+  /* grid-template-columns: minmax(0, 45fr) minmax(0, 55fr); */
+  width:min(700px, 100%);
   border-radius: 22px;
   background: var(--white);
   /* box-shadow:
