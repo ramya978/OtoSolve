@@ -53,6 +53,17 @@ import { MfaChallenge } from './pages/Auth/Recovery/mfa-challenge';
 import { ForgotPassword } from './pages/Auth/Recovery/forgot-password';
 import { ResetPassword } from './pages/Auth/Recovery/reset-password';
 import { Reauthenticate } from './pages/Auth/Recovery/reauthenticate';
+import { PlatformOverview } from './pages/Organization/Business_Unit/platform-overview';
+import { CreateOrganisation } from './pages/Organization/Create_Org/create-organisation';
+import { MenuCatalogue } from './pages/Organization/Menu_Catalogue/menu-catalogue';
+import { Organisations } from './pages/Organization/Org_List/organisations';
+import { OrganisationProfile } from './pages/Organization/Org_Profile/organisation-profile';
+import { PermissionCatalogue } from './pages/Organization/Permission_Catalogue/permission-catalogue';
+import { OrganisationEdit } from './pages/Organization/Edit_Profile/organisation-edit';
+import { OrgAddOffice } from './pages/Organization/Add_Branch/add-office';
+import { OrgBranches } from './pages/Organization/Branch/branches';
+import { OrgDepartments } from './pages/Organization/Department/departments';
+import { OrgSettings } from './pages/Organization/Settings/settings';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -69,6 +80,13 @@ const REAL_SCREENS: Record<string, unknown> = {
   'app/fundraising/relationships/follow-up-planner': FollowUpPlanner,
   'app/fundraising/relationships/follow-up-execution': FollowUpExecution,
   'app/fundraising/relationships/assignment-board': AssignmentBoard,
+  'app/administration/organisation/details': OrganisationProfile,
+  'app/platform/business-unit': PlatformOverview,
+  'app/platform/permission-catalogue': PermissionCatalogue,
+  'app/platform/menu-catalogue': MenuCatalogue,
+  'app/administration/organisation/directory':Organisations ,
+  'app/administration/organisation/setup-wizard':CreateOrganisation ,
+    'app/platform/audit': AuditTrail,
 
   // Users & Access (IAM)
   'app/administration/access/user-directory': Users,
@@ -257,6 +275,43 @@ const APP_ROUTES: Routes = [
     data: { name: 'My Security', route: '/app/administration/access/my-security' }
   },
 
+
+  // Organization
+   {
+    path: 'app/administration/organisation/details/edit',
+    component: OrganisationEdit,
+    title: 'Edit organisation profile',
+    data: { name: 'Organisation', route: '/app/administration/organisation/details' }
+  },
+
+  
+   {
+    path: 'app/administration/organisation/departments',
+    component: OrgDepartments,
+    title: 'organisation department',
+    data: { name: 'Organisation', route: '/app/administration/organisation/departments' }
+  },
+
+   {
+    path: 'app/administration/organisation/units',
+    component: OrgBranches,
+    title: 'organisation branch',
+    data: { name: 'Organisation', route: '/app/administration/organisation/units' }
+  },
+  {
+    path: 'app/administration/organisation/settings',
+    component: OrgSettings,
+    title: 'Organisation settings',
+    data: { name: 'Organisation', route: '/app/administration/organisation/settings' }
+  },
+  {
+    path: 'app/administration/organisation/units/new',
+    component: OrgAddOffice,
+    title: 'Add office',
+    data: { name: 'Add Office', route: '/app/administration/organisation/units/new' }
+  },
+
+  
   // Masters
   { path: 'app/masters/country', component: Countries, title: 'Countries' },
   { path: 'app/masters/country/new', component: CountryForm, title: 'New country' },
@@ -295,7 +350,7 @@ export const routes: Routes = [
   // e-mailed link, before (or without) a full session.
   { path: 'auth/sign-in', redirectTo: 'login', pathMatch: 'full' },
   { path: 'auth/mfa', component: MfaChallenge, title: 'Verify it\'s you' },
-  { path: 'auth/forgot-password', component: ForgotPassword, title: 'Forgot password' },
+  { path: 'auth/forgot-password', component: ForgotPassword,canActivate: [guestGuard], title: 'Forgot password' },
   { path: 'auth/reset-password', component: ResetPassword, title: 'Set a new password' },
   { path: 'auth/reset-password/:token', component: ResetPassword, title: 'Set a new password' },
   { path: 'auth/reauthenticate', component: Reauthenticate, title: 'Confirm it\'s you' },

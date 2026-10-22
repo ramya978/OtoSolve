@@ -678,6 +678,7 @@
 }
 
 .pc-clear:hover {
+  color: var(--i-primary-ink);
   text-decoration: underline;
 }
 

@@ -271,6 +271,7 @@
 }
 
 .ol-link:hover {
+  color: var(--i-primary-ink);
   text-decoration: underline;
 }
 
@@ -391,7 +392,7 @@
 }
 
 .ol-act:hover {
-  color: var(--i-primary);
+  color: var(--i-primary-ink);
   text-decoration: underline;
 }
 

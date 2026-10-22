@@ -294,7 +294,7 @@
                 <span class="hd-row-text"><strong>My profile</strong><small>Your name and account details</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
               </button>
-              <button type="button" class="hd-menu-row" role="menuitem" (click)="openSecurity()">
+              <button type="button" class="hd-menu-row" role="menuitem" (click)="closeUserMenu()">
                 <svg class="hd-row-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
                 <span class="hd-row-text"><strong>My security</strong><small>Password and account protection</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
@@ -309,12 +309,12 @@
             <div class="hd-menu-sep"></div>
 
             <div class="hd-menu-group">
-              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut(false)">
+              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut()">
                 <svg class="hd-row-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('logout')" /></svg>
                 <span class="hd-row-text"><strong>Sign out</strong><small>This device only</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
               </button>
-              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut(true)">
+              <button type="button" class="hd-menu-row danger" role="menuitem" (click)="signOut()">
                 <svg class="hd-row-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg>
                 <span class="hd-row-text"><strong>Sign out everywhere</strong><small>All devices and active sessions</small></span>
                 <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>

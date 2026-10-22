@@ -202,6 +202,7 @@
 }
 
 .mc-link:hover {
+  color: var(--i-primary-ink);
   text-decoration: underline;
 }
 

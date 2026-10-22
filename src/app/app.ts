@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, ViewEncapsulation, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, ViewEncapsulation, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -7,11 +7,6 @@ import { ThemeSettingsService, profileImageSrc } from './pages/Auth/Profile/them
 import { ThemeSettings } from './pages/Auth/Profile/settings';
 import { ClockSettingsService, ClockZone, cityOf } from './Shared/studio/data/clock-settings';
 import { AuthService } from './Shared/Auth/auth.service';
-import { AuthTokenService } from './Shared/services/auth-token.service';
-import { OrganisationContextService } from './Shared/services/organisation-context.service';
-import { NavigationService } from './Shared/services/navigation.service';
-import { ToastService } from './Shared/services/toast.service';
-import { apiErrorMessage } from './Shared/models/api-response.model';
 
 export interface Organisation {
   id: string;
@@ -38,8 +33,19 @@ interface Note {
   icon: HeaderIcon;
 }
 
-/** Notifications for the bell. The platform has no notification feed yet, so the list starts empty. */
-const NOTES: Note[] = [];
+const ORGANISATIONS: Organisation[] = [
+  { id: 'globalrelief', name: 'Global Relief Foundation', subdomain: 'globalrelief', status: 'Review only', mark: 'G', location: 'Chennai, India' },
+  { id: 'helpageindia', name: 'HelpAge India', subdomain: 'helpageindia', status: 'Active', mark: 'H', location: 'New Delhi, India' },
+  { id: 'smilefoundation', name: 'Smile Foundation', subdomain: 'smilefoundation', status: 'Active', mark: 'S', location: 'New Delhi, India' },
+  { id: 'unityforchange', name: 'Unity for Change', subdomain: 'unityforchange', status: 'Review only', mark: 'U', location: 'Mumbai, India' }
+];
+
+const NOTES: Note[] = [
+  { id: 'n1', title: 'Approval queue updated', detail: 'A request is ready for your review.', source: 'Approval queue', time: 'just now', unread: true, icon: 'doc' },
+  { id: 'n2', title: 'Team membership updated', detail: 'A new employee has joined the sales team.', source: 'Employees', time: '1h ago', unread: true, icon: 'users' },
+  { id: 'n3', title: 'Follow-up reminder', detail: 'An enquiry has a follow-up due today.', source: 'Lead work queue', time: '2h ago', unread: true, icon: 'clock' },
+  { id: 'n4', title: 'Nightly audit finished', detail: 'No failures across 4 organisations.', source: 'Platform audit', time: '1d ago', unread: false, icon: 'check' }
+];
 
 /** Line icons used in the top bar, its menu and the notifications panel (24×24, stroke). */
 const ICONS: Record<HeaderIcon, string> = {
@@ -82,10 +88,7 @@ export class App {
   );
 
   /** True while the router shows the sign-in screen: the shell then hides sidebar + top bar. */
-  protected readonly onAuthScreen = computed(() => {
-    const url = this.currentUrl();
-    return url.startsWith('/login') || url.startsWith('/auth/');
-  });
+  protected readonly onAuthScreen = computed(() => this.currentUrl().startsWith('/login'));
 
   /** The signed-in user for the top bar and account menu (placeholders while signed out). */
   protected readonly sessionUser = this.auth.user;
@@ -125,33 +128,8 @@ export class App {
   protected readonly userMenuOpen = signal(false);
   protected readonly orgListOpen = signal(false);
   protected readonly orgQuery = signal('');
-  private readonly tokens = inject(AuthTokenService);
-  private readonly orgContext = inject(OrganisationContextService);
-  private readonly navigation = inject(NavigationService);
-  private readonly toast = inject(ToastService);
-
-  /**
-   * The Organisations in the switcher. Only a root (global-scope) user has more than one to pick
-   * from - the list comes from the API when the switcher opens. Everybody else sees the one
-   * Organisation their session operates in.
-   */
-  protected readonly organisations = computed<Organisation[]>(() => {
-    const current = this.tokens.tenant();
-    if (!this.orgContext.canSwitch()) {
-      return current?.tenantId ? [this.fromContext(current.tenantId, current.tenantName, current.subdomain, current.status === 'active', current.tenantCode)] : [];
-    }
-    return this.orgContext
-      .selectable()
-      .filter((o) => !!o.tenantId)
-      .map((o) => this.fromContext(o.tenantId!, o.name, o.subdomain, o.isOperable === true, o.code));
-  });
-
-  /** The Organisation the session is operating in right now (null at platform scope). */
-  protected readonly selectedOrg = computed<Organisation | null>(() => {
-    const current = this.tokens.tenant();
-    if (!current?.tenantId || !current.tenantName) return null;
-    return this.fromContext(current.tenantId, current.tenantName, current.subdomain, current.status === 'active', current.tenantCode);
-  });
+  protected readonly organisations = signal<Organisation[]>(ORGANISATIONS);
+  protected readonly selectedOrg = signal<Organisation | null>(null);
   protected readonly filteredOrgs = computed(() => {
     const q = this.orgQuery().trim().toLowerCase();
     const list = this.organisations();
@@ -225,20 +203,6 @@ export class App {
   protected readonly isFullscreen = signal(false);
 
   constructor() {
-    // The shell already carries a (hidden) #toast element with its own style. Messages sent to the
-    // ToastService are shown there, so an error from any screen is visible without adding markup.
-    let hideTimer = 0;
-    effect(() => {
-      const list = this.toast.toasts();
-      const el = document.getElementById('toast');
-      if (!el) return;
-      const last = list[list.length - 1];
-      clearTimeout(hideTimer);
-      if (!last) { el.hidden = true; return; }
-      el.textContent = last.message ? `${last.title} - ${last.message}` : last.title;
-      el.hidden = false;
-    });
-
     const timer = setInterval(() => {
       if (!this.clockPaused()) this.now.set(new Date());
     }, 1000);
@@ -352,17 +316,10 @@ export class App {
    * Account menu → Sign out (and Sign out everywhere): ends the session on this device
    * and returns to the sign-in screen. Wire "everywhere" to a session-revoke API later.
    */
-  protected signOut(everywhere = false): void {
+  protected signOut(): void {
     this.closeAll();
-    // The API revokes the session (every session when `everywhere`) and clears the HttpOnly
-    // refresh cookie; the router then shows the sign-in screen.
-    this.auth.logout(everywhere);
-  }
-
-  /** Account menu → My security. */
-  protected openSecurity(): void {
-    this.closeUserMenu();
-    void this.router.navigateByUrl('/app/administration/access/my-security');
+    this.auth.logout();
+    void this.router.navigateByUrl('/login');
   }
 
   /** Account menu → Preferences: opens the shared Appearance studio popup (no navigation). */
@@ -377,7 +334,7 @@ export class App {
     const open = !this.orgListOpen();
     this.closeAll();
     this.orgListOpen.set(open);
-    if (open) this.openedOrgList();
+    if (open) this.focusOrgSearch();
   }
 
   /** Account menu → Current organisation: closes the menu and opens the organisation list. */
@@ -385,7 +342,7 @@ export class App {
     event.stopPropagation();
     this.closeAll();
     this.orgListOpen.set(true);
-    this.openedOrgList();
+    this.focusOrgSearch();
   }
 
   protected closeOrgList(): void {
@@ -393,40 +350,10 @@ export class App {
     this.orgQuery.set('');
   }
 
-  /**
-   * Pick the organisation to act in. Asks the SERVER to re-issue the access token against it
-   * (POST /auth/select-organisation); the sidebar menu for that Organisation is fetched before
-   * this completes, then the person lands on its landing route.
-   */
+  /** Pick the organisation to act in. Call the switch-organisation API here. */
   protected chooseOrg(org: Organisation): void {
+    this.selectedOrg.set(org);
     this.closeOrgList();
-    if (!this.orgContext.canSwitch() || org.id === this.selectedOrg()?.id) return;
-
-    this.orgContext.select(org.id).subscribe({
-      next: () => void this.router.navigateByUrl(this.navigation.landingRoute()),
-      error: (error: unknown) =>
-        this.toast.show('Organisation not opened', apiErrorMessage(error, 'That organisation could not be opened.'), 'error')
-    });
-  }
-
-  /** The switcher is filled only when it is opened: most people can switch nowhere. */
-  private openedOrgList(): void {
-    if (this.orgContext.canSwitch() && this.orgContext.selectable().length === 0) {
-      this.orgContext.loadSelectable().subscribe({ error: () => undefined });
-    }
-    this.focusOrgSearch();
-  }
-
-  private fromContext(id: string, name: string | null | undefined, subdomain: string | null | undefined, operable: boolean, code?: string | null): Organisation {
-    const label = (name ?? '').trim() || 'Organisation';
-    return {
-      id,
-      name: label,
-      subdomain: subdomain ?? '',
-      status: operable ? 'Active' : 'Review only',
-      mark: label.charAt(0).toUpperCase(),
-      location: code ?? ''
-    };
   }
 
   private focusOrgSearch(): void {
