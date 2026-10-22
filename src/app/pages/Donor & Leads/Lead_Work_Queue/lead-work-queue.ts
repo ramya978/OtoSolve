@@ -270,8 +270,9 @@ export class LeadWorkQueue implements OnInit {
   openLead(r: LeadRow): void { this.router.navigate(['/app/fundraising/Lead/Lead-view'], { queryParams: { ref: r.ref } }); }
   act(r: LeadRow, kind: 'view' | 'note' | 'assign'): void {
     if (kind === 'view') return this.openLead(r);
-    if (kind === 'assign') { this.flash((r.owner ? 'Reassign ' : 'Assign ') + r.name + ' from the lead profile.'); return; }
-    this.flash('Note for ' + r.name + ' — log it from the lead profile.');
+    // The conversation icon opens this lead's communication timeline; the assign icon opens the board.
+    if (kind === 'note') { this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: r.ref } }); return; }
+    this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: { ref: r.ref } });
   }
   doExport(): void {
     this.api.exportLeads({ search: this.query().trim() || undefined, leadIds: this.checked().size ? [...this.checked()].join(',') : undefined }).subscribe({

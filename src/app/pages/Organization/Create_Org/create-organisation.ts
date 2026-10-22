@@ -1,8 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { CreateOrganisationResponse } from '../../../Shared/models/iam-contract.model';
+import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
+import { EnumOptionsService } from '../../../Shared/services/enum-options.service';
+import { ToastService } from '../../../Shared/services/toast.service';
 
 /** change these to your real routes */
-const ORGS_PATH = '/app/administration/organisations';
+const ORGS_PATH = '/app/administration/organisation/directory';
 const DOMAIN_SUFFIX = '.localhost';
 
 interface OrgForm {
@@ -95,6 +100,18 @@ const ICONS: Record<string, string> = {
 })
 export class CreateOrganisation {
   private readonly router = inject(Router);
+  private readonly api = inject(OrganisationApiService);
+  private readonly toast = inject(ToastService);
+  private readonly enums = inject(EnumOptionsService);
+  /** The server's own words for organisation types (the form's labels are matched to them). */
+  private serverTypes: string[] = [];
+  private readonly serverErrors = signal<Record<string, string>>({});
+  readonly saving = signal(false);
+  readonly result = signal<CreateOrganisationResponse | null>(null);
+
+  constructor() {
+    this.enums.organisationTypes().subscribe({ next: (t) => (this.serverTypes = t), error: () => undefined });
+  }
 
   readonly steps = STEPS;
   readonly types = TYPES;
@@ -125,7 +142,7 @@ export class CreateOrganisation {
     if (!f.lastName.trim()) e['lastName'] = 'Add a last name.';
     if (!f.email.trim()) e['email'] = 'Add an e-mail address.';
     else if (!/^\S+@\S+\.\S+$/.test(f.email.trim())) e['email'] = 'Enter a valid e-mail address.';
-    return e;
+    return { ...e, ...this.serverErrors() };
   });
 
   /** summary of every step for the review page, with readable labels */
@@ -202,12 +219,66 @@ export class CreateOrganisation {
 
   /** the last step: create the organisation, its roles, its navigation and the administrator together */
   submit(): void {
-    /* call your create-organisation endpoint here with this.f(); show the result once it succeeds */
-    this.created.set(true);
-    this.toTop();
+    if (this.saving()) return;
+    const f = this.f();
+    const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const typeLabel = TYPES.find((t) => t.value === f.type)?.label ?? '';
+    const organisationType = f.type ? (this.serverTypes.find((t) => norm(t) === norm(typeLabel)) ?? typeLabel) : null;
+    const max = Number(f.maxPeople);
+    this.saving.set(true);
+    this.serverErrors.set({});
+    this.api.create({
+      name: f.name.trim(),
+      subdomain: f.domain.trim(),
+      adminEmail: f.email.trim().toLowerCase(),
+      adminFirstName: f.firstName.trim(),
+      adminLastName: f.lastName.trim(),
+      code: f.code.trim() || null,
+      legalName: f.legalName.trim() || null,
+      organisationType,
+      description: f.description.trim() || null,
+      contactPhoneCountryCode: f.phone.trim() ? f.phoneCode : null,
+      contactPhone: f.phone.trim() || null,
+      adminUsername: f.username.trim() || null,
+      timeZone: f.timezone || null,
+      defaultCurrency: f.currency || null,
+      defaultCulture: f.language || null,
+      maximumUsers: f.maxPeople.trim() && max > 0 ? max : null,
+      defaultMfaRequirement: f.twoStep,
+      invitationMessage: f.message.trim() || null,
+      sendInvitation: f.sendNow
+    }).subscribe({
+      next: (r) => {
+        this.saving.set(false);
+        this.result.set(r);
+        this.created.set(true);
+        this.toast.show('Organisation created', r.invitationSent
+          ? `${r.name} was created and ${r.adminEmail} has been invited.`
+          : `${r.name} was created${f.sendNow ? ', but the invitation e-mail could not be sent' : ''}.`, r.invitationSent || !f.sendNow ? 'success' : 'warning');
+        this.toTop();
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        const map: Record<string, string> = {
+          name: 'name', code: 'code', subdomain: 'domain', adminEmail: 'email', adminFirstName: 'firstName', adminLastName: 'lastName'
+        };
+        const mapped: Record<string, string> = {};
+        for (const [field, message] of Object.entries(apiFieldErrors(e))) {
+          const key = map[field.charAt(0).toLowerCase() + field.slice(1)];
+          if (key) mapped[key] = message;
+        }
+        this.serverErrors.set(mapped);
+        // A refusal on a field sends the person back to the step that owns it.
+        const firstStep = STEP_FIELDS.findIndex((fields) => fields.some((k) => mapped[k]));
+        if (firstStep >= 0) { this.attempted.set(true); this.step.set(firstStep); }
+        this.toast.show('Organisation not created', apiErrorMessage(e, 'The organisation could not be created.'), 'error');
+      }
+    });
   }
 
   another(): void {
+    this.serverErrors.set({});
+    this.result.set(null);
     this.f.set(blank());
     this.domainTouched = false;
     this.created.set(false);

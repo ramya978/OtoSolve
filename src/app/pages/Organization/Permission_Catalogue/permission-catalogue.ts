@@ -1,6 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { ActionDef, ACTIONS, ActionKey, Permission, PERMISSIONS } from '../../../Shared/Organization/permission-catalogue.data';
+import { ActionDef, ACTIONS, ActionKey, Permission } from '../../../Shared/Organization/permission-catalogue.data';
+import { IamAdminApiService } from '../../../Service/iam-admin-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 const ROLES_PATH = '/app/administration/access/role-and-permission-catalogue';
 
@@ -27,10 +30,39 @@ const ICONS: Record<string, string> = {
   templateUrl: './permission-catalogue.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './permission-catalogue.css']
 })
-export class PermissionCatalogue {
+export class PermissionCatalogue implements OnInit {
   private readonly router = inject(Router);
+  private readonly api = inject(IamAdminApiService);
+  private readonly toast = inject(ToastService);
 
-  readonly all: Permission[] = PERMISSIONS;
+  readonly loading = signal(true);
+  private readonly catalogue = signal<Permission[]>([]);
+  get all(): Permission[] { return this.catalogue(); }
+
+  ngOnInit(): void { this.load(); }
+
+  load(): void {
+    this.loading.set(true);
+    this.api.getPermissionMatrix().subscribe({
+      next: (matrix) => {
+        const rows: Permission[] = (matrix.modules ?? []).flatMap((m) => (m.groups ?? []).flatMap((g) =>
+          (g.permissions ?? []).map((p) => ({
+            code: p.code ?? '',
+            name: p.name ?? '',
+            group: g.groupName || g.groupCode || '',
+            module: m.moduleName || m.moduleCode || '',
+            action: (p.action ?? 'view') as ActionKey,
+            sensitive: p.isSensitive === true,
+          }))));
+        this.catalogue.set(rows);
+        this.loading.set(false);
+      },
+      error: (e: unknown) => {
+        this.loading.set(false);
+        this.toast.error('Catalogue not loaded', apiErrorMessage(e, 'The permission catalogue could not be loaded.'));
+      },
+    });
+  }
   readonly actions: ActionDef[] = ACTIONS;
   readonly pageSizes = [10, 25, 50];
 
@@ -45,9 +77,9 @@ export class PermissionCatalogue {
   readonly copied = signal<string>('');
 
   /* stats */
-  readonly total = this.all.length;
-  readonly sensitiveTotal = this.all.filter((p) => p.sensitive).length;
-  readonly sensitivePct = this.total ? Math.round((this.sensitiveTotal / this.total) * 100) : 0;
+  get total(): number { return this.all.length; }
+  get sensitiveTotal(): number { return this.all.filter((p) => p.sensitive).length; }
+  get sensitivePct(): number { return this.total ? Math.round((this.sensitiveTotal / this.total) * 100) : 0; }
   readonly moduleList = computed(() => {
     const map = new Map<string, number>();
     for (const p of this.all) map.set(p.module, (map.get(p.module) ?? 0) + 1);

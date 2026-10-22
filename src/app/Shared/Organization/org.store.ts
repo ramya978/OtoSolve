@@ -1,4 +1,10 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { OrganisationApiService } from '../../Service/organisation-api.service';
+import { IamAdminApiService } from '../../Service/iam-admin-api.service';
+import { UserDirectoryApiService } from '../../Service/user-directory-api.service';
+import { fetchAllPages } from '../services/paging';
+import { DepartmentResponse, OrganisationDetailResponse, OrganisationUnitResponse } from '../models/iam-contract.model';
 
 /* ---- route paths: keep in sync with the organisation routes in app.routes.ts ---- */
 export const ORG_PATH = '/app/administration/organisation';
@@ -17,6 +23,9 @@ export interface Department {
   headId: string | null;
   order: number;
   active: boolean;
+  version?: number;
+  members?: number;
+  children?: number;
 }
 
 export interface Office {
@@ -38,6 +47,9 @@ export interface Office {
   state: string;
   city: string;
   postal: string;
+  version?: number;
+  members?: number;
+  children?: number;
 }
 
 export interface Security {
@@ -97,101 +109,169 @@ export function focusDialog(): void {
   setTimeout(() => document.querySelector<HTMLElement>('.og-dialog')?.focus());
 }
 
-/* ---- sample data (replaced by the API later) ---- */
-const ORG = {
-  name: 'Smile Foundation',
-  verified: true,
-  code: 'TEN001',
-  domain: 'smilefoundation.localhost',
-  type: 'Non-profit / NGO',
-  since: 'Oct 2026',
-  peopleUsed: 21,
-  peopleLimit: 50,
-  administrator: 'Anjali Prakash',
-  updated: '14 Oct 2026'
-};
-
-const PEOPLE: Person[] = [
-  { id: 'p1', name: 'Anjali Prakash', deptId: 'd-adm', officeId: 'o-ho' },
-  { id: 'p2', name: 'Rohan Suresh', deptId: 'd-cam', officeId: 'o-ho' },
-  { id: 'p3', name: 'Kavita Ashok', deptId: 'd-ig', officeId: 'o-ho' },
-  { id: 'p4', name: 'Neha Rajesh', deptId: 'd-dc', officeId: 'o-ho' },
-  { id: 'p5', name: 'Arjun Mehta', deptId: 'd-cam', officeId: 'o-ho' },
-  { id: 'p6', name: 'Divya Nair', deptId: 'd-ig', officeId: 'o-ho' },
-  { id: 'p7', name: 'Imran Qureshi', deptId: 'd-cam', officeId: 'o-mum' },
-  { id: 'p8', name: 'Lakshmi Iyer', deptId: 'd-ig', officeId: 'o-blr' },
-  { id: 'p9', name: 'Sandeep Rao', deptId: 'd-dc', officeId: 'o-hyd' }
-];
-
-const dept = (id: string, code: string, name: string, description: string, order: number, headId: string | null): Department =>
-  ({ id, code, name, description, parentId: null, headId, order, active: true });
-
-const DEPARTMENTS: Department[] = [
-  dept('d-adm', 'ADM', 'Administration and Operations', 'Office administration, compliance, vendors and platform administration.', 10, 'p1'),
-  dept('d-cam', 'CAM', 'Campaigns and Communications', 'Fundraising campaigns, digital media, events and supporter outreach.', 20, 'p2'),
-  dept('d-ig', 'IG', 'Individual Giving', 'Donor acquisition, lead management and supporter engagement.', 30, 'p3'),
-  dept('d-dc', 'DC', 'Donor Care', 'Supporter queries, receipts, 80G certificates and donor retention.', 40, 'p4'),
-  dept('d-prog', 'PROG', 'Programmes', "Education, healthcare, livelihood and women's empowerment programmes.", 50, null),
-  dept('d-fin', 'FIN', 'Finance and Accounts', 'Receipting, reconciliation, statutory filings and audit support.', 60, null),
-  dept('d-hr', 'HR', 'Human Resources', 'Recruitment, onboarding, payroll and staff welfare.', 70, null),
-  dept('d-it', 'IT', 'Technology', 'Systems, data protection and information security.', 80, null)
-];
-
-const office = (id: string, code: string, name: string, kind: string, order: number, city: string, state: string, slug: string): Office => ({
-  id, code, name, kind, parentId: null, managerId: null,
-  email: `${slug}@smilefoundationindia.test`, phone: '', timezone: 'Asia/Kolkata', description: '', order, active: true,
-  address1: 'Sample address line', address2: '', country: 'India', state, city, postal: ''
+/* ---- API mapping ---- */
+const toDept = (r: DepartmentResponse, userIds: Set<string>): Department => ({
+  id: r.id ?? '', code: r.code ?? '', name: r.name ?? '', description: r.description ?? '',
+  parentId: r.parentDepartmentId ?? null, headId: r.headUserId && userIds.has(r.headUserId) ? r.headUserId : (r.headUserId ?? null),
+  order: r.displayOrder ?? 0, active: r.status === 'active', version: r.version, members: r.memberCount, children: r.childCount
 });
 
-const OFFICES: Office[] = [
-  {
-    ...office('o-ho', 'HO', 'Head Office - New Delhi', 'Head Office', 10, 'New Delhi', 'Delhi', 'headoffice'),
-    address1: '161 B/4, 3rd Floor, Gulmohar House',
-    address2: 'Yusuf Sarai Community Centre',
-    postal: '110049'
-  },
-  office('o-mum', 'MUM', 'Mumbai Regional Office', 'Regional office', 20, 'Mumbai', 'Maharashtra', 'mumbai'),
-  office('o-blr', 'BLR', 'Bengaluru Regional Office', 'Regional office', 30, 'Bengaluru', 'Karnataka', 'bengaluru'),
-  office('o-hyd', 'HYD', 'Hyderabad Regional Office', 'Regional office', 40, 'Hyderabad', 'Telangana', 'hyderabad'),
-  office('o-kol', 'KOL', 'Kolkata Regional Office', 'Regional office', 50, 'Kolkata', 'West Bengal', 'kolkata'),
-  office('o-chn', 'CHN', 'Chennai Regional Office', 'Regional office', 60, 'Chennai', 'Tamil Nadu', 'chennai')
-];
+const toOffice = (r: OrganisationUnitResponse): Office => ({
+  id: r.id ?? '', code: r.code ?? '', name: r.name ?? '', kind: r.unitType ?? '', parentId: r.parentUnitId ?? null,
+  managerId: r.managerUserId ?? null, email: r.contactEmail ?? '', phone: r.contactPhone ?? '', timezone: r.timeZone ?? '',
+  description: r.description ?? '', order: r.displayOrder ?? 0, active: r.status === 'active',
+  address1: r.addressLine1 ?? '', address2: r.addressLine2 ?? '', country: r.country ?? '', state: r.state ?? '',
+  city: r.city ?? '', postal: r.postalCode ?? '', version: r.version, members: r.memberCount, children: r.childCount
+});
 
-/** One in-memory store shared by Profile, Departments, Branches, Add Office and Settings. */
+const SEC_DEFAULT: Security = { twoStep: 'optional', maxFailed: 5, lockoutMin: 15, idleMin: 30, minLength: 10, expireDays: 0 };
+
+/** One store shared by Profile, Departments, Branches, Add Office and Settings; everything comes from the API. */
 @Injectable({ providedIn: 'root' })
 export class OrgStore {
-  readonly org = ORG;
-  readonly people = signal<Person[]>(PEOPLE);
-  readonly departments = signal<Department[]>(DEPARTMENTS);
-  readonly offices = signal<Office[]>(OFFICES);
-  readonly security = signal<Security>({
-    twoStep: 'optional', maxFailed: 5, lockoutMin: 15, idleMin: 30, minLength: 10, expireDays: 0
+  private readonly orgApi = inject(OrganisationApiService);
+  private readonly admin = inject(IamAdminApiService);
+  private readonly users = inject(UserDirectoryApiService);
+
+  private orgId: string | null = null;
+  readonly detail = signal<OrganisationDetailResponse | null>(null);
+  readonly loading = signal(false);
+  readonly loaded = signal(false);
+  readonly people = signal<Person[]>([]);
+  readonly departments = signal<Department[]>([]);
+  readonly offices = signal<Office[]>([]);
+
+  /** Header summary used by Settings. */
+  get org() {
+    const d = this.detail();
+    return {
+      name: d?.name ?? '', verified: d?.status === 'active', code: d?.code ?? '', domain: d?.hostName ?? '',
+      type: d?.organisationType ?? '', peopleUsed: d?.userCount ?? 0, peopleLimit: d?.maximumUsers ?? 0,
+      administrator: d?.primaryAdmin?.displayName ?? ''
+    };
+  }
+
+  readonly security = computed<Security>(() => {
+    const d = this.detail();
+    if (!d) return SEC_DEFAULT;
+    return {
+      twoStep: d.defaultMfaRequirement === 'required' ? 'required' : 'optional',
+      maxFailed: d.maximumFailedAccessAttempts ?? SEC_DEFAULT.maxFailed,
+      lockoutMin: d.lockoutDurationMinutes ?? SEC_DEFAULT.lockoutMin,
+      idleMin: d.sessionIdleTimeoutMinutes ?? SEC_DEFAULT.idleMin,
+      minLength: d.passwordMinimumLength ?? SEC_DEFAULT.minLength,
+      expireDays: d.passwordExpiryDays ?? SEC_DEFAULT.expireDays
+    };
   });
 
   readonly sortedDepartments = computed(() => [...this.departments()].sort((a, b) => a.order - b.order));
   readonly sortedOffices = computed(() => [...this.offices()].sort((a, b) => a.order - b.order));
 
+  /** Loads the organisation record (the signed-in one, or `orgId` for a platform administrator). */
+  loadDetail(orgId?: string | null): Observable<OrganisationDetailResponse> {
+    this.orgId = orgId ?? null;
+    this.loading.set(true);
+    return (orgId ? this.orgApi.get(orgId) : this.orgApi.getMine()).pipe(
+      tap({ next: (d) => { this.detail.set(d); this.loading.set(false); this.loaded.set(true); }, error: () => this.loading.set(false) })
+    );
+  }
+
+  setDetail(d: OrganisationDetailResponse): void { this.detail.set(d); }
+
+  /** Re-reads the record after a save so the version stays current. */
+  refreshDetail(): Observable<OrganisationDetailResponse> { return this.loadDetail(this.orgId); }
+
+  /** Loads departments, units and people. */
+  loadStructure(): Observable<void> {
+    return forkJoin({
+      users: fetchAllPages((page, size) => this.users.searchUsers({ pageIndex: page, pageSize: size })),
+      depts: this.admin.getDepartments(),
+      units: this.admin.getUnits()
+    }).pipe(map(({ users, depts, units }) => {
+      const dRows = (depts ?? []).filter((d) => d.status !== 'archived');
+      const uRows = (units ?? []).filter((u) => u.status !== 'archived');
+      const deptByName = new Map(dRows.map((d) => [(d.name ?? '').toLowerCase(), d.id ?? '']));
+      const unitByName = new Map(uRows.map((u) => [(u.name ?? '').toLowerCase(), u.id ?? '']));
+      this.people.set(users.map((u) => ({
+        id: u.id ?? '',
+        name: u.displayName ?? '',
+        deptId: deptByName.get((u.departmentName ?? '').toLowerCase()) ?? '',
+        officeId: unitByName.get((u.organisationUnitName ?? '').toLowerCase()) ?? ''
+      })));
+      const ids = new Set(users.map((u) => u.id ?? ''));
+      this.departments.set(dRows.map((d) => toDept(d, ids)));
+      this.offices.set(uRows.map(toOffice));
+    }));
+  }
+
   person(id: string | null): Person | null {
     return id ? this.people().find((p) => p.id === id) ?? null : null;
   }
 
-  deptPeople(id: string): number { return this.people().filter((p) => p.deptId === id).length; }
-  officePeople(id: string): number { return this.people().filter((p) => p.officeId === id).length; }
+  deptPeople(id: string): number {
+    const n = this.people().filter((p) => p.deptId === id).length;
+    return n || (this.departments().find((d) => d.id === id)?.members ?? 0);
+  }
+  officePeople(id: string): number {
+    const n = this.people().filter((p) => p.officeId === id).length;
+    return n || (this.offices().find((o) => o.id === id)?.members ?? 0);
+  }
   deptChildren(id: string): number { return this.departments().filter((d) => d.parentId === id).length; }
   officeChildren(id: string): number { return this.offices().filter((o) => o.parentId === id).length; }
-
   nextDeptOrder(): number { return Math.max(0, ...this.departments().map((d) => d.order)) + 10; }
   nextOfficeOrder(): number { return Math.max(0, ...this.offices().map((o) => o.order)) + 10; }
 
-  newId(prefix: string): string { return `${prefix}-${Date.now().toString(36)}`; }
-
-  upsertDepartment(d: Department): void {
-    this.departments.update((list) => (list.some((x) => x.id === d.id) ? list.map((x) => (x.id === d.id ? d : x)) : [...list, d]));
+  saveDepartment(d: Department, creating: boolean): Observable<Department> {
+    const ids = new Set(this.people().map((p) => p.id));
+    const done = (r: DepartmentResponse) => {
+      const row = toDept(r, ids);
+      this.departments.update((list) => (list.some((x) => x.id === row.id) ? list.map((x) => (x.id === row.id ? row : x)) : [...list, row]));
+      return row;
+    };
+    if (!creating) {
+      return this.admin.updateDepartment(d.id, {
+        expectedVersion: d.version, name: d.name, code: d.code, description: d.description,
+        parentDepartmentId: d.parentId, headUserId: d.headId, status: d.active ? 'active' : 'inactive', displayOrder: d.order
+      }).pipe(map(done));
+    }
+    return this.admin.createDepartment({
+      name: d.name, code: d.code, description: d.description, parentDepartmentId: d.parentId, headUserId: d.headId, displayOrder: d.order
+    }).pipe(
+      switchMap((r) => d.active ? of(r) : this.admin.updateDepartment(r.id ?? '', {
+        expectedVersion: r.version, name: r.name, code: r.code, status: 'inactive'
+      })),
+      map(done)
+    );
   }
-  removeDepartment(id: string): void { this.departments.update((list) => list.filter((d) => d.id !== id)); }
 
-  upsertOffice(o: Office): void {
-    this.offices.update((list) => (list.some((x) => x.id === o.id) ? list.map((x) => (x.id === o.id ? o : x)) : [...list, o]));
+  removeDepartment(d: Department): Observable<unknown> {
+    return this.admin.deleteDepartment(d.id, { expectedVersion: d.version }).pipe(
+      tap(() => this.departments.update((list) => list.filter((x) => x.id !== d.id))));
   }
-  removeOffice(id: string): void { this.offices.update((list) => list.filter((o) => o.id !== id)); }
+
+  saveOffice(o: Office, creating: boolean): Observable<Office> {
+    const done = (r: OrganisationUnitResponse) => {
+      const row = toOffice(r);
+      this.offices.update((list) => (list.some((x) => x.id === row.id) ? list.map((x) => (x.id === row.id ? row : x)) : [...list, row]));
+      return row;
+    };
+    const body = {
+      name: o.name, code: o.code, description: o.description, parentUnitId: o.parentId, unitType: o.kind,
+      addressLine1: o.address1, addressLine2: o.address2, city: o.city, state: o.state, country: o.country,
+      postalCode: o.postal, contactEmail: o.email, contactPhone: o.phone, timeZone: o.timezone,
+      managerUserId: o.managerId, displayOrder: o.order
+    };
+    if (!creating) {
+      return this.admin.updateUnit(o.id, { ...body, expectedVersion: o.version, status: o.active ? 'active' : 'inactive' }).pipe(map(done));
+    }
+    return this.admin.createUnit(body).pipe(
+      switchMap((r) => o.active ? of(r) : this.admin.updateUnit(r.id ?? '', { expectedVersion: r.version, status: 'inactive' })),
+      map(done)
+    );
+  }
+
+  removeOffice(o: Office): Observable<unknown> {
+    return this.admin.deleteUnit(o.id, { expectedVersion: o.version }).pipe(
+      tap(() => this.offices.update((list) => list.filter((x) => x.id !== o.id))));
+  }
 }

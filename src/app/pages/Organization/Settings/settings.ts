@@ -1,5 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { OrgStore, Security, ICONS } from '../../../Shared/Organization/org.store';
+import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type NumKey = 'maxFailed' | 'lockoutMin' | 'idleMin' | 'minLength' | 'expireDays';
 
@@ -32,9 +35,23 @@ const GROUPS: Group[] = [
   templateUrl: './settings.html',
   styleUrls: ['../../../Shared/Organization/org-shared.css', './settings.css']
 })
-export class OrgSettings {
+export class OrgSettings implements OnInit {
   protected readonly store = inject(OrgStore);
-  protected readonly org = this.store.org;
+  private readonly api = inject(OrganisationApiService);
+  private readonly toast = inject(ToastService);
+  protected get org() { return this.store.org; }
+  protected readonly saving = signal(false);
+
+  constructor() {
+    // Show the saved values as soon as the organisation record arrives.
+    effect(() => { const s = this.store.security(); this.values.set({ ...s }); });
+  }
+
+  ngOnInit(): void {
+    this.store.loadDetail().subscribe({
+      error: (e: unknown) => this.toast.error('Settings not loaded', apiErrorMessage(e, 'The security settings could not be loaded.'))
+    });
+  }
   protected readonly groups = GROUPS;
 
   protected readonly values = signal<Security>({ ...this.store.security() });
@@ -58,10 +75,31 @@ export class OrgSettings {
   }
 
   protected save(): void {
-    this.store.security.set({ ...this.values() });
-    this.saved.set(true);
-    if (this.savedTimer) clearTimeout(this.savedTimer);
-    this.savedTimer = setTimeout(() => this.saved.set(false), 2200);
+    const d = this.store.detail();
+    if (!d || this.saving()) return;
+    const v = this.values();
+    this.saving.set(true);
+    this.api.updateMySettings({
+      defaultMfaRequirement: v.twoStep,
+      maximumFailedAccessAttempts: v.maxFailed,
+      lockoutDurationMinutes: v.lockoutMin,
+      passwordMinimumLength: v.minLength,
+      passwordExpiryDays: v.expireDays,
+      sessionIdleTimeoutMinutes: v.idleMin,
+      expectedVersion: d.version
+    }).subscribe({
+      next: () => {
+        this.store.loadDetail().subscribe({ error: () => undefined });
+        this.saving.set(false);
+        this.saved.set(true);
+        if (this.savedTimer) clearTimeout(this.savedTimer);
+        this.savedTimer = setTimeout(() => this.saved.set(false), 2200);
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        this.toast.error('Settings not saved', apiErrorMessage(e, 'The security settings could not be saved.'));
+      }
+    });
   }
 
   protected gateways(): void {

@@ -1,6 +1,10 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { PLATFORM, STAGES, Stage } from '../../../Shared/Organization/platform.data';
+import { PlatformRecord, Stage } from '../../../Shared/Organization/platform.data';
+import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { BusinessUnitResponse, OrganisationStatisticsResponse } from '../../../Shared/models/iam-contract.model';
 
 type TabKey = 'overview' | 'organisations' | 'onboarding';
 interface TabDef { key: TabKey; label: string; }
@@ -18,14 +22,49 @@ const ICONS: Record<string, string> = {
   templateUrl: './platform-overview.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './platform-overview.css']
 })
-export class PlatformOverview {
+export class PlatformOverview implements OnInit {
   private readonly router = inject(Router);
+  private readonly api = inject(OrganisationApiService);
+  private readonly toast = inject(ToastService);
+  private readonly bu = signal<BusinessUnitResponse | null>(null);
+  private readonly stats = signal<OrganisationStatisticsResponse | null>(null);
 
   /** list of all organisations (change to your route) */
-  static readonly ORGANISATIONS_PATH = '/app/administration/platform/organisations';
+  static readonly ORGANISATIONS_PATH = '/app/administration/organisation/directory';
 
-  readonly platform = PLATFORM;
-  readonly stages: Stage[] = STAGES;
+  ngOnInit(): void {
+    this.api.getBusinessUnit().subscribe({
+      next: (b) => this.bu.set(b),
+      error: (e: unknown) => this.toast.error('Platform not loaded', apiErrorMessage(e, 'The platform record could not be loaded.'))
+    });
+    this.api.getStatistics().subscribe({
+      next: (st) => this.stats.set(st),
+      error: (e: unknown) => this.toast.error('Counts not loaded', apiErrorMessage(e, 'The organisation counts could not be loaded.'))
+    });
+  }
+
+  get platform(): PlatformRecord {
+    const b = this.bu();
+    return {
+      name: b?.name ?? '', reference: b?.code ?? '', legalName: b?.legalName || b?.name || '', rootDomain: b?.rootDomain ?? '',
+      contact: b?.contactEmail ?? '', support: b?.supportEmail ?? '',
+      defaults: [b?.timeZone, b?.defaultCurrency, b?.defaultCulture].filter(Boolean).join(' · '),
+      about: b?.description ?? '', status: b?.status ? b.status.charAt(0).toUpperCase() + b.status.slice(1) : '',
+      organisationLimit: b?.maximumTenants ?? null
+    };
+  }
+
+  get stages(): Stage[] {
+    const st = this.stats();
+    return [
+      { key: 'active', label: 'Active', hint: 'Currently active', count: st?.active ?? 0, tone: 'success' },
+      { key: 'review', label: 'Awaiting review', hint: 'Under review', count: st?.awaitingReview ?? 0, tone: 'warning' },
+      { key: 'onboarding', label: 'Still onboarding', hint: 'Still onboarding', count: st?.onboarding ?? 0, tone: 'info' },
+      { key: 'rejected', label: 'Rejected', hint: 'Rejected', count: st?.rejected ?? 0, tone: 'danger' },
+      { key: 'suspended', label: 'Suspended', hint: 'Temporarily suspended', count: st?.suspended ?? 0, tone: 'danger' },
+      { key: 'archived', label: 'Archived', hint: 'Archived', count: st?.archived ?? 0, tone: 'muted' }
+    ];
+  }
 
   readonly tabs: TabDef[] = [
     { key: 'overview', label: 'Overview' },
@@ -34,8 +73,8 @@ export class PlatformOverview {
   ];
   readonly tab = signal<TabKey>('overview');
 
-  readonly total = computed(() => this.stages.reduce((n, s) => n + s.count, 0));
-  readonly limitText = PLATFORM.organisationLimit === null ? 'No limit set' : 'Limit ' + PLATFORM.organisationLimit;
+  readonly total = computed(() => this.stats()?.total ?? this.stages.reduce((n, s) => n + s.count, 0));
+  get limitText(): string { const l = this.platform.organisationLimit; return l === null ? 'No limit set' : 'Limit ' + l; }
 
   count(key: string): number { return this.stages.find((s) => s.key === key)?.count ?? 0; }
 

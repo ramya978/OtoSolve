@@ -1,6 +1,8 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { initialsOf } from '../../../Shared/IAM/iam-data';
 import { OrgStore, Department, ICONS, focusDialog } from '../../../Shared/Organization/org.store';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 @Component({
   selector: 'app-org-departments',
@@ -8,8 +10,16 @@ import { OrgStore, Department, ICONS, focusDialog } from '../../../Shared/Organi
   templateUrl: './departments.html',
   styleUrls: ['./departments.css']
 })
-export class OrgDepartments {
+export class OrgDepartments implements OnInit {
   protected readonly store = inject(OrgStore);
+  private readonly toast = inject(ToastService);
+  protected readonly saving = signal(false);
+
+  ngOnInit(): void {
+    this.store.loadStructure().subscribe({
+      error: (e: unknown) => this.toast.error('Departments not loaded', apiErrorMessage(e, 'The departments could not be loaded.'))
+    });
+  }
 
   protected readonly rows = this.store.sortedDepartments;
 
@@ -152,8 +162,13 @@ export class OrgDepartments {
     this.submitted.set(true);
     const e = this.errors();
     if (e.code || e.name) return;
-    this.store.upsertDepartment({
-      id: this.editingId ?? this.store.newId('d'),
+    if (this.saving()) return;
+    const existing = this.editingId ? this.store.departments().find((x) => x.id === this.editingId) : undefined;
+    const creating = !existing;
+    this.saving.set(true);
+    this.store.saveDepartment({
+      id: this.editingId ?? '',
+      version: existing?.version,
       code: this.fCode().trim().toUpperCase(),
       name: this.fName().trim(),
       description: this.fDesc().trim(),
@@ -161,8 +176,17 @@ export class OrgDepartments {
       headId: this.fHead() || null,
       order: this.fOrder(),
       active: this.fActive()
+    }, creating).subscribe({
+      next: (row) => {
+        this.saving.set(false);
+        this.closeForm();
+        this.toast.success(creating ? 'Department added' : 'Department saved', row.name);
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        this.toast.error('Department not saved', apiErrorMessage(e, 'The department could not be saved.'));
+      }
     });
-    this.closeForm();
   }
 
   /* ---------- delete ---------- */
@@ -170,8 +194,12 @@ export class OrgDepartments {
   protected cancelDelete(): void { this.deleting.set(null); }
   protected confirmDelete(): void {
     const d = this.deleting();
-    if (d) this.store.removeDepartment(d.id);
     this.deleting.set(null);
+    if (!d) return;
+    this.store.removeDepartment(d).subscribe({
+      next: () => this.toast.success('Department removed', d.name),
+      error: (e: unknown) => this.toast.error('Department not removed', apiErrorMessage(e, 'The department could not be removed.'))
+    });
   }
 
   @HostListener('document:keydown.escape')

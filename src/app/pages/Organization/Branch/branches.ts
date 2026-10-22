@@ -1,6 +1,8 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OrgStore, Office, ICONS, focusDialog, ADD_OFFICE_PATH } from '../../../Shared/Organization/org.store';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 @Component({
   selector: 'app-org-branches',
@@ -8,9 +10,16 @@ import { OrgStore, Office, ICONS, focusDialog, ADD_OFFICE_PATH } from '../../../
   templateUrl: './branches.html',
   styleUrls: ['./branches.css']
 })
-export class OrgBranches {
+export class OrgBranches implements OnInit {
   private readonly router = inject(Router);
   protected readonly store = inject(OrgStore);
+  private readonly toast = inject(ToastService);
+
+  ngOnInit(): void {
+    this.store.loadStructure().subscribe({
+      error: (e: unknown) => this.toast.error('Branches not loaded', apiErrorMessage(e, 'The branches could not be loaded.'))
+    });
+  }
 
   protected readonly rows = this.store.sortedOffices;
 
@@ -87,8 +96,12 @@ export class OrgBranches {
   protected cancelDelete(): void { this.deleting.set(null); }
   protected confirmDelete(): void {
     const o = this.deleting();
-    if (o) this.store.removeOffice(o.id);
     this.deleting.set(null);
+    if (!o) return;
+    this.store.removeOffice(o).subscribe({
+      next: () => this.toast.success('Branch removed', o.name),
+      error: (e: unknown) => this.toast.error('Branch not removed', apiErrorMessage(e, 'The branch could not be removed.'))
+    });
   }
 
   @HostListener('document:keydown.escape')

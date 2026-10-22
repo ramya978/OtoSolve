@@ -1,7 +1,23 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
-import { ORG, REGISTRATION, CONTACT, ADDRESS, ABOUT, DOCUMENTS, WEB_ADDRESSES, HISTORY } from '../../../Shared/Organization/organisation-profile.data';
+import { OrgSummary, Row, OrgDocument, WebAddress, HistoryEntry, Tone } from '../../../Shared/Organization/organisation-profile.data';
+import { OrgStore } from '../../../Shared/Organization/org.store';
+import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { OrganisationDetailResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
+
+const dmy = (iso?: string | null): string => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return isNaN(+d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+const STATUS_TONE: Partial<Record<TenantStatus, Tone>> = {
+  active: 'success', approved: 'success', invited: 'info', invitationAccepted: 'info', submitted: 'warning',
+  underReview: 'warning', resubmitted: 'warning', rejected: 'warning', suspended: 'warning'
+};
+const spaced = (v: string): string => v.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()).trim();
 
 type TabKey = 'profile' | 'documents' | 'review' | 'web' | 'history';
 
@@ -39,17 +55,99 @@ const ICONS: Record<string, string> = {
   templateUrl: './organisation-profile.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './organisation-profile.css']
 })
-export class OrganisationProfile {
+export class OrganisationProfile implements OnInit {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly store = inject(OrgStore);
+  private readonly api = inject(OrganisationApiService);
+  private readonly toast = inject(ToastService);
 
-  readonly org = ORG;
-  readonly registration = REGISTRATION;
-  readonly contact = CONTACT;
-  readonly address = ADDRESS;
-  readonly about = ABOUT;
-  readonly documents = DOCUMENTS;
-  readonly webAddresses = WEB_ADDRESSES;
-  readonly history = HISTORY;
+  readonly loading = this.store.loading;
+  readonly sending = signal(false);
+  private readonly d = computed<OrganisationDetailResponse | null>(() => this.store.detail());
+
+  ngOnInit(): void {
+    this.store.loadDetail(this.route.snapshot.queryParamMap.get('id')).subscribe({
+      error: (e: unknown) => this.toast.error('Organisation not loaded', apiErrorMessage(e, 'The organisation could not be loaded.'))
+    });
+  }
+
+  get org(): OrgSummary {
+    const d = this.d();
+    return {
+      name: d?.name ?? '', verified: d?.status === 'active', code: d?.code ?? '', host: d?.hostName ?? '',
+      type: d?.organisationType ?? '', since: dmy(d?.createdAtUtc), people: d?.userCount ?? 0, seats: d?.maximumUsers ?? 0,
+      administrator: d?.primaryAdmin?.displayName ?? d?.contactPersonName ?? '', lastUpdated: dmy(d?.updatedAtUtc ?? d?.createdAtUtc),
+      status: this.status(), statusLabel: this.statusLabel()
+    };
+  }
+
+  get registration(): Row[] {
+    const d = this.d();
+    return [
+      { label: 'Legal name', value: d?.legalName || d?.name || '' },
+      { label: 'Type', value: d?.organisationType ?? '' },
+      { label: 'Registration no.', value: d?.registrationNumber ?? '' },
+      { label: 'Tax ID', value: d?.taxIdentificationNumber ?? '' },
+      { label: 'PAN', value: d?.panNumber ?? '' },
+      { label: 'GST', value: d?.gstNumber ?? '' },
+      { label: 'Established', value: dmy(d?.establishedOn) },
+      { label: 'Business unit', value: d?.businessUnitName ?? '' }
+    ].map((r) => ({ ...r, value: r.value || '—' }));
+  }
+
+  get contact(): Row[] {
+    const d = this.d();
+    const phone = [d?.contactPhoneCountryCode, d?.contactPhone].filter(Boolean).join(' ');
+    return [
+      { label: 'Contact person', value: d?.contactPersonName ?? '' },
+      { label: 'Telephone', value: phone, small: true },
+      { label: 'E-mail', value: d?.contactEmail ?? '', small: true },
+      { label: 'Website', value: d?.websiteUrl ?? '', small: true },
+      { label: 'Time zone', value: d?.timeZone ?? '' },
+      { label: 'Currency', value: d?.defaultCurrency ?? '' },
+      { label: 'Language', value: d?.defaultCulture ?? '' }
+    ].map((r) => ({ ...r, value: r.value || '—' }));
+  }
+
+  get address() {
+    const d = this.d();
+    return {
+      line1: d?.addressLine1 ?? '', line2: d?.addressLine2 ?? '',
+      city: [d?.city, d?.state].filter(Boolean).join(', '), postcode: d?.postalCode ?? '', country: d?.country ?? ''
+    };
+  }
+
+  get about(): string { return this.d()?.description ?? ''; }
+
+  get documents(): OrgDocument[] {
+    return (this.d()?.documents ?? []).map((x) => ({
+      name: x.fileName ?? '', kind: x.documentTypeDisplay || spaced(x.documentType ?? ''),
+      uploaded: dmy(x.uploadedAtUtc), size: x.fileSizeBytes ? Math.max(1, Math.round(x.fileSizeBytes / 1024)) + ' KB' : ''
+    }));
+  }
+
+  get webAddresses(): WebAddress[] {
+    return (this.d()?.domains ?? []).filter((x) => x.isActive !== false).map((x) => ({
+      address: x.hostName ?? '', kind: spaced(x.domainType ?? ''), primary: x.isPrimary === true, verifiedOn: x.isVerified ? dmy(x.verifiedAtUtc) || 'Verified' : ''
+    }));
+  }
+
+  get history(): HistoryEntry[] {
+    return [...(this.d()?.timeline ?? [])]
+      .sort((a, b) => (b.occurredAtUtc ?? '').localeCompare(a.occurredAtUtc ?? ''))
+      .map((t) => {
+        const at = t.occurredAtUtc ? new Date(t.occurredAtUtc) : null;
+        return {
+          day: at ? at.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '',
+          time: at ? at.getFullYear() + ' · ' + at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : '',
+          label: t.toStatusDisplay || spaced(t.toStatus ?? ''),
+          from: t.fromStatus ? spaced(t.fromStatus).toLowerCase() : undefined,
+          by: t.actorDisplayName ?? '',
+          tone: STATUS_TONE[t.toStatus as TenantStatus] ?? 'muted'
+        };
+      });
+  }
 
   readonly tabs: TabDef[] = [
     { key: 'profile', label: 'Profile' },
@@ -66,8 +164,14 @@ export class OrganisationProfile {
   readonly note = signal('');
   readonly sent = signal(false);
 
-  readonly status = signal(ORG.status);
-  readonly statusLabel = computed(() => (this.sent() ? 'Submitted' : ORG.statusLabel));
+  readonly status = computed<'draft' | 'submitted' | 'active' | 'rejected'>(() => {
+    const t = this.d()?.status;
+    if (t === 'active') return 'active';
+    if (t === 'rejected') return 'rejected';
+    if (t === 'submitted' || t === 'underReview' || t === 'resubmitted' || t === 'approved') return 'submitted';
+    return 'draft';
+  });
+  readonly statusLabel = computed(() => (this.sent() ? 'Submitted' : this.d()?.statusDisplay || spaced(this.d()?.status ?? '')));
   readonly statusTone = computed(() => {
     if (this.sent()) return 'warning';
     const s = this.status();
@@ -77,10 +181,12 @@ export class OrganisationProfile {
   /** only a draft or a rejected organisation can be sent for approval */
   readonly canSend = computed(() => !this.sent() && (this.status() === 'draft' || this.status() === 'rejected'));
 
-  readonly verifiedAddresses = this.webAddresses.filter((w) => !!w.verifiedOn).length;
+  get verifiedAddresses(): number { return this.webAddresses.filter((w) => !!w.verifiedOn).length; }
 
   readonly checks = computed<Check[]>(() => [
-    { no: '01', title: 'Profile details', detail: 'All required fields are filled', state: 'ok' },
+    this.d()?.isProfileComplete === false
+      ? { no: '01', title: 'Profile details', detail: (this.d()?.outstandingProfileFields?.length ?? 0) + ' required fields missing', state: 'warn', tab: 'profile', action: 'Edit profile' }
+      : { no: '01', title: 'Profile details', detail: 'All required fields are filled', state: 'ok' },
     this.documents.length
       ? { no: '02', title: 'Supporting documents', detail: this.documents.length + ' uploaded', state: 'ok' }
       : { no: '02', title: 'Supporting documents', detail: 'None uploaded yet', state: 'warn', tab: 'documents', action: 'View documents' },
@@ -117,8 +223,20 @@ export class OrganisationProfile {
   }
 
   send(): void {
-    if (!this.canSend()) return;
-    this.sent.set(true);
+    const d = this.d();
+    if (!this.canSend() || !d || this.sending()) return;
+    this.sending.set(true);
+    this.api.submitMine({ expectedVersion: d.version, notes: this.note().trim() || undefined }).subscribe({
+      next: () => {
+        this.sending.set(false);
+        this.sent.set(true);
+        this.store.loadDetail(this.route.snapshot.queryParamMap.get('id')).subscribe({ error: () => undefined });
+      },
+      error: (e: unknown) => {
+        this.sending.set(false);
+        this.toast.error('Not submitted', apiErrorMessage(e, 'The organisation could not be sent for approval.'));
+      }
+    });
   }
 
   /** open the edit page */

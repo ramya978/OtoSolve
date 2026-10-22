@@ -1,4 +1,9 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { concat, forkJoin, last } from 'rxjs';
+import { IamAdminApiService } from '../../../Service/iam-admin-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
+import { MenuDefinitionResponse, MenuLevel } from '../../../Shared/models/iam-contract.model';
 
 type Level = 'menu' | 'submenu' | 'item';
 const LEVEL_LABEL: Record<Level, string> = { menu: 'Menu', submenu: 'Sub-menu', item: 'Item' };
@@ -22,6 +27,7 @@ interface MenuItem {
   required: boolean;
   retired: boolean;
   parentId: string | null;
+  version: number;
 }
 
 interface Row { item: MenuItem; depth: number; }
@@ -35,66 +41,24 @@ interface MenuForm {
   defaultOn: boolean; newTab: boolean; platformOnly: boolean; required: boolean;
 }
 
-/** sample tree — replace buildItems() with your menu store / API when it is ready */
-type Node = string | { label: string; children?: Node[] };
-interface Top { label: string; module: string; route?: string; off?: boolean; children?: Node[]; }
-
-const TREE: Top[] = [
-  { label: 'Dashboard', module: 'WSP', route: '/app/dashboard' },
-  { label: 'Platform', module: 'PLT', children: [
-    { label: 'Organisations', children: ['All Organisations', 'Add Organisation'] },
-    'Business Unit', 'Permission Catalogue', 'Menu Catalogue', 'Platform Audit'] },
-  { label: 'Donors & Leads', module: 'DNR', children: ['Lead Work Queue', 'My Leads', 'All Donors', 'My Donors', 'Follow-ups'] },
-  { label: 'Campaigns', module: 'CAM', children: ['All Campaigns', 'Tracking Asset Manager'] },
-  { label: 'Donations', module: 'DON', children: ['New Donation', 'Payments & Receipts'] },
-  { label: 'Communications', module: 'COM', children: ['WhatsApp Messages', 'Number Verification', 'Unified Inbox', 'Template Catalogue', 'Outbound Composer'] },
-  { label: 'Organisation', module: 'ORG', children: ['Profile', 'Departments', 'Branches & Units', 'Settings'] },
-  { label: 'Users & Access', module: 'IAM', children: ['Users', 'Roles & Permissions', 'Menu Configuration', 'Access Requests', 'Audit Trail'] },
-  { label: 'Master Data', module: 'MST', children: ['Countries', 'States', 'Cities', 'Currencies', 'Time Zones'] },
-  { label: 'Workspace', module: 'WSP', children: ['My Workspace', 'Executive Dashboard', 'Global Search', 'Notification Centre'] },
-  { label: 'Finance', module: 'FIN', children: ['Finance Workbench', 'Reconciliation', 'Offline Donation Entry'] },
-  { label: 'Supply', module: 'INV', off: true, children: ['Inventory Overview', 'Batch Ledger', 'Stock Movement'] }
-];
-
-const SUPPLY_ROUTES: Record<string, string> = {
-  'Inventory Overview': '/app/supply/inventory/inventory-overview',
-  'Batch Ledger': '/app/supply/inventory/batch-ledger',
-  'Stock Movement': '/app/supply/inventory/stock-movement-form'
-};
-
 const slug = (s: string): string => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const codeOf = (s: string): string => slug(s).toUpperCase().replace(/-/g, '_');
 
-function blankItem(over: Partial<MenuItem> & Pick<MenuItem, 'id' | 'label' | 'level' | 'module'>): MenuItem {
-  return {
-    code: codeOf(over.label), description: '', route: null, permission: null, icon: '', badgeKey: '', position: 0,
-    defaultOn: true, newTab: false, platformOnly: false, required: false, retired: false, parentId: null, ...over
-  };
-}
+const LEVEL_FROM_API: Record<string, Level> = { menu: 'menu', subMenu: 'submenu', childSubMenu: 'item' };
+const LEVEL_TO_API: Record<Level, MenuLevel> = { menu: 'menu', submenu: 'subMenu', item: 'childSubMenu' };
 
-function buildItems(): MenuItem[] {
-  const out: MenuItem[] = [];
-  const walk = (nodes: Node[], top: Top, parent: MenuItem, base: string): void => {
-    nodes.forEach((n, i) => {
-      const label = typeof n === 'string' ? n : n.label;
-      const kids = typeof n === 'string' ? undefined : n.children;
-      const item = blankItem({
-        id: `${parent.id}.${slug(label)}`, label, module: top.module, parentId: parent.id,
-        level: kids ? 'submenu' : 'item',
-        route: kids ? null : (top.label === 'Supply' ? SUPPLY_ROUTES[label] : undefined) ?? `${base}/${slug(label)}`,
-        position: (i + 1) * 10, defaultOn: !top.off
-      });
-      out.push(item);
-      if (kids) walk(kids, top, item, `${base}/${slug(label)}`);
-    });
-  };
-
-  TREE.forEach((t, i) => {
-    const head = blankItem({ id: slug(t.label), label: t.label, module: t.module, level: 'menu', route: t.route ?? null, position: i * 10, defaultOn: !t.off });
-    out.push(head);
-    if (t.children) walk(t.children, t, head, `/app/${slug(t.label)}`);
+/** Flattens the server's menu tree into the rows the page draws. */
+function flatten(nodes: MenuDefinitionResponse[], parentId: string | null = null): MenuItem[] {
+  return nodes.flatMap((n) => {
+    const id = n.id ?? '';
+    const item: MenuItem = {
+      id, label: n.name ?? '', code: n.code ?? '', level: LEVEL_FROM_API[n.level ?? 'menu'] ?? 'item', description: n.description ?? '',
+      module: n.moduleCode ?? '', route: n.route ?? null, permission: n.requiredPermissionCode ?? null, icon: n.icon ?? '',
+      badgeKey: n.badgeKey ?? '', position: n.displayOrder ?? 0, defaultOn: n.isEnabledByDefault !== false, newTab: n.opensInNewTab === true,
+      platformOnly: n.isPlatformOnly === true, required: n.isMandatory === true, retired: n.status === 'retired',
+      parentId: n.parentMenuId ?? parentId, version: n.version ?? 0
+    };
+    return [item, ...flatten(n.children ?? [], id)];
   });
-  return out;
 }
 
 const blankForm = (): MenuForm => ({
@@ -127,8 +91,32 @@ const ICONS: Record<string, string> = {
   templateUrl: './menu-catalogue.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './menu-catalogue.css']
 })
-export class MenuCatalogue {
-  readonly items = signal<MenuItem[]>(buildItems());
+export class MenuCatalogue implements OnInit {
+  private readonly api = inject(IamAdminApiService);
+  private readonly toast = inject(ToastService);
+  readonly items = signal<MenuItem[]>([]);
+  readonly loading = signal(true);
+  readonly saving = signal(false);
+  private readonly serverErrors = signal<Record<string, string>>({});
+
+  ngOnInit(): void { this.reload(); }
+
+  /** Reads the whole catalogue (retired entries included, the page filters them). */
+  reload(done?: () => void): void {
+    this.loading.set(true);
+    this.api.getMenuDefinitions(true).subscribe({
+      next: (tree) => { this.items.set(flatten(tree)); this.loading.set(false); done?.(); },
+      error: (e: unknown) => {
+        this.loading.set(false);
+        this.toast.error('Menu not loaded', apiErrorMessage(e, 'The menu catalogue could not be loaded.'));
+      }
+    });
+  }
+
+  private fail(title: string, e: unknown, fallback: string): void {
+    this.saving.set(false);
+    this.toast.error(title, apiErrorMessage(e, fallback));
+  }
 
   /* filters + selection */
   readonly query = signal('');
@@ -211,7 +199,7 @@ export class MenuCatalogue {
     else if (f.level !== 'menu' && !f.parentId) e['parentId'] = 'Select the menu it sits under.';
     if (!f.module.trim()) e['module'] = 'Add a module.';
     if (f.route.trim() && !f.route.trim().startsWith('/')) e['route'] = 'A route starts with /.';
-    return e;
+    return { ...e, ...this.serverErrors() };
   });
   readonly firstError = computed(() => Object.values(this.errors())[0] ?? '');
   readonly canSave = computed(() => Object.keys(this.errors()).length === 0);
@@ -240,8 +228,13 @@ export class MenuCatalogue {
   setRetired(id: string, retired: boolean): void {
     const item = this.items().find((i) => i.id === id);
     if (!item || (retired && !this.canChange(item))) return;
-    const ids = new Set(this.descendants(id));
-    this.items.update((list) => list.map((i) => (ids.has(i.id) ? { ...i, retired } : i)));
+    const rows = this.descendants(id).map((x) => this.items().find((i) => i.id === x)).filter((i): i is MenuItem => !!i && i.retired !== retired);
+    if (!rows.length || this.saving()) return;
+    this.saving.set(true);
+    forkJoin(rows.map((r) => this.api.updateMenuDefinition(r.id, { expectedVersion: r.version, status: retired ? 'retired' : 'active' }))).subscribe({
+      next: () => { this.saving.set(false); this.reload(); this.toast.success(retired ? 'Retired' : 'Restored', item.label); },
+      error: (e: unknown) => { this.fail(retired ? 'Not retired' : 'Not restored', e, 'The menu entry could not be changed.'); this.reload(); }
+    });
   }
 
   /** delete an item together with everything below it */
@@ -249,9 +242,14 @@ export class MenuCatalogue {
     const item = this.items().find((i) => i.id === id);
     if (!item || !this.canChange(item)) return;
     if (!confirm(`Delete "${item.label}" and everything inside it? This changes the menu for every organisation.`)) return;
-    const ids = new Set(this.descendants(id));
-    this.items.update((list) => list.filter((i) => !ids.has(i.id)));
-    this.close();
+    if (this.saving()) return;
+    // children first, so nothing is deleted while something still depends on it
+    const rows = this.descendants(id).reverse().map((x) => this.items().find((i) => i.id === x)).filter((i): i is MenuItem => !!i);
+    this.saving.set(true);
+    concat(...rows.map((r) => this.api.deleteMenuDefinition(r.id, r.version))).pipe(last()).subscribe({
+      next: () => { this.saving.set(false); this.close(); this.reload(); this.toast.success('Deleted', item.label); },
+      error: (e: unknown) => { this.fail('Not deleted', e, 'The menu entry could not be deleted. Retire it instead if it is in use.'); this.reload(); }
+    });
   }
 
   /* ---------- form actions ---------- */
@@ -280,9 +278,9 @@ export class MenuCatalogue {
     this.formMode.set('edit');
   }
 
-  closeForm(): void { this.formMode.set(null); this.editingId = null; }
+  closeForm(): void { this.formMode.set(null); this.editingId = null; this.serverErrors.set({}); }
 
-  set<K extends keyof MenuForm>(key: K, value: MenuForm[K]): void { this.form.update((f) => ({ ...f, [key]: value })); }
+  set<K extends keyof MenuForm>(key: K, value: MenuForm[K]): void { this.serverErrors.set({}); this.form.update((f) => ({ ...f, [key]: value })); }
 
   setLevel(level: Level | ''): void {
     this.form.update((f) => ({ ...f, level, parentId: '' }));
@@ -300,24 +298,41 @@ export class MenuCatalogue {
       return;
     }
     const f = this.form();
-    const fields = {
-      label: f.name.trim(), description: f.description.trim(), module: f.module.trim().toUpperCase(),
-      route: f.route.trim() || null, permission: f.permission.trim() || null, icon: f.icon.trim(), badgeKey: f.badgeKey.trim(),
-      position: f.position, defaultOn: f.defaultOn, newTab: f.newTab, platformOnly: f.platformOnly, required: f.required
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.serverErrors.set({});
+    const onError = (e: unknown) => {
+      const fields = apiFieldErrors(e);
+      const map: Record<string, string> = {};
+      const keys: Record<string, string> = { name: 'name', code: 'code', route: 'route', moduleCode: 'module', parentMenuId: 'parentId', level: 'level' };
+      for (const [k, v] of Object.entries(fields)) { const t = keys[k.charAt(0).toLowerCase() + k.slice(1)]; if (t) map[t] = v; }
+      this.serverErrors.set(map);
+      this.fail('Menu entry not saved', e, 'The menu entry could not be saved.');
     };
 
     if (this.editingId) {
       const id = this.editingId;
-      this.items.update((list) => list.map((i) => (i.id === id ? { ...i, ...fields } : i)));
-      this.selectedId.set(id);
+      const cur = this.items().find((i) => i.id === id);
+      this.api.updateMenuDefinition(id, {
+        expectedVersion: cur?.version, name: f.name.trim(), description: f.description.trim() || null, route: f.route.trim() || null,
+        icon: f.icon.trim() || null, requiredPermissionCode: f.permission.trim() || null, displayOrder: f.position,
+        isEnabledByDefault: f.defaultOn, opensInNewTab: f.newTab, badgeKey: f.badgeKey.trim() || null
+      }).subscribe({
+        next: () => { this.saving.set(false); this.selectedId.set(id); this.closeForm(); this.reload(); this.toast.success('Saved', f.name.trim()); },
+        error: onError
+      });
     } else {
-      const code = f.code.trim().toUpperCase();
-      const parent = f.parentId || null;
-      const id = `${parent ? parent + '.' : ''}${slug(code)}`;
-      this.items.update((list) => [...list, blankItem({ id, code, level: f.level as Level, parentId: parent, ...fields })]);
-      this.selectedId.set(id);
+      this.api.createMenuDefinition({
+        code: f.code.trim().toUpperCase(), name: f.name.trim(), level: LEVEL_TO_API[f.level as Level], moduleCode: f.module.trim().toUpperCase(),
+        parentMenuId: f.parentId || null, route: f.route.trim() || null, icon: f.icon.trim() || null,
+        requiredPermissionCode: f.permission.trim() || null, description: f.description.trim() || null, displayOrder: f.position,
+        isPlatformOnly: f.platformOnly, isEnabledByDefault: f.defaultOn, isMandatory: f.required, opensInNewTab: f.newTab,
+        badgeKey: f.badgeKey.trim() || null
+      }).subscribe({
+        next: (created) => { this.saving.set(false); this.selectedId.set(created.id ?? null); this.closeForm(); this.reload(); this.toast.success('Created', f.name.trim()); },
+        error: onError
+      });
     }
-    this.closeForm();
   }
 
   private descendants(id: string): string[] {
