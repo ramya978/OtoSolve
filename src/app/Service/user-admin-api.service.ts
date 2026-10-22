@@ -13,24 +13,7 @@ import {
   ReferenceDataResponse,
 } from '../Shared/models/iam-contract.model';
 
-/**
- * IAM-USR-01 — creating a user and sending their invitation.
- *
- * WHY THE FORM ASKS THE SERVER WHAT TO SHOW
- * -----------------------------------------
- * The dropdowns on this form are not lists of words, they are lists of identifiers. A role is a
- * GUID, not the string "Finance Officer". Hard-coding names in the UI produces a form that looks
- * right and cannot save, because the server has no idea which role "Finance Officer" meant.
- * `getFormReferenceData()` returns the exact options this caller may choose from, already scoped
- * to their Organisation and to what they are allowed to grant.
- *
- * THERE IS NO ORGANISATION PARAMETER ANYWHERE BELOW
- * --------------------------------------------------
- * Not on the reference data, not on the availability check, not on create. The Organisation comes
- * from the signed token. An id supplied by this client would let a form aimed at another
- * Organisation create a user inside it, which is precisely the boundary that must never be
- * client-controlled.
- */
+
 @Injectable({ providedIn: 'root' })
 export class UserAdminApiService {
   private readonly http = inject(HttpClient);

@@ -14,20 +14,6 @@ import {
   DashboardResponse,
 } from '../Shared/models/dashboard-contract.model';
 
-/**
- * The landing page's four sources - IAM, CAM, DON and PAY - and the rule that merges them.
- *
- * FOUR CALLS, NOT SEVENTEEN. The page used to ask seventeen list and statistics endpoints for
- * everything it might show and let the ones a role could not use fail; each refusal was an
- * access-denied audit row on every sign-in. Each service now answers one question - "what is on
- * this person's dashboard" - with only what that person may see, so nothing is refused.
- *
- * ONE SERVICE FAILING NEVER BLANKS THE PAGE. Each call degrades to "no answer" on its own, and
- * the page shows the sections the others sent.
- *
- * THE MERGE HOLDS NO CONTENT OF ITS OWN. It only orders what arrived: every headline, counter,
- * attention row and panel carries a rank set by the service that sent it.
- */
 @Injectable({ providedIn: 'root' })
 export class DashboardApiService {
   private readonly http = inject(HttpClient);
@@ -60,11 +46,7 @@ export class DashboardApiService {
     return forkJoin(calls).pipe(map((answers) => DashboardApiService.merge(answers)));
   }
 
-  /**
-   * The Executive dashboard's figures for a period and scope, from the three modules that hold
-   * outcomes - CAM, DON and PAY. A module that refuses the period (400) reports why; one that
-   * fails otherwise is named, and the page shows the rest.
-   */
+
   loadOutcomes(query: DashboardOutcomesQuery, timeZone = DashboardApiService.viewerTimeZone()): Observable<DashboardOutcomes> {
     let params = new HttpParams().set('timeZone', timeZone);
     for (const [key, value] of Object.entries(query)) {

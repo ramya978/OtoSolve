@@ -1,4 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { ToastService } from '../../../Shared/services/toast.service';
 import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
@@ -132,6 +133,7 @@ const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
 })
 export class CampaignRegister {
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private readonly store = inject(CampaignWorkspaceStore);
   protected readonly paths = CW_PATHS;
 
@@ -494,23 +496,26 @@ export class CampaignRegister {
     if (action === 'duplicate') {
       // The icon on this button is labelled "Readiness checklist" in the screen, so it opens
       // that campaign's checklist (a campaign is no longer duplicated from the list).
-      return this.rowAction(r, 'readiness');
-    }
-    if (action === 'delete') {
-      this.store.removeCampaign(r.code);
-      this.checked.update((s) => { const n = new Set(s); n.delete(r.id); return n; });
-      return;
-    }
-    if (action === 'readiness') {
-      this.store.ensureCampaign(this.toInfo(r));
       this.store.select(r.code);
       this.router.navigate([CW_PATHS.readiness], { queryParams: { code: r.code } });
       return;
     }
+    const finish = (okTitle: string, okText: string, failTitle: string) => (error?: string) => {
+      if (error) this.toast.show(failTitle, error, 'error');
+      else this.toast.show(okTitle, okText, 'success');
+    };
+    if (action === 'delete') {
+      this.store.removeCampaign(r.code, finish('Campaign deleted', `${r.code} was deleted.`, 'Campaign not deleted'));
+      this.checked.update((s) => { const n = new Set(s); n.delete(r.id); return n; });
+      return;
+    }
+    if (action === 'readiness') {
+      // Approve, straight from the list (the checklist page is no longer the only way in).
+      this.store.approveFromList(r.code, finish('Campaign approved', `${r.code} was approved.`, 'Campaign not approved'));
+      return;
+    }
     if (action === 'launch') {
-      this.store.ensureCampaign(this.toInfo(r));
-      this.store.select(r.code);
-      this.store.approveLaunch(r.code);
+      this.store.activateFromList(r.code, finish('Campaign activated', `${r.code} is now Active.`, 'Campaign not activated'));
       return;
     }
   }

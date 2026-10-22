@@ -17,46 +17,11 @@ import {
 } from '../Shared/models/payment-adapters';
 import { PaymentApiService } from './payment-api.service';
 
-/**
- * The read side of the eight Donations and Payments screens.
- *
- * WHAT THIS USED TO BE, AND WHY IT MATTERED. Every method here fetched a static JSON file from
- * `assets/data/donations-payments/`, held it in a field, and let the screens mutate that field in
- * place. Three consequences followed and all three were real:
- *
- *   - NOTHING WAS EVER SAVED. A receipt "issued" on the register existed until the tab was
- *     refreshed and no further. The register and the API disagreed permanently.
- *   - THE DATA WAS THE SAME FOR EVERY ORGANISATION AND EVERY USER, because a file on the web
- *     server has no idea who asked for it. Tenant isolation stopped at the API boundary.
- *   - Two screens showing the same donation could disagree, because each held its own copy.
- *
- * Every method now calls the payments API through <see cref="PaymentApiService"/> and adapts the
- * response into the view model the screen already binds to - so the templates, the theme and the
- * responsive layout are untouched, and the numbers on them are real.
- *
- * THE CACHES ARE GONE FROM THE READ PATH, deliberately, and that is a change of behaviour worth
- * stating. Every other register on the platform can afford to cache; a donation register cannot.
- * A payment captured thirty seconds ago must appear on the next refresh, and a refund approved by
- * a colleague must not be invisible because this tab is holding an older answer. The `*Cache`
- * accessors survive because several screens call them, and they now return null - which those
- * screens already handle by fetching.
- *
- * THE `pending*` HAND-OFF FIELDS SURVIVE UNCHANGED. They carry a selected record from one screen
- * to the next during a navigation - the event queue to the verification page, the intent detail
- * to safe retry - which is genuine per-session UI state rather than data, and belongs on the
- * client.
- */
+
 @Injectable({ providedIn: 'root' })
 export class DataService {
   private readonly payments = inject(PaymentApiService);
 
-  /**
-   * How many rows a screen's first page asks for.
-   *
-   * The screens page in memory over whatever they are given, so this is the working set rather
-   * than a page size. Capped because an unbounded fetch of a busy organisation's donation history
-   * is both a slow screen and more donor data in the browser than any one view needs.
-   */
   private static readonly WorkingSetSize = 200;
 
   // =========================================================================================
@@ -68,13 +33,6 @@ export class DataService {
   // Indian states and an amount ceiling that disagreed with the server's. The donation forms read
   // PaymentApiService.getPublicFormSettings() and the currency master instead.
 
-  /**
-   * The donation intent register.
-   *
-   * `needsAttention` IS NOT SET HERE. The screen decides whether it is showing everything or the
-   * support subset, and passing a filter the screen did not ask for would silently hide rows
-   * somebody expected to see.
-   */
   getDonationIntentRows(
     filter: DonationIntentSearchFilter = {},
   ): Observable<DonationIntentListItem[]> {
@@ -83,17 +41,7 @@ export class DataService {
       .pipe(map((page) => page.items));
   }
 
-  /**
-   * The intent detail screen's records, in the shape it binds to.
-   *
-   * IT FETCHES THE LIST AND THEN EACH DETAIL, which looks expensive and is bounded: the screen
-   * shows ONE intent, so it is given the page of intents it can navigate between and the full
-   * detail of them. The alternative - a list-only payload - would leave the attempt timeline and
-   * the lifecycle history empty, and those are the two things somebody opens this screen for.
-   *
-   * A DETAIL THAT FAILS IS DROPPED, not fatal. One intent the caller cannot see must not blank
-   * the whole screen.
-   */
+
   getDonationIntentsData(
     filter: DonationIntentSearchFilter = {},
   ): Observable<{ intents: DonationIntentScreenRecord[] }> {
@@ -139,16 +87,7 @@ export class DataService {
   // Payment verification - SCR-PAY-002
   // =========================================================================================
 
-  /**
-   * The verification screen's records.
-   *
-   * IT RETURNS THE SUPPORT QUEUE, mapped, rather than "every payment". Verification is something
-   * a person does to a payment whose outcome is in doubt; listing every settled donation on this
-   * screen would bury the handful that need looking at.
-   *
-   * The screen calls `verifyPayment` on the API when somebody actually presses Verify - this is
-   * only what populates the list.
-   */
+
   getPaymentVerificationData(): Observable<PaymentVerificationRecord[]> {
     return this.payments
       .getSupportQueue({ pageSize: DataService.WorkingSetSize })

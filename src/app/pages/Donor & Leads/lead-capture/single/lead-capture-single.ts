@@ -1,3 +1,4 @@
+import { map, switchMap } from 'rxjs';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DonorApiService } from '../../../../Service/donor-api.service';
@@ -317,7 +318,14 @@ export class LeadCaptureSingle implements OnInit {
     if (first) { this.go(first.id); return; }
     if (this.saving()) return;
     this.saving.set(true);
-    this.api.saveLead(this.buildRequest()).subscribe({
+    // Two calls, in order, as before: save creates the record, submit moves it out of draft so
+    // it appears in the Lead Work Queue (a draft never does).
+    this.api.saveLead(this.buildRequest()).pipe(
+      switchMap((lead) => this.api.submitLead(lead.id, {
+        reason: 'Captured and submitted to the Lead Queue from Lead Capture.',
+        expectedVersion: lead.version,
+      }).pipe(map(() => lead)))
+    ).subscribe({
       next: (lead) => {
         this.saving.set(false);
         this.saved.set({ ref: lead.leadReference, name: lead.displayName || this.f().displayName });

@@ -3,6 +3,8 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CampaignApiService } from '../../Service/campaign-api.service';
 import { AuthService } from '../Auth/auth.service';
+import { PaymentApiService } from '../../Service/payment-api.service';
+import { DonationListItem } from '../models/payment.model';
 import { fetchAllPages } from '../services/paging';
 import { apiErrorMessage } from '../models/api-response.model';
 import {
@@ -41,6 +43,7 @@ const minute = (iso: string | null | undefined): string => (iso ?? '').slice(0, 
 export class CampaignWorkspaceStore {
   private readonly api = inject(CampaignApiService);
   private readonly auth = inject(AuthService);
+  private readonly payments = inject(PaymentApiService);
 
   readonly campaigns = signal<CampaignInfo[]>([]);
   readonly checks = signal<ReadinessCheck[]>([]);
@@ -111,15 +114,18 @@ export class CampaignWorkspaceStore {
       detail: this.api.getCampaign(meta.id).pipe(catchError(() => of(null))),
       readiness: this.api.getCampaignReadiness(meta.id).pipe(catchError(() => of(null))),
       history: this.api.getCampaignHistory(meta.id).pipe(catchError(() => of([] as CampaignHistoryEntry[]))),
-      gifts: this.api.searchAttribution({ campaignId: meta.id, page: 1, pageSize: 100 }).pipe(catchError(() => of(null))),
+      // The payments service is where the donations are (the old screen read them from there too).
+      gifts: fetchAllPages((page, size) => this.payments.searchDonations({ campaignId: meta.id, page, pageSize: size })).pipe(catchError(() => of(null as DonationListItem[] | null))),
     }).subscribe(({ detail, readiness, history, gifts }) => {
       if (detail) this.mergeDetail(detail);
       if (readiness) this.mergeReadiness(code, readiness);
       this.activity.update((all) => [...all.filter((a) => a.campaign !== code), ...history.map((h) => this.toActivity(code, h))]);
+      const counted = (gifts ?? []).filter((g) => g.status !== 'refunded' && g.status !== 'chargedBack' && g.status !== 'voided');
       this.donationList.update((all) => [
         ...all.filter((d) => d.campaign !== code),
-        ...(gifts?.items ?? []).map((g) => this.toDonation(code, g)),
+        ...counted.map((g) => this.toDonation(code, g)),
       ]);
+      this.patchCampaign(code, this.donationFigures(counted), false);
     });
   }
 
@@ -183,10 +189,34 @@ export class CampaignWorkspaceStore {
     return { campaign: code, at: minute(h.occurredAtUtc), title: title(words), detail: h.reason ?? '', by: '', kind };
   }
 
-  private toDonation(code: string, g: AttributionListItem): Donation {
-    return { campaign: code, date: day(g.receivedAtUtc), donor: g.donorName, amount: g.amount, channel: g.channelName as Donation['channel'] };
+  private toDonation(code: string, g: DonationListItem): Donation {
+    const how = `${g.methodDescription ?? ''} ${g.sourceDescription ?? ''}`.toLowerCase();
+    const channel: Donation['channel'] = how.includes('upi') ? 'UPI'
+      : /bank|transfer|neft|rtgs|imps/.test(how) ? 'Bank transfer'
+      : /offline|cash|cheque|manual/.test(how) ? 'Offline' : 'Online';
+    const amount = (g.status === 'partiallyRefunded' ? g.netAmount?.amount : undefined) ?? g.amount?.amount ?? 0;
+    return { campaign: code, date: day(g.donatedAtUtc), donor: g.donorName || g.donorEmail || 'Anonymous donor', amount, channel };
   }
 
+  /** The header tiles: all counted gifts, distinct donors, and this month's / last month's money. */
+  private donationFigures(list: DonationListItem[]): Partial<CampaignInfo> {
+    const now = new Date();
+    const thisStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const nextStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    let current = 0, previous = 0;
+    const donors = new Set<string>();
+    for (const g of list) {
+      const amount = (g.status === 'partiallyRefunded' ? g.netAmount?.amount : undefined) ?? g.amount?.amount ?? 0;
+      const key = (g.donorEmail || g.donorName || '').trim().toLowerCase();
+      if (key) donors.add(key);
+      const when = new Date(g.donatedAtUtc);
+      if (Number.isNaN(when.getTime())) continue;
+      if (when >= thisStart && when < nextStart) current += amount;
+      else if (when >= prevStart && when < thisStart) previous += amount;
+    }
+    return { donations: list.length, donors: donors.size, monthlyRevenue: current, monthlyRevenuePrev: previous };
+  }
   /** Picker options: "Name · CODE". */
   readonly campaignOptions = computed(() => this.campaigns().map((c) => ({ value: c.code, label: c.name, hint: c.code })));
 
@@ -225,14 +255,34 @@ export class CampaignWorkspaceStore {
     return next;
   }
 
-  /** Removes a draft campaign (used by the list-view delete action). */
-  removeCampaign(code: string): void {
+  /** Removes a draft campaign (used by the list-view delete action). `done` gets the server's message on a refusal. */
+  removeCampaign(code: string, done?: (error?: string) => void): void {
     const meta = this.ids.get(code);
     const c = this.findCampaign(code);
-    if (!meta) return;
+    if (!meta) { done?.('That campaign is no longer in the list.'); return; }
     this.api.deleteCampaignDraft(meta.id, meta.version).subscribe({
-      next: () => { if (c) this.showToast(`${c.name} deleted.`, 'warn'); this.load(); },
-      error: (e) => this.showToast(apiErrorMessage(e, 'The draft could not be deleted.'), 'danger'),
+      next: () => { if (c) this.showToast(`${c.name} deleted.`, 'warn'); this.load(); done?.(); },
+      error: (e) => { const m = apiErrorMessage(e, 'The draft could not be deleted.'); this.showToast(m, 'danger'); done?.(m); },
+    });
+  }
+
+  /** List-view Approve: approves a submitted campaign only (it then waits for its start date or for Activate). */
+  approveFromList(code: string, done?: (error?: string) => void): void {
+    const meta = this.ids.get(code);
+    if (!meta) { done?.('That campaign is no longer in the list.'); return; }
+    this.api.approveCampaign(meta.id, { expectedVersion: meta.version }).subscribe({
+      next: () => { this.load(); done?.(); },
+      error: (e) => { this.load(); done?.(apiErrorMessage(e, 'The campaign could not be approved.')); },
+    });
+  }
+
+  /** List-view Activate: switches an approved / scheduled campaign on. */
+  activateFromList(code: string, done?: (error?: string) => void): void {
+    const meta = this.ids.get(code);
+    if (!meta) { done?.('That campaign is no longer in the list.'); return; }
+    this.api.activateCampaign(meta.id, { expectedVersion: meta.version }).subscribe({
+      next: () => { this.load(); done?.(); },
+      error: (e) => { this.load(); done?.(apiErrorMessage(e, 'The campaign could not be activated.')); },
     });
   }
 

@@ -28,24 +28,6 @@ export interface AccessRequestSearchFilter {
   pageSize?: number;
 }
 
-/**
- * Access requests: asking for access, and deciding on the asking.
- *
- * TWO RULES RUN THROUGH EVERY CALL HERE, and they are the reason the module exists.
- *
- * **Independence.** Nobody approves their own request. The server checks it against the
- * persisted requester, never against anything this client sends, so the rule holds however the
- * request is constructed.
- *
- * **Optimistic concurrency.** Every state change carries `expectedVersion`. Two approvers
- * opening the same request means the second is refused with a 409 rather than silently
- * overwriting the first — and the screen is expected to reload rather than retry.
- *
- * ONE DECIDE ENDPOINT, NOT FOUR. Approve and reject are the same operation with a different
- * answer, and the server applies the access in the SAME TRANSACTION as an approval: an approval
- * that is recorded but not granted is the worst of both worlds, because the trail says yes and
- * the person still cannot work.
- */
 @Injectable({ providedIn: 'root' })
 export class AccessRequestApiService {
   private readonly http = inject(HttpClient);
@@ -60,17 +42,6 @@ export class AccessRequestApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * One request, with the actions THIS caller may take on it.
-   *
-   * `permittedActions` is computed server-side from the state, the caller's permissions and the
-   * independence rule, so the buttons the screen renders and the rules the API enforces cannot
-   * drift apart.
-   */
-  /**
-   * The figures above the queue - totals by status, the people involved, the busiest one -
-   * counted by the server over every request the same filter matches, not over the page shown.
-   */
   summary(filter: AccessRequestSearchFilter): Observable<AccessRequestSummaryResponse> {
     const { page: _page, pageSize: _pageSize, ...criteria } = filter;
 
@@ -138,24 +109,12 @@ export class AccessRequestApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Approves or rejects.
-   *
-   * On approval the access is granted in the same transaction as the decision. A rejection must
-   * carry a reason the requester can act on — the server refuses one without.
-   */
   decide(id: string, request: DecideAccessRequestRequest): Observable<OutcomeResponse> {
     return this.http
       .post<ApiResponse<OutcomeResponse>>(`${this.baseUrl}/${id}/decide`, request)
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Convenience over `decide`, for a screen with two buttons rather than a form.
-   *
-   * The server calls the field `notes` for both outcomes, and requires it on a rejection: a
-   * refusal the requester cannot act on is a dead end rather than a decision.
-   */
   approve(id: string, expectedVersion: number, notes?: string): Observable<OutcomeResponse> {
     return this.decide(id, { approved: true, expectedVersion, notes });
   }
@@ -164,13 +123,6 @@ export class AccessRequestApiService {
     return this.decide(id, { approved: false, expectedVersion, notes: reason });
   }
 
-  /**
-   * Sends a request back to the requester for more information.
-   *
-   * NOT A REJECTION. A rejection is a decision; a return says the approver cannot answer yet,
-   * almost always because the justification does not explain what the access is for. The request
-   * keeps its number and its history and goes back to be improved.
-   */
   returnForInformation(id: string, request: ReturnAccessRequestRequest): Observable<OutcomeResponse> {
     return this.http
       .post<ApiResponse<OutcomeResponse>>(`${this.baseUrl}/${id}/return`, request)
@@ -201,14 +153,7 @@ export class AccessRequestApiService {
     this.returnForInformation(id, request);
   cancelRequest = (id: string, request: WithdrawAccessRequestRequest) => this.withdraw(id, request);
 
-  /**
-   * Deleting a draft.
-   *
-   * Withdrawal is the same operation from the server's point of view: a draft nobody has decided
-   * on is simply withdrawn, keeping its number and its trail. Nothing in this system deletes a
-   * governance record, because "there was a request and it went away" is not something an audit
-   * should ever have to reconstruct.
-   */
+
   deleteDraft = (id: string, request: WithdrawAccessRequestRequest) => this.withdraw(id, request);
 
   private toParams(filter: AccessRequestSearchFilter): HttpParams {

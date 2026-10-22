@@ -480,10 +480,11 @@ export class Donor360 implements OnInit {
       dueAtUtc: this.iDate() ? new Date(this.iDate() + 'T23:59:00').toISOString() : null,
       notes: this.iNotes().trim()
     }).subscribe({
-      next: (r) => {
-        this.d.set(toD360(r));
+      next: () => {
+        // Close the popup first, then read the donor again so the new intent shows - the create
+        // call's own answer is not relied on for the screen.
         this.closeIntent();
-        this.flash('Donation intent of ' + label + ' recorded for ' + this.d().name + '.');
+        this.load(() => this.flash('Donation intent of ' + label + ' recorded for ' + this.d().name + '.'));
       },
       error: (e: unknown) => this.flash(apiErrorMessage(e))
     });

@@ -39,24 +39,6 @@ import {
 import { AuthTokenService } from '../Shared/services/auth-token.service';
 import { DeviceIdentityService } from '../Shared/services/device-identity.service';
 
-/**
- * Every authentication call the app makes.
- *
- * TWO THINGS THIS SERVICE DOES THAT ARE EASY TO MISS
- * ---------------------------------------------------
- * **It stores what it receives.** Sign-in, MFA verification, recovery-code redemption, tenant
- * selection and reauthentication all return a token, and each one is written to
- * `AuthTokenService` here rather than in the component. Leaving it to the component means five
- * screens each remembering to do it, and the one that forgets produces a person who appears
- * signed in until their first API call fails.
- *
- * **It never sends an Organisation.** There is no `tenantId` parameter anywhere below, including
- * on sign-in. The Organisation comes from the host name the request arrived on, or from the
- * signed token — never from anything this client could set. The single exception is
- * `selectTenant`, where a global caller names the Organisation they want to step into; the
- * server checks that the caller is genuinely global before honouring it, and the answer is a new
- * signed token rather than a client-side flag.
- */
 @Injectable({ providedIn: 'root' })
 export class AuthApiService {
   private readonly http = inject(HttpClient);
@@ -70,13 +52,7 @@ export class AuthApiService {
   // IAM-AUTH-01 — sign in
   // =========================================================================================
 
-  /**
-   * Signs in.
-   *
-   * The device identifier is attached here rather than asked of every caller: it is how
-   * "remember this device" survives a sign-out, and how the security screen can later show
-   * somebody the machines their account has been used from.
-   */
+
   signIn(payload: SignInRequest): Observable<SignInResponse> {
     const request: SignInRequest = {
       ...payload,
@@ -102,12 +78,7 @@ export class AuthApiService {
       );
   }
 
-  /**
-   * Renews the access token.
-   *
-   * The refresh token is not passed: it travels as an HttpOnly cookie the browser attaches by
-   * itself. That is the whole point of the cookie, and it is why this body is empty.
-   */
+
   refreshToken(): Observable<SignInResponse> {
     return this.http
       .post<ApiResponse<SignInResponse>>(`${this.usersUrl}/tokens/refresh`, {})
@@ -148,12 +119,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Which Organisation this host belongs to, for the branding on the sign-in screen.
-   *
-   * Anonymous, and deliberately thin: it returns a name and a logo, never a hint about who has
-   * an account here.
-   */
+
   resolveTenant(hostName?: string): Observable<TenantResolutionResponse> {
     const params = hostName ? new HttpParams().set('hostName', hostName) : undefined;
 
@@ -173,13 +139,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data ?? []));
   }
 
-  /**
-   * Steps into an Organisation.
-   *
-   * The answer is a NEW ACCESS TOKEN scoped to that Organisation, on the same session. Nothing
-   * about the caller's own user record changes — a root user has no Organisation of their own
-   * and never acquires one by looking at somebody's data.
-   */
+
   selectOrganisation(tenantId: string): Observable<SelectTenantResponse> {
     return this.http
       .post<ApiResponse<SelectTenantResponse>>(`${this.authUrl}/select-tenant`, { tenantId })
@@ -189,16 +149,7 @@ export class AuthApiService {
       );
   }
 
-  /**
-   * Leaves the current Organisation and returns to platform scope.
-   *
-   * The counterpart to `selectOrganisation`. Without it, stepping into an Organisation lasted the
-   * rest of the session: the token kept naming it, and since that id stamps writes and labels
-   * audit rows, "just navigate somewhere else" was not the same as leaving.
-   *
-   * Same session, new token, and the stored context is replaced rather than merged — the point is
-   * that the Organisation is gone from it.
-   */
+
   exitOrganisation(): Observable<SelectTenantResponse> {
     return this.http
       .post<ApiResponse<SelectTenantResponse>>(`${this.authUrl}/exit-tenant`, {})
@@ -219,12 +170,7 @@ export class AuthApiService {
   // IAM-AUTH-02 — invitation and activation
   // =========================================================================================
 
-  /**
-   * What the activation screen shows before a password is typed.
-   *
-   * Anonymous by necessity — the person has no account yet — and thin by design: somebody
-   * holding a link should learn only enough to decide whether to continue.
-   */
+
   previewInvitation(token: string): Observable<InvitationPreviewResponse> {
     return this.http
       .get<ApiResponse<InvitationPreviewResponse>>(
@@ -233,13 +179,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Starts enrolling a second factor from the activation screen.
-   *
-   * Authorised by the invitation token rather than a session, because there is no session yet.
-   * The shared secret comes back once, here, and the factor stays unusable until
-   * `verifyInvitationMfaMethod` proves a code from it works.
-   */
+
   beginInvitationMfaEnrolment(payload: BeginInvitationMfaEnrolmentRequest):
     Observable<MfaEnrolmentResponse> {
     return this.http
@@ -265,12 +205,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Leaves the activation flow without completing it.
-   *
-   * The invitation stays usable, so somebody who backs out to check a detail can return to the
-   * same link rather than needing a new one.
-   */
+
   cancelActivation(token: string, reason?: string): Observable<OutcomeResponse> {
     return this.http
       .post<ApiResponse<OutcomeResponse>>(
@@ -311,25 +246,14 @@ export class AuthApiService {
   // IAM-AUTH-03 / 04 — password recovery
   // =========================================================================================
 
-  /**
-   * Starts recovery.
-   *
-   * The answer is the same whether or not the address is known here. That is not vagueness for
-   * its own sake: a different answer for a known address turns this endpoint into a way to test
-   * whether somebody has an account with this Organisation.
-   */
+
   forgotPassword(payload: ForgotPasswordRequest): Observable<ForgotPasswordResponse> {
     return this.http
       .post<ApiResponse<ForgotPasswordResponse>>(`${this.usersUrl}/forgot-password`, payload)
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Whether a recovery link is still usable, and the rules the new password must satisfy.
-   *
-   * Called BEFORE the form is drawn. Without it, somebody carefully chooses a password, presses
-   * Save, and only then learns the link expired an hour ago.
-   */
+
   getResetPasswordView(token: string): Observable<ResetPasswordViewResponse> {
     return this.http
       .get<ApiResponse<ResetPasswordViewResponse>>(`${this.usersUrl}/reset-password`, {
@@ -401,13 +325,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Switches to a different enrolled factor without starting sign-in again.
-   *
-   * This is the same endpoint as a resend, with the method named. That is not a shortcut: from
-   * the server's point of view both mean "retire the outstanding challenge and issue a fresh one
-   * against this method", and the person's password step stays proved either way.
-   */
+
   switchMfaMethod(challengeToken: string, mfaMethodId: string): Observable<MfaChallengeResponse> {
     return this.http
       .post<ApiResponse<MfaChallengeResponse>>(
@@ -415,12 +333,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Abandons a half-finished sign-in.
-   *
-   * The challenge is retired straight away rather than left to expire, so a code already sitting
-   * in an inbox or on a phone stops working the moment the person backs out.
-   */
+
   cancelMfaChallenge(challengeToken: string, reason?: string): Observable<OutcomeResponse> {
     return this.http
       .post<ApiResponse<OutcomeResponse>>(
@@ -442,12 +355,7 @@ export class AuthApiService {
   // IAM-AUTH-06 — account unavailable
   // =========================================================================================
 
-  /**
-   * Safe guidance for somebody who cannot get in.
-   *
-   * Deliberately non-disclosing: it explains what to do next without confirming whether the
-   * account exists, is locked, or was never here at all.
-   */
+
   getRecoveryGuidance(): Observable<AccountRecoveryGuidanceResponse> {
     return this.http
       .get<ApiResponse<AccountRecoveryGuidanceResponse>>(
@@ -455,13 +363,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Starts recovery from the account-unavailable screen.
-   *
-   * A suspended account is sent a link that lifts the hold and sets a new password in one step;
-   * anybody else gets the ordinary recovery link. Which of the two was sent is not reported
-   * back, for the same reason forgot-password says nothing.
-   */
+
   startRecovery(identifier: string): Observable<ForgotPasswordResponse> {
     return this.http
       .post<ApiResponse<ForgotPasswordResponse>>(
@@ -500,12 +402,7 @@ export class AuthApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Parks a half-filled form before sending somebody to confirm their identity.
-   *
-   * Without this, a step-up costs whatever the person had typed, and people learn to avoid the
-   * protected screens entirely. The payload is form state, never credentials.
-   */
+
   saveProtectedDraft(payload: SaveProtectedDraftRequest): Observable<SaveProtectedDraftResponse> {
     return this.http
       .post<ApiResponse<SaveProtectedDraftResponse>>(

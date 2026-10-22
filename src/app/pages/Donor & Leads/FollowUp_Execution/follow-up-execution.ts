@@ -1,21 +1,13 @@
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  FU_ICONS, FollowUp, FollowUpStore, FuExecution, FuMethod, MONTHS, MONTHS_LONG, WEEKDAYS, channelOf, fmtDate, fmtTime,
+  FU_ICONS, FollowUp, FollowUpStore, FuExecLists, FuExecution, FuMethod, MONTHS, MONTHS_LONG, WEEKDAYS, channelOf, fmtDate, fmtTime,
   initials, isOpen, isoDay, monthWeeks, pad2, priorityOf, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { CommunicationTimelineResponse, DonLookupItem, FollowUpPlannerResponse } from '../../../Shared/models/donor-contract.model';
 
-/* =====================================================================================================
-   FOLLOW-UP EXECUTION  (route /app/fundraising/relationships/follow-up-queue/execute?id=<follow-up id>)
-   Opened from the play button on the Follow-ups list.
-   Account-workspace look (same as My profile), theme colour on active states:
-   page header (Back) → profile card (who · channel · due · owner | instructions) → facts strip
-   (open · completed · overdue · readiness) → brief banner (why this follow-up)
-   → icon-row cards: The contact · The result · Notes · Relationship update
-   → side: Ready to complete? (checklist · Complete · Cancel) · Relationship readiness ·
-     Next follow-up (Yes / No) · Supporting files · Earlier conversations.
-   ===================================================================================================== */
 
 type FeMenu = 'date' | 'time' | 'status' | 'reason' | 'outcome' | 'temperature' | 'disposition' | 'manager' | null;
 type FeErr = 'method' | 'when' | 'status' | 'reason' | 'outcome' | 'engagement' | 'quality' | 'notes' | 'disposition';
@@ -58,12 +50,26 @@ export class FollowUpExecution {
     { key: 'partial', label: 'Partially completed', hint: 'Some of it is done, the rest needs another contact' },
     { key: 'no-response', label: 'No response', hint: 'They could not be reached' }
   ];
-  protected readonly reasons: Record<FeStatus, string[]> = {
-    completed: ['Spoke to the person', 'Questions answered', 'Information shared', 'Visit arranged'],
-    partial: ['Asked to call back later', 'Needs to check with family', 'Wants more information', 'Call cut short'],
-    'no-response': ['No answer', 'Number switched off', 'Wrong number', 'Message not delivered']
-  };
-  protected readonly outcomes = ['Interested', 'Visit booked', 'Pledged a gift', 'Gift made', 'Needs more information', 'Not interested'];
+  /** The lists below come from the server, as the old screen read them (planner + timeline of this person). */
+  private readonly planner = signal<FollowUpPlannerResponse | null>(null);
+  private readonly timeline = signal<CommunicationTimelineResponse | null>(null);
+  private readonly labelsOf = (l: DonLookupItem[] | undefined): string[] => (l ?? []).map((o) => o.label);
+  protected get reasons(): Record<FeStatus, string[]> {
+    const l = this.labelsOf(this.planner()?.completionReasonOptions);
+    return { completed: l, partial: l, 'no-response': l };
+  }
+  protected get outcomes(): string[] {
+    const l = this.labelsOf(this.timeline()?.outcomeOptions);
+    return l.length ? l : ['Interested', 'Visit booked', 'Pledged a gift', 'Gift made', 'Needs more information', 'Not interested'];
+  }
+  private lists(): FuExecLists {
+    const p = this.planner(), t = this.timeline();
+    return {
+      contactChannel: p?.contactChannelOptions, executionStatus: p?.executionStatusOptions,
+      completionReason: p?.completionReasonOptions, disposition: p?.dispositionOptions,
+      outcome: t?.outcomeOptions, engagement: t?.engagementOptions, quality: t?.qualityOptions
+    };
+  }
   protected readonly engagements: { key: FuExecution['engagement']; label: string; bars: number }[] = [
     { key: 'low', label: 'Low', bars: 1 },
     { key: 'medium', label: 'Medium', bars: 2 },
@@ -80,7 +86,7 @@ export class FollowUpExecution {
     { key: 'warm', label: 'Warm', tone: 'amber' },
     { key: 'hot', label: 'Hot', tone: 'red' }
   ];
-  protected readonly dispositions = ['Keep in touch', 'Ready to qualify', 'Nurture for later', 'Closed - not interested', 'Do not contact'];
+  protected get dispositions(): string[] { return this.labelsOf(this.planner()?.dispositionOptions); }
   protected readonly timeSlots = Array.from({ length: 48 }, (_, i) => `${pad2(Math.floor(i / 2))}:${i % 2 ? '30' : '00'}`);
 
   protected readonly now = new Date();
@@ -119,12 +125,24 @@ export class FollowUpExecution {
   protected readonly escReason = signal('');
   protected readonly escTried = signal(false);
   protected readonly managers = this.store.managers;
+  private readonly api = inject(DonorApiService);
 
   constructor() {
     // The follow-up arrives from the API after the page opens; preset the method once, when it does.
     effect(() => {
       const f = this.fu();
       if (f && this.method() === null) this.method.set(f.channel === 'post' ? 'visit' : f.channel);
+    });
+    // Option lists for this person, as the old screen loaded them.
+    let loadedFor = '';
+    effect(() => {
+      const f = this.fu();
+      if (!f?.recordId || loadedFor === f.recordId) return;
+      loadedFor = f.recordId;
+      const donorId = f.recordType === 'donor' ? f.recordId : null;
+      const leadId = f.recordType === 'lead' ? f.recordId : null;
+      this.api.getFollowUpPlanner({ page: 1, pageSize: 1, donorId, leadId }).subscribe({ next: (r) => this.planner.set(r), error: () => undefined });
+      this.api.getCommunicationTimeline(leadId, donorId).subscribe({ next: (r) => this.timeline.set(r), error: () => undefined });
     });
   }
 
@@ -289,7 +307,7 @@ export class FollowUpExecution {
       stage: this.stage(),
       disposition: this.disposition()!,
       files: this.files().map((x) => x.name)
-    }).subscribe({
+    }, this.lists()).subscribe({
       next: () => {
         this.toast.set(this.nextContact() ? 'Follow-up completed - plan the next contact' : 'Follow-up completed');
         setTimeout(() => {

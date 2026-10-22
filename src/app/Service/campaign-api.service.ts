@@ -49,28 +49,7 @@ import {
   ReadinessReminder,
 } from '../Shared/models/campaign-contract.model';
 
-/**
- * The single door to the Campaign service.
- *
- * IT UNWRAPS THE ENVELOPE AND RETURNS THE PAYLOAD. Every endpoint answers the same six-key
- * `ApiResponse`, so `map((response) => response.data!)` happens once here rather than in each
- * screen. A failure never reaches that map: the HTTP interceptor rethrows the parsed envelope,
- * so a component's `error` callback receives something `apiErrorMessage` understands.
- *
- * WHAT THIS REPLACES. `CampaignStoreService` held ten campaigns in a signal, compiled into the
- * bundle, and every screen read and mutated that array. Approving a campaign flipped a string;
- * a refresh restored the original ten. Every organisation saw the same fabricated list, because a
- * signal in a browser has no idea who is asking.
- *
- * THE LIFECYCLE IS SEVEN SEPARATE ENDPOINTS, not one status setter, and that shape is the point.
- * Each transition has its own permission, its own required reason and its own rules - approval
- * refuses the person who submitted, a close needs a second person, a pause needs a statement of
- * what it does to donors mid-flight. A single `PUT status` could express none of that.
- *
- * ONLY THE REFERENCE CATALOGUE IS CACHED. Channels, sources, mediums and the enum lists do not
- * change between two page views. Campaigns and tracking assets are never cached: an approval by a
- * colleague thirty seconds ago must show on the next refresh.
- */
+
 @Injectable({ providedIn: 'root' })
 export class CampaignApiService {
   private readonly http = inject(HttpClient);
@@ -154,26 +133,14 @@ export class CampaignApiService {
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Edits a campaign.
-   *
-   * IT CANNOT CHANGE THE CODE OR THE STATUS. Both are absent from the request by design - see the
-   * note on `UpdateCampaignRequest`. A screen that offers either is offering something the API
-   * will ignore.
-   */
+
   updateCampaign(id: string, request: UpdateCampaignRequest): Observable<CampaignDetail> {
     return this.http
       .put<ApiResponse<CampaignDetail>>(`${this.campaignsUrl}/${id}`, request)
       .pipe(map((response) => response.data!));
   }
 
-  /**
-   * Deletes a DRAFT campaign.
-   *
-   * ONLY A DRAFT, and the server enforces it. Once a campaign has been submitted it has an
-   * approval trail; once it has run it has donations attributed to it. Neither can be deleted
-   * without destroying a record somebody may need.
-   */
+
   deleteCampaignDraft(id: string, expectedVersion: number): Observable<OutcomeResponse> {
     return this.http
       .request<ApiResponse<OutcomeResponse>>('delete', `${this.campaignsUrl}/${id}`, {
@@ -190,13 +157,7 @@ export class CampaignApiService {
     return this.lifecycle(id, 'submit', request);
   }
 
-  /**
-   * Approves a campaign.
-   *
-   * REFUSED TO THE PERSON WHO CREATED OR SUBMITTED IT, whatever permissions they hold. Check
-   * `canPerformCampaignAction(detail, 'Approve')` before drawing the button: the server's answer
-   * already folds that in, and no local condition can.
-   */
+
   approveCampaign(id: string, request: CampaignLifecycleRequest): Observable<OutcomeResponse> {
     return this.lifecycle(id, 'approve', request);
   }
@@ -205,13 +166,7 @@ export class CampaignApiService {
     return this.lifecycle(id, 'activate', request);
   }
 
-  /**
-   * Pauses a live campaign.
-   *
-   * `communicationImpact` MATTERS HERE more than anywhere else in the lifecycle: donors may be
-   * holding live payment links for this campaign right now, and whoever pauses it has to say what
-   * happens to them.
-   */
+
   pauseCampaign(id: string, request: CampaignLifecycleRequest): Observable<OutcomeResponse> {
     return this.lifecycle(id, 'pause', request);
   }
@@ -311,13 +266,7 @@ export class CampaignApiService {
     return this.assetLifecycle(id, 'submit', request);
   }
 
-  /**
-   * Approves a tracking asset, which is what generates its reference and its URL.
-   *
-   * THE URL DOES NOT EXIST BEFORE THIS. That is why `trackingReference` and `generatedUrl` are
-   * nullable on the detail: a draft asset has nothing to print yet, and a screen that offered a
-   * QR code for one would produce a code leading nowhere.
-   */
+
   approveTrackingAsset(
     id: string,
     request: TrackingAssetLifecycleRequest,

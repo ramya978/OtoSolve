@@ -79,18 +79,6 @@ export type UploadEvent = UploadProgress | UploadDone;
 
 export type DocumentDecision = 'Approve' | 'Reject' | 'RequestReupload';
 
-/**
- * Grouped document submissions, both sides of them.
- *
- * TWO SETS OF URLS, AND THE DIFFERENCE IS THE POINT. `/organisations/mine/...` carries no id, so
- * an Organisation cannot ask for somebody else's paperwork by editing one. `/organisations/{id}/...`
- * is the reviewer's, and the server gates it on the platform review permission. The component
- * picks a set by which audience it is drawn for; neither can reach the other's data by accident.
- *
- * THE UPLOAD USES multipart AND REPORTS PROGRESS. `reportProgress` with an `HttpRequest` is what
- * turns an upload into a stream of events instead of one promise that resolves when it is over —
- * without it a 4 MB scan is a frozen screen with no indication anything is happening.
- */
 @Injectable({ providedIn: 'root' })
 export class DocumentSubmissionApiService {
   private readonly http = inject(HttpClient);

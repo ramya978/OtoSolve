@@ -1,22 +1,3 @@
-/**
- * Follow-up attachment store
- * DON Module | Fundraising CRM
- *
- * Keeps the ORIGINAL file attached when a follow-up is executed (PDF, DOCX, PNG, JPG ...), so the
- * Follow-up Queue can open it in its own format (View) and hand back the very same file (Download).
- *
- * WHY THIS EXISTS. The complete-follow-up API stores only the file NAME ("Attachments: a.pdf").
- * No bytes and no URL reach the server, so the queue had nothing to open and its Download wrote
- * a .txt note instead of the document. Until the API has a document endpoint, the file itself is
- * kept here, in the browser's IndexedDB, under the follow-up's id and the file's name.
- *
- * LIMITATION: IndexedDB belongs to one browser on one device. The person who executed the
- * follow-up (or anyone using the same browser) can view and download it; on another device the
- * queue says the original is not available there. When a backend upload endpoint is added,
- * replace `save` / `get` with HTTP calls - the screens only use these two methods.
- *
- * Save path: Shared/services/follow-up-attachment-store.service.ts
- */
 import { Injectable } from "@angular/core";
 
 export interface StoredAttachment {

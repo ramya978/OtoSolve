@@ -24,25 +24,7 @@ import {
   UserSearchFilter,
 } from '../Shared/models/user-directory.model';
 
-/**
- * The user directory: searching, opening and administering the people in one Organisation.
- *
- * NO ORGANISATION IS EVER SENT. Not on the search, not on an action, not on the export. The
- * Organisation comes from the signed token, which is the whole reason a TEN001 administrator
- * cannot reach a TEN002 user however the request is shaped: there is no parameter to change.
- *
- * WHY THE DIRECTORY IS ASSEMBLED FROM TWO CALLS
- * ---------------------------------------------
- * The screen needs a page of people AND the options for its filters — statuses, departments,
- * roles. The API serves those separately, and rightly: the filter options change once a month
- * and the page changes on every keystroke. Fetching them together on the first load and the page
- * alone afterwards is what keeps typing in the search box from re-fetching the whole reference
- * set thirty times a minute.
- *
- * EVERY ACTION CARRIES ExpectedVersion. Two administrators on the same record means the second
- * one is told to reload rather than silently overwriting the first.
- */
-/** One colleague, as the picker endpoint returns them. */
+
 export interface PersonLookupResponse {
   id: string;
   displayName: string;

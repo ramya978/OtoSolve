@@ -69,34 +69,7 @@ import {
   VerifyCodeRequest,
 } from '../Shared/models/donor-contract.model';
 
-/**
- * The single door to the Donors and Leads service.
- *
- * IT UNWRAPS THE ENVELOPE AND RETURNS THE PAYLOAD. Every endpoint answers the same six-key
- * `ApiResponse`, so `map((response) => response.data!)` happens once here rather than in each of
- * fourteen screens. A failure never reaches that map: the HTTP interceptor rethrows the parsed
- * envelope, so a component's `error` callback receives something `apiErrorMessage` understands.
- *
- * WHAT THIS REPLACES. Fourteen screens each imported a JSON file from `assets/data/` at build
- * time - `import * as pageData from '.../lead-work-queue.json'` - and worked over the resulting
- * array in memory. Three consequences followed and all three were real:
- *
- *   - NOTHING WAS EVER SAVED. A lead accepted, contacted or qualified on the work queue existed
- *     until the tab was refreshed and no further.
- *   - THE DATA WAS IDENTICAL FOR EVERY ORGANISATION AND EVERY USER, because a file compiled into
- *     the bundle has no idea who is asking. Tenant isolation stopped at the API boundary.
- *   - The masking rules could not work. Whether a donor's phone number is shown depends on a
- *     permission the server checks; a static file has one answer for everybody.
- *
- * ONE CALL PER SCREEN, DELIBERATELY. Most GETs here return rows, dropdowns, totals and permitted
- * actions together - that is how the API is shaped, and it is the right shape: a screen making
- * six calls renders six times and can show a filter list that disagrees with the rows beneath it.
- *
- * ONLY THE REFERENCE CATALOGUES ARE CACHED. The enum lists behind every selector do not change
- * between two page views, so `shareReplay` means the second screen a person opens costs nothing.
- * Nothing else is cached: a lead assigned by a colleague thirty seconds ago must appear on the
- * next refresh, not when a cache happens to expire.
- */
+
 @Injectable({ providedIn: 'root' })
 export class DonorApiService {
   private readonly http = inject(HttpClient);

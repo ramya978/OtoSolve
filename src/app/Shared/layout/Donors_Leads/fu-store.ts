@@ -43,6 +43,15 @@ export interface FollowUp {
   version?: number;
   mine?: boolean;
   recordId?: string;
+  /** What the server lets the caller do with this row (e.g. 'Execute'), and its own word for the due day. */
+  permitted?: string[];
+  dueState?: string;
+}
+
+/** The server's option lists for one follow-up's execution form (the planner's and the timeline's own). */
+export interface FuExecLists {
+  contactChannel?: DonLookupItem[]; executionStatus?: DonLookupItem[]; completionReason?: DonLookupItem[];
+  disposition?: DonLookupItem[]; outcome?: DonLookupItem[]; engagement?: DonLookupItem[]; quality?: DonLookupItem[];
 }
 
 export interface FuPerson {
@@ -246,6 +255,8 @@ function toFollowUp(r: ApiFollowUp): FollowUp {
     uid: r.id,
     version: r.version,
     mine: r.isAssignedToMe,
+    permitted: r.permittedActions ?? [],
+    dueState: r.dueState ?? '',
     recordId: (isLead ? r.leadId : r.donorId) ?? undefined,
     name: r.recordDisplayName ?? r.donorDisplayName ?? r.leadDisplayName ?? '',
     recordType: isLead ? 'lead' : 'donor',
@@ -431,7 +442,7 @@ export class FollowUpStore {
   }
 
   /** Records what happened on a follow-up and closes it (completed / partial / no response). */
-  execute(id: string, r: FuExecution): Observable<unknown> {
+  execute(id: string, r: FuExecution, lists: FuExecLists = {}): Observable<unknown> {
     const f = this.byRef(id);
     const o = this.options();
     const statusWord = r.status === 'completed' ? 'Completed' : r.status === 'partial' ? 'Partially completed' : 'No response';
@@ -442,16 +453,16 @@ export class FollowUpStore {
       completionOutcome: (r.notes + (r.files.length ? '\nAttachments: ' + r.files.join(', ') : '')).slice(0, 2000),
       completedAtUtc: new Date(r.executedAt).toISOString(),
       expectedVersion: f.version,
-      outcome: r.outcome,
-      interactionType: this.pick(o?.contactChannelOptions, methodWord),
+      outcome: this.pick(lists.outcome, r.outcome),
+      interactionType: this.pick(lists.contactChannel ?? o?.contactChannelOptions, methodWord),
       direction: 'Outgoing',
       notes: r.internalNotes.trim() || null,
-      engagementLevel: engagementWord,
-      quality: qualityWord,
+      engagementLevel: this.pick(lists.engagement, engagementWord),
+      quality: this.pick(lists.quality, qualityWord),
       attachmentName: r.files.length ? r.files.join(', ').slice(0, 260) : null,
-      executionStatus: this.pick(o?.executionStatusOptions, statusWord),
-      completionReason: this.pick(o?.completionReasonOptions, r.reason),
-      disposition: this.pick(o?.dispositionOptions, r.disposition)
+      executionStatus: this.pick(lists.executionStatus ?? o?.executionStatusOptions, statusWord),
+      completionReason: this.pick(lists.completionReason ?? o?.completionReasonOptions, r.reason),
+      disposition: this.pick(lists.disposition ?? o?.dispositionOptions, r.disposition)
     }).pipe(tap((u) => this.replace(u)));
   }
 

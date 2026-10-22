@@ -268,14 +268,14 @@
                   <td class="c-st"><span [class]="'fq-status tone-' + st(f).tone">{{ st(f).label }}</span></td>
                   <td class="c-act">
                     <div class="fq-acts">
-                      <!-- @if (canRun(f)) {
+                      @if (canRun(f)) {
                         <button type="button" class="fu-icon fq-run" (click)="run(f)" [attr.aria-label]="'Execute follow-up for ' + f.name" title="Execute follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg></button>
-                      } -->
+                      }
                       <div class="fu-dd fq-row-dd">
                         <button type="button" class="fu-icon" (click)="toggleMenu('row', $event, f.id)" [attr.aria-expanded]="menu() === 'row' && menuRow() === f.id" [attr.aria-label]="'Actions for ' + f.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('more')" /></svg></button>
                         @if (menu() === 'row' && menuRow() === f.id) {
                           <ul class="fu-menu is-right" role="menu" (click)="$event.stopPropagation()">
-                            @if (canRun(f)) { <li><button type="button" role="menuitem" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute follow-up</button></li> }
+                            <!-- @if (canRun(f)) { <li><button type="button" role="menuitem" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute follow-up</button></li> } -->
                             <li><button type="button" role="menuitem" (click)="openDetails(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Open details</button></li>
                             <li><button type="button" role="menuitem" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button></li>
                             <li><button type="button" role="menuitem" [disabled]="f.status === 'escalated'" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button></li>
@@ -538,9 +538,8 @@
         <div class="fq-dr-actions">
           @if (canRun(f)) {
             <button type="button" class="fu-btn is-primary" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute</button>
-          } @else if (!f.completedAt) {
-            <button type="button" class="fu-btn is-primary" (click)="markDone(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Mark done</button>
           }
+
           <button type="button" class="fu-btn" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button>
           <button type="button" class="fu-btn" [disabled]="f.status === 'escalated' || !!f.completedAt" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
         </div>

@@ -39,27 +39,7 @@ import {
   UpdateTimeZoneRequest,
 } from '../Shared/models/global-master.model';
 
-/**
- * The five Masters screens' single door to the API.
- *
- * WHAT CHANGED, AND WHY IT MATTERS. This service used to point at
- * `http://localhost:6001/api/v1/Countries` — a hard-coded host, a service that no longer
- * exists, and no bearer token. Two consequences followed from that and both were real bugs:
- * the components did `new MasterService()`, which puts `inject(HttpClient)` outside an
- * injection context and throws NG0203, and the calls carried no `Authorization` header, so
- * every one of them would now answer 401.
- *
- * It is `providedIn: 'root'` and built from `environment.apiBaseUrl` instead. That routes every
- * call through `authInterceptor`, which attaches the token, renews it on a 401 and unwraps the
- * error envelope — so a component here gets the same behaviour as every other screen in the
- * application, and a component must `inject(MasterService)` rather than construct one.
- *
- * THE CATALOGUE IS SHARED, NOT COPIED PER ORGANISATION. Every read returns the seeded platform
- * rows plus whatever this Organisation added for itself; a row from another Organisation is not
- * merely hidden, it is unreachable. `isPlatformRow` on each row says which kind it is, and
- * `permittedActions` on a detail response says what this caller may do to it — so a screen
- * never has to work out for itself whether the edit pencil should be drawn.
- */
+
 @Injectable({ providedIn: 'root' })
 export class MasterService {
   private readonly http = inject(HttpClient);

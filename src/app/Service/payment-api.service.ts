@@ -64,31 +64,7 @@ import {
   VoidReceiptRequest,
 } from '../Shared/models/payment.model';
 
-/**
- * The single door to the Donations and Payments service.
- *
- * IT UNWRAPS THE ENVELOPE AND RETURNS THE PAYLOAD. Every endpoint answers the same six-key
- * `ApiResponse`, so `map((response) => response.data!)` happens once here rather than in each of
- * eight screens. A failure never reaches that map: the HTTP interceptor rethrows the parsed
- * envelope, so a component's `error` callback receives something `apiErrorMessage` understands.
- *
- * TWO BASE PATHS, AND THE DIFFERENCE IS THE POINT.
- *
- *   `staff`  - /api/v1/*. Requires a token, a permission and a resolved organisation.
- *   `public` - /api/public/*. NO TOKEN AT ALL. A donor with a QR code has no account; requiring
- *              one would mean asking somebody to register before they may give money.
- *
- * The public methods are safe for the same reason the server accepts them anonymously: the
- * organisation is resolved from the unguessable reference in the route, never from anything the
- * caller can choose. The auth interceptor is told about `/public/donations` so those calls carry
- * no bearer token and a 401 from them never triggers a token refresh - which would otherwise send
- * an anonymous visitor to the sign-in page in the middle of giving money.
- *
- * NOTHING HERE CACHES. Every other register on the platform can afford a `shareReplay` on its
- * reference data; a donation register cannot. A payment captured thirty seconds ago must appear
- * on the next refresh, and a refund approved by somebody else must not be invisible because this
- * tab is holding an older answer.
- */
+
 @Injectable({ providedIn: 'root' })
 export class PaymentApiService {
   private readonly http = inject(HttpClient);

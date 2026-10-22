@@ -7,17 +7,6 @@ import {
 } from '../../../Shared/layout/Donors_Leads/fu-store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
-/* =====================================================================================================
-   FOLLOW-UPS  (route /app/fundraising/relationships/follow-up-queue)
-   Account-workspace look (same as My profile):
-   page header (eyebrow · title · Refresh · Export · New follow-up)
-   → "my queue" card (you · queue state · your open / overdue | today's agenda panel)
-   → figures strip (due today · upcoming · overdue · completed today · escalated)
-   → view tabs (List / Board / Calendar) → attention banner
-   → "All follow-ups" card (quick filters, search, sort, filters panel, week strip, chosen view, paging)
-     + side cards (queue health · SLA monitor · pending by age).
-   Row menu: Open details (drawer) · Reassign · Escalate · View history. Calendar day → day popup.
-   ===================================================================================================== */
 
 export type FuTab = 'all' | 'mine' | 'today' | 'overdue' | 'upcoming' | 'done-today' | 'high' | 'attention' | 'escalated' | 'calls';
 export type FuView = 'list' | 'board' | 'calendar';
@@ -510,8 +499,20 @@ export class FollowUps {
   isReady(f: FollowUp): boolean {
     return isOpen(f) && !f.blocked && (f.mine ?? f.owner === this.store.currentUser) && f.dueAt.slice(0, 10) <= this.todayIso();
   }
-  /** Execute is offered on every open (pending / rescheduled) follow-up; the server decides who may complete it. */
-  canRun(f: FollowUp): boolean { return isOpen(f); }
+  /**
+   * Execute belongs to the person the follow-up is assigned to, and nobody else (the old screen's
+   * rule): it is open, it is mine, the server lists Execute for it, it is not blocked, and it is not
+   * scheduled for a later day.
+   */
+  canRun(f: FollowUp): boolean {
+    const state = (f.dueState ?? '').trim().toLowerCase();
+    const upcoming = state === 'upcoming' || state === 'tomorrow' || f.dueAt.slice(0, 10) > this.todayIso();
+    return isOpen(f)
+      && !!f.mine
+      && (f.permitted ?? []).includes('Execute')
+      && !f.blocked
+      && !upcoming;
+  }
   run(f: FollowUp): void { this.menu.set(null); this.router.navigate([this.runPath], { queryParams: { id: f.id } }); }
   openAgenda(): void { this.setTab('today'); this.view.set('list'); }
 

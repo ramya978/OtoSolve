@@ -39,22 +39,7 @@ export interface OrganisationSearchFilter {
   sort?: string;
 }
 
-/**
- * Organisations — Tenants in the schema, Organisations everywhere a person can see.
- *
- * THE TWO HALVES OF THIS SERVICE HAVE DIFFERENT AUDIENCES, and the split is the whole point.
- *
- * The **platform** calls (`/organisations/...`) are SuperAdmin's: create, review, approve,
- * suspend, and every one of them names an Organisation by id.
- *
- * The **mine** calls (`/organisations/mine`) are the TenantAdmin's, and they take NO ID AT ALL.
- * The Organisation is resolved from the signed token, so a TenantAdmin has nothing in the URL to
- * change in order to reach somebody else's. That is the simplest protection available and it is
- * why the two live on separate routes rather than one route with a permission check.
- *
- * EVERY STATE CHANGE CARRIES ExpectedVersion. Two administrators opening the same Organisation
- * means the second save is refused with a 409 rather than silently overwriting the first.
- */
+
 @Injectable({ providedIn: 'root' })
 export class OrganisationApiService {
   private readonly http = inject(HttpClient);

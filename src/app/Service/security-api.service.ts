@@ -12,19 +12,7 @@ import {
   UserSecurityResponse,
 } from '../Shared/models/iam-contract.model';
 
-/**
- * Security: the caller's own, and — separately — somebody else's.
- *
- * THE TWO HALVES ARE DELIBERATELY DIFFERENT SHAPES. Everything under `/my-security` takes no
- * user id at all: the server acts on whoever holds the token, so those calls cannot be aimed at
- * another person however the request is built. Everything under `/users/{id}` takes an id and is
- * permission-gated on the server. Collapsing them into one set of methods with a "self" flag
- * would put both behind one code path, and the flag would become the only thing between a
- * person and everybody else's sessions.
- *
- * NOTHING HERE DECIDES WHETHER AN ACTION IS ALLOWED. The screens hide buttons the caller has no
- * permission for, and that is a courtesy, not a control — the server refuses regardless.
- */
+
 @Injectable({ providedIn: 'root' })
 export class SecurityApiService {
   private readonly http = inject(HttpClient);
