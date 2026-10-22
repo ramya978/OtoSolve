@@ -1,0 +1,212 @@
+<!-- =====================================================================================
+     ORGANISATION — Edit page (Workspace Kit)
+     page heading (same as profile) · lock banner · stacked section cards:
+     Registration & identity · Contact | Regional settings · Registered address · action bar
+     ===================================================================================== -->
+<div class="og-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Administration / Organisation</span>
+      <h1>
+        {{ org.name }}
+        @if (org.verified) {
+          <span class="oe-verified" title="Verified organisation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('verified')" /></svg>
+          </span>
+        }
+      </h1>
+      <p>{{ org.code }} · {{ org.host }} · {{ org.type }} · Since {{ org.since }}</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn" (click)="cancel()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>Back to profile</button>
+    </div>
+  </header>
+
+  @if (locked) {
+    <div class="oe-banner" role="note">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>
+      <span><strong>Approved.</strong> Registered details are locked. Contact details, address, website, time zone, currency and language can still change.</span>
+    </div>
+  }
+
+  <div class="oe-stack">
+
+    <!-- ============ REGISTRATION & IDENTITY ============ -->
+    <section class="i-card oe-card" aria-label="Registration and identity">
+      <div class="oe-ch">
+        <span class="oe-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg></span>
+        <div class="oe-ct"><h3>Registration &amp; identity</h3><p>Legal identity of the organisation</p></div>
+        @if (locked) {
+          <span class="oe-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('lock')" /></svg>Locked</span>
+        }
+      </div>
+      <div class="oe-cb">
+        <div class="oe-grid oe-grid--4">
+          <label class="oe-field">
+            <span class="oe-label">Name <b class="oe-req">*</b></span>
+            <input class="oe-input" type="text" [value]="form().name" [disabled]="locked" (input)="set('name', $any($event.target).value)" />
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">Registered legal name</span>
+            <input class="oe-input" type="text" [value]="form().legalName" [disabled]="locked" (input)="set('legalName', $any($event.target).value)" />
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">Type</span>
+            <select class="oe-input oe-select" [disabled]="locked" (change)="set('type', $any($event.target).value)">
+              @for (o of withCurrent(types, 'type'); track o) { <option [value]="o" [selected]="o === form().type">{{ o }}</option> }
+            </select>
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">Established on</span>
+            <input class="oe-input" type="text" [value]="form().established" [disabled]="locked" (input)="set('established', $any($event.target).value)" />
+          </label>
+
+          <label class="oe-field">
+            <span class="oe-label">Registration number</span>
+            <input class="oe-input" type="text" [value]="form().regNo" [disabled]="locked" (input)="set('regNo', $any($event.target).value)" />
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">Tax identification number</span>
+            <input class="oe-input" type="text" [value]="form().taxId" [disabled]="locked" (input)="set('taxId', $any($event.target).value)" />
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">PAN</span>
+            <input class="oe-input" type="text" [value]="form().pan" [disabled]="locked" (input)="set('pan', $any($event.target).value)" />
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">GST</span>
+            <input class="oe-input" type="text" [value]="form().gst" [disabled]="locked" (input)="set('gst', $any($event.target).value)" />
+          </label>
+
+          <label class="oe-field oe-span4">
+            <span class="oe-label">About <span class="oe-count">{{ form().about.length }} / {{ maxAbout }}</span></span>
+            <textarea class="oe-input oe-textarea" rows="3" [value]="form().about" [attr.maxlength]="maxAbout" [disabled]="locked"
+                      (input)="set('about', $any($event.target).value)"></textarea>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CONTACT | REGIONAL ============ -->
+    <div class="oe-pair">
+      <section class="i-card oe-card" aria-label="Contact">
+        <div class="oe-ch">
+          <span class="oe-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('contact')" /></svg></span>
+          <div class="oe-ct"><h3>Contact</h3><p>Who we reach out to</p></div>
+        </div>
+        <div class="oe-cb">
+          <div class="oe-grid oe-grid--2">
+            <label class="oe-field">
+              <span class="oe-label">Contact person</span>
+              <input class="oe-input" type="text" [value]="form().person" (input)="set('person', $any($event.target).value)" />
+            </label>
+            <label class="oe-field">
+              <span class="oe-label">Contact e-mail</span>
+              <input class="oe-input" type="email" [value]="form().email" (input)="set('email', $any($event.target).value)" />
+            </label>
+            <div class="oe-field">
+              <span class="oe-label">Telephone</span>
+              <div class="oe-phone">
+                <select class="oe-input oe-select" aria-label="Country code" (change)="set('dial', $any($event.target).value)">
+                  @for (o of withCurrent(dialCodes, 'dial'); track o) { <option [value]="o" [selected]="o === form().dial">{{ o }}</option> }
+                </select>
+                <input class="oe-input" type="tel" aria-label="Phone number" [value]="form().phone" (input)="set('phone', $any($event.target).value)" />
+              </div>
+            </div>
+            <label class="oe-field">
+              <span class="oe-label">Website</span>
+              <input class="oe-input" type="url" [value]="form().website" (input)="set('website', $any($event.target).value)" />
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="i-card oe-card" aria-label="Regional settings">
+        <div class="oe-ch">
+          <span class="oe-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg></span>
+          <div class="oe-ct"><h3>Regional settings</h3><p>Time zone, currency and language</p></div>
+        </div>
+        <div class="oe-cb">
+          <div class="oe-grid oe-grid--2">
+            <label class="oe-field oe-span2">
+              <span class="oe-label">Time zone</span>
+              <select class="oe-input oe-select" (change)="set('timezone', $any($event.target).value)">
+                @for (o of withCurrent(timezones, 'timezone'); track o) { <option [value]="o" [selected]="o === form().timezone">{{ o }}</option> }
+              </select>
+            </label>
+            <label class="oe-field">
+              <span class="oe-label">Currency</span>
+              <select class="oe-input oe-select" (change)="set('currency', $any($event.target).value)">
+                @for (o of withCurrent(currencies, 'currency'); track o) { <option [value]="o" [selected]="o === form().currency">{{ o }}</option> }
+              </select>
+            </label>
+            <label class="oe-field">
+              <span class="oe-label">Language</span>
+              <select class="oe-input oe-select" (change)="set('language', $any($event.target).value)">
+                @for (o of withCurrent(languages, 'language'); track o) { <option [value]="o" [selected]="o === form().language">{{ o }}</option> }
+              </select>
+            </label>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ REGISTERED ADDRESS ============ -->
+    <section class="i-card oe-card" aria-label="Registered address">
+      <div class="oe-ch">
+        <span class="oe-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pin')" /></svg></span>
+        <div class="oe-ct"><h3>Registered address</h3><p>Registered office of the organisation</p></div>
+      </div>
+      <div class="oe-cb">
+        <div class="oe-grid oe-grid--4">
+          <label class="oe-field oe-span2">
+            <span class="oe-label">Address line 1 <b class="oe-req">*</b></span>
+            <input class="oe-input" type="text" [value]="form().line1" (input)="set('line1', $any($event.target).value)" />
+          </label>
+          <label class="oe-field oe-span2">
+            <span class="oe-label">Address line 2 <span class="oe-opt">optional</span></span>
+            <input class="oe-input" type="text" [value]="form().line2" (input)="set('line2', $any($event.target).value)" />
+          </label>
+
+          <label class="oe-field">
+            <span class="oe-label">Country</span>
+            <select class="oe-input oe-select" (change)="set('country', $any($event.target).value)">
+              @for (o of withCurrent(countries, 'country'); track o) { <option [value]="o" [selected]="o === form().country">{{ o }}</option> }
+            </select>
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">State or province</span>
+            <select class="oe-input oe-select" (change)="set('state', $any($event.target).value)">
+              @for (o of withCurrent(states, 'state'); track o) { <option [value]="o" [selected]="o === form().state">{{ o }}</option> }
+            </select>
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">City</span>
+            <select class="oe-input oe-select" (change)="set('city', $any($event.target).value)">
+              @for (o of withCurrent(cities, 'city'); track o) { <option [value]="o" [selected]="o === form().city">{{ o }}</option> }
+            </select>
+          </label>
+          <label class="oe-field">
+            <span class="oe-label">Postal code</span>
+            <input class="oe-input" type="text" [value]="form().postcode" (input)="set('postcode', $any($event.target).value)" />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ACTION BAR ============ -->
+    <div class="i-card oe-bar">
+      <span class="oe-bar-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+        Changes are saved to this organisation only.
+      </span>
+      <div class="oe-bar-actions">
+        <button type="button" class="i-btn" (click)="cancel()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
+        <button type="button" class="i-btn i-btn--primary" [disabled]="!valid()" (click)="save()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save</button>
+      </div>
+    </div>
+  </div>
+</div>

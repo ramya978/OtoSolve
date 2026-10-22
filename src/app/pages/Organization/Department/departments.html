@@ -1,0 +1,336 @@
+<header class="og-page-head">
+  <div class="og-page-text">
+    <p class="og-crumb">Administration / Organisation</p>
+    <h1 class="og-page-title">Departments</h1>
+    <p class="og-page-sub">Departments across the organisation, with their heads, people and status.</p>
+  </div>
+  <div class="og-page-actions">
+    <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
+      <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>
+      Export
+    </button>
+    <button type="button" class="pf-hbtn btn-primary" (click)="openCreate()">
+      <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+      Create
+    </button>
+  </div>
+</header>
+
+<section class="og-kpis" aria-label="Department summary">
+  <article class="og-kpi">
+    <header><span>Departments</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6" /></svg>
+    </header>
+    <div class="og-kpi-main">
+      <b>{{ stats().total }}</b>
+      <div class="og-kpi-side"><b>{{ stats().topLevel }}</b><span>Top level</span></div>
+    </div>
+    <p>{{ stats().total - stats().topLevel }} sub-departments beneath</p>
+  </article>
+
+  <article class="og-kpi">
+    <header><span>Active</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checkcircle')" /></svg>
+    </header>
+    <div class="og-kpi-main">
+      <b class="ok">{{ stats().active }}</b>
+      <div class="og-kpi-side"><b>{{ stats().activePct }}%</b><span>Of total</span></div>
+    </div>
+    <p>{{ stats().active === stats().total ? 'Every department is running' : stats().active + ' departments running now' }}</p>
+  </article>
+
+  <article class="og-kpi">
+    <header><span>Inactive</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('offcircle')" /></svg>
+    </header>
+    <div class="og-kpi-main">
+      <b [class.dim]="stats().inactive === 0">{{ stats().inactive }}</b>
+      <div class="og-kpi-side"><b>{{ 100 - stats().activePct }}%</b><span>Of total</span></div>
+    </div>
+    <p>{{ stats().inactive === 0 ? 'None switched off' : 'Kept on record, not in use' }}</p>
+  </article>
+
+  <article class="og-kpi">
+    <header><span>People assigned</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM20 20v-1a4 4 0 0 0-3-3.9M15 4.2a3.5 3.5 0 0 1 0 6.6" /></svg>
+    </header>
+    <div class="og-kpi-main">
+      <b>{{ stats().people }}</b>
+      <div class="og-kpi-side"><b>{{ stats().avg }}</b><span>Avg per dept</span></div>
+    </div>
+    <p>Across {{ stats().total }} departments</p>
+  </article>
+
+  <article class="og-kpi">
+    <header><span>Without a head</span>
+      <svg class="warn" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4m0 4h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>
+    </header>
+    <div class="og-kpi-main">
+      <b class="warn" [class.dim]="stats().noHead === 0">{{ stats().noHead }}</b>
+      <div class="og-kpi-side"><b>{{ stats().total - stats().noHead }}</b><span>Have a head</span></div>
+    </div>
+    <p>{{ stats().noHead === 0 ? 'Every department has a head' : 'Assign a head from Edit' }}</p>
+  </article>
+</section>
+
+<section class="og-card og-tablecard" aria-label="Departments">
+  <div class="og-scroll">
+    <table class="og-table og-table--list">
+      <thead>
+        <tr>
+          <th scope="col">Department</th>
+          <th scope="col">Code</th>
+          <th scope="col">Sits under</th>
+          <th scope="col">Head</th>
+          <th scope="col">People</th>
+          <th scope="col">Status</th>
+          <th class="r" scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (d of rows(); track d.id) {
+          <tr>
+            <td>
+              <div class="og-cell">
+                <button type="button" class="og-name" (click)="openView(d)">{{ d.name }}</button>
+                @if (d.description) { <span class="og-desc">{{ d.description }}</span> }
+              </div>
+            </td>
+            <td><span class="og-code">{{ d.code }}</span></td>
+            <td><span class="og-under">{{ parentName(d) }}</span></td>
+            <td>
+              @if (store.person(d.headId); as h) {
+                <span class="og-person"><i aria-hidden="true">{{ initialsOf(h.name) }}</i>{{ h.name }}</span>
+              } @else {
+                <span class="og-na">Not assigned</span>
+              }
+            </td>
+            <td><span class="og-count-pill">{{ store.deptPeople(d.id) }}</span></td>
+            <td>
+              <span class="og-status" [class.ok]="d.active">{{ d.active ? 'Active' : 'Inactive' }}</span>
+            </td>
+            <td class="r">
+              <span class="og-acts">
+                <button type="button" class="og-iconbtn" aria-label="View department" (click)="openView(d)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+                </button>
+                <button type="button" class="og-iconbtn" aria-label="Edit department" (click)="openEdit(d)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
+                </button>
+                <button type="button" class="og-iconbtn" aria-label="Delete department" [disabled]="!canDelete(d)"
+                        [attr.title]="canDelete(d) ? null : 'Move people out of this department before deleting it'"
+                        (click)="askDelete(d)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
+                </button>
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================== popup: department details ============================== -->
+@if (viewing(); as v) {
+  <div class="og-overlay" (click)="closeView()">
+    <div class="og-dialog og-pop og-pop--view" role="dialog" aria-modal="true" aria-labelledby="dp-view-title" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="og-pop-head">
+        <h2>Department details</h2>
+        <button type="button" class="og-xbox" (click)="closeView()" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+        </button>
+      </header>
+
+      <div class="og-pop-body">
+        <div class="og-pop-top">
+          <div>
+            <p class="og-eyebrow">Department · {{ v.code }}</p>
+            <h3 id="dp-view-title" class="og-pop-name">{{ v.name }}</h3>
+          </div>
+          <span class="og-pill" [class.ok]="v.active" [class.off]="!v.active">{{ v.active ? 'Active' : 'Inactive' }}</span>
+        </div>
+
+        <dl class="og-facts">
+          <div><dt>Code</dt><dd>{{ v.code }}</dd></div>
+          <div><dt>Sits under</dt><dd>{{ parentName(v) }}</dd></div>
+          <div>
+            <dt>Head</dt>
+            @if (store.person(v.headId); as h) { <dd>{{ h.name }}</dd> } @else { <dd class="na">Not assigned</dd> }
+          </div>
+          <div><dt>People</dt><dd>{{ store.deptPeople(v.id) }}</dd></div>
+          <div><dt>Share of all people</dt><dd>{{ peopleShare(v) }}%</dd></div>
+          <div><dt>Departments beneath</dt><dd>{{ store.deptChildren(v.id) }}</dd></div>
+          <div><dt>Level</dt><dd>{{ v.parentId ? 'Sub-department' : 'Top level' }}</dd></div>
+          <div><dt>Status</dt><dd>{{ v.active ? 'Active' : 'Inactive' }}</dd></div>
+          <div><dt>Display order</dt><dd>{{ v.order }}</dd></div>
+        </dl>
+
+        @if (childrenOf(v); as kids) {
+          @if (kids.length) {
+            <p class="og-sublabel">Departments beneath</p>
+            <div class="og-subtags">
+              @for (k of kids; track k.id) { <span class="og-tag">{{ k.name }}<small>{{ k.code }}</small></span> }
+            </div>
+          }
+        }
+
+        <div class="og-note" [class.na]="!v.description">
+          {{ v.description || 'No description has been added.' }}
+        </div>
+      </div>
+
+      <footer class="og-pop-foot">
+        <button type="button" class="pf-hbtn btn-secondary" (click)="closeView()">
+          <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+          Close
+        </button>
+        <button type="button" class="pf-hbtn btn-primary" (click)="editFromView()">
+          <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
+          Edit
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+<!-- ============================== offcanvas: create / edit ============================== -->
+@if (formMode(); as mode) {
+  <div class="og-overlay og-overlay-end" (click)="closeForm()">
+    <aside class="og-drawer og-drawer--form" role="dialog" aria-modal="true" aria-labelledby="dp-form-title" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="og-pop-head">
+        <div class="og-mtitle">
+          <p class="og-eyebrow">{{ mode === 'create' ? 'New department' : 'Editing' }}</p>
+          <h2 id="dp-form-title">{{ mode === 'create' ? 'Create a department' : 'Edit department' }}</h2>
+          <p class="og-sub">A function people work in, such as Fundraising or Finance.</p>
+        </div>
+        <button type="button" class="og-xbox" (click)="closeForm()" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+        </button>
+      </header>
+
+      <div class="og-drawer-body">
+        <section class="og-block">
+          <h3 class="og-block-title">Details</h3>
+          <div class="og-grid2">
+            <div class="og-field">
+              <label class="og-flabel" for="dp-code">Code <i>*</i></label>
+              <input id="dp-code" class="og-input" [class.bad]="submitted() && errors().code" type="text" placeholder="e.g. FUN" maxlength="12"
+                     [value]="fCode()" (input)="fCode.set($any($event.target).value.toUpperCase())" />
+              @if (submitted() && errors().code) { <small class="og-err">{{ errors().code }}</small> }
+            </div>
+            <div class="og-field">
+              <label class="og-flabel" for="dp-order">Display order</label>
+              <input id="dp-order" class="og-input" type="number" min="0" step="10" [value]="fOrder()" (change)="setOrder($any($event.target).value)" />
+            </div>
+          </div>
+          <div class="og-field og-field--last">
+            <label class="og-flabel" for="dp-name">Name <i>*</i></label>
+            <input id="dp-name" class="og-input" [class.bad]="submitted() && errors().name" type="text" placeholder="e.g. Fundraising" maxlength="80"
+                   [value]="fName()" (input)="fName.set($any($event.target).value)" />
+            @if (submitted() && errors().name) { <small class="og-err">{{ errors().name }}</small> }
+            <div class="og-quick og-quick--stack">
+              <span>Quick pick</span>
+              <div class="og-chips">
+                @for (q of quickPicks; track q) {
+                  <button type="button" class="og-chip" [class.is-on]="fName() === q" (click)="fName.set(q)">{{ q }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="og-block">
+          <h3 class="og-block-title">Structure</h3>
+          <div class="og-field">
+            <label class="og-flabel" for="dp-parent">Sits under</label>
+            <select id="dp-parent" class="og-input" (change)="fParent.set($any($event.target).value)">
+              <option value="" [selected]="!fParent()">Top level</option>
+              @for (p of parentOptions(); track p.id) {
+                <option [value]="p.id" [selected]="fParent() === p.id">{{ p.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="og-field og-field--last">
+            <label class="og-flabel" for="dp-head">Head of department</label>
+            <select id="dp-head" class="og-input" (change)="fHead.set($any($event.target).value)">
+              <option value="" [selected]="!fHead()">No head yet</option>
+              @for (p of store.people(); track p.id) {
+                <option [value]="p.id" [selected]="fHead() === p.id">{{ p.name }}</option>
+              }
+            </select>
+          </div>
+        </section>
+
+        <section class="og-block">
+          <h3 class="og-block-title">About</h3>
+          <div class="og-field og-field--last">
+            <span class="og-flabel-row">
+              <label class="og-flabel" for="dp-desc">Description</label>
+              <span class="og-count">{{ fDesc().length }} / 1000</span>
+            </span>
+            <textarea id="dp-desc" class="og-input og-area" rows="4" maxlength="1000" placeholder="What this department is responsible for."
+                      [value]="fDesc()" (input)="fDesc.set($any($event.target).value)"></textarea>
+          </div>
+        </section>
+
+        @if (mode === 'edit') {
+          <label class="og-toggle og-toggle--row">
+            <input type="checkbox" [checked]="fActive()" (change)="fActive.set($any($event.target).checked)" />
+            <span class="og-toggle-text"><b>Active</b><small>Inactive departments stay on record but are marked inactive.</small></span>
+            <span class="og-switch" aria-hidden="true"><i></i></span>
+          </label>
+        }
+      </div>
+
+      <footer class="og-pop-foot og-drawer-foot">
+        <span class="og-req"><i>*</i> Required</span>
+        <span class="og-foot-btns">
+          <button type="button" class="pf-hbtn btn-secondary" (click)="closeForm()">
+            <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+            Cancel
+          </button>
+          <button type="button" class="pf-hbtn btn-primary" (click)="save()">
+            <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(mode === 'create' ? 'plus' : 'check')" /></svg>
+            {{ mode === 'create' ? 'Create' : 'Save changes' }}
+          </button>
+        </span>
+      </footer>
+    </aside>
+  </div>
+}
+
+<!-- ============================== popup: confirm delete (redesigned) ============================== -->
+@if (deleting(); as d) {
+  <div class="og-overlay" (click)="cancelDelete()">
+    <div class="og-dialog og-pop og-confirm og-delete" role="alertdialog" aria-modal="true" aria-labelledby="dp-del-title" tabindex="-1" (click)="$event.stopPropagation()">
+      <header class="og-pop-head og-del-head">
+        <div class="og-del-title-wrap">
+          <span class="og-del-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path [attr.d]="icon('trash')" /></svg>
+          </span>
+          <div>
+            <h2 id="dp-del-title">Delete department?</h2>
+            <p class="og-del-name">{{ d.name }}</p>
+          </div>
+        </div>
+        <button type="button" class="og-xbox" (click)="cancelDelete()" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+        </button>
+      </header>
+      <div class="og-pop-body og-del-body">
+        <p class="og-del-text">This removes <b>{{ d.name }}</b> from the organisation. This cannot be undone, and any people assigned to it will be unassigned.</p>
+      </div>
+      <footer class="og-pop-foot og-del-foot">
+        <button type="button" class="pf-hbtn btn-secondary" (click)="cancelDelete()">
+          <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+          Cancel
+        </button>
+        <button type="button" class="pf-hbtn btn-primary og-danger" (click)="confirmDelete()">
+          <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
+          Delete 
+        </button>
+      </footer>
+    </div>
+  </div>
+}

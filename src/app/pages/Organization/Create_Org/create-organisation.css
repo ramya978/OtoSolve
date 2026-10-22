@@ -1,0 +1,939 @@
+/* Create organisation — add-record layout: header card · sections nav · form card · info panel.
+   Self-contained. Colours come from your theme variables when they exist. */
+.oc-page {
+  --oc-a: var(--i-primary, var(--accent, #6d2748));
+  --oc-ink: var(--i-heading, var(--ink, #1f2430));
+  --oc-mute: var(--i-muted, var(--muted, #6b7280));
+  --oc-line: var(--i-line, var(--line, #e4e6ec));
+  --oc-card: var(--i-card, #fff);
+  --oc-tint: color-mix(in srgb, var(--oc-a) 7%, transparent);
+  --oc-soft: color-mix(in srgb, var(--oc-ink) 4%, transparent);
+  --oc-warn: var(--i-warning, #9a6412);
+  --oc-ok: var(--i-success, #2f7d5b);
+  --oc-bad: var(--i-danger, #b34455);
+  color: var(--oc-ink);
+  container: oc-page / inline-size;
+  padding-bottom: 32px;
+}
+
+.oc-page *,
+.oc-page *::before,
+.oc-page *::after {
+  box-sizing: border-box;
+}
+
+.oc-page svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.oc-page button {
+  font: inherit;
+}
+
+.oc-card {
+  border: 1px solid var(--oc-line);
+  border-radius: 18px;
+  background: var(--oc-card);
+}
+
+/* ---------- header card ---------- */
+.oc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin-bottom: 20px;
+  padding: 24px 30px;
+}
+
+.oc-eyebrow {
+  margin: 0 0 8px;
+  color: var(--oc-mute);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.oc-head h1 {
+  margin: 0;
+  color: var(--oc-ink);
+  font-family: var(--font-heading, var(--i-font, inherit));
+  font-size: clamp(24px, 2vw, 30px);
+  font-weight: 650;
+  letter-spacing: -.4px;
+  line-height: 1.2;
+}
+
+.oc-sub {
+  margin: 10px 0 0;
+  color: var(--oc-mute);
+  font-size: calc(14.5px * var(--font-scale, 1));
+}
+
+.oc-head-acts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.oc-badge {
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--oc-tint);
+  color: var(--oc-a);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---------- buttons ----------
+   Shared theme convention: the base .oc-btn is the SECONDARY button (outline at rest,
+   fills with the theme secondary tone on hover / press — same tokens as .btn-secondary
+   and .i-btn). .oc-btn--primary uses the theme primary colour plus the custom colour
+   controls (--cc-btn / --cc-btn-hover / --cc-btn-press) so Theme Settings applies. */
+.oc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border: 1px solid var(--i-secondary-line, var(--oc-line));
+  border-radius: var(--i-btn-radius, 11px);
+  background: transparent;
+  color: var(--i-secondary-ink, var(--oc-ink));
+  font-size: calc(14.5px * var(--font-scale, 1));
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color .14s ease, border-color .14s ease, color .14s ease;
+}
+
+.oc-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.oc-btn:hover:not(:disabled) {
+  border-color: var(--cc-sec-hover, color-mix(in srgb, var(--i-secondary, var(--teal, #138879)) 88%, #000));
+  background: var(--cc-sec-hover, color-mix(in srgb, var(--i-secondary, var(--teal, #138879)) 88%, #000));
+  color: var(--cc-sec-hover-ink, var(--i-secondary-on, #fff));
+}
+
+.oc-btn:active:not(:disabled) {
+  border-color: var(--cc-sec-press, color-mix(in srgb, var(--i-secondary, var(--teal, #138879)) 78%, #000));
+  background: var(--cc-sec-press, color-mix(in srgb, var(--i-secondary, var(--teal, #138879)) 78%, #000));
+  color: var(--cc-sec-press-ink, var(--i-secondary-on, #fff));
+}
+
+/* primary: theme primary colour + custom colour controls (same tokens as .btn-primary / .i-btn--primary) */
+.oc-btn--primary {
+  border-color: var(--cc-btn, var(--i-primary, var(--oc-a)));
+  background: var(--cc-btn, var(--i-primary, var(--oc-a)));
+  color: var(--cc-btn-ink, var(--i-primary-on, #fff));
+}
+
+.oc-btn--primary:hover:not(:disabled) {
+  border-color: var(--cc-btn-hover, color-mix(in srgb, var(--i-primary-strong, var(--i-primary, var(--oc-a))) 88%, #000));
+  background: var(--cc-btn-hover, color-mix(in srgb, var(--i-primary-strong, var(--i-primary, var(--oc-a))) 88%, #000));
+  color: var(--cc-btn-hover-ink, var(--i-primary-on, #fff));
+}
+
+.oc-btn--primary:active:not(:disabled) {
+  border-color: var(--cc-btn-press, color-mix(in srgb, var(--i-primary-press, var(--i-primary, var(--oc-a))) 78%, #000));
+  background: var(--cc-btn-press, color-mix(in srgb, var(--i-primary-press, var(--i-primary, var(--oc-a))) 78%, #000));
+  color: var(--cc-btn-press-ink, var(--i-primary-on, #fff));
+}
+
+.oc-btn--sm {
+  height: 34px;
+  padding: 0 12px;
+  font-size: calc(13px * var(--font-scale, 1));
+}
+
+.oc-page button:focus-visible,
+.oc-page input:focus-visible,
+.oc-page select:focus-visible,
+.oc-page textarea:focus-visible {
+  outline: 2px solid var(--oc-a);
+  outline-offset: 2px;
+}
+
+/* ---------- 3-column layout ---------- */
+.oc-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 300px;
+  gap: 22px;
+  align-items: start;
+}
+
+/* ---------- left: sections nav ---------- */
+.oc-side {
+  position: sticky;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.oc-side-k {
+  margin: 0 0 12px 10px;
+  color: var(--oc-mute);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.oc-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 18px;
+  border-bottom: 1px solid var(--oc-line);
+  list-style: none;
+}
+
+.oc-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--oc-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-step:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.oc-step:hover:not(:disabled),
+.oc-step.is-now {
+  background: var(--oc-tint);
+}
+
+.oc-dot {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--oc-soft);
+  color: var(--oc-mute);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.oc-dot svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.4;
+}
+
+.oc-step.is-now .oc-dot {
+  background: var(--oc-a);
+  color: var(--i-primary-on, #fff);
+}
+
+.oc-step.is-done .oc-dot {
+  background: var(--oc-tint);
+  color: var(--oc-a);
+}
+
+.oc-step-t {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.oc-step-t b {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+.oc-step-t small {
+  overflow: hidden;
+  color: var(--oc-mute);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oc-req {
+  padding: 20px 20px 18px;
+  border-radius: 16px;
+}
+
+.oc-req .oc-side-k {
+  margin: 0 0 10px;
+}
+
+.oc-req strong {
+  display: block;
+  color: var(--oc-a);
+  font-size: calc(30px * var(--font-scale, 1));
+  font-weight: 600;
+  letter-spacing: -.5px;
+  line-height: 1.1;
+}
+
+.oc-bar {
+  height: 5px;
+  margin: 14px 0 12px;
+  border-radius: 99px;
+  background: var(--oc-soft);
+  overflow: hidden;
+}
+
+.oc-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--oc-a);
+  transition: width .2s;
+}
+
+.oc-req p {
+  margin: 0;
+  color: var(--oc-mute);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.55;
+}
+
+/* ---------- centre: form card ---------- */
+.oc-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.oc-sec {
+  overflow: hidden;
+}
+
+.oc-sec-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 26px 30px 6px;
+}
+
+.oc-num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--oc-soft);
+  color: var(--oc-mute);
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.oc-sec-head h2 {
+  margin: 0;
+  font-size: calc(19px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: -.2px;
+}
+
+.oc-sec-head p {
+  margin: 4px 0 0;
+  color: var(--oc-mute);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+
+.oc-body {
+  padding: 22px 30px 10px;
+}
+
+/* a titled group inside the card */
+.oc-group {
+  margin-bottom: 14px;
+}
+
+.oc-group + .oc-group {
+  padding-top: 8px;
+}
+
+.oc-gh {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  color: var(--oc-mute);
+  font-size: calc(11.5px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+}
+
+.oc-gh::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--oc-line);
+}
+
+.oc-gh .oc-btn {
+  order: 2;
+}
+
+.oc-gh:has(.oc-btn)::after {
+  order: 1;
+}
+
+.oc-grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+
+.oc-grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 24px;
+}
+
+/* ---------- fields ---------- */
+.oc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  min-width: 0;
+}
+
+.oc-field label,
+.oc-lrow label {
+  color: var(--oc-ink);
+  font-size: calc(14px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+.oc-field label i {
+  font-style: normal;
+  color: var(--oc-bad);
+}
+
+.oc-opt {
+  margin-left: 6px;
+  color: var(--oc-mute);
+  font-size: calc(12.5px * var(--font-scale, 1));
+  font-weight: 400;
+}
+
+.oc-lrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.oc-count {
+  color: var(--oc-mute);
+  font-size: calc(12.5px * var(--font-scale, 1));
+}
+
+.oc-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--oc-line);
+  border-radius: 10px;
+  background: var(--oc-card);
+  color: var(--oc-ink);
+  font: inherit;
+  font-size: calc(14.5px * var(--font-scale, 1));
+}
+
+.oc-input::placeholder {
+  color: var(--oc-mute);
+  opacity: .7;
+}
+
+.oc-input:focus {
+  outline: 0;
+  border-color: var(--oc-a);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-a) 14%, transparent);
+}
+
+.oc-input.bad {
+  border-color: var(--oc-bad);
+}
+
+.oc-area {
+  height: auto;
+  min-height: 110px;
+  padding: 12px 14px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.oc-hint,
+.oc-err {
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.45;
+}
+
+.oc-hint {
+  color: var(--oc-mute);
+}
+
+.oc-err {
+  color: var(--oc-bad);
+}
+
+.oc-affix {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--oc-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--oc-card);
+}
+
+.oc-affix:focus-within {
+  border-color: var(--oc-a);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-a) 14%, transparent);
+}
+
+.oc-affix.bad {
+  border-color: var(--oc-bad);
+}
+
+.oc-affix .oc-input {
+  flex: 1;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.oc-affix span {
+  display: grid;
+  place-items: center;
+  padding: 0 16px;
+  border-left: 1px solid var(--oc-line);
+  background: var(--oc-soft);
+  color: var(--oc-mute);
+  font-size: calc(14px * var(--font-scale, 1));
+}
+
+.oc-phone {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+}
+
+/* ---------- radios + checkbox ---------- */
+.oc-radios {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.oc-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--oc-line);
+  border-radius: 12px;
+  background: var(--oc-card);
+  color: var(--oc-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.oc-radio:hover {
+  border-color: var(--oc-a);
+}
+
+.oc-radio.is-on {
+  border-color: var(--oc-a);
+  background: var(--oc-tint);
+  /* box-shadow: inset 0 0 0 1px var(--oc-a); */
+}
+
+.oc-radio i {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 1.5px solid var(--oc-line);
+  border-radius: 50%;
+  background: var(--oc-card);
+}
+
+.oc-radio.is-on i {
+  border: 6px solid var(--oc-a);
+}
+
+.oc-radio span,
+.oc-check>span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oc-radio b,
+.oc-check b {
+  font-size: calc(15px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.oc-radio small,
+.oc-check small {
+  color: var(--oc-mute);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.5;
+}
+
+.oc-check {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--oc-line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.oc-check:hover {
+  border-color: var(--oc-a);
+}
+
+.oc-check.is-on {
+  border-color: var(--oc-a);
+  background: var(--oc-tint);
+}
+
+.oc-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.oc-check input:focus-visible+.oc-box {
+  outline: 2px solid var(--oc-a);
+  outline-offset: 2px;
+}
+
+.oc-box {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  border: 1.5px solid var(--oc-line);
+  border-radius: 7px;
+  background: var(--oc-card);
+}
+
+.oc-box svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.4;
+  color: transparent;
+}
+
+.oc-check.is-on .oc-box {
+  border-color: var(--oc-a);
+  background: var(--oc-a);
+}
+
+.oc-check.is-on .oc-box svg {
+  color: var(--i-primary-on, #fff);
+}
+
+/* ---------- review ---------- */
+.oc-review {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px 26px;
+  margin: 0 0 10px;
+}
+
+.oc-review dt {
+  margin-bottom: 6px;
+  color: var(--oc-mute);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+
+.oc-review dd {
+  margin: 0;
+  font-size: calc(15.5px * var(--font-scale, 1));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.oc-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 4px 0 20px;
+  padding: 14px 18px;
+  border-left: 3px solid var(--oc-a);
+  border-radius: 0 12px 12px 0;
+  background: var(--oc-tint);
+  color: var(--oc-mute);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.55;
+}
+
+.oc-note p {
+  margin: 0;
+}
+
+.oc-note svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: var(--oc-a);
+}
+
+/* ---------- footer actions ---------- */
+.oc-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* ---------- right: info panel ---------- */
+.oc-info {
+  position: sticky;
+  top: 16px;
+  padding: 24px 24px 22px;
+}
+
+.oc-info section {
+  padding-bottom: 20px;
+}
+
+.oc-info section + section {
+  padding-top: 20px;
+  border-top: 1px solid var(--oc-line);
+}
+
+.oc-info h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: calc(16px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.oc-info h3 svg {
+  width: 17px;
+  height: 17px;
+  color: var(--oc-a);
+}
+
+.oc-info p {
+  margin: 0;
+  color: var(--oc-mute);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.7;
+}
+
+.oc-links {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.oc-links li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--oc-mute);
+  font-size: calc(14px * var(--font-scale, 1));
+}
+
+.oc-links svg {
+  width: 16px;
+  height: 16px;
+}
+
+.oc-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--oc-warn) 28%, var(--oc-line));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--oc-warn) 8%, var(--oc-card));
+  color: var(--oc-warn);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.6;
+}
+
+.oc-warn svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.oc-warn p {
+  margin: 0;
+  color: inherit;
+  line-height: 1.6;
+}
+
+/* ---------- done ---------- */
+.oc-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 24px;
+  text-align: center;
+}
+
+.oc-done-ic {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--oc-ok) 12%, transparent);
+  color: var(--oc-ok);
+}
+
+.oc-done-ic svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 2.2;
+}
+
+.oc-done h2 {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.4px;
+}
+
+.oc-done p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--oc-mute);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.oc-done p b {
+  color: var(--oc-ink);
+  font-weight: 600;
+}
+
+.oc-done-acts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+/* ---------- responsive ---------- */
+@container oc-page (max-width: 1240px) {
+  .oc-layout {
+    grid-template-columns: 230px minmax(0, 1fr);
+  }
+
+  .oc-info {
+    position: static;
+    grid-column: 2;
+  }
+}
+
+@container oc-page (max-width: 900px) {
+  .oc-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .oc-side,
+  .oc-info {
+    position: static;
+    grid-column: auto;
+  }
+
+  .oc-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .oc-step {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .oc-step-t small {
+    display: none;
+  }
+
+  .oc-grid3,
+  .oc-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container oc-page (max-width: 620px) {
+
+  .oc-grid2,
+  .oc-grid3,
+  .oc-radios,
+  .oc-review {
+    grid-template-columns: 1fr;
+  }
+
+  .oc-head {
+    padding: 20px;
+  }
+
+  .oc-sec-head {
+    padding: 20px 18px 4px;
+  }
+
+  .oc-body {
+    padding: 18px 18px 6px;
+  }
+
+  .oc-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .oc-actions .oc-btn {
+    flex: 1;
+  }
+}

@@ -1,0 +1,418 @@
+/* Settings page only - base look comes from org-shared.css */
+
+
+/* ---------- intro + banner ---------- */
+.st-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+}
+
+.st-eyebrow {
+    display: block;
+    margin-bottom: 6px;
+    font-size: calc(10px * var(--font-scale, 1));
+    font-weight: 650;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.st-title {
+     color: var(--cr-heading);
+    font-family: var(--cr-heading-font);
+    font-size: calc(30px * var(--font-scale, 1));
+    font-weight: 650;
+    letter-spacing: 0.2px;
+    line-height: 1.25;
+}
+
+.st-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--muted);
+  font-size: calc(13.5px * var(--font-scale, 1));
+}
+
+.st-banner p {
+  margin: 0;
+}
+
+.st-banner b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.st-banner svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- section cards ---------- */
+.st-card {
+  padding: 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.st-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.st-pair .st-card {
+  margin-bottom: 0;
+}
+
+.st-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--line);
+}
+
+.st-card-head h3 {
+  margin: 0;
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.st-card-head p {
+  margin: 3px 0 0;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--muted);
+}
+
+.st-ico {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+.st-ico svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.st-body {
+  padding: 24px 28px;
+}
+
+.st-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- radio cards ---------- */
+.st-opts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.st-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  width: 100%;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card, #fff);
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.st-opt:hover {
+  border-color: var(--accent);
+}
+
+.st-opt.is-on {
+  border: 1px solid var(--accent);
+  padding: 17px;
+  background: var(--og-accent-tint);
+}
+
+.st-optic {
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.st-opttext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.st-opttext b {
+  font-size: calc(15.5px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.st-opttext b em {
+  margin-left: 8px;
+  font-style: normal;
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--status-success-ink, var(--status-success));
+}
+
+.st-opttext small {
+  font-size: calc(13.5px * var(--font-scale, 1));
+  color: var(--muted);
+}
+
+.st-radio {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
+  background: var(--card, #fff);
+  flex-shrink: 0;
+}
+
+.st-opt.is-on .st-radio {
+  border: 6px solid var(--accent);
+}
+
+/* ---------- stepper rows ---------- */
+.st-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card, #fff);
+}
+
+.st-item .st-optic {
+  margin-top: 0;
+  color: var(--ink);
+}
+
+.st-itext {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.st-itext label {
+  font-size: calc(14.5px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.st-itext label i {
+  font-style: normal;
+  color: var(--status-danger);
+}
+
+.st-itext small {
+  font-size: calc(12.5px * var(--font-scale, 1));
+  color: var(--muted);
+}
+
+.st-step {
+  display: inline-flex;
+  align-items: stretch;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.st-step button {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  border: none;
+  background: var(--og-tint);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.st-step button:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.st-step button:disabled {
+  color: var(--muted);
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.st-step button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.st-val {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  min-width: 88px;
+  padding: 0 10px;
+  background: var(--card, #fff);
+}
+
+.st-val input {
+  width: 46px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: calc(18px * var(--font-scale, 1));
+  font-weight: 500;
+  text-align: right;
+  color: var(--ink);
+  -moz-appearance: textfield;
+  align-self: center;
+}
+
+.st-val input::-webkit-outer-spin-button,
+.st-val input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.st-val input:focus {
+  outline: none;
+}
+
+.st-val:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.st-val em {
+  font-style: normal;
+  font-size: calc(12.5px * var(--font-scale, 1));
+  color: var(--muted);
+  align-self: center;
+}
+
+/* ---------- footer bar ---------- */
+.st-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0 24px;
+}
+
+.st-bar p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: calc(13px * var(--font-scale, 1));
+  color: var(--muted);
+}
+
+.st-bar p svg {
+  width: 15px;
+  height: 15px;
+}
+
+.st-bar p i {
+  font-style: normal;
+  color: var(--status-danger);
+}
+
+.st-bar-acts {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.st-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: calc(13px * var(--font-scale, 1));
+  font-weight: 600;
+  color: var(--status-success-ink, var(--status-success));
+}
+
+.st-saved svg {
+  width: 15px;
+  height: 15px;
+}
+
+.st-opt:focus-visible,
+.st-step button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .st-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .st-opts {
+    grid-template-columns: 1fr;
+  }
+
+  .st-card-head {
+    padding: 16px 18px;
+  }
+
+  .st-body {
+    padding: 18px;
+  }
+
+  .st-item {
+    flex-wrap: wrap;
+  }
+
+  .st-title {
+    font-size: calc(24px * var(--font-scale, 1));
+  }
+}

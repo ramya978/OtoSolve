@@ -24,6 +24,9 @@
   --i-cc-sec-press: var(--cc-sec-press, color-mix(in srgb, var(--i-secondary) 78%, #000));
   /* derived tints mix with the surface so they follow the light / dark theme */
   --i-surface: var(--panel, #fff);
+  /* card surface alias — pages that style their own surfaces (menu catalogue,
+     create organisation, platform overview) read this instead of hardcoding #fff */
+  --i-card: var(--i-surface);
   --i-tint: color-mix(in srgb, var(--i-primary) 8%, var(--i-surface));
   --i-tint-2: color-mix(in srgb, var(--i-primary) 15%, var(--i-surface));
   --i-hover: color-mix(in srgb, var(--theme-hover, var(--i-primary)) 7%, var(--i-surface));

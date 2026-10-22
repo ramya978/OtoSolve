@@ -1,0 +1,285 @@
+<!-- =====================================================================================
+     PERMISSION CATALOGUE
+     flat page header · stat tiles · filter toolbar · permissions table · pagination
+     ===================================================================================== -->
+<div class="pc-page">
+
+  <!-- PAGE HEADER -->
+  <header class="pc-head">
+    <div class="pc-titles">
+      <p class="pc-eyebrow">Administration / Access</p>
+      <h1>Permission catalogue</h1>
+      <p class="pc-sub">{{ total }} permissions · {{ moduleList().length }} modules · {{ sensitiveTotal }} sensitive</p>
+    </div>
+
+ 
+  </header>
+
+  <!-- STAT STRIP -->
+  <section class="i-card pc-tiles" aria-label="Summary">
+
+    <div class="pc-cell">
+      <div class="pc-cell-top"><span>Permissions</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg></div>
+      <div class="pc-cell-main">
+        <strong>{{ total }}</strong>
+        <div class="pc-cell-side"><b>{{ standardTotal }}</b><small>Standard</small></div>
+      </div>
+      <p class="pc-cell-foot">{{ standardTotal }} standard · {{ sensitiveTotal }} sensitive</p>
+    </div>
+
+    <div class="pc-cell">
+      <div class="pc-cell-top"><span>Modules</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg></div>
+      <div class="pc-cell-main">
+        <strong>{{ moduleList().length }}</strong>
+        <div class="pc-cell-side"><b>{{ groupList().length }}</b><small>Groups</small></div>
+      </div>
+      <p class="pc-cell-foot">
+        @if (moduleStats()[0]; as m) { Largest: {{ m.name }} ({{ m.count }}) } @else { No modules yet }
+      </p>
+    </div>
+
+    <div class="pc-cell pc-cell--warn">
+      <div class="pc-cell-top"><span>Sensitive</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg></div>
+      <div class="pc-cell-main">
+        <strong>{{ sensitiveTotal }}</strong>
+        <div class="pc-cell-side"><b>{{ sensitivePct }}%</b><small>Of all</small></div>
+      </div>
+      <p class="pc-cell-foot">{{ sensitiveTotal }} of {{ total }} permissions need extra care</p>
+    </div>
+
+    <div class="pc-cell">
+      <div class="pc-cell-top"><span>Top group</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg></div>
+      @if (topGroup(); as g) {
+        <div class="pc-cell-main">
+          <strong class="pc-cell-name">{{ g.name }}</strong>
+          <div class="pc-cell-side"><b>{{ g.count }}</b><small>Permissions</small></div>
+        </div>
+        <p class="pc-cell-foot">{{ g.count }} permissions · {{ g.modules }} {{ g.modules === 1 ? 'module' : 'modules' }} covered</p>
+      } @else {
+        <div class="pc-cell-main"><strong>—</strong></div>
+        <p class="pc-cell-foot">No groups yet</p>
+      }
+    </div>
+  </section>
+
+  <!-- ANALYTICS WIDGETS -->
+  <section class="pc-widgets" aria-label="Catalogue breakdown">
+
+    <!-- 1 · module distribution -->
+    <div class="i-card pc-widget">
+      <header class="pc-widget-head">
+        <div class="pc-widget-title">
+          <span class="pc-widget-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg></span>
+          <div>
+            <h2>Module distribution</h2>
+            <p>Where permissions live — click a module to filter</p>
+          </div>
+        </div>
+        <span class="pc-widget-n">{{ moduleStats().length }}</span>
+      </header>
+
+      <div class="pc-widget-body">
+        @for (m of moduleStats(); track m.name) {
+          <button type="button" class="pc-row" [class.is-on]="module() === m.name"
+                  [attr.aria-pressed]="module() === m.name" (click)="pickModuleFromWidget(m.name)">
+            <span class="pc-row-txt">
+              <b>{{ m.name }}</b>
+              <small>{{ m.count }} permissions @if (m.sensitive) { · {{ m.sensitive }} sensitive }</small>
+            </span>
+            <span class="pc-row-bar" aria-hidden="true"><span [style.width.%]="m.bar"></span></span>
+            <span class="pc-row-n">{{ m.pct }}%</span>
+          </button>
+        } @empty {
+          <p class="pc-widget-empty">No modules to show.</p>
+        }
+      </div>
+    </div>
+
+    <!-- 2 · permission groups -->
+    <div class="i-card pc-widget">
+      <header class="pc-widget-head">
+        <div class="pc-widget-title">
+          <span class="pc-widget-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg></span>
+          <div>
+            <h2>Permission groups</h2>
+            <p>Functional areas — click a group to filter</p>
+          </div>
+        </div>
+        <span class="pc-widget-n">{{ groupList().length }}</span>
+      </header>
+
+      <div class="pc-widget-body">
+        @for (g of groupList(); track g.name) {
+          <button type="button" class="pc-row" [class.is-on]="group() === g.name"
+                  [attr.aria-pressed]="group() === g.name" (click)="pickGroup(g.name)">
+            <span class="pc-row-txt">
+              <b>{{ g.name }}</b>
+              <small>{{ g.count }} permissions</small>
+            </span>
+            <span class="pc-row-bar" aria-hidden="true"><span [style.width.%]="g.bar"></span></span>
+            <span class="pc-row-n">{{ g.count }}</span>
+          </button>
+        } @empty {
+          <p class="pc-widget-empty">No groups to show.</p>
+        }
+      </div>
+    </div>
+
+  </section>
+
+  <!-- FILTER TOOLBAR -->
+  <section class="i-card pc-tools" aria-label="Filters">
+    <header class="pc-sec-head">
+      <span class="pc-widget-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg></span>
+      <div>
+        <h2>Find permissions</h2>
+        <p>Search, or narrow by module, group, action and handling.</p>
+      </div>
+    </header>
+
+    <div class="pc-tools-body">
+    <div class="pc-tools-row">
+      <label class="pc-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+        <input type="search" placeholder="Search by code, name or group" aria-label="Search permissions"
+               [value]="query()" (input)="onSearch($event)" />
+      </label>
+
+      <label class="pc-select">
+        <span>Module</span>
+        <select aria-label="Module" (change)="onModule($event)">
+          <option value="" [selected]="module() === ''">All modules ({{ total }})</option>
+          @for (m of moduleList(); track m.name) {
+            <option [value]="m.name" [selected]="module() === m.name">{{ m.name }} ({{ m.count }})</option>
+          }
+        </select>
+      </label>
+
+      <label class="pc-select">
+        <span>Group</span>
+        <select aria-label="Group" (change)="onGroup($event)">
+          <option value="" [selected]="group() === ''">All groups</option>
+          @for (g of groupList(); track g.name) {
+            <option [value]="g.name" [selected]="group() === g.name">{{ g.name }} ({{ g.count }})</option>
+          }
+        </select>
+      </label>
+
+      <button type="button" role="switch" class="pc-switch" [class.is-on]="sensitiveOnly()" [attr.aria-checked]="sensitiveOnly()"
+              (click)="toggleSensitive()">
+        <span class="pc-switch-track"><span class="pc-switch-knob"></span></span>
+        Sensitive only
+      </button>
+    </div>
+
+    <div class="pc-tools-row pc-chips" role="tablist" aria-label="Actions">
+      <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === ''" [attr.aria-selected]="action() === ''" (click)="pickAction('')">
+        All actions <b>{{ baseCount() }}</b>
+      </button>
+      @for (a of actions; track a.key) {
+        <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === a.key" [attr.aria-selected]="action() === a.key"
+                (click)="pickAction(a.key)">
+          <i [class]="'pc-dot pc-tone--' + a.tone"></i>{{ a.label }} <b>{{ actionCount(a.key) }}</b>
+        </button>
+      }
+      @if (hasFilters()) {
+        <button type="button" class="i-link pc-clear" (click)="clearFilters()">Clear filters</button>
+      }
+    </div>
+    </div>
+  </section>
+
+  <!-- TABLE -->
+  <section class="i-card pc-results" aria-label="Permissions">
+    <header class="pc-sec-head">
+      <span class="pc-widget-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg></span>
+      <div>
+        <h2>Permissions</h2>
+        <p>Every code you can give to a role.</p>
+      </div>
+      <span class="pc-widget-n">{{ rows().length }}</span>
+    </header>
+
+    <div class="pc-tablewrap">
+      <table class="pc-table">
+        <thead>
+          <tr>
+            <th scope="col">Permission</th>
+            <th scope="col">Module</th>
+            <th scope="col">Action</th>
+            <th scope="col">Handling</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pageRows(); track p.code) {
+            <tr>
+              <td>
+                <strong class="pc-name">{{ p.name }}</strong>
+                <span class="pc-code">
+                  {{ p.code }}
+                  <button type="button" class="pc-copy" [class.is-done]="copied() === p.code"
+                          [attr.aria-label]="'Copy ' + p.code" (click)="copy(p.code)">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(copied() === p.code ? 'check' : 'copy')" /></svg>
+                  </button>
+                </span>
+              </td>
+              <td class="pc-mod"><span>{{ p.module }}</span><small>{{ p.group }}</small></td>
+              <td>
+                <span [class]="'pc-pill pc-tone--' + actionOf(p.action).tone"><i class="pc-dot"></i>{{ actionOf(p.action).label }}</span>
+              </td>
+              <td>
+                @if (p.sensitive) {
+                  <span class="pc-pill pc-pill--sens">
+                   Sensitive
+                  </span>
+                } @else {
+                  <span class="pc-std">Standard</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr class="pc-empty-row">
+              <td colspan="4">
+                <div class="pc-empty">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('empty')" /></svg>
+                  <strong>No permissions match</strong>
+                  <span>Try a different module, action or search term.</span>
+                  @if (hasFilters()) { <button type="button" class="i-link pc-clear" (click)="clearFilters()">Clear filters</button> }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PAGINATION -->
+    <footer class="pc-foot">
+      <p class="pc-showing">Showing <b>{{ from() }}–{{ to() }}</b> of <b>{{ rows().length }}</b></p>
+
+      <div class="pc-pager">
+        <label class="pc-rows">
+          Rows
+          <select aria-label="Rows per page" (change)="onPageSize($event)">
+            @for (n of pageSizes; track n) { <option [value]="n" [selected]="n === pageSize()">{{ n }}</option> }
+          </select>
+        </label>
+
+        <button type="button" class="pc-pg" aria-label="Previous page" [disabled]="page() === 1" (click)="go(page() - 1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('prev')" /></svg>
+        </button>
+        @for (n of pageList(); track $index) {
+          @if (n === '…') {
+            <span class="pc-gap">…</span>
+          } @else {
+            <button type="button" class="pc-pg" [class.is-on]="n === page()" [attr.aria-current]="n === page() ? 'page' : null"
+                    (click)="go(n)">{{ n }}</button>
+          }
+        }
+        <button type="button" class="pc-pg" aria-label="Next page" [disabled]="page() === pages()" (click)="go(page() + 1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg>
+        </button>
+      </div>
+    </footer>
+  </section>
+</div>

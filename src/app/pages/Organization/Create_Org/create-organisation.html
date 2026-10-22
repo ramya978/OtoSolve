@@ -1,0 +1,323 @@
+<div class="oc-page">
+
+  <!-- HEADER CARD -->
+  <header class="oc-card oc-head">
+    <div>
+      <p class="oc-eyebrow">Add organisation record</p>
+      <h1>Create organisation</h1>
+      <p class="oc-sub">Set up the organisation, its web address and its first administrator in four short steps. The web address is locked once created.</p>
+    </div>
+    <div class="oc-head-acts">
+      <span class="oc-badge">New record</span>
+      <button type="button" class="oc-btn" (click)="leave()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>Back
+      </button>
+    </div>
+  </header>
+
+  @if (created()) {
+    <!-- DONE -->
+    <section class="oc-card oc-done">
+      <span class="oc-done-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('check')" /></svg></span>
+      <h2>{{ f().name }} is created</h2>
+      <p>
+        @if (f().sendNow) { An invitation has gone to <b>{{ f().email }}</b>. They choose their own password and complete the profile. }
+        @else { The administrator account is ready. The invitation to <b>{{ f().email }}</b> goes out later, when you send it. }
+      </p>
+      <div class="oc-done-acts">
+        <button type="button" class="oc-btn" (click)="another()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('org')" /></svg>Create another</button>
+        <button type="button" class="oc-btn oc-btn--primary" (click)="leave()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Back to organisations</button>
+      </div>
+    </section>
+  } @else {
+
+  <div class="oc-layout">
+
+    <!-- LEFT: SECTIONS NAV + PROGRESS -->
+    <aside class="oc-side" aria-label="Organisation sections">
+      <div>
+        <p class="oc-side-k">Organisation sections</p>
+        <ol class="oc-nav">
+          @for (s of steps; track s.key; let i = $index) {
+            <li>
+              <button type="button" class="oc-step" [class.is-now]="i === step()" [class.is-done]="isDone(i)" [disabled]="!canOpen(i)"
+                      [attr.aria-current]="i === step() ? 'step' : null" (click)="goTo(i)">
+                <span class="oc-dot">
+                  @if (isDone(i)) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { 0{{ i + 1 }} }
+                </span>
+                <span class="oc-step-t"><b>{{ s.label }}</b><small>{{ s.title }}</small></span>
+              </button>
+            </li>
+          }
+        </ol>
+      </div>
+
+      <div class="oc-card oc-req">
+        <p class="oc-side-k">Progress</p>
+        <strong>{{ step() + 1 }} / {{ steps.length }}</strong>
+        <div class="oc-bar" role="progressbar" [attr.aria-valuenow]="progress()" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="progress()"></span></div>
+        <p>Presence only. Full validation runs when you create the organisation.</p>
+      </div>
+    </aside>
+
+    <!-- CENTRE: FORM CARD -->
+    <div class="oc-main">
+
+      <section class="oc-card oc-sec">
+        <header class="oc-sec-head">
+          <span class="oc-num">0{{ step() + 1 }}</span>
+          <div><h2>{{ current().title }}</h2><p>{{ current().sub }}</p></div>
+        </header>
+
+        <div class="oc-body">
+          @switch (step()) {
+
+            @case (0) {
+              <div class="oc-group">
+                <h3 class="oc-gh">Basic information</h3>
+                <div class="oc-grid2">
+                  <div class="oc-field">
+                    <label for="oc-name">Name <i>*</i></label>
+                    <input id="oc-name" class="oc-input" [class.bad]="bad('name')" type="text" maxlength="100" placeholder="Hope Foundation"
+                           [value]="f().name" (input)="onName($any($event.target).value)" />
+                    @if (bad('name')) { <small class="oc-err">{{ errors()['name'] }}</small> }
+                    @else { <small class="oc-hint">Up to 100 characters.</small> }
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-legal">Registered legal name</label>
+                    <input id="oc-legal" class="oc-input" type="text" maxlength="150" placeholder="Hope Foundation Trust"
+                           [value]="f().legalName" (input)="set('legalName', $any($event.target).value)" />
+                    <small class="oc-hint">As on the registration certificate.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Organisation identity</h3>
+                <div class="oc-grid2">
+                  <div class="oc-field">
+                    <label for="oc-type">Type</label>
+                    <select id="oc-type" class="oc-input" (change)="set('type', $any($event.target).value)">
+                      @for (t of types; track t.value) { <option [value]="t.value" [selected]="f().type === t.value">{{ t.label }}</option> }
+                    </select>
+                    <small class="oc-hint">Defines how the organisation appears on the platform.</small>
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-code">Reference code</label>
+                    <input id="oc-code" class="oc-input" [class.bad]="bad('code')" type="text" maxlength="20" placeholder="Generated if left blank"
+                           [value]="f().code" (input)="set('code', $any($event.target).value.toUpperCase())" />
+                    @if (bad('code')) { <small class="oc-err">{{ errors()['code'] }}</small> }
+                    @else { <small class="oc-hint">Leave blank and the platform will allocate one.</small> }
+                  </div>
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Web address</h3>
+                <div class="oc-field">
+                  <label for="oc-domain">Web address <i>*</i></label>
+                  <div class="oc-affix" [class.bad]="bad('domain')">
+                    <input id="oc-domain" class="oc-input" [class.bad]="bad('domain')" type="text" maxlength="40" placeholder="hope-foundation"
+                           [value]="f().domain" (input)="onDomain($any($event.target).value)" />
+                    <span>{{ suffix }}</span>
+                  </div>
+                  @if (bad('domain')) { <small class="oc-err">{{ errors()['domain'] }}</small> }
+                  @else { <small class="oc-hint">Lower case letters, digits and hyphens. Suggested from the name. Cannot be changed later.</small> }
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Description</h3>
+                <div class="oc-field">
+                  <div class="oc-lrow"><label for="oc-desc">Description <span class="oc-opt">optional</span></label><span class="oc-count">{{ f().description.length }} / 1000</span></div>
+                  <textarea id="oc-desc" class="oc-input oc-area" rows="4" maxlength="1000" placeholder="A short description of the organisation — shown on its profile."
+                            [value]="f().description" (input)="set('description', $any($event.target).value)"></textarea>
+                </div>
+              </div>
+            }
+
+            @case (1) {
+              <div class="oc-group">
+                <h3 class="oc-gh">Contact details</h3>
+                <div class="oc-grid2">
+                  <div class="oc-field">
+                    <label for="oc-phone">Contact telephone</label>
+                    <div class="oc-phone">
+                      <select class="oc-input" aria-label="Country code" (change)="set('phoneCode', $any($event.target).value)">
+                        @for (c of phoneCodes; track c) { <option [value]="c" [selected]="f().phoneCode === c">{{ c }}</option> }
+                      </select>
+                      <input id="oc-phone" class="oc-input" type="tel" inputmode="tel" [value]="f().phone" (input)="set('phone', $any($event.target).value)" />
+                    </div>
+                    <small class="oc-hint">How to reach this organisation.</small>
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-max">Maximum people</label>
+                    <input id="oc-max" class="oc-input" type="number" min="1" placeholder="No limit" [value]="f().maxPeople" (input)="set('maxPeople', $any($event.target).value)" />
+                    <small class="oc-hint">Leave empty for no limit.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Regional defaults</h3>
+                <div class="oc-grid3">
+                  <div class="oc-field">
+                    <label for="oc-tz">Time zone</label>
+                    <select id="oc-tz" class="oc-input" (change)="set('timezone', $any($event.target).value)">
+                      @for (t of timezones; track t.value) { <option [value]="t.value" [selected]="f().timezone === t.value">{{ t.label }}</option> }
+                    </select>
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-cur">Currency</label>
+                    <select id="oc-cur" class="oc-input" (change)="set('currency', $any($event.target).value)">
+                      @for (c of currencies; track c.value) { <option [value]="c.value" [selected]="f().currency === c.value">{{ c.label }}</option> }
+                    </select>
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-lang">Language</label>
+                    <select id="oc-lang" class="oc-input" (change)="set('language', $any($event.target).value)">
+                      @for (l of languages; track l.value) { <option [value]="l.value" [selected]="f().language === l.value">{{ l.label }}</option> }
+                    </select>
+                  </div>
+                </div>
+                <small class="oc-hint">Applied platform-wide until the organisation changes them.</small>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Security</h3>
+                <div class="oc-radios" role="radiogroup" aria-label="Two-step verification">
+                  <button type="button" role="radio" class="oc-radio" [class.is-on]="f().twoStep === 'optional'" [attr.aria-checked]="f().twoStep === 'optional'" (click)="set('twoStep', 'optional')">
+                    <i aria-hidden="true"></i><span><b>Optional</b><small>People may add a second factor from their security page.</small></span>
+                  </button>
+                  <button type="button" role="radio" class="oc-radio" [class.is-on]="f().twoStep === 'required'" [attr.aria-checked]="f().twoStep === 'required'" (click)="set('twoStep', 'required')">
+                    <i aria-hidden="true"></i><span><b>Required</b><small>Everyone must enrol a second factor before they can work.</small></span>
+                  </button>
+                </div>
+              </div>
+            }
+
+            @case (2) {
+              <div class="oc-group">
+                <h3 class="oc-gh">Administrator</h3>
+                <div class="oc-grid2">
+                  <div class="oc-field">
+                    <label for="oc-fn">First name <i>*</i></label>
+                    <input id="oc-fn" class="oc-input" [class.bad]="bad('firstName')" type="text" maxlength="60" [value]="f().firstName" (input)="set('firstName', $any($event.target).value)" />
+                    @if (bad('firstName')) { <small class="oc-err">{{ errors()['firstName'] }}</small> }
+                    @else { <small class="oc-hint">Who the invitation is addressed to.</small> }
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-ln">Last name <i>*</i></label>
+                    <input id="oc-ln" class="oc-input" [class.bad]="bad('lastName')" type="text" maxlength="60" [value]="f().lastName" (input)="set('lastName', $any($event.target).value)" />
+                    @if (bad('lastName')) { <small class="oc-err">{{ errors()['lastName'] }}</small> }
+                  </div>
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Login details</h3>
+                <div class="oc-grid2">
+                  <div class="oc-field">
+                    <label for="oc-email">E-mail address <i>*</i></label>
+                    <input id="oc-email" class="oc-input" [class.bad]="bad('email')" type="email" [value]="f().email" (input)="set('email', $any($event.target).value)" />
+                    @if (bad('email')) { <small class="oc-err">{{ errors()['email'] }}</small> }
+                    @else { <small class="oc-hint">May already administer another organisation — that is allowed.</small> }
+                  </div>
+                  <div class="oc-field">
+                    <label for="oc-user">Username</label>
+                    <input id="oc-user" class="oc-input" type="text" placeholder="Derived from the e-mail if left blank" [value]="f().username" (input)="set('username', $any($event.target).value)" />
+                    <small class="oc-hint">How the administrator signs in once invited.</small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="oc-group">
+                <h3 class="oc-gh">Invitation</h3>
+                <div class="oc-field">
+                  <label for="oc-msg">Message in the invitation <span class="oc-opt">optional</span></label>
+                  <textarea id="oc-msg" class="oc-input oc-area" rows="3" placeholder="Optional. Added to the invitation e-mail." [value]="f().message" (input)="set('message', $any($event.target).value)"></textarea>
+                </div>
+                <label class="oc-check" [class.is-on]="f().sendNow">
+                  <input type="checkbox" [checked]="f().sendNow" (change)="set('sendNow', $any($event.target).checked)" />
+                  <span class="oc-box"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+                  <span><b>Send the invitation now</b><small>Leave this off for a staged set-up: the organisation and the administrator are created, and the invitation goes out later.</small></span>
+                </label>
+              </div>
+            }
+
+            @case (3) {
+              @for (r of review(); track r.title) {
+                <div class="oc-group">
+                  <h3 class="oc-gh">
+                    {{ r.title }}
+                    <button type="button" class="oc-btn oc-btn--sm" (click)="goTo(r.step)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+                  </h3>
+                  <dl class="oc-review">
+                    @for (row of r.rows; track row[0]) {
+                      <div><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>
+                    }
+                  </dl>
+                </div>
+              }
+
+              <div class="oc-note" role="note">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+                <p>Creating this sets up the organisation, its web address, its roles and its navigation, and creates the administrator account — all together.</p>
+              </div>
+            }
+          }
+        </div>
+      </section>
+
+      <!-- FOOTER ACTIONS -->
+      <footer class="oc-actions">
+        <button type="button" class="oc-btn" (click)="prev()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>{{ step() === 0 ? 'Cancel' : 'Back' }}
+        </button>
+        @if (step() < steps.length - 1) {
+          <button type="button" class="oc-btn oc-btn--primary" (click)="next()">
+            {{ step() === steps.length - 2 ? 'Review' : 'Continue' }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg>
+          </button>
+        } @else {
+          <button type="button" class="oc-btn oc-btn--primary" (click)="submit()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Create
+          </button>
+        }
+      </footer>
+    </div>
+
+    <!-- RIGHT: INFO PANEL -->
+    <aside class="oc-card oc-info" aria-label="About this record">
+      <section>
+        <h3><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>Why this record exists</h3>
+        <p>An organisation is its own workspace on the platform, with a web address, roles, navigation and a first administrator who sets everything up.</p>
+      </section>
+
+      <section>
+        <h3>Protected core</h3>
+        <p>The web address stays permanent once the organisation is created. Name, contact details, regional defaults and security can change later.</p>
+      </section>
+
+      <section>
+        <h3>Where it connects</h3>
+        <ul class="oc-links">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('link')" /></svg>Web address</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Roles &amp; permissions</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>People</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>Invitations</li>
+        </ul>
+      </section>
+
+      <div class="oc-warn" role="note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+        @if (f().sendNow) {
+          <p>Send now is on — the administrator is invited as soon as you create the organisation.</p>
+        } @else {
+          <p>Staged set-up — the organisation is created now and the invitation waits until you send it.</p>
+        }
+      </div>
+    </aside>
+
+  </div>
+  }
+</div>

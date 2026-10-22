@@ -1,0 +1,240 @@
+<header class="ao-head">
+  <div class="ao-head-text">
+    <p class="ao-eyebrow">Administration / Organisation</p>
+    <h1 class="ao-title">{{ isEdit ? 'Edit office' : 'Create an office' }}</h1>
+    <p class="ao-sub">{{ isEdit ? 'Update the details of this office.' : 'Add a head office, region, branch or any other location.' }}</p>
+  </div>
+  <button type="button" class="pf-hbtn btn-secondary" (click)="back()">
+    <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
+    Back
+  </button>
+</header>
+
+
+
+<!-- 1. Basics -->
+<section class="og-card ao-card" aria-labelledby="ao-h1">
+  <div class="ao-card-head">
+    <span class="ao-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01"/></svg>
+    </span>
+    <div><h2 id="ao-h1">Basics</h2><p>What the office is called and where it sits in the structure.</p></div>
+  </div>
+
+  <div class="ao-body">
+    <div class="ao-grid4">
+      <div class="og-field">
+        <label class="og-flabel" for="ao-name">Name <i>*</i></label>
+        <input id="ao-name" class="og-input" [class.bad]="submitted() && errors()['name']" type="text" placeholder="e.g. Chennai head office" maxlength="100"
+               [value]="f().name" (input)="set('name', $any($event.target).value)" />
+        @if (submitted() && errors()['name']) { <small class="og-err">{{ errors()['name'] }}</small> }
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-code">Code <i>*</i></label>
+        <input id="ao-code" class="og-input" [class.bad]="submitted() && errors()['code']" type="text" placeholder="e.g. CHN-HO" maxlength="12"
+               [value]="f().code" (input)="set('code', $any($event.target).value.toUpperCase())" />
+        @if (submitted() && errors()['code']) { <small class="og-err">{{ errors()['code'] }}</small> }
+        @else { <small class="og-hint">Short and permanent.</small> }
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-parent">Sits under</label>
+        <select id="ao-parent" class="og-input" (change)="set('parentId', $any($event.target).value)">
+          <option value="" [selected]="!f().parentId">Top level</option>
+          @for (p of parentOptions(); track p.id) {
+            <option [value]="p.id" [selected]="f().parentId === p.id">{{ p.name }}</option>
+          }
+        </select>
+        <small class="og-hint">Top level for a head office or region.</small>
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-kind">Kind <i>*</i></label>
+        <input id="ao-kind" class="og-input" [class.bad]="submitted() && errors()['kind']" type="text" placeholder="Head office, branch, region…" maxlength="40"
+               [value]="f().kind" (input)="set('kind', $any($event.target).value)" />
+        @if (submitted() && errors()['kind']) { <small class="og-err">{{ errors()['kind'] }}</small> }
+      </div>
+    </div>
+
+    <div class="og-quick ao-quick">
+      @for (k of kinds; track k) {
+        <button type="button" class="og-chip" [class.is-on]="f().kind === k" (click)="set('kind', k)">{{ k }}</button>
+      }
+    </div>
+
+    <div class="og-field">
+      <div class="ao-label-row">
+        <label class="og-flabel" for="ao-desc">Description <span class="ao-opt">optional</span></label>
+        <span class="og-count">{{ f().description.length }} / 1000</span>
+      </div>
+      <textarea id="ao-desc" class="og-input og-area" rows="3" maxlength="1000" placeholder="Anything that helps people recognise this office."
+                [value]="f().description" (input)="set('description', $any($event.target).value)"></textarea>
+    </div>
+  </div>
+</section>
+
+<!-- 2 + 3. Contact and Settings side by side -->
+<div class="ao-row">
+  <section class="og-card ao-card" aria-labelledby="ao-h2">
+    <div class="ao-card-head">
+      <span class="ao-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5"/></svg>
+      </span>
+      <div><h2 id="ao-h2">People &amp; contact</h2><p>Who runs the office and how to reach it.</p></div>
+    </div>
+
+    <div class="ao-body">
+      <div class="og-field">
+        <label class="og-flabel" for="ao-manager">Manager</label>
+        <select id="ao-manager" class="og-input" (change)="set('managerId', $any($event.target).value)">
+          <option value="" [selected]="!f().managerId">No manager yet</option>
+          @for (p of store.people(); track p.id) {
+            <option [value]="p.id" [selected]="f().managerId === p.id">{{ p.name }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="ao-grid2">
+        <div class="og-field">
+          <label class="og-flabel" for="ao-email">Contact e-mail</label>
+          <div class="og-addon">
+            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('mail')" /></svg></span>
+            <input id="ao-email" class="og-input" [class.bad]="submitted() && errors()['email']" type="email" placeholder="office@example.org"
+                   [value]="f().email" (input)="set('email', $any($event.target).value)" />
+          </div>
+          @if (submitted() && errors()['email']) { <small class="og-err">{{ errors()['email'] }}</small> }
+        </div>
+        <div class="og-field">
+          <label class="og-flabel" for="ao-phone">Telephone</label>
+          <div class="og-addon">
+            <span aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon('phone')" /></svg></span>
+            <input id="ao-phone" class="og-input" type="tel" placeholder="+91 98765 43210"
+                   [value]="f().phone" (input)="set('phone', $any($event.target).value)" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="og-card ao-card" aria-labelledby="ao-h3">
+    <div class="ao-card-head">
+      <span class="ao-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>
+      </span>
+      <div><h2 id="ao-h3">Settings</h2><p>Time zone, display order and whether it is in use.</p></div>
+    </div>
+
+    <div class="ao-body">
+      <div class="og-field">
+        <label class="og-flabel" for="ao-tz">Time zone</label>
+        <select id="ao-tz" class="og-input" (change)="set('timezone', $any($event.target).value)">
+          <option value="" [selected]="!f().timezone">Select a time zone</option>
+          @for (t of timezones; track t) {
+            <option [value]="t" [selected]="f().timezone === t">{{ t }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="ao-grid2">
+        <div class="og-field">
+          <label class="og-flabel" for="ao-order">Display order</label>
+          <input id="ao-order" class="og-input" type="number" min="0" step="10" [value]="f().order" (change)="setOrder($any($event.target).value)" />
+          <small class="og-hint">Lower numbers come first in lists.</small>
+        </div>
+        @if (isEdit) {
+          <div class="og-field ao-active">
+            <span class="og-flabel">Status</span>
+            <label class="og-toggle">
+              <input type="checkbox" [checked]="f().active" (change)="set('active', $any($event.target).checked)" />
+              <span class="og-switch" aria-hidden="true"><i></i></span>
+              {{ f().active ? 'Active' : 'Inactive' }}
+            </label>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 4. Address -->
+<section class="og-card ao-card" aria-labelledby="ao-h4">
+  <div class="ao-card-head">
+    <span class="ao-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+    </span>
+    <div><h2 id="ao-h4">Address</h2><p>Country, state and city come from the same catalogue as every other address.</p></div>
+  </div>
+
+  <div class="ao-body">
+    <div class="ao-grid2">
+      <div class="og-field">
+        <label class="og-flabel" for="ao-a1">Address line 1 <i>*</i></label>
+        <input id="ao-a1" class="og-input" [class.bad]="submitted() && errors()['address1']" type="text" placeholder="Building, street"
+               [value]="f().address1" (input)="set('address1', $any($event.target).value)" />
+        @if (submitted() && errors()['address1']) { <small class="og-err">{{ errors()['address1'] }}</small> }
+      </div>
+      <div class="og-field">
+        <label class="og-flabel" for="ao-a2">Address line 2 <span class="ao-opt">optional</span></label>
+        <input id="ao-a2" class="og-input" type="text" placeholder="Area, landmark"
+               [value]="f().address2" (input)="set('address2', $any($event.target).value)" />
+      </div>
+    </div>
+
+    <div class="ao-grid4">
+      <div class="og-field">
+        <label class="og-flabel" for="ao-country">Country <i>*</i></label>
+        <select id="ao-country" class="og-input" [class.bad]="submitted() && errors()['country']" (change)="setCountry($any($event.target).value)">
+          <option value="" [selected]="!f().country">Select a country</option>
+          @for (c of countries; track c) {
+            <option [value]="c" [selected]="f().country === c">{{ c }}</option>
+          }
+        </select>
+        @if (submitted() && errors()['country']) { <small class="og-err">{{ errors()['country'] }}</small> }
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-state">State or province <i>*</i></label>
+        @if (stateOptions().length) {
+          <select id="ao-state" class="og-input" [class.bad]="submitted() && errors()['state']" (change)="set('state', $any($event.target).value)">
+            <option value="" [selected]="!f().state">Select a state</option>
+            @for (s of stateOptions(); track s) {
+              <option [value]="s" [selected]="f().state === s">{{ s }}</option>
+            }
+          </select>
+        } @else {
+          <input id="ao-state" class="og-input" [class.bad]="submitted() && errors()['state']" type="text"
+                 [placeholder]="f().country ? 'State or province' : 'Pick a country first'" [disabled]="!f().country"
+                 [value]="f().state" (input)="set('state', $any($event.target).value)" />
+        }
+        @if (submitted() && errors()['state']) { <small class="og-err">{{ errors()['state'] }}</small> }
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-city">City <i>*</i></label>
+        <input id="ao-city" class="og-input" [class.bad]="submitted() && errors()['city']" type="text"
+               [value]="f().city" (input)="set('city', $any($event.target).value)" />
+        @if (submitted() && errors()['city']) { <small class="og-err">{{ errors()['city'] }}</small> }
+      </div>
+
+      <div class="og-field">
+        <label class="og-flabel" for="ao-postal">Postal code <i>*</i></label>
+        <input id="ao-postal" class="og-input" [class.bad]="submitted() && errors()['postal']" type="text" maxlength="12"
+               [value]="f().postal" (input)="set('postal', $any($event.target).value)" />
+        @if (submitted() && errors()['postal']) { <small class="og-err">{{ errors()['postal'] }}</small> }
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- footer bar -->
+<div class="ao-bar">
+  <button type="button" class="pf-hbtn btn-secondary" (click)="back()">
+    <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+    Cancel
+  </button>
+  <button type="button" class="pf-hbtn btn-primary" (click)="save()">
+    <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+    {{ isEdit ? 'Save' : 'Create' }}
+  </button>
+</div>

@@ -1,0 +1,170 @@
+<!-- =====================================================================================
+     ORGANISATIONS — Workspace Kit
+     heading · one card: KPI widgets · filters (search, status, cards/list) ·
+     card grid or list · pagination
+     ===================================================================================== -->
+<div class="ol-page">
+  <header class="i-head">
+    <div>
+      <span class="i-eyebrow">Administration / Platform</span>
+      <h1>Organisations</h1>
+      <p>Every organisation on the platform, from invitation to day-to-day work.</p>
+    </div>
+    <div class="i-head-actions">
+      <button type="button" class="i-btn i-btn--primary" (click)="create()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
+    </div>
+  </header>
+
+
+
+  <section class="i-card ol-main" aria-label="Organisations">
+
+    <!-- KPI WIDGETS -->
+    <div class="ol-kpis">
+      @for (k of kpis(); track k.label) {
+        <div class="ol-kpi" [attr.data-tone]="k.tone">
+          <div class="ol-kpi-top">
+            <span>{{ k.label }}</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(k.icon)" /></svg>
+          </div>
+          <div class="ol-kpi-main">
+            <strong>{{ k.value }}</strong>
+            <div class="ol-kpi-side"><b>{{ k.sideValue }}</b><span>{{ k.sideLabel }}</span></div>
+          </div>
+          <p class="ol-kpi-note">{{ k.note }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- FILTERS -->
+    <div class="ol-tools">
+      <div class="ol-filters">
+        <label class="ol-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search name, code, subdomain or administrator" aria-label="Search organisations"
+                 [value]="query()" (input)="onSearch($event)" />
+        </label>
+
+        <select class="ol-select" aria-label="Status" (change)="onStatus($event)">
+          <option value="" [selected]="status() === ''">All statuses</option>
+          @for (s of statuses; track s.key) { <option [value]="s.key" [selected]="status() === s.key">{{ s.label }}</option> }
+        </select>
+
+        @if (hasFilters()) { <button type="button" class="i-link ol-link" (click)="clearFilters()">Clear filters</button> }
+      </div>
+
+      <div class="ol-seg" role="group" aria-label="View">
+        <button type="button" [class.is-on]="view() === 'cards'" [attr.aria-pressed]="view() === 'cards'" (click)="setView('cards')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg>Cards</button>
+        <button type="button" [class.is-on]="view() === 'table'" [attr.aria-pressed]="view() === 'table'" (click)="setView('table')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>List</button>
+      </div>
+    </div>
+
+    @if (rows().length) {
+
+      @if (view() === 'cards') {
+        <!-- CARD VIEW -->
+        <div class="ol-cards">
+          @for (o of paged(); track o.id) {
+            <article class="ol-orgcard" [class.is-sel]="isSelected(o.id)">
+              <header class="ol-ch">
+                <span class="ol-av" aria-hidden="true">{{ initials(o.name) }}</span>
+                <span class="ol-ct"><strong>{{ o.name }}</strong><small>{{ o.code }}</small></span>
+                <svg class="ol-sico" [attr.data-tone]="tone(o.status)" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(statusIcon(o.status))" /></svg>
+              </header>
+
+              <p class="ol-l1">{{ o.domain }}</p>
+              <p class="ol-l2">{{ o.adminEmail }}</p>
+
+              <div class="ol-two">
+                <div><span>People</span><strong>{{ o.people }}</strong></div>
+                <div><span>Created</span><strong>{{ o.created }}</strong></div>
+              </div>
+
+              <footer class="ol-cf">
+                <span class="ol-state" [attr.data-tone]="tone(o.status)">{{ label(o.status) }}</span>
+                <span class="ol-links">
+                  @if (primary(o); as p) { <button type="button" class="i-link ol-act" (click)="runPrimary(o)">{{ p.label }}</button> }
+                  <button type="button" class="i-link ol-act ol-act--main" (click)="open(o)">View</button>
+                </span>
+              </footer>
+            </article>
+          }
+        </div>
+      } @else {
+        <!-- LIST VIEW -->
+        <div class="ol-tablewrap">
+          <table class="ol-table">
+            <thead>
+              <tr>
+                <th scope="col">Organisation</th>
+                <th scope="col">Web address</th>
+                <th scope="col">Administrator</th>
+                <th scope="col" class="is-r">People</th>
+                <th scope="col">Created</th>
+                <th scope="col">Status</th>
+                <th scope="col" class="is-r"><span class="ol-sr">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (o of paged(); track o.id) {
+                <tr [class.is-sel]="isSelected(o.id)">
+                  <td>
+                    <span class="ol-org">
+                      <span class="ol-av" aria-hidden="true">{{ initials(o.name) }}</span>
+                      <span class="ol-ct"><strong>{{ o.name }}</strong><small>{{ o.code }}</small></span>
+                    </span>
+                  </td>
+                  <td class="ol-soft">{{ o.domain }}</td>
+                  <td class="ol-soft">{{ o.adminEmail }}</td>
+                  <td class="is-r">{{ o.people }}</td>
+                  <td class="ol-soft">{{ o.created }}</td>
+                  <td><span class="ol-state" [attr.data-tone]="tone(o.status)">{{ label(o.status) }}</span></td>
+                  <td class="is-r">
+                    <span class="ol-acts">
+                      @if (primary(o); as p) {
+                        <button type="button" class="ol-ib" [attr.aria-label]="p.label" [attr.title]="p.label" (click)="runPrimary(o)">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 22-7z" /></svg>
+                        </button>
+                      }
+                      <button type="button" class="ol-ib ol-ib--main" aria-label="View" title="View" (click)="open(o)">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" /></svg>
+                      </button>
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <!-- PAGINATION -->
+      <footer class="ol-foot">
+        <p>
+          <b>{{ from() }}–{{ to() }}</b> of {{ rows().length }} organisations
+          @if (selected().size) { · {{ selected().size }} selected <button type="button" class="i-link ol-link" (click)="clearSelection()">Clear</button> }
+        </p>
+        <div class="ol-pager">
+          <span>Page {{ current() }} of {{ pages() }}</span>
+          <button type="button" aria-label="Previous page" [disabled]="current() <= 1" (click)="go(-1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('prev')" /></svg></button>
+          <button type="button" aria-label="Next page" [disabled]="current() >= pages()" (click)="go(1)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg></button>
+        </div>
+      </footer>
+
+    } @else {
+      <div class="ol-pad">
+        <div class="ol-empty">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <strong>No organisations match</strong>
+          <span>Try a different name, code or status.</span>
+          <button type="button" class="i-link ol-link" (click)="clearFilters()">Clear filters</button>
+        </div>
+      </div>
+    }
+  </section>
+</div>
