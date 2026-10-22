@@ -69,7 +69,7 @@
       </header>
 
       <h1 class="lg-title">Welcome Back</h1>
-      <p class="lg-sub">Sign in locally to access your dashboard and workspace.</p>
+      <p class="lg-sub">Sign in to access your dashboard, manage data, and explore analytics</p>
 
       <!-- accessible toast: success or danger message with timed dismissal + dismiss control -->
       @if (toast(); as t) {
@@ -138,12 +138,12 @@
           <input #rememberBox type="checkbox" [checked]="remember()" (change)="remember.set(rememberBox.checked)">
           <span class="lg-remember-text">
             <span class="lg-remember-title">Remember this device</span>
-            <span class="lg-remember-help">Keeps your local session on this device until you sign out.</span>
+            <span class="lg-remember-help">Keeps you signed in here and skips the code next time. Remove it any time from My&nbsp;Security.</span>
           </span>
         </label>
 
         <div class="lg-forgot-row">
-          <button type="button" class="lg-forgot">Forgot password?</button>
+          <button type="button" class="lg-forgot" (click)="forgotPassword()">Forgot password?</button>
         </div>
 
         <button type="submit" class="lg-submit" [disabled]="!canSubmit()">
@@ -156,7 +156,7 @@
         </button>
       </form>
 
-      <p class="lg-foot">Local sign‑in only — no credentials are sent anywhere.</p>
+      <p class="lg-foot">No account yet? Ask your administrator to invite you from Users &amp; Access.</p>
     </section>
   </section>
 </main>
