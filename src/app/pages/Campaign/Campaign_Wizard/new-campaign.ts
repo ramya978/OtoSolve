@@ -4,6 +4,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Footer } from '../../../Shared/layout/Footer/footer';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
+import { CampaignApiService } from '../../../Service/campaign-api.service';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
+import { PeopleDirectoryService } from '../../../Shared/services/people-directory.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { CountryLookup } from '../../../Shared/models/geo-lookup.model';
+import { MasterLookup } from '../../../Shared/models/global-master.model';
+import { CampaignDetail } from '../../../Shared/models/campaign-contract.model';
 
 
 type SectionId = 'basic' | 'location' | 'publication' | 'review';
@@ -59,11 +66,6 @@ interface Owner {
   role: string;
 }
 
-interface Country {
-  name: string;
-  states: Record<string, string[]>;
-}
-
 interface Section {
   id: SectionId;
   no: string;
@@ -94,46 +96,6 @@ interface MenuChoice {
   label: string;
   value: string;
 }
-
-/* ---------- sample look-ups (replace with your API data) ---------- */
-const OWNERS: Owner[] = [
-  { id: 'e-101', name: 'Anitha Raman', role: 'Campaign manager' },
-  { id: 'e-102', name: 'Karthik Subramanian', role: 'Fundraising lead' },
-  { id: 'e-103', name: 'Meera Krishnan', role: 'Donor relations' },
-  { id: 'e-104', name: 'Rahul Menon', role: 'Programme officer' },
-  { id: 'e-105', name: 'Divya Shankar', role: 'Finance controller' },
-  { id: 'e-106', name: 'Arjun Prakash', role: 'Regional coordinator' }
-];
-
-const COUNTRIES: Country[] = [
-  {
-    name: 'India',
-    states: {
-      'Tamil Nadu': ['Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem'],
-      Karnataka: ['Bengaluru', 'Mysuru', 'Mangaluru'],
-      Kerala: ['Kochi', 'Thiruvananthapuram', 'Kozhikode'],
-      Maharashtra: ['Mumbai', 'Pune', 'Nagpur'],
-      Telangana: ['Hyderabad', 'Warangal']
-    }
-  },
-  {
-    name: 'United Arab Emirates',
-    states: { Dubai: ['Dubai'], 'Abu Dhabi': ['Abu Dhabi', 'Al Ain'], Sharjah: ['Sharjah'] }
-  },
-  { name: 'Singapore', states: { Singapore: ['Singapore'] } },
-  {
-    name: 'United Kingdom',
-    states: { England: ['London', 'Manchester', 'Birmingham'], Scotland: ['Edinburgh', 'Glasgow'] }
-  },
-  {
-    name: 'United States',
-    states: {
-      California: ['Los Angeles', 'San Francisco', 'San Jose'],
-      'New York': ['New York City', 'Buffalo'],
-      Texas: ['Houston', 'Dallas', 'Austin']
-    }
-  }
-];
 
 const HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
 const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
@@ -213,6 +175,15 @@ export class NewCampaign {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(CampaignWorkspaceStore);
+  private readonly api = inject(CampaignApiService);
+  private readonly geo = inject(GeoMasterService);
+  private readonly people = inject(PeopleDirectoryService);
+
+  private readonly countryRows = signal<CountryLookup[]>([]);
+  private readonly stateRows = signal<MasterLookup[]>([]);
+  private readonly cityRows = signal<MasterLookup[]>([]);
+  private editDetail: CampaignDetail | null = null;
+  protected readonly saving = signal(false);
 
   protected readonly paths = CW_PATHS;
 
@@ -295,29 +266,26 @@ export class NewCampaign {
   // ---- derived ----
   protected readonly todayIso = toIso(new Date());
 
-  protected readonly owner = computed(() => OWNERS.find((o) => o.id === this.form().ownerId) ?? null);
+  /** People a campaign can be made accountable to - from IAM, within the caller's scope. */
+  private readonly owners = computed<Owner[]>(() =>
+    this.people.staffAssignable().map((p) => ({ id: p.reference, name: p.name, role: p.context })));
+
+  protected readonly owner = computed(() => this.owners().find((o) => o.id === this.form().ownerId) ?? null);
 
   protected readonly filteredOwners = computed(() => {
     const q = this.ownerQuery().trim().toLowerCase();
-    return q ? OWNERS.filter((o) => (o.name + ' ' + o.role).toLowerCase().includes(q)) : OWNERS;
+    return q ? this.owners().filter((o) => (o.name + ' ' + o.role).toLowerCase().includes(q)) : this.owners();
   });
 
   protected readonly filteredCountries = computed(() => {
     const q = this.countryQuery().trim().toLowerCase();
-    const names = COUNTRIES.map((c) => c.name);
+    const names = this.countryRows().filter((c) => c.status === 'active').map((c) => c.name);
     return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
   });
 
-  protected readonly states = computed(() => {
-    const c = COUNTRIES.find((x) => x.name === this.form().country);
-    return c ? Object.keys(c.states) : [];
-  });
+  protected readonly states = computed(() => this.stateRows().filter((r) => r.status === 'active').map((r) => r.name));
 
-  protected readonly cities = computed(() => {
-    const f = this.form();
-    const c = COUNTRIES.find((x) => x.name === f.country);
-    return c && f.state ? c.states[f.state] ?? [] : [];
-  });
+  protected readonly cities = computed(() => this.cityRows().filter((r) => r.status === 'active').map((r) => r.name));
 
   protected readonly calTitle = computed(() => {
     const m = this.calMonth();
@@ -415,26 +383,20 @@ export class NewCampaign {
       // older browsers - formatting still works
     }
 
-    // edit mode: /campaign-wizard?code=XXX pre-fills the wizard from the store
+    this.geo.getCountries().subscribe((c) => this.countryRows.set(c));
+
+    // edit mode: /campaign-wizard?code=XXX pre-fills the wizard from the campaign's full record
     const code = this.route.snapshot.queryParamMap.get('code');
     this.editingCode = code;
-    if (code) {
-      const c = this.store.findCampaign(code);
-      if (c) {
-        this.isEdit.set(true);
-        const loc = (c.location ?? '').split('·').map((s) => s.trim());
-        const owner = OWNERS.find((o) => c.owners.includes(o.name)) ?? OWNERS[0];
-        this.form.set({
-          name: c.name, code: c.code, startDate: c.start, endDate: c.end,
-          amount: String(c.target), target: String(c.target), fund: c.fund,
-          ownerId: owner.id, purpose: c.description,
-          country: loc[0] || null, state: loc[1] || null, city: loc[2] || null,
-          zip: loc[3] || '', activation: c.lifecycle === 'active' || c.lifecycle === 'scheduled' ? 'auto' : 'manual',
-          daysBefore: '7', remHour: '10', remMinute: '00', remPeriod: 'AM',
-          publicDescription: c.description, terms: c.description
-        });
-        this.editorText.set({ purpose: c.description, publicDescription: c.description, terms: c.description });
-      }
+    const meta = code ? this.store.findCampaign(code) : undefined;
+    if (code && meta?.id) this.loadForEdit(meta.id);
+    else if (code) {
+      // the register has not finished loading: find the campaign once it has
+      const stop = setInterval(() => {
+        const m = this.store.findCampaign(code);
+        if (m?.id) { clearInterval(stop); this.loadForEdit(m.id); }
+      }, 300);
+      this.destroyRef.onDestroy(() => clearInterval(stop));
     }
 
     // left index follows the section in view
@@ -455,6 +417,37 @@ export class NewCampaign {
     });
 
     this.destroyRef.onDestroy(() => clearTimeout(this.toastTimer));
+  }
+
+  private loadForEdit(id: string): void {
+    this.api.getCampaign(id).subscribe({
+      next: (d) => {
+        this.editDetail = d;
+        this.isEdit.set(true);
+        const hm = /^(\d{1,2}):(\d{2})/.exec(d.reminderTime ?? '');
+        const h24 = hm ? Number(hm[1]) : 10;
+        this.form.set({
+          name: d.name, code: d.code, startDate: d.startDate.slice(0, 10), endDate: d.endDate.slice(0, 10),
+          amount: String(d.campaignAmount), target: String(d.targetAmount), fund: d.fundOrProgramme,
+          ownerId: d.ownerIds[0] ?? null, purpose: d.purposeHtml ?? d.purpose,
+          country: d.countryName, state: d.stateName, city: d.cityName, zip: d.zipCode ?? '',
+          activation: d.lifecycleActivation, daysBefore: String(d.daysBeforeStart ?? ''),
+          remHour: String(((h24 + 11) % 12) + 1).padStart(2, '0'), remMinute: hm ? hm[2] : '00', remPeriod: h24 < 12 ? 'AM' : 'PM',
+          publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? ''
+        });
+        this.editorText.set({ purpose: d.purpose, publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '' });
+        setTimeout(() => {
+          const els = this.editorEls();
+          const html = [d.purposeHtml ?? d.purpose, d.publicDescription ?? '', d.termsAndNotice ?? ''];
+          els.forEach((r, i) => { if (html[i] !== undefined) r.nativeElement.innerHTML = html[i]; });
+        });
+        const country = this.countryRows().find((c) => c.id === d.countryId);
+        if (d.countryId) this.geo.getStates(d.countryId).subscribe((r) => this.stateRows.set(r));
+        if (d.stateId) this.geo.getCities(d.stateId, d.countryId).subscribe((r) => this.cityRows.set(r));
+        void country;
+      },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The campaign could not be loaded.'), 'warn'),
+    });
   }
 
   // =================================================================================================
@@ -628,12 +621,24 @@ export class NewCampaign {
   }
 
   protected pickCountry(name: string): void {
-    if (name !== this.form().country) this.patch({ country: name, state: null, city: null });
+    if (name !== this.form().country) {
+      this.patch({ country: name, state: null, city: null });
+      this.stateRows.set([]);
+      this.cityRows.set([]);
+      const id = this.countryRows().find((c) => c.name === name)?.id;
+      if (id) this.geo.getStates(id).subscribe((r) => this.stateRows.set(r));
+    }
     this.closeMenu();
   }
 
   protected pickState(name: string): void {
-    if (name !== this.form().state) this.patch({ state: name, city: null });
+    if (name !== this.form().state) {
+      this.patch({ state: name, city: null });
+      this.cityRows.set([]);
+      const id = this.stateRows().find((r) => r.name === name)?.id;
+      const countryId = this.countryRows().find((c) => c.name === this.form().country)?.id;
+      if (id) this.geo.getCities(id, countryId).subscribe((r) => this.cityRows.set(r));
+    }
     this.closeMenu();
   }
 
@@ -825,32 +830,51 @@ export class NewCampaign {
       return;
     }
 
-    // FULL-PAGE FLOW: save into the workspace store, then open the detail page.
-    // Launch = create draft in store → navigate to detail (launch decisions happen
-    // on the readiness / lifecycle pages, not as a popup here).
+    if (this.saving()) return;
     const f = this.form();
-    const ownerName = OWNERS.find((o) => o.id === f.ownerId)?.name ?? 'Unassigned';
-    const code = this.isEdit() && this.editingCode ? this.editingCode : (f.code || `HAI-${Date.now().toString(36).toUpperCase()}`);
-    const loc = [f.country, f.state, f.city, f.zip.trim()].filter(Boolean).join(' · ');
-    this.store.createCampaign({
-      code,
-      name: f.name.trim(),
-      lifecycle: 'draft',
-      owners: [ownerName],
-      fund: f.fund.trim(),
-      start: f.startDate ?? '',
-      end: f.endDate ?? '',
-      location: loc,
-      target: Number(f.target),
-      raised: 0,
-      monthlyRevenue: 0,
-      monthlyRevenuePrev: 0,
-      donors: 0,
-      donations: 0,
-      description: this.editorText().purpose || f.name.trim(),
-      updatedAt: new Date().toISOString().slice(0, 16)
-    });
-    this.router.navigate([CW_PATHS.detailFor(code)]);
+    const country = this.countryRows().find((c) => c.name === f.country);
+    const state = this.stateRows().find((r) => r.name === f.state);
+    const city = this.cityRows().find((r) => r.name === f.city);
+    const h12 = Number(f.remHour ?? 12) % 12;
+    const h24 = f.remPeriod === 'PM' ? h12 + 12 : h12;
+    const t = this.editorText();
+    const channels = (this.store.reference()?.channels ?? []).filter((c) => c.isActive).map((c) => c.id);
+    const shared = {
+      name: f.name.trim(), purpose: t.purpose.trim(), purposeHtml: f.purpose || null, fundOrProgramme: f.fund.trim(),
+      startDate: f.startDate ?? '', endDate: f.endDate ?? '', campaignAmount: Number(f.amount), targetAmount: Number(f.target),
+      countryId: country?.id ?? '', ownerIds: f.ownerId ? [f.ownerId] : [], stateId: state?.id ?? '', cityId: city?.id ?? '',
+      zipCode: f.zip.trim(), lifecycleActivation: f.activation, daysBeforeStart: Number(f.daysBefore),
+      reminderTime: `${String(h24).padStart(2, '0')}:${f.remMinute ?? '00'}`,
+      publicDescription: t.publicDescription.trim(), termsAndNotice: t.terms.trim(),
+    };
+    this.saving.set(true);
+    const done = (code: string): void => {
+      this.saving.set(false);
+      this.store.reload();
+      this.router.navigate([CW_PATHS.detailFor(code)]);
+    };
+    const fail = (e: unknown): void => {
+      this.saving.set(false);
+      this.showToast(apiErrorMessage(e, 'The campaign could not be saved.'), 'warn');
+    };
+    const editing = this.editDetail;
+    if (editing) {
+      this.api.updateCampaign(editing.id, {
+        ...shared, expectedVersion: editing.version, currencyId: editing.currencyId,
+        channelIds: editing.channelIds.length ? editing.channelIds : channels,
+      }).subscribe({ next: (d) => done(d.code), error: fail });
+      return;
+    }
+    // The wizard has no currency or channel step: the country's default currency and every active
+    // channel are used, and both can be changed on the campaign afterwards.
+    const currencyId = country?.defaultCurrencyId ?? '';
+    const create = (currency: string): void => {
+      this.api.createCampaign({ ...shared, code: f.code, currencyId: currency, channelIds: channels }).subscribe({
+        next: (d) => done(d.code), error: fail,
+      });
+    };
+    if (currencyId) create(currencyId);
+    else this.geo.getCurrencies(country?.id).subscribe({ next: (list) => create(list[0]?.id ?? ''), error: fail });
   }
 
   protected discard(): void {

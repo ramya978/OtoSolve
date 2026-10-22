@@ -47,7 +47,12 @@ import { MySecurity } from './pages/User_Access/My_Security/my-security';
 import { CreateUser } from './pages/User_Access/Create_User/create-user';
 import { BulkUsers } from './pages/User_Access/Bulk_Users/bulk-users';
 import { Login } from './pages/Auth/Login/login';
+import { PaymentResultComponent } from './pages/Donations/Payment_Result/payment-result';
 import { authGuard, guestGuard } from './Shared/Auth/auth.guard';
+import { MfaChallenge } from './pages/Auth/Recovery/mfa-challenge';
+import { ForgotPassword } from './pages/Auth/Recovery/forgot-password';
+import { ResetPassword } from './pages/Auth/Recovery/reset-password';
+import { Reauthenticate } from './pages/Auth/Recovery/reauthenticate';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -127,6 +132,13 @@ const APP_ROUTES: Routes = [
     title: 'Create tracking asset',
     data: { name: 'Tracking Asset Manager', route: '/app/fundraising/campaigns/tracking-asset-manager' }
   },
+
+  // The menu the server sends names these routes. The donor list is the same screen under
+  // two names; My Leads / My Donors are the queue / donor list told to show only what the
+  // signed-in user owns.
+  { path: 'app/fundraising/relationships/donor-list', component: AllDonors, title: 'All Donors', data: { name: 'All Donors', route: '/app/fundraising/relationships/donor-list' } },
+  { path: 'app/fundraising/relationships/my-donor-list', component: AllDonors, title: 'My Donors', data: { name: 'My Donors', route: '/app/fundraising/relationships/my-donor-list', mine: true } },
+  { path: 'app/fundraising/relationships/my-leads', component: LeadWorkQueue, title: 'My Leads', data: { name: 'My Leads', route: '/app/fundraising/relationships/my-leads', mine: true } },
 
   // Donor & leads - Lead Capture shell (heading + Single/Bulk switch) with child routes
   {
@@ -278,6 +290,17 @@ const APP_ROUTES: Routes = [
  */
 export const routes: Routes = [
   { path: 'login', component: Login, canActivate: [guestGuard], title: 'Sign in' },
+
+  // Account recovery and second-factor screens. Public: they are reached mid sign-in or from an
+  // e-mailed link, before (or without) a full session.
+  { path: 'auth/sign-in', redirectTo: 'login', pathMatch: 'full' },
+  { path: 'auth/mfa', component: MfaChallenge, title: 'Verify it\'s you' },
+  { path: 'auth/forgot-password', component: ForgotPassword, title: 'Forgot password' },
+  { path: 'auth/reset-password', component: ResetPassword, title: 'Set a new password' },
+  { path: 'auth/reset-password/:token', component: ResetPassword, title: 'Set a new password' },
+  { path: 'auth/reauthenticate', component: Reauthenticate, title: 'Confirm it\'s you' },
+  // Where the payment gateway sends the donor back to. Public: the server verifies the payment.
+  { path: 'give/result', component: PaymentResultComponent, title: 'Payment result' },
   ...APP_ROUTES.map((route) =>
     route.redirectTo === undefined
       ? { ...route, canActivate: [...(route.canActivate ?? []), authGuard] }

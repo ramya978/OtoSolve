@@ -8,7 +8,7 @@
   <header class="lwq-head">
     <div class="lwq-title">
       <span class="lwq-eyebrow">Donors &amp; Leads</span>
-      <h1>Lead Work Queue</h1>
+      <h1>{{ heading }}</h1>
     </div>
 
     <!-- filters sit on the same line as the title and tools -->
@@ -162,7 +162,7 @@
           </td>
           <td class="c-next"><span class="lwq-main">{{ r.due }}</span>
             @if (r.overdue > 0) { <span class="lwq-overdue">{{ r.overdue }} day{{ r.overdue === 1 ? '' : 's' }} overdue</span> }
-            @else { <span class="lwq-sub">Due today</span> }
+            @else { <span class="lwq-sub">{{ r.dueNote }}</span> }
           </td>
           <td class="c-act">
             <span class="lwq-actions">

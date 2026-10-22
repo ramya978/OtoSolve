@@ -2,52 +2,11 @@
    TIME ZONES - master configuration and sample rows
    Drives the time-zones list page (time-zones.html) and the create / edit page (time-zone-form.html):
    table columns, filters, overview metrics, form sections with their rules, live preview and the
-   view-drawer details. Sample rows are fictional review values; replace them with the API.
+   view-drawer details. Records come from the API (see MastersStore).
    ===================================================================================================== */
 import {
   MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_DAI, STATUS_LABEL, count, dash, fmtOffset, localTime, notes, numOr, s, sortOrder, statusChoice, statusColumn, statusFilter, yesNo
 } from '../../../Shared/Masters/masters.types';
-
-const zone = (
-  short: string, id: string, label: string, offset: number, dst: boolean, recommended = false,
-  status: MasterStatus = 'active'
-): MasterRow => ({
-  id: 'tz-' + id.replace(/[^A-Za-z0-9]/g, '-'), zone: id, display: `(UTC${fmtOffset(offset)}) ${label}`, short,
-  offset, dst, dstNote: dst ? 'Follows IANA daylight-saving rules' : '', recommended, sort: recommended ? 1 : 0,
-  status, notes: ''
-});
-
-export const SEED_TIMEZONES: MasterRow[] = [
-  zone('HST', 'Pacific/Honolulu', 'Hawaii-Aleutian Time', -600, false),
-  zone('AKT', 'America/Anchorage', 'Alaska Time', -540, true),
-  zone('PT', 'America/Los_Angeles', 'Pacific Time', -480, true),
-  zone('PT', 'America/Vancouver', 'Pacific Time - Canada', -480, true),
-  zone('MT', 'America/Denver', 'Mountain Time', -420, true),
-  zone('MST', 'America/Phoenix', 'Mountain Time - Arizona', -420, false),
-  zone('MT', 'America/Edmonton', 'Mountain Time - Canada', -420, true),
-  zone('CT', 'America/Chicago', 'Central Time', -360, true),
-  zone('CT', 'America/Winnipeg', 'Central Time - Canada', -360, true),
-  zone('ET', 'America/New_York', 'Eastern Time', -300, true),
-  zone('ET', 'America/Toronto', 'Eastern Time - Canada', -300, true),
-  zone('AT', 'America/Halifax', 'Atlantic Time', -240, true),
-  zone('BRT', 'America/Sao_Paulo', 'Brasília Time', -180, false),
-  zone('UTC', 'Etc/UTC', 'Coordinated Universal Time', 0, false),
-  zone('GMT', 'Europe/London', 'United Kingdom Time', 0, true),
-  zone('CET', 'Europe/Berlin', 'Central European Time - Berlin', 60, true),
-  zone('CET', 'Europe/Paris', 'Central European Time - Paris', 60, true),
-  zone('EET', 'Europe/Athens', 'Eastern European Time', 120, true),
-  zone('GST', 'Asia/Dubai', 'Gulf Standard Time', 240, false),
-  zone('PKT', 'Asia/Karachi', 'Pakistan Standard Time', 300, false),
-  zone('IST', 'Asia/Kolkata', 'India Standard Time', 330, false, true),
-  zone('IST', 'Asia/Colombo', 'Sri Lanka Time', 330, false),
-  zone('NPT', 'Asia/Kathmandu', 'Nepal Time', 345, false, false, 'draft'),
-  zone('ICT', 'Asia/Bangkok', 'Indochina Time', 420, false),
-  zone('SGT', 'Asia/Singapore', 'Singapore Time', 480, false),
-  zone('CST', 'Asia/Shanghai', 'China Standard Time', 480, false),
-  zone('JST', 'Asia/Tokyo', 'Japan Standard Time', 540, false),
-  zone('AET', 'Australia/Sydney', 'Australian Eastern Time', 600, true),
-  zone('NZT', 'Pacific/Auckland', 'New Zealand Time', 720, true, false, 'inactive')
-];
 
 export const TIME_ZONE: MasterConfig = {
   key: 'timezone',

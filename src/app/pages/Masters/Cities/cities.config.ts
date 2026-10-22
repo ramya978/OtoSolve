@@ -2,39 +2,11 @@
    CITIES - master configuration and sample rows
    Drives the cities list page (cities.html) and the create / edit page (city-form.html):
    table columns, filters, overview metrics, form sections with their rules, live preview and the
-   view-drawer details. Sample rows are fictional review values; replace them with the API.
+   view-drawer details. Records come from the API (see MastersStore).
    ===================================================================================================== */
 import {
   MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_DAI, STATUS_LABEL, count, dash, notes, numOr, s, statusChoice, statusColumn, statusFilter, yesNo
 } from '../../../Shared/Masters/masters.types';
-
-const city = (
-  code: string, name: string, stateCode: string, countryCode: string, metro: boolean, lat: number, lng: number,
-  status: MasterStatus = 'active'
-): MasterRow => ({
-  id: `ct-${countryCode}-${code}`, code, name, display: `${name} (${code})`, country: countryCode, state: stateCode,
-  metro, lat, lng, postal: '', status, notes: ''
-});
-
-export const SEED_CITIES: MasterRow[] = [
-  city('CHN', 'Chennai', 'TN', 'IN', true, 13.0827, 80.2707),
-  city('CBE', 'Coimbatore', 'TN', 'IN', true, 11.0168, 76.9558),
-  city('MDU', 'Madurai', 'TN', 'IN', false, 9.9252, 78.1198),
-  city('TEN', 'Tirunelveli', 'TN', 'IN', false, 8.7139, 77.7567),
-  city('BLR', 'Bengaluru', 'KA', 'IN', true, 12.9716, 77.5946),
-  city('MYS', 'Mysuru', 'KA', 'IN', false, 12.2958, 76.6394),
-  city('COK', 'Kochi', 'KL', 'IN', true, 9.9312, 76.2673),
-  city('TVM', 'Thiruvananthapuram', 'KL', 'IN', true, 8.5241, 76.9366),
-  city('MUM', 'Mumbai', 'MH', 'IN', true, 19.076, 72.8777),
-  city('PNQ', 'Pune', 'MH', 'IN', true, 18.5204, 73.8567),
-  city('LAX', 'Los Angeles', 'CA', 'US', true, 34.0522, -118.2437),
-  city('NYC', 'New York City', 'NY', 'US', true, 40.7128, -74.006),
-  city('HOU', 'Houston', 'TX', 'US', true, 29.7604, -95.3698),
-  city('TOR', 'Toronto', 'ON', 'CA', true, 43.6532, -79.3832),
-  city('VAN', 'Vancouver', 'BC', 'CA', true, 49.2827, -123.1207),
-  city('SYD', 'Sydney', 'NSW', 'AU', true, -33.8688, 151.2093),
-  city('MEL', 'Melbourne', 'VIC', 'AU', true, -37.8136, 144.9631, 'draft')
-];
 
 export const CITY: MasterConfig = {
   key: 'city',

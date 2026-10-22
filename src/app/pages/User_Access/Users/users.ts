@@ -1,10 +1,14 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  IAM_PATHS, IamOption, IamUser, ROLES, USERS, USER_STATUS_LABEL, UserStatus, fmtDate, initialsOf
+  IAM_PATHS, IamOption, IamUser, USER_STATUS_LABEL, UserStatus, fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
+import { IamDirectoryStore, mergeDetail } from '../../../Shared/IAM/iam-directory.store';
+import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type View = 'cards' | 'list';
 
@@ -28,10 +32,20 @@ const EMPTY_DRAFT: UserDraft = { name: '', email: '', mobile: '', role: '', unit
   templateUrl: './users.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './users.css']
 })
-export class Users {
+export class Users implements OnInit {
   private readonly router = inject(Router);
+  private readonly store = inject(IamDirectoryStore);
+  private readonly api = inject(UserDirectoryApiService);
+  private readonly toast = inject(ToastService);
 
-  readonly users = signal<IamUser[]>(USERS.map((u) => ({ ...u })));
+  readonly users = this.store.users;
+  readonly loading = this.store.loading;
+  readonly loadError = this.store.error;
+  readonly saving = signal(false);
+
+  ngOnInit(): void {
+    this.store.load();
+  }
 
   readonly view = signal<View>('cards');
   readonly status = signal<'' | UserStatus>('');
@@ -55,7 +69,7 @@ export class Users {
     ...(Object.keys(USER_STATUS_LABEL) as UserStatus[]).map((s) => ({ value: s, label: USER_STATUS_LABEL[s], hint: this.counts()[s] + ' people' }))
   ]);
 
-  readonly roleName = (code: string): string => ROLES.find((r) => r.code === code)?.name ?? code;
+  readonly roleName = (code: string): string => code;
   readonly statusLabel = (s: UserStatus): string => USER_STATUS_LABEL[s];
   readonly initials = initialsOf;
   readonly fmtDate = fmtDate;
@@ -63,16 +77,22 @@ export class Users {
   // ---- dropdown options ----
   readonly departmentOptions = computed<IamOption[]>(() => [
     { value: '', label: 'All departments' },
-    ...this.distinct((u) => u.department).map((d) => ({ value: d, label: d }))
+    ...this.store.departments().map((d) => ({ value: d.name ?? '', label: d.name ?? '' }))
   ]);
   readonly unitOptions = computed<IamOption[]>(() => [
     { value: '', label: 'All organisation units' },
-    ...this.distinct((u) => u.unit).map((d) => ({ value: d, label: d }))
+    ...this.store.units().map((d) => ({ value: d.name ?? '', label: d.name ?? '' }))
   ]);
-  readonly roleOptions: IamOption[] = [{ value: '', label: 'All roles' }, ...ROLES.map((r) => ({ value: r.code, label: r.name, hint: r.code }))];
-  readonly roleChoice: IamOption[] = ROLES.map((r) => ({ value: r.code, label: r.name, hint: r.code, initials: initialsOf(r.name) }));
-  readonly unitChoice = computed<IamOption[]>(() => this.distinct((u) => u.unit).map((d) => ({ value: d, label: d, icon: 'unit' })));
-  readonly deptChoice = computed<IamOption[]>(() => this.distinct((u) => u.department).map((d) => ({ value: d, label: d, icon: 'building' })));
+  private readonly roleOptionsC = computed<IamOption[]>(() => [
+    { value: '', label: 'All roles' },
+    ...this.store.roles().map((r) => ({ value: r.name ?? '', label: r.name ?? '', hint: r.code ?? '' }))
+  ]);
+  private readonly roleChoiceC = computed<IamOption[]>(() =>
+    this.store.roles().map((r) => ({ value: r.name ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '') })));
+  get roleOptions(): IamOption[] { return this.roleOptionsC(); }
+  get roleChoice(): IamOption[] { return this.roleChoiceC(); }
+  readonly unitChoice = computed<IamOption[]>(() => this.store.units().map((d) => ({ value: d.name ?? '', label: d.name ?? '', icon: 'unit' })));
+  readonly deptChoice = computed<IamOption[]>(() => this.store.departments().map((d) => ({ value: d.name ?? '', label: d.name ?? '', icon: 'building' })));
 
   // ---- counts + facts ----
   readonly counts = computed(() => {
@@ -80,7 +100,7 @@ export class Users {
     for (const s of Object.keys(USER_STATUS_LABEL)) out[s] = this.users().filter((u) => u.status === s).length;
     return out;
   });
-  readonly staffCount = computed(() => this.users().filter((u) => u.role !== 'DONOR').length);
+  readonly staffCount = computed(() => this.users().length);
   readonly enrolled = computed(() => this.users().filter((u) => u.mfaEnrolled).length);
   readonly neverSigned = computed(() => this.users().filter((u) => !u.lastSignIn).length);
   readonly unitCount = computed(() => this.distinct((u) => u.unit).length);
@@ -140,6 +160,10 @@ export class Users {
   // ---- selection ----
   select(u: IamUser): void {
     this.selectedId.set(u.id);
+    this.api.getUser(u.id).subscribe({
+      next: (d) => this.store.replace(mergeDetail(u, d)),
+      error: () => undefined,
+    });
   }
   closeDetail(): void {
     this.selectedId.set('');
@@ -186,11 +210,27 @@ export class Users {
 
   // ---- side panel actions ----
   deactivate(u: IamUser): void {
-    this.users.update((list) => list.map((x) => (x.id === u.id ? { ...x, status: x.status === 'deactivated' ? 'active' : 'deactivated' } : x)));
+    const reactivate = u.status === 'deactivated' || u.status === 'suspended';
+    const call = reactivate
+      ? this.api.reactivateUser(u.id, { reason: 'Reactivated from the people directory' })
+      : this.api.deactivateUser(u.id, { reason: 'Deactivated from the people directory' });
+    call.subscribe({
+      next: () => {
+        this.toast.show(reactivate ? 'Reactivated' : 'Deactivated', u.name, 'success');
+        this.store.load();
+      },
+      error: (e) => this.toast.show('Could not update', apiErrorMessage(e, 'The change was not saved.'), 'error'),
+    });
   }
   remove(u: IamUser): void {
-    this.users.update((list) => list.filter((x) => x.id !== u.id));
-    this.selectedId.set('');
+    this.api.withdrawUser(u.id, { reason: 'Withdrawn from the people directory' }).subscribe({
+      next: () => {
+        this.toast.show('Withdrawn', u.name, 'success');
+        this.selectedId.set('');
+        this.store.load();
+      },
+      error: (e) => this.toast.show('Could not withdraw', apiErrorMessage(e, 'The change was not saved.'), 'error'),
+    });
   }
 
   // ---- create / edit drawer ----
@@ -225,24 +265,39 @@ export class Users {
     this.tried.set(true);
     if (!this.canSave()) return;
     const d = this.draft();
-    if (this.drawer() === 'edit') {
-      this.users.update((list) => list.map((u) => (u.id === this.selectedId()
-        ? { ...u, name: d.name.trim(), email: d.email.trim(), mobile: d.mobile.trim(), role: d.role, unit: d.unit, department: d.department, designation: d.designation.trim() }
-        : u)));
-    } else {
-      const n = this.users().length + 1;
-      const id = 'u' + Date.now();
-      const user = d.email.split('@')[0];
-      this.users.update((list) => [{
-        id, ref: 'USR-' + String(n).padStart(5, '0'), name: d.name.trim(), email: d.email.trim(), username: user, preferredName: '',
-        mobile: d.mobile.trim(), role: d.role, unit: d.unit, department: d.department, designation: d.designation.trim(), manager: '',
-        status: 'invited', invitation: 'Pending', mfaEnrolled: false, dataScope: 'Whole organisation',
-        accessFrom: new Date().toISOString().slice(0, 10), lastSignIn: ''
-      }, ...list]);
-      this.status.set('');
-      this.page.set(1);
-    }
-    this.drawer.set(null);
+    const id = this.selectedId();
+    this.saving.set(true);
+    this.api.getUser(id).subscribe({
+      next: (cur) => {
+        const units = this.store.units();
+        const depts = this.store.departments();
+        const [cc, ...num] = d.mobile.trim().split(/\s+/);
+        this.api.updateUser(id, {
+          expectedVersion: cur.version,
+          displayName: d.name.trim(),
+          designation: d.designation.trim(),
+          organisationUnitId: units.find((x) => x.name === d.unit)?.id ?? cur.organisationUnitId,
+          departmentId: depts.find((x) => x.name === d.department)?.id ?? cur.departmentId,
+          mobileCountryCode: num.length ? cc : cur.mobileCountryCode,
+          mobileNumber: num.length ? num.join('') : (d.mobile.trim() || cur.mobileNumber),
+        }).subscribe({
+          next: () => {
+            this.saving.set(false);
+            this.toast.show('Saved', d.name.trim(), 'success');
+            this.drawer.set(null);
+            this.store.load();
+          },
+          error: (e) => {
+            this.saving.set(false);
+            this.toast.show('Could not save', apiErrorMessage(e, 'The change was not saved.'), 'error');
+          },
+        });
+      },
+      error: (e) => {
+        this.saving.set(false);
+        this.toast.show('Could not save', apiErrorMessage(e, 'The record could not be read.'), 'error');
+      },
+    });
   }
 
   @HostListener('document:keydown.escape')

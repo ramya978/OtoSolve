@@ -1,0 +1,479 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable, forkJoin, map, switchMap } from 'rxjs';
+import { environment } from '../../environments/environment';
+import { ApiResponse, OutcomeResponse, PagedResponse } from '../Shared/models/api-response.model';
+import { apiEnumValue } from '../Shared/models/enum-option.model';
+import { isGuid } from '../Shared/models/identifier';
+import {
+  CreateUserResponse,
+  EnumOption,
+  ReferenceDataResponse,
+  UserAccessPreviewResponse,
+  UserDetailResponse,
+  UserListItemResponse,
+  UserSecurityResponse,
+  UserStatisticsResponse,
+} from '../Shared/models/iam-contract.model';
+import { AuthTokenService } from '../Shared/services/auth-token.service';
+import {
+  ReasonRequest,
+  UpdateMyProfileRequest,
+  UpdateUserRequest,
+  UserDirectoryResponse,
+  UserSearchFilter,
+} from '../Shared/models/user-directory.model';
+
+/**
+ * The user directory: searching, opening and administering the people in one Organisation.
+ *
+ * NO ORGANISATION IS EVER SENT. Not on the search, not on an action, not on the export. The
+ * Organisation comes from the signed token, which is the whole reason a TEN001 administrator
+ * cannot reach a TEN002 user however the request is shaped: there is no parameter to change.
+ *
+ * WHY THE DIRECTORY IS ASSEMBLED FROM TWO CALLS
+ * ---------------------------------------------
+ * The screen needs a page of people AND the options for its filters — statuses, departments,
+ * roles. The API serves those separately, and rightly: the filter options change once a month
+ * and the page changes on every keystroke. Fetching them together on the first load and the page
+ * alone afterwards is what keeps typing in the search box from re-fetching the whole reference
+ * set thirty times a minute.
+ *
+ * EVERY ACTION CARRIES ExpectedVersion. Two administrators on the same record means the second
+ * one is told to reload rather than silently overwriting the first.
+ */
+/** One colleague, as the picker endpoint returns them. */
+export interface PersonLookupResponse {
+  id: string;
+  displayName: string;
+  code?: string | null;
+  /** The person's role, for the second line of a picker option. */
+  roleName?: string | null;
+  /** Their organisation unit or department, shown beside the role when both are known. */
+  unitName?: string | null;
+}
+
+@Injectable({ providedIn: 'root' })
+export class UserDirectoryApiService {
+  private readonly http = inject(HttpClient);
+  private readonly tokens = inject(AuthTokenService);
+  private readonly usersUrl = `${environment.apiBaseUrl}/users`;
+  private readonly referenceUrl = `${environment.apiBaseUrl}/reference-data`;
+
+  /**
+   * The filter bar's vocabulary: this Organisation's roles, departments and units, plus the
+   * product's enum labels.
+   *
+   * ONE REQUEST. `/reference-data` already carries the enums; a second call to
+   * `/reference-data/enums` used to fetch the same lists again on every directory load.
+   */
+  getReference(): Observable<ReferenceDataResponse> {
+    return this.http
+      .get<ApiResponse<ReferenceDataResponse>>(this.referenceUrl)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * The directory: a page of people, plus everything the filter bar needs.
+   *
+   * PASS `reference$` TO REUSE THE FILTER VOCABULARY across the loads of one visit. The page
+   * changes on every keystroke and every page turn; the roles, departments and units do not, and
+   * `/reference-data` is six queries - every role, department, unit, manager and permission. A
+   * screen that keeps one `shareReplay`ed stream for its lifetime still sees a department added
+   * an hour ago the next time it opens, without paying for the vocabulary thirty times a minute.
+   * Left out, the vocabulary is fetched alongside the page, as before.
+   */
+  getDirectory(
+    filter: UserSearchFilter,
+    reference$: Observable<ReferenceDataResponse> = this.getReference(),
+  ): Observable<UserDirectoryResponse> {
+    return forkJoin({
+      users: this.searchUsers(filter),
+      reference: reference$,
+    }).pipe(
+      map(({ users, reference }) => {
+        const enums = reference.enums;
+
+        return {
+          screenId: 'IAM-USR-01',
+          route: '/app/administration/access/user-directory',
+          users,
+
+          // The enum payloads are value/label; the directory model wants LookupItem, which is
+          // id/code/name. Converted here, once, rather than at every binding in the template.
+          statusOptions: this.toLookups(enums?.userStatuses),
+          invitationStatusOptions: this.toLookups(enums?.userStatuses),
+          dataScopeTypeOptions: this.toLookups(enums?.dataScopeTypes),
+          // Stored text: value and label are the same word ("Dr").
+          titleOptions: (enums?.personTitles ?? []).map((option) => String(option.value ?? '')).filter(Boolean),
+
+          // These are the Organisation's own records and are already LookupItems.
+          organisationUnitOptions: reference.organisationUnits ?? [],
+          departmentOptions: reference.departments ?? [],
+          roleOptions: reference.roles ?? [],
+
+          permittedActions: this.permittedDirectoryActions(),
+          activeFilterSummary: this.describeFilter(filter),
+          dataScopeSummary: reference.currentTenantName ?? '',
+          state: 'Ready',
+        };
+      }),
+    );
+  }
+
+  /**
+   * The status counts for the directory's tabs, in ONE request.
+   *
+   * The tabs used to be counted with five searches of one row each - one per status plus one for
+   * "everyone" - every time the directory loaded or anything in it changed. The server already
+   * groups the same scoped query by status.
+   */
+  getStatistics(): Observable<UserStatisticsResponse> {
+    return this.http
+      .get<ApiResponse<UserStatisticsResponse>>(`${this.usersUrl}/statistics`)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * The organisation's people, for a picker.
+   *
+   * A DIFFERENT ENDPOINT FROM searchUsers, and deliberately so. That one is the administration
+   * directory and needs iam.users.view; this one needs only that you are a member. Every
+   * "choose a person" control has to work for people who are not user administrators - a
+   * Campaign Owner naming an owner, a Campaign Manager routing a lead - and pointing those
+   * controls at the administration search is why the Owner box read "No eligible person in
+   * scope" on the one screen whose whole purpose is to name an owner.
+   */
+  peopleDirectory(search?: string, take = 200): Observable<PersonLookupResponse[]> {
+    // The server clamps `take` to 1-500.
+    let params = new HttpParams().set('take', String(take));
+
+    if (search) {
+      params = params.set('search', search);
+    }
+
+    return this.http
+      .get<ApiResponse<PersonLookupResponse[]>>(`${this.usersUrl}/directory`, { params })
+      .pipe(map((response) => response.data ?? []));
+  }
+
+  /** One page of people. Used on every search, without the reference data. */
+  searchUsers(filter: UserSearchFilter): Observable<PagedResponse<UserListItemResponse>> {
+    return this.http
+      .get<ApiResponse<PagedResponse<UserListItemResponse>>>(this.usersUrl, {
+        params: this.toParams(filter),
+      })
+      .pipe(map((response) => response.data!));
+  }
+
+  /** The full record behind one row, for the view and edit dialogs. */
+  /**
+   * Finds somebody by the reference people actually quote, and returns the full record.
+   *
+   * WHY THIS EXISTS. Several screens are reached by a URL carrying a human reference — the
+   * USR-000184 an administrator reads off a ticket — while every API route is keyed by the
+   * internal id. Resolving in one place means those screens do not each invent their own
+   * lookup, and a reference that matches nothing produces one clear error instead of a page
+   * that silently renders blank.
+   *
+   * The search is exact on the code. A prefix search would happily return the wrong person
+   * when one reference is a prefix of another.
+   */
+  getUserByReference(reference: string): Observable<UserDetailResponse> {
+    // AN ID IS ACCEPTED TOO. The directory opens a person by their id, and every screen reached
+    // from the profile (security, login-identifier change, details) carries that same route
+    // value on - but search matches names, e-mails and codes, never ids, so those screens all
+    // answered "Failed to load" for anybody opened from the directory.
+    if (isGuid(reference)) {
+      return this.getUser(reference);
+    }
+
+    return this.searchUsers({ search: reference, pageSize: 5 } as UserSearchFilter).pipe(
+      map((page) => {
+        const match = (page.items ?? []).find(
+          (user) => (user.code ?? '').toLowerCase() === reference.toLowerCase());
+
+        if (!match?.id) {
+          throw new Error(`No user matches the reference ${reference}.`);
+        }
+
+        return match.id;
+      }),
+      switchMap((id) => this.getUser(id)),
+    );
+  }
+
+  getUser(id: string): Observable<UserDetailResponse> {
+    return this.http
+      .get<ApiResponse<UserDetailResponse>>(`${this.usersUrl}/${id}`)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * The signed-in person's OWN record.
+   *
+   * A DIFFERENT ENDPOINT FROM getUser AND getUserByReference, and that is the entire point.
+   * Those two are the administrative routes: they take an id, they are gated on
+   * `iam.users.view`, and they live on a controller that also demands a resolved Organisation.
+   * Reading your own profile through them meant two groups of people were refused their own
+   * profile with a flat "You do not have permission to perform this action":
+   *
+   *   - every role without `iam.users.view`, which is most of them; and
+   *   - a SuperAdmin who has not yet chosen an Organisation, because there was no Organisation
+   *     for the tenant-context policy to find.
+   *
+   * `/my-profile` carries no id at all, so the server answers for whoever holds the token and
+   * there is nothing to point at anybody else. No permission is required, because none is
+   * needed to look at yourself.
+   */
+  getMyProfile(): Observable<UserDetailResponse> {
+    return this.http
+      .get<ApiResponse<UserDetailResponse>>(`${environment.apiBaseUrl}/my-profile`)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * Saves MY OWN profile.
+   *
+   * THE WRITE HALF OF THE ARGUMENT ABOVE. Edit profile on your own record called
+   * `PUT /users/{id}`, which needs `iam.users.edit` AND a resolved Organisation - so most roles,
+   * and every root user who had not yet picked an Organisation, were told they had no permission
+   * to change their own display name.
+   *
+   * The endpoint takes five fields and no more. Department, manager, access window and MFA
+   * requirement are administrative decisions about a person's place in the
+   * organisation, and are not on the request at all.
+   */
+  updateMyProfile(request: UpdateMyProfileRequest): Observable<OutcomeResponse> {
+    return this.http
+      .put<ApiResponse<OutcomeResponse>>(`${environment.apiBaseUrl}/my-profile`, request)
+      .pipe(map((response) => response.data!));
+  }
+
+  /** Sessions, devices, factors and recent sign-in activity for one person. */
+  /**
+   * What one person can actually reach: roles, the permissions those roles carry, and the data
+   * scopes that narrow them.
+   *
+   * SEPARATE FROM THE RECORD because it is a different question and a different permission. An
+   * administrator may legitimately be able to read somebody's profile without being allowed to
+   * see the full reach of their access.
+   */
+  getUserAccess(id: string): Observable<UserAccessPreviewResponse> {
+    return this.http
+      .get<ApiResponse<UserAccessPreviewResponse>>(`${this.usersUrl}/${id}/access`)
+      .pipe(map((response) => response.data!));
+  }
+
+  getUserSecurity(id: string): Observable<UserSecurityResponse> {
+    return this.http
+      .get<ApiResponse<UserSecurityResponse>>(`${this.usersUrl}/${id}/security`)
+      .pipe(map((response) => response.data!));
+  }
+
+  updateUser(id: string, request: UpdateUserRequest): Observable<OutcomeResponse> {
+    return this.http
+      .put<ApiResponse<OutcomeResponse>>(`${this.usersUrl}/${id}`, request)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * Suspends the account.
+   *
+   * Every live session is revoked server-side at the same moment, which is the part that
+   * matters: an account that cannot sign in but whose existing session keeps working is not
+   * suspended in any useful sense.
+   */
+  suspendUser(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'suspend', request);
+  }
+
+  /** Lifts a suspension. The person can sign in again straight away. */
+  reactivateUser(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'reactivate', request);
+  }
+
+  /**
+   * Deactivates permanently.
+   *
+   * Distinct from suspension: suspension is a pause, deactivation is the end of the account.
+   * Neither deletes anything, because the person's history has to remain attributable.
+   */
+  deactivateUser(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'deactivate', request);
+  }
+
+  /** Withdraws an account that never activated, and the invitation with it. */
+  withdrawUser(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'withdraw', request);
+  }
+
+  /** Clears a lockout early, when the person has been identified another way. */
+  unlockUser(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'unlock', request);
+  }
+
+  /** Sends a password reset link. No password is ever generated or e-mailed. */
+  resetPassword(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'reset-password', request);
+  }
+
+  /** Ends every session this person has, everywhere. For a lost device or a departure. */
+  forceSignOut(id: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.action(id, 'force-sign-out', request);
+  }
+
+  /**
+   * Re-sends an invitation that lapsed or never arrived.
+   *
+   * THE ANSWER IS THE ACCOUNT, NOT AN OUTCOME MESSAGE. It was typed as `OutcomeResponse`, so the
+   * screen read a `message` the endpoint never sends and always said "re-sent" - even when the
+   * relay refused the e-mail. `invitationSent` is what the relay actually did, and
+   * `deliveryMessage` says it in a sentence.
+   */
+  resendInvitation(id: string, message?: string): Observable<CreateUserResponse> {
+    return this.http
+      .post<ApiResponse<CreateUserResponse>>(
+        `${this.usersUrl}/${id}/resend-invitation`, { userId: id, message })
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * Withdraws an invitation that has not been accepted.
+   *
+   * The link stops working immediately — an invitation sent to the wrong address is not fixed by
+   * ignoring it.
+   */
+  revokeInvitation(id: string, reason: string): Observable<OutcomeResponse> {
+    return this.http
+      .post<ApiResponse<OutcomeResponse>>(`${this.usersUrl}/${id}/revoke-invitation`, { reason })
+      .pipe(map((response) => response.data!));
+  }
+
+  /** Moves the end of somebody's access window, for a contract that was extended. */
+  extendAccess(id: string, accessEndsAtUtc: string, expectedVersion: number, reason?: string):
+    Observable<OutcomeResponse> {
+    return this.http
+      .post<ApiResponse<OutcomeResponse>>(`${this.usersUrl}/${id}/extend-access`, {
+        accessEndsAtUtc,
+        expectedVersion,
+        reason,
+      })
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * Exports the directory to CSV.
+   *
+   * The same filter as the screen, so what is exported is what is on screen. The export is
+   * audited server-side, filter included.
+   */
+  exportDirectory(filter: UserSearchFilter): Observable<Blob> {
+    return this.http.get(`${this.usersUrl}/export`, {
+      params: this.toParams(filter),
+      responseType: 'blob',
+    });
+  }
+
+  /** Sends a blob to the browser as a download, releasing the object URL afterwards. */
+  saveBlob(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    link.href = url;
+    link.download = fileName;
+    link.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Every lifecycle action shares one shape: a reason and the version it expects.
+   *
+   * One helper rather than nine near-identical methods, so a change to the envelope is made once
+   * and the nine cannot drift.
+   */
+  private action(id: string, verb: string, request: ReasonRequest): Observable<OutcomeResponse> {
+    return this.http
+      .post<ApiResponse<OutcomeResponse>>(`${this.usersUrl}/${id}/${verb}`, request)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * What the signed-in person may do in the directory, from the permissions their token carries.
+   *
+   * THIS WAS A LITERAL `[]`. Every check the screen made against it therefore failed once the
+   * directory had loaded - Suspend never appeared for anybody, and the Create and Export buttons
+   * vanished the moment the list arrived, which is why they had been commented out of the
+   * template rather than gated. The names match the screen's existing checks; the codes are the
+   * ones each endpoint demands, so a button is offered exactly when the server would allow it.
+   */
+  private permittedDirectoryActions(): string[] {
+    const grants: [action: string, permission: string][] = [
+      ['Invite', 'iam.users.create'],
+      ['Export', 'iam.users.export'],
+      ['Edit', 'iam.users.edit'],
+      ['Suspend', 'iam.users.suspend'],
+      ['Reactivate', 'iam.users.reactivate'],
+      ['Deactivate', 'iam.users.deactivate'],
+      ['Withdraw', 'iam.users.cancel'],
+      ['ResendInvitation', 'iam.users.invite'],
+    ];
+
+    return grants
+      .filter(([, permission]) => this.tokens.hasPermission(permission))
+      .map(([action]) => action);
+  }
+
+  /**
+   * Enum options are value/label on the wire; the directory model speaks LookupItem.
+   *
+   * THE VALUE IS RE-CASED to the API's own spelling. `/reference-data` names enums as C# does
+   * ("Active"), while every enum the API returns on a record is camelCase ("active") - so a
+   * status option never matched the tab it belonged to, and the filter panel listed Active,
+   * Invited, Suspended and Draft a second time as "other statuses". The server parses either
+   * spelling, so filtering is unaffected.
+   */
+  private toLookups(options: EnumOption[] | null | undefined) {
+    return (options ?? []).map((option) => ({
+      id: apiEnumValue(option.value),
+      code: apiEnumValue(option.value),
+      name: option.label ?? option.value ?? '',
+      isActive: true,
+      description: null,
+    }));
+  }
+
+  /** A one-line summary of what is being filtered, for the header of the results. */
+  private describeFilter(filter: UserSearchFilter): string {
+    const parts: string[] = [];
+
+    if (filter.search) { parts.push(`matching "${filter.search}"`); }
+    if (filter.status) { parts.push(String(filter.status).toLowerCase()); }
+    if (filter.departmentId) { parts.push('in one department'); }
+    if (filter.roleId) { parts.push('holding one role'); }
+    if (filter.organisationUnitId) { parts.push('in one office'); }
+
+    return parts.length > 0 ? `Showing people ${parts.join(', ')}.` : 'Showing everybody.';
+  }
+
+  /**
+   * Only the filters that were actually set are sent.
+   *
+   * An empty `status=` is not the same as omitting it: the server would try to parse the empty
+   * string as an enum and reject the whole request.
+   */
+  private toParams(filter: UserSearchFilter): HttpParams {
+    let params = new HttpParams();
+
+    Object.entries(filter as Record<string, unknown>).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        // The screen calls it pageIndex; the API calls it page. Renamed here rather than in the
+        // component, so the component keeps one vocabulary.
+        params = params.set(key === 'pageIndex' ? 'page' : key, String(value));
+      }
+    });
+
+    return params;
+  }
+}

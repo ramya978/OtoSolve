@@ -1,10 +1,15 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Observable, forkJoin, of } from 'rxjs';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
   IamOption, IamRole, PERMISSIONS, PERM_ACTIONS, PERM_ACTION_LABEL, PERM_AREAS, PermAction, PermArea, Permission,
-  ROLES, ROLE_STATUS_LABEL, RoleStatus, USERS, initialsOf, slugCode
+  ROLE_STATUS_LABEL, RoleStatus, initialsOf, slugCode
 } from '../../../Shared/IAM/iam-data';
+import { IamRolesStore } from '../../../Shared/IAM/iam-roles.store';
+import { RoleCatalogueApiService } from '../../../Service/role-catalogue-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type StatusTab = 'all' | RoleStatus;
 type DetailTab = 'permissions' | 'combine' | 'details';
@@ -32,17 +37,29 @@ interface RoleDraft {
   templateUrl: './roles-permissions.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './roles-permissions.css']
 })
-export class RolesPermissions {
-  readonly roles = signal<IamRole[]>(ROLES.map((r) => ({ ...r, grants: [...r.grants], blocks: [...r.blocks] })));
+export class RolesPermissions implements OnInit {
+  private readonly store = inject(IamRolesStore);
+  private readonly api = inject(RoleCatalogueApiService);
+  private readonly toast = inject(ToastService);
+  readonly roles = this.store.roles;
+  readonly loading = this.store.loading;
+  readonly loadError = this.store.error;
+  readonly saving = signal(false);
+
+  ngOnInit(): void {
+    this.store.load(() => {
+      if (!this.roles().some((r) => r.code === this.expanded())) this.expanded.set(this.list()[0]?.code ?? '');
+    });
+  }
 
   readonly tab = signal<StatusTab>('all');
   readonly query = signal('');
   readonly showFilters = signal(false);
   readonly privFilter = signal('');
   readonly originFilter = signal('');
-  readonly expanded = signal<string>('CAMPAIGN_MANAGER');
+  readonly expanded = signal<string>('');
   /** area shown in the expansion */
-  readonly area = signal<string>('campaigns');
+  readonly area = signal<string>('');
   /** matrix cell figure: allowed permissions or sensitive ones */
   readonly show = signal<'allowed' | 'sensitive'>('allowed');
   readonly detailTab = signal<DetailTab>('permissions');
@@ -74,7 +91,7 @@ export class RolesPermissions {
   readonly compared = signal(false);
 
   readonly areas = PERM_AREAS;
-  readonly PERMISSIONS_TOTAL = PERMISSIONS.length;
+  get PERMISSIONS_TOTAL(): number { this.store.version(); return PERMISSIONS.length; }
   readonly actions = PERM_ACTIONS;
   readonly actionLabel = (a: PermAction): string => PERM_ACTION_LABEL[a];
   readonly statusLabel = (s: RoleStatus): string => ROLE_STATUS_LABEL[s];
@@ -100,7 +117,7 @@ export class RolesPermissions {
   ];
 
   // ---------------------------------------------------------------- summary
-  readonly peopleOf = (code: string): number => USERS.filter((u) => u.role === code).length;
+  readonly peopleOf = (code: string): number => this.roles().find((r) => r.code === code)?.members ?? 0;
   readonly counts = computed(() => {
     const out: Record<string, number> = { all: this.roles().length };
     for (const s of ['draft', 'active', 'inactive']) out[s] = this.roles().filter((r) => r.status === s).length;
@@ -124,7 +141,11 @@ export class RolesPermissions {
   readonly current = computed(() => this.roles().find((r) => r.code === this.expanded()) ?? this.list()[0] ?? null);
 
   /** areas for the left list / the narrow-screen dropdown */
-  readonly areaOptions: IamOption[] = PERM_AREAS.map((a) => ({ value: a.key, label: a.name, hint: PERMISSIONS.filter((p) => p.area === a.key).length + ' permissions', icon: a.icon }));
+  private readonly areaOptionsC = computed<IamOption[]>(() => {
+    this.store.version();
+    return PERM_AREAS.map((a) => ({ value: a.key, label: a.name, hint: PERMISSIONS.filter((p) => p.area === a.key).length + ' permissions', icon: a.icon }));
+  });
+  get areaOptions(): IamOption[] { return this.areaOptionsC(); }
 
   /** roles in the list that hold at least one permission of the area */
   rolesWithAccess(a: PermArea): number {
@@ -220,7 +241,7 @@ export class RolesPermissions {
     return this.show() === 'sensitive' ? perms.filter((p) => p.sensitive).length : perms.length;
   }
 
-  readonly currentArea = computed(() => PERM_AREAS.find((a) => a.key === this.area()) ?? PERM_AREAS[0]);
+  readonly currentArea = computed(() => { this.store.version(); return PERM_AREAS.find((a) => a.key === this.area()) ?? PERM_AREAS[0] ?? { key: '', name: '', prefix: '', icon: 'layers' }; });
 
   /** permissions of the open area for the read view */
   areaRows(r: IamRole): Permission[] {
@@ -394,12 +415,27 @@ export class RolesPermissions {
   }
 
   saveEdit(r: IamRole): void {
-    if (!this.editDirty(r)) return;
-    const grants = PERMISSIONS.filter((p) => this.editGrants().has(p.code)).map((p) => p.code);
-    const blocks = PERMISSIONS.filter((p) => this.editBlocks().has(p.code)).map((p) => p.code);
-    this.roles.update((list) => list.map((x) => (x.code === r.code
-      ? { ...x, grants, blocks, all: x.all && grants.length === PERMISSIONS.length, lastChanged: 'Just now' } : x)));
-    this.editing.set(false);
+    if (!this.editDirty(r) || !r.id || this.saving()) return;
+    this.saving.set(true);
+    this.api.assignPermissions(r.id, {
+      permissionCodes: PERMISSIONS.filter((p) => this.editGrants().has(p.code)).map((p) => p.code),
+      deniedPermissionCodes: PERMISSIONS.filter((p) => this.editBlocks().has(p.code)).map((p) => p.code),
+      expectedVersion: r.version ?? 0,
+      justification: this.editReason().trim() || null,
+    }).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.editing.set(false);
+        this.toast.show('Permissions saved', r.name, 'success');
+        this.store.load();
+      },
+      error: (e) => this.fail(e, 'Permissions could not be saved.'),
+    });
+  }
+
+  private fail(e: unknown, fallback: string): void {
+    this.saving.set(false);
+    this.toast.show('Not saved', apiErrorMessage(e, fallback), 'error');
   }
 
   // ---------------------------------------------------------------- drawer (create / clone / edit)
@@ -458,9 +494,13 @@ export class RolesPermissions {
 
   readonly isBuiltInEdit = computed(() => this.drawer() === 'edit' && !!this.roles().find((r) => r.code === this.draft().code)?.builtIn);
 
-  readonly permOptions: IamOption[] = PERMISSIONS.map((p) => ({
-    value: p.code, label: p.name, hint: PERM_AREAS.find((a) => a.key === p.area)?.name + (p.sensitive ? ' · Sensitive' : '')
-  }));
+  private readonly permOptionsC = computed<IamOption[]>(() => {
+    this.store.version();
+    return PERMISSIONS.map((p) => ({
+      value: p.code, label: p.name, hint: PERM_AREAS.find((a) => a.key === p.area)?.name + (p.sensitive ? ' · Sensitive' : '')
+    }));
+  });
+  get permOptions(): IamOption[] { return this.permOptionsC(); }
 
   readonly roleChoice = computed<IamOption[]>(() =>
     this.roles().filter((r) => r.code !== this.draft().code).map((r) => ({ value: r.code, label: r.name, hint: r.code, initials: initialsOf(r.name) })));
@@ -483,25 +523,57 @@ export class RolesPermissions {
 
   saveDrawer(): void {
     this.tried.set(true);
-    if (this.hasErrors()) return;
+    if (this.hasErrors() || this.saving()) return;
     const d = this.draft();
+    this.saving.set(true);
+    const idOf = (code: string) => this.roles().find((x) => x.code === code)?.id ?? '';
     if (this.drawer() === 'edit') {
-      this.roles.update((list) => list.map((r) => (r.code === d.code ? {
-        ...r, name: d.name.trim(), purpose: d.purpose.trim(), privileged: !!d.privileged, isDefault: !!d.isDefault,
-        priority: d.priority, owningFunction: d.owningFunction.trim(), lastChanged: 'Just now'
-      } : r)));
+      const r = this.roles().find((x) => x.code === d.code);
+      if (!r?.id) { this.saving.set(false); return; }
+      this.api.updateRole(r.id, {
+        expectedVersion: r.version ?? 0, name: d.name.trim(), description: d.purpose.trim(), priority: d.priority,
+        isPrivileged: !!d.privileged, isDefaultRole: !!d.isDefault, displayTag: d.owningFunction.trim() || null,
+      }).subscribe({
+        next: () => {
+          const known = this.store.incompatIds.get(r.code) ?? new Map<string, string>();
+          const adds = d.incompatible.filter((c) => !known.has(c));
+          const drops = [...known.entries()].filter(([c]) => !d.incompatible.includes(c)).map(([, id]) => id);
+          const calls: Observable<unknown>[] = [
+            ...adds.map((c) => this.api.addIncompatibility({ roleId: r.id, conflictingRoleId: idOf(c), isBlocking: true, reason: 'Set from the role editor' })),
+            ...drops.map((id) => this.api.removeIncompatibility(id)),
+          ];
+          (calls.length ? forkJoin(calls) : of(null) as Observable<unknown>).subscribe({
+            next: () => this.afterSave(r.code, 'Role updated'),
+            error: (e) => this.fail(e, 'The role was saved, but its conflicts could not be.'),
+          });
+        },
+        error: (e) => this.fail(e, 'The role could not be saved.'),
+      });
     } else {
-      const role: IamRole = {
-        code: d.code.trim(), name: d.name.trim(), purpose: d.purpose.trim(), status: 'draft', type: 'Organisation',
-        owningFunction: d.owningFunction.trim(), privileged: !!d.privileged, builtIn: false, isDefault: !!d.isDefault,
-        priority: d.priority, grants: [...d.grants], blocks: [], incompatible: [...d.incompatible], lastChanged: 'Just now'
-      };
-      this.roles.update((list) => [...list, role]);
-      this.expanded.set(role.code);
-      this.detailTab.set('permissions');
-      this.tab.set('all');
+      this.api.createRole({
+        name: d.name.trim(), code: d.code.trim(), description: d.purpose.trim(), status: 'draft', priority: d.priority,
+        isPrivileged: !!d.privileged, isDefaultRole: !!d.isDefault, displayTag: d.owningFunction.trim() || null,
+        permissionCodes: [...d.grants],
+      }).subscribe({
+        next: (created) => {
+          const calls: Observable<unknown>[] = d.incompatible.map((c) =>
+            this.api.addIncompatibility({ roleId: created.id, conflictingRoleId: idOf(c), isBlocking: true, reason: 'Set from the role editor' }));
+          (calls.length ? forkJoin(calls) : of(null) as Observable<unknown>).subscribe({
+            next: () => this.afterSave(d.code.trim(), 'Role created'),
+            error: (e) => this.fail(e, 'The role was created, but its conflicts could not be saved.'),
+          });
+        },
+        error: (e) => this.fail(e, 'The role could not be created.'),
+      });
     }
+  }
+
+  private afterSave(code: string, message: string): void {
+    this.saving.set(false);
+    this.toast.show(message, code, 'success');
     this.drawer.set(null);
+    this.tab.set('all');
+    this.store.load(() => { this.expanded.set(code); this.detailTab.set('permissions'); });
   }
 
   // ---------------------------------------------------------------- compare

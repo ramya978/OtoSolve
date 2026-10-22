@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/ro
 import { filter, map } from 'rxjs';
 import { MENU_ICONS, MENU_ICON_FALLBACK } from '../menu-icons';
 import { MENU_DATA, MenuItem } from '../menu.data';
+import { NavigationService } from '../../services/navigation.service';
 import { ThemeSettingsService } from '../../../pages/Auth/Profile/theme-settings';
 
 /** Width of a horizontal-menu dropdown (keeps it inside the screen). */
@@ -52,7 +53,22 @@ export interface MenuSection {
   host: { '[class.is-collapsed]': 'collapsed() && !horizontal()', '[class.is-horizontal]': 'horizontal()' }
 })
 export class Sidebar implements AfterViewInit {
-  readonly menu = input<MenuItem[]>(MENU_DATA);
+  /** An explicit menu can still be passed in; by default the sidebar shows the tree the API returns. */
+  readonly menuOverride = input<MenuItem[] | null>(null, { alias: 'menu' });
+
+  private readonly navigation = inject(NavigationService);
+
+  /**
+   * The menu as the server decides it for THIS person (product x Organisation x role x
+   * permissions). While it loads the sidebar is empty; if it could not be fetched the built-in
+   * catalogue is shown so the app stays navigable (the API still checks every call).
+   */
+  readonly menu = computed<MenuItem[]>(() => {
+    const explicit = this.menuOverride();
+    if (explicit) return explicit;
+    if (this.navigation.failed()) return MENU_DATA;
+    return this.navigation.menu() as unknown as MenuItem[];
+  });
 
   readonly collapsed = input(false);
   readonly expandRequest = output<void>();

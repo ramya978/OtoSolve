@@ -1,190 +1,439 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import { CampaignApiService } from '../../Service/campaign-api.service';
+import { AuthService } from '../Auth/auth.service';
+import { fetchAllPages } from '../services/paging';
+import { apiErrorMessage } from '../models/api-response.model';
 import {
-  ACTIVITY, ASSETS, CAMPAIGNS, CHECKS, CURRENT_USER, Activity, ActivityKind, AssetStatus, CampaignInfo,
-  CheckStatus, DONATIONS, Lifecycle, ReadinessCheck, TrackingAsset, newChecklist
+  AttributionListItem, CampaignDetail, CampaignHistoryEntry, CampaignListItem, CampaignReadiness, CampaignReferenceData,
+  CampaignStatus, ReadinessCheckCategory, ReadinessCheckListItem, ReadinessPerson, TrackingAssetListItem, TrackingAssetStatus
+} from '../models/campaign-contract.model';
+import {
+  ACTIVITY, ASSETS, CAMPAIGNS, CHECKS, PEOPLE, Activity, ActivityKind, AssetStatus, AssetType, CampaignInfo,
+  CheckCategory, CheckStatus, Donation, Lifecycle, Medium, ReadinessCheck, TrackingAsset
 } from './cw.data';
+
+const EMPTY_CAMPAIGN: CampaignInfo = {
+  code: '', name: '', lifecycle: 'draft', owners: [], fund: '', start: '', end: '', location: '', target: 0, raised: 0,
+  monthlyRevenue: 0, monthlyRevenuePrev: 0, donors: 0, donations: 0, description: '', updatedAt: ''
+};
+
+const LIFECYCLE: Record<CampaignStatus, Lifecycle> = {
+  draft: 'draft', submitted: 'submitted', approved: 'scheduled', scheduled: 'scheduled', active: 'active',
+  paused: 'paused', closing: 'closing', closed: 'closed', cancelled: 'closed'
+};
+
+const ASSET_STATUS: Record<TrackingAssetStatus, AssetStatus> = {
+  draft: 'draft', submitted: 'submitted', approved: 'active', active: 'active', disableRequested: 'disable-requested', inactive: 'disabled'
+};
+
+const title = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const day = (iso: string | null | undefined): string => (iso ?? '').slice(0, 10);
+const minute = (iso: string | null | undefined): string => (iso ?? '').slice(0, 16);
 
 /**
  * CAMPAIGN WORKSPACE STORE - one place for the campaign the user is looking at and every change the
- * four campaign pages make (readiness verdicts, launch decisions, pause / resume / close, tracking
- * assets). In-memory for now; swap the method bodies for API calls when the backend is ready.
+ * campaign pages make (readiness verdicts, launch decisions, pause / resume / close, tracking
+ * assets). Backed by the Campaign API; the signals and method names are what the pages already use.
  */
 @Injectable({ providedIn: 'root' })
 export class CampaignWorkspaceStore {
-  readonly campaigns = signal<CampaignInfo[]>(CAMPAIGNS.map((c) => ({ ...c })));
-  readonly checks = signal<ReadinessCheck[]>(CHECKS.map((c) => ({ ...c })));
-  readonly assets = signal<TrackingAsset[]>(ASSETS.map((a) => ({ ...a })));
-  readonly activity = signal<Activity[]>(ACTIVITY.map((a) => ({ ...a })));
-  readonly donations = DONATIONS;
+  private readonly api = inject(CampaignApiService);
+  private readonly auth = inject(AuthService);
+
+  readonly campaigns = signal<CampaignInfo[]>([]);
+  readonly checks = signal<ReadinessCheck[]>([]);
+  readonly assets = signal<TrackingAsset[]>([]);
+  readonly activity = signal<Activity[]>([]);
+  private readonly donationList = signal<Donation[]>([]);
+  get donations(): Donation[] { return this.donationList(); }
+
+  readonly loading = signal(false);
+  readonly loadError = signal('');
+  readonly reference = signal<CampaignReferenceData | null>(null);
 
   /** Campaign shown on the campaign pages (picked in the page header). */
-  readonly selectedCode = signal('HAI-PHYSIO-2026');
-  readonly campaign = computed(() => this.campaigns().find((c) => c.code === this.selectedCode()) ?? this.campaigns()[0]);
+  readonly selectedCode = signal('');
+  readonly campaign = computed(() => this.campaigns().find((c) => c.code === this.selectedCode()) ?? this.campaigns()[0] ?? EMPTY_CAMPAIGN);
 
   /** One-line toast shared by the pages. */
   readonly toast = signal<{ text: string; tone: 'ok' | 'warn' | 'danger' } | null>(null);
   private toastTimer = 0;
 
-  readonly currentUser = CURRENT_USER;
+  get currentUser(): string { return this.auth.user()?.name ?? ''; }
 
+  private readonly ids = new Map<string, { id: string; version: number }>();
+  private readonly checkMeta = new Map<string, { version: number }>();
+  private readonly assetMeta = new Map<string, { id: string; version: number }>();
+  private people: ReadinessPerson[] = [];
+
+  constructor() {
+    this.load();
+  }
+
+  // ------------------------------------------------------------------ loading
+  load(): void {
+    this.loading.set(true);
+    this.loadError.set('');
+    forkJoin({
+      list: fetchAllPages((page, pageSize) => this.api.searchCampaigns({ page, pageSize })),
+      assets: fetchAllPages((page, pageSize) => this.api.searchTrackingAssets({ page, pageSize })).pipe(catchError(() => of([] as TrackingAssetListItem[]))),
+      reference: this.api.getReferenceData().pipe(catchError(() => of(null))),
+      people: this.api.getReadinessAssignableOwners().pipe(catchError(() => of([] as ReadinessPerson[]))),
+    }).subscribe({
+      next: ({ list, assets, reference, people }) => {
+        this.ids.clear();
+        this.campaigns.set(list.map((c) => this.toInfo(c)));
+        this.assetMeta.clear();
+        this.assets.set(assets.map((a) => this.toAsset(a)));
+        this.reference.set(reference);
+        this.people = people;
+        PEOPLE.length = 0;
+        PEOPLE.push(...people.map((p) => p.displayName ?? '').filter(Boolean));
+        if (!this.findCampaign(this.selectedCode())) this.selectedCode.set(this.campaigns()[0]?.code ?? '');
+        this.loading.set(false);
+        if (this.selectedCode()) this.select(this.selectedCode());
+      },
+      error: (e) => {
+        this.loadError.set(apiErrorMessage(e, 'Campaigns could not be loaded.'));
+        this.loading.set(false);
+      },
+    });
+  }
+
+  /** Opens a campaign on the pages and reads everything that hangs off it. */
   select(code: string): void {
     this.selectedCode.set(code);
-    // a campaign without a checklist gets the standard one the first time it is opened
-    if (!this.checks().some((c) => c.campaign === code)) {
-      // a campaign that already launched cleared its checklist; one still in draft starts with it open
-      const launched = !['draft', 'submitted'].includes(this.findCampaign(code)?.lifecycle ?? 'draft');
-      const list = newChecklist(code).map((c) => (launched ? { ...c, status: 'passed' as const, verdictBy: 'Vikram Anand' } : c));
-      this.checks.update((all) => [...all, ...list]);
-    }
+    const meta = this.ids.get(code);
+    if (!meta) return;
+    forkJoin({
+      detail: this.api.getCampaign(meta.id).pipe(catchError(() => of(null))),
+      readiness: this.api.getCampaignReadiness(meta.id).pipe(catchError(() => of(null))),
+      history: this.api.getCampaignHistory(meta.id).pipe(catchError(() => of([] as CampaignHistoryEntry[]))),
+      gifts: this.api.searchAttribution({ campaignId: meta.id, page: 1, pageSize: 100 }).pipe(catchError(() => of(null))),
+    }).subscribe(({ detail, readiness, history, gifts }) => {
+      if (detail) this.mergeDetail(detail);
+      if (readiness) this.mergeReadiness(code, readiness);
+      this.activity.update((all) => [...all.filter((a) => a.campaign !== code), ...history.map((h) => this.toActivity(code, h))]);
+      this.donationList.update((all) => [
+        ...all.filter((d) => d.campaign !== code),
+        ...(gifts?.items ?? []).map((g) => this.toDonation(code, g)),
+      ]);
+    });
+  }
+
+  private toInfo(c: CampaignListItem): CampaignInfo {
+    this.ids.set(c.code, { id: c.id, version: c.version });
+    const prev = this.findCampaign(c.code);
+    return {
+      ...(prev ?? EMPTY_CAMPAIGN),
+      id: c.id, version: c.version, code: c.code, name: c.name, lifecycle: LIFECYCLE[c.status] ?? 'draft',
+      owners: (c.owners ?? []).map((o) => o.displayName ?? '').filter(Boolean), fund: c.fundOrProgramme,
+      start: day(c.startDate), end: day(c.endDate), target: c.targetAmount, raised: c.raisedAmount ?? 0,
+      updatedAt: minute(c.updatedAtUtc)
+    };
+  }
+
+  private mergeDetail(d: CampaignDetail): void {
+    this.ids.set(d.code, { id: d.id, version: d.version });
+    const location = [d.countryName, d.stateName, d.cityName, d.zipCode].filter(Boolean).join(' · ');
+    this.patchCampaign(d.code, {
+      id: d.id, version: d.version, lifecycle: LIFECYCLE[d.status] ?? 'draft', description: d.publicDescription || d.purpose,
+      location, fund: d.fundOrProgramme, start: day(d.startDate), end: day(d.endDate), target: d.targetAmount,
+      readinessRequest: d.status === 'submitted' ? { by: '', at: minute(d.submittedAtUtc) } : undefined,
+      closeRequest: d.pendingCloseRequest
+        ? { by: '', at: minute(d.pendingCloseRequest.createdAtUtc), reason: d.pendingCloseRequest.detailedReason ?? '' }
+        : undefined,
+    }, false);
+  }
+
+  private mergeReadiness(code: string, r: CampaignReadiness): void {
+    this.checkMeta.clear();
+    const mapped = r.items.map((i) => this.toCheck(code, i));
+    this.checks.update((all) => [...all.filter((c) => c.campaign !== code), ...mapped]);
+  }
+
+  private toCheck(code: string, i: ReadinessCheckListItem): ReadinessCheck {
+    this.checkMeta.set(i.id, { version: i.version });
+    return {
+      id: i.id, campaign: code, name: i.checkName, category: title(i.category) as CheckCategory,
+      owner: i.owner?.displayName ?? '', due: day(i.dueDate), required: i.requiredForLaunch,
+      status: i.status as CheckStatus, description: i.description ?? '', criteria: i.successCriteria, notes: i.notes ?? '',
+      verdictNote: i.status === 'pending' ? '' : i.notes ?? ''
+    };
+  }
+
+  private toAsset(a: TrackingAssetListItem): TrackingAsset {
+    this.assetMeta.set(a.code, { id: a.id, version: a.version });
+    const status = ASSET_STATUS[a.status] ?? 'draft';
+    return {
+      ref: a.code, campaign: a.campaignCode, type: (a.assetType === 'qrCode' ? 'qr' : 'landing') as AssetType,
+      medium: a.channelName as Medium, place: a.placeName ?? '', destination: a.generatedUrl ?? a.destination, status,
+      usage: a.usageCount, received: a.totalReceived, from: day(a.activeFrom), to: day(a.activeTo),
+      approval: status === 'active' || status === 'disabled' ? 'Approved' : status === 'submitted' ? 'Pending' : '—'
+    };
+  }
+
+  private toActivity(code: string, h: CampaignHistoryEntry): Activity {
+    const action = h.actionCode.split('.').pop() ?? h.actionCode;
+    const words = action.replace(/[-_]+/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+    const kind: ActivityKind = /pause/.test(words) ? 'pause' : /resume/.test(words) ? 'resume'
+      : /creat/.test(words) ? 'create' : /approv|activat|launch|submit|clos/.test(words) ? 'approval' : 'change';
+    return { campaign: code, at: minute(h.occurredAtUtc), title: title(words), detail: h.reason ?? '', by: '', kind };
+  }
+
+  private toDonation(code: string, g: AttributionListItem): Donation {
+    return { campaign: code, date: day(g.receivedAtUtc), donor: g.donorName, amount: g.amount, channel: g.channelName as Donation['channel'] };
   }
 
   /** Picker options: "Name · CODE". */
   readonly campaignOptions = computed(() => this.campaigns().map((c) => ({ value: c.code, label: c.name, hint: c.code })));
 
-  /** Adds a campaign created in the wizard (full-page create flow). In edit mode
-      (same code) it patches the existing record instead of duplicating it. */
-  createCampaign(info: CampaignInfo): void {
-    if (this.findCampaign(info.code)) {
-      this.campaigns.update((list) =>
-        list.map((c) => (c.code === info.code ? { ...c, ...info, updatedAt: this.now() } : c))
-      );
-      this.select(info.code);
-      this.log(info.code, 'Campaign updated', `${info.name} · saved`, 'change');
-      this.showToast(`${info.name} saved.`);
-      return;
-    }
-    this.campaigns.update((list) => [info, ...list]);
-    this.select(info.code);
-    this.log(info.code, 'Campaign created', `${info.name} · draft`, 'create');
-    this.showToast(`${info.name} created as draft.`);
+  /** Channel names the tracking asset form offers (the Offline / Print / Email ... choice). */
+  channelNames(): string[] {
+    return (this.reference()?.channels ?? []).filter((c) => c.isActive).map((c) => c.name);
   }
+
+  // ------------------------------------------------------------------ register actions
+  /** Re-reads the register after the wizard saved something. */
+  reload(): void { this.load(); }
 
   /** Duplicates a campaign as a new draft (code auto-suffixed until unique). */
   duplicateCampaign(code: string): string {
-    const src = this.findCampaign(code);
-    if (!src) return code;
+    const meta = this.ids.get(code);
+    if (!meta) return code;
     let n = 2;
-    let next = `${src.code}-COPY`;
-    while (this.findCampaign(next)) next = `${src.code}-COPY-${n++}`;
-    const copy: CampaignInfo = {
-      ...src, code: next, name: `${src.name} (copy)`, lifecycle: 'draft',
-      raised: 0, monthlyRevenue: 0, monthlyRevenuePrev: 0, donors: 0, donations: 0,
-      readinessRequest: undefined, closeRequest: undefined, updatedAt: this.now()
-    };
-    this.campaigns.update((list) => [copy, ...list]);
-    this.select(next);
-    this.log(next, 'Campaign duplicated', `Copied from ${src.code}`, 'create');
-    this.showToast(`${copy.name} duplicated as draft.`);
+    let next = `${code}-COPY`;
+    while (this.findCampaign(next)) next = `${code}-COPY-${n++}`;
+    this.api.getCampaign(meta.id).subscribe({
+      next: (d) => {
+        this.api.createCampaign({
+          name: `${d.name} (copy)`, code: next, purpose: d.purpose, fundOrProgramme: d.fundOrProgramme,
+          startDate: d.startDate, endDate: d.endDate, campaignAmount: d.campaignAmount, targetAmount: d.targetAmount,
+          currencyId: d.currencyId, countryId: d.countryId, ownerIds: d.ownerIds, stateId: d.stateId ?? '', cityId: d.cityId ?? '',
+          zipCode: d.zipCode ?? '', channelIds: d.channelIds, lifecycleActivation: d.lifecycleActivation,
+          daysBeforeStart: d.daysBeforeStart, reminderTime: d.reminderTime, publicDescription: d.publicDescription ?? '',
+          termsAndNotice: d.termsAndNotice ?? '', purposeHtml: d.purposeHtml ?? null,
+        }).subscribe({
+          next: () => { this.showToast(`${d.name} duplicated as draft.`); this.load(); },
+          error: (e) => this.showToast(apiErrorMessage(e, 'The campaign could not be duplicated.'), 'danger'),
+        });
+      },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The campaign could not be read.'), 'danger'),
+    });
     return next;
   }
 
   /** Removes a draft campaign (used by the list-view delete action). */
   removeCampaign(code: string): void {
+    const meta = this.ids.get(code);
     const c = this.findCampaign(code);
-    this.campaigns.update((list) => list.filter((x) => x.code !== code));
-    this.checks.update((list) => list.filter((x) => x.campaign !== code));
-    if (c) this.showToast(`${c.name} deleted.`, 'warn');
-    const first = this.campaigns()[0];
-    if (first) this.select(first.code);
+    if (!meta) return;
+    this.api.deleteCampaignDraft(meta.id, meta.version).subscribe({
+      next: () => { if (c) this.showToast(`${c.name} deleted.`, 'warn'); this.load(); },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The draft could not be deleted.'), 'danger'),
+    });
   }
 
-  /** Makes sure every register row also exists in the workspace store (list → detail flow). */
-  ensureCampaign(info: CampaignInfo): void {
-    if (!this.findCampaign(info.code)) {
-      this.campaigns.update((list) => [...list, info]);
-    }
-  }
+  /** Kept for the register's list → detail flow; the campaign is already loaded from the API. */
+  ensureCampaign(_info: CampaignInfo): void { /* loaded from the API */ }
 
   // ------------------------------------------------------------------ readiness
   checksFor(code: string): ReadinessCheck[] {
     return this.checks().filter((c) => c.campaign === code);
   }
 
+  private personId(name: string): string | null {
+    return this.people.find((p) => p.displayName === name)?.userId ?? null;
+  }
+
   setCheckStatus(id: string, status: CheckStatus, note = ''): void {
-    this.checks.update((list) => list.map((c) => (c.id === id ? { ...c, status, verdictBy: status === 'pending' ? undefined : CURRENT_USER, verdictNote: note } : c)));
     const chk = this.checks().find((c) => c.id === id);
-    if (chk) this.showToast(`${chk.name} marked ${status}.`, status === 'failed' ? 'danger' : 'ok');
+    const meta = this.checkMeta.get(id);
+    if (!chk || !meta) return;
+    if (status === 'pending') {
+      this.showToast('A recorded verdict cannot be reopened. Edit the check instead.', 'warn');
+      return;
+    }
+    const call = status === 'passed'
+      ? this.api.passReadinessCheck(id, { expectedVersion: meta.version, notes: note || null })
+      : this.api.failReadinessCheck(id, { expectedVersion: meta.version, notes: note || null });
+    call.subscribe({
+      next: () => { this.showToast(`${chk.name} marked ${status}.`, status === 'failed' ? 'danger' : 'ok'); this.select(chk.campaign); },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The verdict was not saved.'), 'danger'),
+    });
   }
 
   saveCheck(check: ReadinessCheck): void {
-    const exists = this.checks().some((c) => c.id === check.id);
-    this.checks.update((list) => (exists ? list.map((c) => (c.id === check.id ? check : c)) : [...list, check]));
-    this.showToast(exists ? `${check.name} was saved.` : `${check.name} was added to the checklist.`);
+    const existing = this.checkMeta.get(check.id);
+    const campaignId = this.ids.get(check.campaign)?.id;
+    if (!campaignId) return;
+    const body = {
+      checkName: check.name, category: check.category.toLowerCase() as ReadinessCheckCategory, successCriteria: check.criteria,
+      description: check.description || null, requiredForLaunch: check.required, ownerUserId: this.personId(check.owner),
+      dueDate: check.due || null, notes: check.notes || null,
+    };
+    const call = existing
+      ? this.api.updateReadinessCheck(check.id, { ...body, expectedVersion: existing.version })
+      : this.api.addReadinessCheck(campaignId, body);
+    call.subscribe({
+      next: () => { this.showToast(existing ? `${check.name} was saved.` : `${check.name} was added to the checklist.`); this.select(check.campaign); },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The check was not saved.'), 'danger'),
+    });
   }
 
   removeCheck(id: string): void {
     const chk = this.checks().find((c) => c.id === id);
-    this.checks.update((list) => list.filter((c) => c.id !== id));
-    if (chk) this.showToast(`${chk.name} was removed.`, 'warn');
+    const meta = this.checkMeta.get(id);
+    if (!chk || !meta) return;
+    this.api.deleteReadinessCheck(id, { expectedVersion: meta.version }).subscribe({
+      next: () => { this.showToast(`${chk.name} was removed.`, 'warn'); this.select(chk.campaign); },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The check was not removed.'), 'danger'),
+    });
   }
 
+  /** The server assigns the id; this only has to be unique while the form is open. */
   newCheckId(code: string): string {
-    return `${code}-chk-${Date.now().toString(36)}`;
+    return `${code}-chk-new-${Date.now().toString(36)}`;
   }
 
   approveLaunch(code: string): void {
     const c = this.findCampaign(code);
-    if (!c) return;
-    const goesLiveNow = c.start <= new Date().toISOString().slice(0, 10);
-    this.patchCampaign(code, { lifecycle: goesLiveNow ? 'active' : 'scheduled', readinessRequest: undefined });
-    this.log(code, goesLiveNow ? 'Campaign activated' : 'Launch scheduled', goesLiveNow ? 'Launch' : `Goes live on ${c.start}`, 'approval');
-    this.showToast(goesLiveNow ? `${c.name} is now active.` : `${c.name} is scheduled to launch.`);
+    const meta = this.ids.get(code);
+    if (!c || !meta) return;
+    this.api.approveCampaign(meta.id, { expectedVersion: meta.version }).subscribe({
+      next: () => this.api.getCampaign(meta.id).subscribe({
+        next: (d) => {
+          this.mergeDetail(d);
+          const goesLiveNow = c.start <= new Date().toISOString().slice(0, 10);
+          if (d.status === 'approved' && goesLiveNow) {
+            this.api.activateCampaign(d.id, { expectedVersion: d.version }).subscribe({
+              next: () => { this.showToast(`${c.name} is now active.`); this.load(); },
+              error: (e) => { this.showToast(apiErrorMessage(e, 'The campaign was approved but could not be activated.'), 'danger'); this.load(); },
+            });
+          } else {
+            this.showToast(d.status === 'active' ? `${c.name} is now active.` : `${c.name} is scheduled to launch.`);
+            this.load();
+          }
+        },
+        error: () => this.load(),
+      }),
+      error: (e) => this.showToast(apiErrorMessage(e, 'The launch could not be approved.'), 'danger'),
+    });
   }
 
   rejectLaunch(code: string, reason: string): void {
     const c = this.findCampaign(code);
-    if (!c) return;
-    this.patchCampaign(code, { lifecycle: 'draft', readinessRequest: undefined });
-    this.log(code, 'Launch rejected', reason, 'change');
-    this.showToast(`Launch rejected - ${c.name} is back in draft.`, 'danger');
+    const meta = this.ids.get(code);
+    if (!c || !meta) return;
+    this.api.returnCampaignToDraft(meta.id, { expectedVersion: meta.version, reason }).subscribe({
+      next: () => { this.showToast(`Launch rejected - ${c.name} is back in draft.`, 'danger'); this.load(); },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The launch could not be rejected.'), 'danger'),
+    });
   }
 
   // ------------------------------------------------------------------ pause · resume · close
+  private lifecycle(code: string, run: (id: string, version: number) => ReturnType<CampaignApiService['pauseCampaign']>, done: string, tone: 'ok' | 'warn' | 'danger' = 'ok'): void {
+    const meta = this.ids.get(code);
+    if (!meta) return;
+    run(meta.id, meta.version).subscribe({
+      next: () => { this.showToast(done, tone); this.load(); },
+      error: (e) => { this.showToast(apiErrorMessage(e, 'That change was refused.'), 'danger'); this.load(); },
+    });
+  }
+
   pause(code: string, reason: string): void {
-    this.patchCampaign(code, { lifecycle: 'paused' });
-    this.log(code, 'Campaign paused', reason, 'pause');
-    this.showToast('Campaign paused - donor forms and tracking assets stop taking donations.', 'warn');
+    this.lifecycle(code, (id, v) => this.api.pauseCampaign(id, {
+      expectedVersion: v, reasonCategory: 'Paused by a campaign manager', detailedReason: reason,
+      communicationImpact: 'Donor forms and tracking assets stop taking donations while the campaign is paused.',
+    }), 'Campaign paused - donor forms and tracking assets stop taking donations.', 'warn');
   }
 
   resume(code: string, reason: string): void {
-    this.patchCampaign(code, { lifecycle: 'active' });
-    this.log(code, 'Campaign resumed', reason, 'resume');
-    this.showToast('Campaign resumed.');
+    this.lifecycle(code, (id, v) => this.api.resumeCampaign(id, { expectedVersion: v, reasonCategory: 'Resumed', detailedReason: reason }), 'Campaign resumed.');
   }
 
   requestClose(code: string, reason: string): void {
-    this.patchCampaign(code, { lifecycle: 'closing', closeRequest: { by: CURRENT_USER, at: this.now(), reason } });
-    this.log(code, 'Campaign close requested', reason, 'change');
-    this.showToast('Close requested - waiting for approval.', 'warn');
+    this.lifecycle(code, (id, v) => this.api.requestCampaignClose(id, {
+      expectedVersion: v, reasonCategory: 'Close requested', detailedReason: reason, closureSummary: reason,
+    }), 'Close requested - waiting for approval.', 'warn');
   }
 
   approveClose(code: string): void {
-    this.patchCampaign(code, { lifecycle: 'closed', closeRequest: undefined });
-    this.log(code, 'Campaign closed', 'Close approved', 'approval');
-    this.showToast('Campaign closed.');
+    this.lifecycle(code, (id, v) => this.api.approveCampaignClose(id, { expectedVersion: v }), 'Campaign closed.');
   }
 
   rejectClose(code: string, reason: string): void {
-    this.patchCampaign(code, { lifecycle: 'active', closeRequest: undefined });
-    this.log(code, 'Close rejected', reason, 'change');
-    this.showToast('Close rejected - the campaign stays active.', 'danger');
+    this.lifecycle(code, (id, v) => this.api.rejectCampaignClose(id, {
+      expectedVersion: v, reasonCategory: 'Close request rejected', detailedReason: reason,
+    }), 'Close rejected - the campaign stays active.', 'danger');
   }
 
   // ------------------------------------------------------------------ tracking assets
+  private pick(list: { id: string; name: string }[] | undefined, name: string): string {
+    const items = list ?? [];
+    return (items.find((i) => i.name.toLowerCase() === name.toLowerCase()) ?? items.find((i) => name.toLowerCase().includes(i.name.toLowerCase())) ?? items[0])?.id ?? '';
+  }
+
   /** Adds a new asset, or replaces the draft with the same reference. */
   saveAsset(asset: TrackingAsset): void {
-    const exists = this.assets().some((a) => a.ref === asset.ref);
-    this.assets.update((list) => (exists ? list.map((a) => (a.ref === asset.ref ? asset : a)) : [asset, ...list]));
-    this.showToast(asset.status === 'draft' ? `${asset.ref} saved as draft.` : `${asset.ref} submitted for approval.`);
+    const ref = this.reference();
+    const campaignId = this.ids.get(asset.campaign)?.id;
+    if (!ref || !campaignId) { this.showToast('Campaign reference data is not loaded yet.', 'danger'); return; }
+    const existing = this.assetMeta.get(asset.ref);
+    const status: TrackingAssetStatus = asset.status === 'draft' ? 'draft' : 'submitted';
+    const channelId = this.pick(ref.channels, asset.medium);
+    const common = {
+      assetType: (asset.type === 'qr' ? 'qrCode' : 'landingPage') as 'qrCode' | 'landingPage',
+      channelId, destination: asset.destination, sourceId: this.pick(ref.sources, asset.medium), mediumId: this.pick(ref.mediums, asset.medium),
+      activeFrom: new Date(asset.from + 'T00:00:00').toISOString(), activeTo: new Date(asset.to + 'T23:59:59').toISOString(),
+      places: asset.place ? [{ placeName: asset.place, destination: asset.destination }] : null,
+    };
+    const call = existing
+      ? this.api.updateTrackingAsset(existing.id, { ...common, expectedVersion: existing.version })
+      : this.api.createTrackingAsset({ ...common, campaignId, status });
+    call.subscribe({
+      next: (saved) => {
+        const finish = (): void => { this.showToast(asset.status === 'draft' ? `${saved.code} saved as draft.` : `${saved.code} submitted for approval.`); this.load(); };
+        if (existing && status === 'submitted') {
+          this.api.submitTrackingAsset(saved.id, { expectedVersion: saved.version }).subscribe({ next: finish, error: (e) => this.showToast(apiErrorMessage(e, 'The asset was saved but not submitted.'), 'danger') });
+        } else {
+          finish();
+        }
+      },
+      error: (e) => this.showToast(apiErrorMessage(e, 'The tracking asset was not saved.'), 'danger'),
+    });
   }
 
   setAssetStatus(ref: string, status: AssetStatus): void {
-    this.assets.update((list) => list.map((a) => (a.ref === ref ? { ...a, status, approval: status === 'active' || status === 'disabled' ? 'Approved' : a.approval } : a)));
-    const label: Partial<Record<AssetStatus, string>> = { active: 'approved and live', disabled: 'disabled', 'disable-requested': 'submitted for disable', submitted: 'submitted' };
-    this.showToast(`${ref} ${label[status] ?? status}.`, status === 'disabled' ? 'warn' : 'ok');
+    const meta = this.assetMeta.get(ref);
+    if (!meta) return;
+    const body = { expectedVersion: meta.version };
+    const done = (text: string, tone: 'ok' | 'warn' = 'ok'): void => { this.showToast(text, tone); this.load(); };
+    const fail = (e: unknown): void => this.showToast(apiErrorMessage(e, 'That change was refused.'), 'danger');
+    if (status === 'active') {
+      this.api.approveTrackingAsset(meta.id, body).subscribe({
+        next: () => this.api.searchTrackingAssets({ search: ref, page: 1, pageSize: 5 }).subscribe({
+          next: (page) => {
+            const fresh = page.items.find((a) => a.code === ref);
+            if (!fresh || fresh.status !== 'approved') { done(`${ref} approved.`); return; }
+            this.api.activateTrackingAsset(meta.id, { expectedVersion: fresh.version }).subscribe({ next: () => done(`${ref} approved and live.`), error: fail });
+          },
+          error: () => done(`${ref} approved.`),
+        }),
+        error: fail,
+      });
+    } else if (status === 'disabled') {
+      this.api.deactivateTrackingAsset(meta.id, body).subscribe({ next: () => done(`${ref} disabled.`, 'warn'), error: fail });
+    } else if (status === 'disable-requested') {
+      this.api.requestDisableTrackingAsset(meta.id, body).subscribe({ next: () => done(`${ref} submitted for disable.`), error: fail });
+    } else if (status === 'submitted') {
+      this.api.submitTrackingAsset(meta.id, body).subscribe({ next: () => done(`${ref} submitted.`), error: fail });
+    }
   }
 
-  /** Next reference for a campaign + type: HAI-ELDERCARE-2026-QR-015 */
+  /** Preview of the reference the server will assign: HAI-ELDERCARE-2026-QR-015 */
   nextAssetRef(code: string, type: 'qr' | 'landing'): string {
     const tag = type === 'qr' ? 'QR' : 'LP';
     const used = this.assets()
@@ -209,12 +458,8 @@ export class CampaignWorkspaceStore {
     this.toastTimer = window.setTimeout(() => this.toast.set(null), 3800);
   }
 
-  private patchCampaign(code: string, patch: Partial<CampaignInfo>): void {
-    this.campaigns.update((list) => list.map((c) => (c.code === code ? { ...c, ...patch, updatedAt: this.now() } : c)));
-  }
-
-  private log(code: string, title: string, detail: string, kind: ActivityKind): void {
-    this.activity.update((list) => [{ campaign: code, at: this.now(), title, detail, by: CURRENT_USER, kind }, ...list]);
+  private patchCampaign(code: string, patch: Partial<CampaignInfo>, stamp = true): void {
+    this.campaigns.update((list) => list.map((c) => (c.code === code ? { ...c, ...patch, ...(stamp ? { updatedAt: this.now() } : {}) } : c)));
   }
 
   /** Local (Asia/Calcutta) time as yyyy-mm-ddThh:mm. */
@@ -224,3 +469,4 @@ export class CampaignWorkspaceStore {
 }
 
 export type { Lifecycle };
+void [ACTIVITY, ASSETS, CAMPAIGNS, CHECKS];

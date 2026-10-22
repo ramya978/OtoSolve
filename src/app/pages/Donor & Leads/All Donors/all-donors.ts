@@ -1,5 +1,10 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { DonorListItem, DonorListSummary } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { fetchAllPages } from '../../../Shared/services/paging';
+import { catchError, of, switchMap } from 'rxjs';
 
 
 export type DonorStatus = 'Active' | 'Prospect' | 'Restricted' | 'Archived' | 'Merged';
@@ -32,24 +37,50 @@ export const rupees = (n: number): string => '₹' + new Intl.NumberFormat('en-I
 
 export const rupeesLakh = (n: number): string => '₹' + (n / 100000).toFixed(2) + ' L';
 
-const DONORS: Donor[] = [
-  { code: 'DON-2026-000053', name: 'Abhijit Tarun', status: 'Active', phone: '+919831047265', email: 'abhijit.tarun@mail.test', campaign: 'Mobile Healthcare Units', owner: 'Imran Iqbal', city: 'Chennai', language: 'Tamil', source: 'Campaign import', giftCount: 2, campaigns: ['Mobile Healthcare Units', 'Community Care'], lastGift: 12000, lastGiftAgo: '5 days ago', lifetime: 12000, lifetimePct: 3, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000025', name: 'Santosh Vinay', status: 'Active', phone: '+919839417260', email: 'santosh.vinay@mail.test', campaign: 'Mobile Healthcare Units', owner: 'Gaurav Deepak', city: 'Bengaluru', language: 'Kannada', source: 'Web enquiry', giftCount: 2, campaigns: ['Community Care', 'Mobile Healthcare Units'], lastGift: 21000, lastGiftAgo: '5 days ago', lifetime: 21000, lifetimePct: 6, followUp: 'none', identity: 'unchecked', consent: 'unknown' },
-  { code: 'DON-2026-000043', name: 'Rahul Devraj', status: 'Active', phone: '+919871240536', email: 'rahul.devraj@mail.test', campaign: 'Restore Sight', owner: 'Shalini Balaji', city: 'Madurai', language: 'Tamil', source: 'Field referral', giftCount: 1, campaigns: ['Safe Water'], lastGift: 9000, lastGiftAgo: '5 days ago', lifetime: 9000, lifetimePct: 2, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000052', name: 'Ananya Sourav', status: 'Active', phone: '+919830652174', email: 'ananya.sourav@mail.test', campaign: 'Care for the Elderly', owner: 'Imran Iqbal', city: 'Kolkata', language: 'Bengali', source: 'Campaign import', giftCount: 3, campaigns: ['Nutrition for All', 'Bright Futures', 'Community Care'], lastGift: 5000, lastGiftAgo: '5 days ago', lifetime: 5000, lifetimePct: 1, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000004', name: 'Geetha Raman', status: 'Active', phone: '+919840731625', email: 'geetha.raman@mail.test', campaign: 'Care for the Elderly', owner: 'Imran Iqbal', city: 'Coimbatore', language: 'Tamil', source: 'Web enquiry', giftCount: 1, campaigns: ['Bright Futures', 'Learning Together'], lastGift: 5000, lastGiftAgo: '5 days ago', lifetime: 27500, lifetimePct: 7, followUp: 'overdue', identity: 'verified', consent: 'allowed' },
+const AGO_UNITS: [number, string][] = [[365, 'year'], [30, 'month'], [7, 'week'], [1, 'day']];
 
-  { code: 'DON-2026-000042', name: 'Payal Hitesh', status: 'Active', phone: '+919811624053', email: 'payal.hitesh@mail.test', campaign: 'Care for the Elderly', owner: 'Shalini Balaji', city: 'Madurai', language: 'English', source: 'Campaign import', giftCount: 3, campaigns: ['Nutrition for All', 'Bright Futures', 'Community Care'], lastGift: 5000, lastGiftAgo: '5 days ago', lifetime: 5000, lifetimePct: 1, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000010', name: 'Ramesh Chandran', status: 'Active', phone: '+919847530216', email: 'ramesh.chandran@mail.test', campaign: 'Mobile Healthcare Units', owner: 'Nisha Karthik', city: 'Tenkasi', language: 'Telugu', source: 'Field referral', giftCount: 2, campaigns: ['Skills for Tomorrow', 'Safe Water'], lastGift: 6000, lastGiftAgo: '6 days ago', lifetime: 6000, lifetimePct: 2, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000013', name: 'Kaveri Agro Industries Limited', status: 'Active', phone: '+918025584130', email: 'csr@kaveriagro.test', campaign: 'Restore Sight', owner: 'Arvind Murali', city: 'Thoothukudi', language: 'Tamil', source: 'Campaign import', giftCount: 3, campaigns: ['Learning Together', 'Community Care'], lastGift: 150000, lastGiftAgo: '7 days ago', lifetime: 350000, lifetimePct: 100, followUp: 'overdue', identity: 'verified', consent: 'allowed' },
-  { code: 'DON-2026-000031', name: 'Meera Krishnan', status: 'Active', phone: '+919820114567', email: 'meera.krishnan@mail.test', campaign: 'Care for the Elderly', owner: 'Imran Iqbal', city: 'Thoothukudi', language: 'Tamil', source: 'Campaign import', giftCount: 3, campaigns: ['Learning Together', 'Community Care'], lastGift: 15000, lastGiftAgo: '12 days ago', lifetime: 45000, lifetimePct: 12, followUp: 'none', identity: 'verified', consent: 'allowed' },
-  { code: 'DON-2026-000002', name: 'Sunil Patwardhan', status: 'Prospect', phone: '+919890556677', email: 'sunil.patwardhan@mail.test', campaign: 'Mobile Healthcare Units', owner: 'Nisha Karthik', city: 'Tenkasi', language: 'Telugu', source: 'Field referral', giftCount: 2, campaigns: ['Skills for Tomorrow', 'Safe Water'], lastGift: 0, lastGiftAgo: '—', lifetime: 0, lifetimePct: 0, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
+/** "3 weeks ago" from an ISO instant. */
+function ago(iso: string | null): string {
+  if (!iso) return '';
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return 'today';
+  for (const [size, label] of AGO_UNITS) {
+    if (days >= size) {
+      const n = Math.floor(days / size);
+      return n + ' ' + label + (n > 1 ? 's' : '') + ' ago';
+    }
+  }
+  return 'today';
+}
 
-  { code: 'DON-2026-000009', name: 'Nandini Iyer', status: 'Prospect', phone: '+919840112233', email: 'nandini.iyer@mail.test', campaign: 'Restore Sight', owner: 'Shalini Balaji', city: 'Tirunelveli', language: 'Tamil', source: 'Web enquiry', giftCount: 2, campaigns: ['Community Care', 'Learning Together'], lastGift: 0, lastGiftAgo: '—', lifetime: 0, lifetimePct: 0, followUp: 'overdue', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000021', name: 'Bharat Logistics Pvt Ltd', status: 'Restricted', phone: '+918044556677', email: 'giving@bharatlogistics.test', campaign: 'Care for the Elderly', owner: 'Arvind Murali', city: 'Thoothukudi', language: 'Tamil', source: 'Field referral', giftCount: 1, campaigns: ['Safe Water'], lastGift: 25000, lastGiftAgo: '21 days ago', lifetime: 250000, lifetimePct: 71, followUp: 'none', identity: 'verified', consent: 'allowed' },
-  { code: 'DON-2026-000007', name: 'Joseph Mathew', status: 'Archived', phone: '+919812334455', email: 'joseph.mathew@mail.test', campaign: 'Restore Sight', owner: 'Gaurav Deepak', city: 'Madurai', language: 'Tamil', source: 'Web enquiry', giftCount: 2, campaigns: ['Community Care', 'Safe Water'], lastGift: 3000, lastGiftAgo: '3 months ago', lifetime: 12000, lifetimePct: 3, followUp: 'none', identity: 'unchecked', consent: 'allowed' },
-  { code: 'DON-2026-000018', name: 'Fatima Sheikh', status: 'Merged', phone: '+919876554433', email: 'fatima.sheikh@mail.test', campaign: 'Mobile Healthcare Units', owner: 'Imran Iqbal', city: 'Tenkasi', language: 'Telugu', source: 'Field referral', giftCount: 2, campaigns: ['Skills for Tomorrow', 'Safe Water'], lastGift: 8000, lastGiftAgo: '2 months ago', lifetime: 8000, lifetimePct: 2, followUp: 'none', identity: 'unchecked', consent: 'allowed' }
-];
+const STATUSES: DonorStatus[] = ['Active', 'Prospect', 'Restricted', 'Archived', 'Merged'];
+
+function toDonor(r: DonorListItem, maxLifetime: number): Donor {
+  const status = (STATUSES.find((x) => x.toLowerCase() === (r.status ?? '').toLowerCase()) ?? 'Active') as DonorStatus;
+  const verified = (r.verificationStatus ?? '').toLowerCase() === 'verified';
+  const consent = (r.consentStatus ?? '').toLowerCase();
+  return {
+    code: r.displayCode,
+    name: r.displayName,
+    status,
+    phone: r.mobileNumber ?? '',
+    email: r.emailAddress ?? '',
+    campaign: r.campaignName ?? '',
+    owner: r.relationshipOwnerName ?? '',
+    city: '',
+    language: '',
+    source: '',
+    giftCount: r.giftCount ?? 0,
+    campaigns: r.campaignName ? [r.campaignName] : [],
+    lastGift: r.lastDonationAmount ?? 0,
+    lastGiftAgo: ago(r.lastDonationAtUtc),
+    lifetime: r.lifetimeGiving ?? 0,
+    lifetimePct: maxLifetime > 0 ? Math.round(((r.lifetimeGiving ?? 0) / maxLifetime) * 100) : 0,
+    followUp: (r.followUpStatus ?? '').toLowerCase() === 'overdue' ? 'overdue' : 'none',
+    identity: verified ? 'verified' : 'unchecked',
+    consent: consent === 'granted' || consent === 'partial' ? 'allowed' : consent === 'withdrawn' ? 'withdrawn' : 'unknown'
+  };
+}
 
 
 export interface Tab {
@@ -58,23 +89,10 @@ export interface Tab {
   count: number;
 }
 
-export const TABS: Tab[] = [
-  { key: 'all', label: 'All donors', count: DONORS.length },
-  { key: 'Active', label: 'Active', count: DONORS.filter((d) => d.status === 'Active').length },
-  { key: 'Prospect', label: 'Prospect', count: DONORS.filter((d) => d.status === 'Prospect').length },
-  { key: 'Restricted', label: 'Restricted', count: DONORS.filter((d) => d.status === 'Restricted').length },
-  { key: 'Archived', label: 'Archived', count: DONORS.filter((d) => d.status === 'Archived').length },
-  { key: 'Merged', label: 'Merged', count: DONORS.filter((d) => d.status === 'Merged').length }
-];
+export const TABS: Tab[] = [];
 
 /** Needs-attention items — counts are record-wide, as designed. */
-export const ATTENTION = [
-  { count: 17, label: 'Follow-ups overdue', tone: 'danger' },
-  { count: 2, label: 'Follow-ups due today', tone: 'warning' },
-  { count: 30, label: 'Identity not verified', tone: 'info' },
-  { count: 7, label: 'Consent to review', tone: 'purple' },
-  { count: 1, label: 'Without an owner', tone: 'muted' }
-] as const;
+export const ATTENTION: { count: number; label: string; tone: string }[] = [];
 
 const ICON_PATHS: Record<string, string> = {
   refresh: 'M21 12a9 9 0 1 1-2.64-6.36 M21 3v6h-6',
@@ -125,34 +143,111 @@ export type CardMenuKey = (typeof CARD_MENU)[number]['key'];
   templateUrl: './all-donors.html',
   styleUrl: './all-donors.css'
 })
-export class AllDonors {
+export class AllDonors implements OnInit {
   private readonly router = inject(Router);
+  private readonly api = inject(DonorApiService);
+  private readonly route = inject(ActivatedRoute);
+  /** My Donors is this same screen, told by the route to list only the donors assigned to the signed-in user. */
+  private readonly mine = this.route.snapshot.data['mine'] === true;
+  protected get heading(): string { return this.mine ? 'My Donors' : 'All Donors'; }
 
-  protected readonly all = DONORS;
-  protected readonly tabs = TABS;
-  protected readonly attention = ATTENTION;
+  private readonly rows = signal<Donor[]>([]);
+  private readonly summary = signal<DonorListSummary | null>(null);
+  protected readonly loading = signal(false);
+  protected readonly loadError = signal<string | null>(null);
+
+  protected get all(): Donor[] { return this.rows(); }
   protected readonly rupees = rupees;
   protected readonly rupeesLakh = rupeesLakh;
   protected readonly cardMenu = CARD_MENU;
 
-  /** Header KPI values (record-wide, as designed). */
-  protected readonly kpis = {
-    lifetime: rupeesLakh(2279400),
-    perDonor: rupees(56985),
-    donors: 53,
-    active: 41,
-    prospect: 6,
-    other: 6,
-    recent: 40,
-    recentAmount: rupees(2279400),
-    yetToGive: 13,
-    /** right-hand figures on the KPI widgets (share of donors on record) */
-    activePct: Math.round((41 / 53) * 100),
-    prospectPct: Math.round((6 / 53) * 100),
-    otherPct: Math.round((6 / 53) * 100),
-    recentPct: Math.round((40 / 53) * 100),
-    yetPct: Math.round((13 / 53) * 100)
-  };
+  private readonly tabsC = computed<Tab[]>(() => {
+    const counts = this.summary()?.statusCounts ?? {};
+    const count = (k: string) =>
+      Object.entries(counts).find(([key]) => key.toLowerCase() === k.toLowerCase())?.[1]
+      ?? this.rows().filter((d) => d.status === k).length;
+    return [
+      { key: 'all', label: 'All donors', count: this.summary()?.donorsOnRecord ?? this.rows().length },
+      ...STATUSES.map((k) => ({ key: k, label: k, count: count(k) }))
+    ];
+  });
+  protected get tabs(): Tab[] { return this.tabsC(); }
+
+  private readonly attentionC = computed(() => {
+    const s = this.summary();
+    if (!s) return [];
+    return [
+      { count: s.followUpsOverdue, label: 'Follow-ups overdue', tone: 'danger' },
+      { count: s.followUpsDueToday, label: 'Follow-ups due today', tone: 'warning' },
+      { count: s.identityNotVerified, label: 'Identity not verified', tone: 'info' },
+      { count: s.consentToReview, label: 'Consent to review', tone: 'purple' },
+      { count: s.withoutOwner, label: 'Without an owner', tone: 'muted' }
+    ];
+  });
+  protected get attention() { return this.attentionC(); }
+
+  /** Header KPI values (record-wide, from the server). */
+  private readonly kpisC = computed(() => {
+    const s = this.summary();
+    const total = s?.donorsOnRecord ?? 0;
+    const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+    const c = (k: string) =>
+      Object.entries(s?.statusCounts ?? {}).find(([key]) => key.toLowerCase() === k)?.[1] ?? 0;
+    const active = c('active');
+    const prospect = c('prospect');
+    const other = Math.max(0, total - active - prospect);
+    return {
+      lifetime: rupeesLakh(s?.lifetimeReceived ?? 0),
+      perDonor: rupees(s?.averagePerGiver ?? 0),
+      donors: total,
+      active,
+      prospect,
+      other,
+      recent: s?.recentGivers ?? 0,
+      recentAmount: rupees(s?.recentGiving ?? 0),
+      yetToGive: s?.yetToGive ?? 0,
+      activePct: pct(active),
+      prospectPct: pct(prospect),
+      otherPct: pct(other),
+      recentPct: pct(s?.recentGivers ?? 0),
+      yetPct: pct(s?.yetToGive ?? 0)
+    };
+  });
+  protected get kpis() { return this.kpisC(); }
+
+  ngOnInit(): void {
+    this.load();
+  }
+
+  private load(done?: () => void): void {
+    this.loading.set(true);
+    this.loadError.set(null);
+    const onlyMine = this.mine ? true : null;
+    // The summary comes first: it carries the order the server opens the list in, and the server
+    // rejects a sort it does not know, so the screen never invents one.
+    this.api.getDonorSummary(this.mine).pipe(
+      catchError(() => of(null)),
+      switchMap((summary) => {
+        this.summary.set(summary);
+        const sort = summary?.options?.defaultSort || undefined;
+        return fetchAllPages((page, size) => this.api.searchDonors({ page, pageSize: size, onlyMine, sort }));
+      }),
+    ).subscribe({
+      next: (items) => {
+        const max = Math.max(0, ...items.map((i) => i.lifetimeGiving ?? 0));
+        this.ids.clear();
+        items.forEach((i) => this.ids.set(i.displayCode, i.id));
+        this.rows.set(items.map((i) => toDonor(i, max)));
+        this.loading.set(false);
+        done?.();
+      },
+      error: (e) => {
+        this.loading.set(false);
+        this.loadError.set(apiErrorMessage(e));
+        this.flash(apiErrorMessage(e));
+      }
+    });
+  }
 
   protected readonly query = signal('');
   protected readonly tab = signal<DonorStatus | 'all'>('all');
@@ -166,6 +261,9 @@ export class AllDonors {
   /** Donor code whose "more" menu is open on a card. */
   protected readonly menuFor = signal<string | null>(null);
   private toastTimer = 0;
+  /** donor code -> API id */
+  private readonly ids = new Map<string, string>();
+  private idOf(code: string): string { return this.ids.get(code) ?? ''; }
 
   protected readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
@@ -212,19 +310,35 @@ export class AllDonors {
   }
 
   act(d: Donor, kind: 'note' | 'schedule' | 'more'): void {
-    this.flash(
-      kind === 'note' ? 'Log a note opened for ' + d.name + '.'
-        : kind === 'schedule' ? 'Follow-up scheduled for ' + d.name + '.'
-          : 'More actions for ' + d.name + '.'
-    );
+    if (kind === 'note') {
+      this.router.navigate(['/app/fundraising/relationships/communication-timeline/log'], { queryParams: { ref: d.code } });
+    } else if (kind === 'schedule') {
+      this.router.navigate(['/app/fundraising/relationships/follow-up-queue/new'], { queryParams: { ref: d.code } });
+    } else {
+      this.open(d);
+    }
   }
 
   refresh(): void {
-    this.flash('Donor list refreshed.');
+    this.load(() => this.flash('Donor list refreshed.'));
   }
 
   exportList(): void {
-    this.flash(this.filtered().length + ' donor records queued for export.');
+    const ids = this.filtered().map((d) => this.idOf(d.code)).filter(Boolean);
+    if (!ids.length) { this.flash('No donors to export.'); return; }
+    this.api.exportDonors({ donorIds: ids.join(',') }).subscribe({
+      next: ({ blob, fileName }) => { this.download(blob, fileName); this.flash(ids.length + ' donor records exported.'); },
+      error: (e) => this.flash(apiErrorMessage(e))
+    });
+  }
+
+  private download(blob: Blob, fileName: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   flash(message: string): void {
@@ -253,11 +367,16 @@ export class AllDonors {
     this.menuFor.set(null);
     switch (key) {
       case 'open': this.open(d); break;
-      case 'donations': this.flash('Donations opened for ' + d.name + '.'); break;
-      case 'timeline': this.flash('Communication timeline opened for ' + d.name + '.'); break;
+      case 'donations': this.router.navigate(['/app/fundraising/relationships/donor-360'], { queryParams: { ref: d.code } }); break;
+      case 'timeline': this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: d.code } }); break;
       case 'schedule': this.act(d, 'schedule'); break;
-      case 'reassign': this.flash('Reassign owner for ' + d.name + '.'); break;
-      case 'export': this.flash('History export queued for ' + d.name + '.'); break;
+      case 'reassign': this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: { ref: d.code } }); break;
+      case 'export':
+        this.api.exportDonorHistory(this.idOf(d.code)).subscribe({
+          next: ({ blob, fileName }) => { this.download(blob, fileName); this.flash('History exported for ' + d.name + '.'); },
+          error: (e) => this.flash(apiErrorMessage(e))
+        });
+        break;
     }
   }
 

@@ -1,8 +1,13 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { ThemeSettingsService, profileImageSrc } from './theme-settings';
-import { IamUser, ORG_NAME, ROLES as IAM_ROLES, USER_STATUS_LABEL, fmtDate, initialsOf } from '../../../Shared/IAM/iam-data';
+import { IamUser, USER_STATUS_LABEL, fmtDate, initialsOf } from '../../../Shared/IAM/iam-data';
+import { toIamUser, mergeDetail } from '../../../Shared/IAM/iam-directory.store';
+import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
+import { SecurityApiService } from '../../../Service/security-api.service';
+import { AuthService } from '../../../Shared/Auth/auth.service';
+import { UserDetailResponse, UserSecurityResponse } from '../../../Shared/models/iam-contract.model';
 
 export type ProfileTab = 'overview' | 'access' | 'security';
 
@@ -59,85 +64,10 @@ export interface ProfileHeader {
   scopeNote: string;
 }
 
-const PROFILE: ProfileHeader = {
-  name: 'Vikram Anand',
-  initials: 'VA',
-  designation: 'Platform Operations Lead',
-  reference: 'PLT-001',
-  organisation: 'Unity for Change',
-  email: 'vikram.anand@example.test',
-  primaryRole: 'Super admin',
-  primaryRoleNote: 'Organisation-wide scope · sample',
-  scopeNote: 'whole organisation'
-};
-
-const STATS: StatCell[] = [
-  { icon: 'user', label: 'Profile completeness', value: '6 of 12 fields' },
-  { icon: 'shield', label: 'Assigned roles', value: '1 role', note: '· illustrative' },
-  { icon: 'lock', label: 'Two-step verification', value: 'Not enrolled', note: '· sample', tone: 'amber' },
-  { icon: 'clock', label: 'Last sign-in · sample', value: '15 Oct 2026, 09:16', note: 'IST' }
-];
-
 const TABS: { id: ProfileTab; label: string; icon: string; count?: number }[] = [
   { id: 'overview', label: 'Overview', icon: 'user' },
   { id: 'access', label: 'Access', icon: 'shield', count: 1 },
   { id: 'security', label: 'Security', icon: 'lock' }
-];
-
-/** Identity & contact - left and right columns, read row by row. */
-const IDENTITY_LEFT: FieldRow[] = [
-  { label: 'Display name', value: 'Vikram Anand' },
-  { label: 'Preferred name', value: null },
-  { label: 'Employee ID', value: null },
-  { label: 'Username', value: 'vikram.anand', mono: true }
-];
-
-const IDENTITY_RIGHT: FieldRow[] = [
-  { label: 'Contact email', value: 'vikram.anand@example.test' },
-  { label: 'Mobile number', value: null },
-  { label: 'Language', value: 'English (India)' },
-  { label: 'Time zone', value: 'Asia/Kolkata' }
-];
-
-const ORG_LEFT: FieldRow[] = [
-  { label: 'Organisation', value: 'Unity for Change' },
-  { label: 'Business unit', value: null },
-  { label: 'Department', value: null }
-];
-
-const ORG_RIGHT: FieldRow[] = [
-  { label: 'Designation', value: 'Platform Operations Lead' },
-  { label: 'Reports to', value: null },
-  { label: 'Joined on', value: '14 Oct 2026' }
-];
-
-const ROLES: AssignedRole[] = [
-  {
-    name: 'Super admin',
-    note: 'Primary assignment',
-    scope: 'Unity for Change',
-    scopeNote: 'Whole organisation',
-    permissions: 'Not loaded',
-    term: 'Permanent · sample'
-  }
-];
-
-const ASSIGNMENT_STEPS: AssignmentStep[] = [
-  { title: 'Granted by an administrator', detail: 'Primary role assigned by the platform administrator · sample record.' },
-  { title: 'Organisation-wide scope', detail: 'This example assignment covers Unity for Change. A separate assignment is needed for other organisations.' },
-  { title: 'No end date', detail: 'Permanent assignment · sample. Ask an authorised administrator to review or change access.' }
-];
-
-const SIGN_IN_ROWS: SecurityRow[] = [
-  { icon: 'mail', title: 'Sign-in email', detail: 'vikram.anand@example.test', chip: 'Managed identity' },
-  { icon: 'shield', title: 'Two-step verification', detail: 'Not enrolled · sample. A second verification method adds protection at sign-in.', action: 'View setup steps' },
-  { icon: 'lock', title: 'Password', detail: 'Password age and policy have not been loaded.', action: 'View password flow' },
-  { icon: 'shield', title: 'Lockout state', detail: 'The account lockout status is currently unavailable.', chip: 'Not loaded' }
-];
-
-const SESSION_ROWS: SecurityRow[] = [
-  { icon: 'devices', title: 'Desktop browser', detail: 'Windows · Chrome · sample device', extra: 'Started 15 Oct 2026, 09:16 IST', chip: 'Current · sample', chipTone: 'primary' },
-  { icon: 'devices', title: 'Second browser session', detail: 'Same sample desktop · earlier sign-in', extra: 'Started 14 Oct 2026, 16:40 IST', action: 'View revoke flow' }
 ];
 
 const PROTECT_TIPS = ['Use a second verification method', 'Store recovery codes securely', 'Review unfamiliar sessions'];
@@ -162,115 +92,182 @@ const ICON_PATHS: Record<string, string> = {
   devices: 'M3 4h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M6 18h7 M9.5 14v4 M18 9h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z'
 };
 
+const BLANK: IamUser = {
+  id: '', ref: '', name: '', email: '', username: '', preferredName: '', mobile: '', role: '', unit: '', department: '',
+  designation: '', manager: '', status: 'active', invitation: 'Accepted', mfaEnrolled: false, dataScope: '', accessFrom: '', lastSignIn: ''
+};
+
+const dateOrNull = (iso?: string | null): string | null => (iso ? fmtDate(iso) : null);
+
 @Component({
   selector: 'app-profile',
   imports: [NgTemplateOutlet],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
-export class Profile {
+export class Profile implements OnInit {
   private readonly theme = inject(ThemeSettingsService);
   private readonly router = inject(Router);
+  private readonly users = inject(UserDirectoryApiService);
+  private readonly security = inject(SecurityApiService);
+  private readonly auth = inject(AuthService);
 
-  /** Person opened from the Users drawer's "Full profile" button (passed in the router state).
-   *  Null keeps the signed-in sample account and its static sample data. */
-  protected readonly viewed: IamUser | null =
+  /** Person opened from the Users drawer's "Full profile" button; null means the signed-in account. */
+  private readonly passed: IamUser | null =
     (this.router.getCurrentNavigation()?.extras.state as { user?: IamUser } | null | undefined)?.user ?? null;
+  private readonly isSelf = !this.passed;
 
-  protected readonly profile: ProfileHeader = this.viewed
-    ? {
-        name: this.viewed.name,
-        initials: initialsOf(this.viewed.name),
-        designation: this.viewed.designation || '—',
-        reference: this.viewed.ref,
-        organisation: this.viewed.unit || ORG_NAME,
-        email: this.viewed.email,
-        primaryRole: this.roleName(this.viewed.role),
-        primaryRoleNote: this.viewed.dataScope,
-        scopeNote: this.viewed.dataScope.toLowerCase()
-      }
-    : PROFILE;
+  private readonly detail = signal<UserDetailResponse | null>(null);
+  private readonly sec = signal<UserSecurityResponse | null>(null);
+  readonly loadError = signal('');
 
-  /** Hero status chip — the real status for a viewed user, the sample chip otherwise. */
-  protected readonly heroStatus = this.viewed ? USER_STATUS_LABEL[this.viewed.status] : 'Active · sample';
-  protected readonly heroTone = !this.viewed || this.viewed.status === 'active' ? 'green' : '';
+  ngOnInit(): void {
+    const detail$ = this.passed ? this.users.getUser(this.passed.id) : this.users.getMyProfile();
+    detail$.subscribe({
+      next: (d) => {
+        this.detail.set(d);
+        if (!this.isSelf && d.id) this.security.getUserSecurity(d.id).subscribe({ next: (x) => this.sec.set(x), error: () => undefined });
+      },
+      error: () => this.loadError.set('The profile could not be loaded.'),
+    });
+    if (this.isSelf) this.security.getMySecurity().subscribe({ next: (x) => this.sec.set(x), error: () => undefined });
+  }
 
+  private readonly userC = computed<IamUser>(() => {
+    const d = this.detail();
+    const base = this.passed ?? BLANK;
+    if (!d) {
+      const me = this.auth.user();
+      return this.passed ? base : { ...BLANK, name: me?.name ?? '', email: me?.email ?? '' };
+    }
+    const list = toIamUser({
+      id: d.id, code: d.code, displayName: d.displayName, preferredName: d.preferredName, email: d.email, username: d.username,
+      status: d.status, departmentName: d.departmentName, organisationUnitName: d.organisationUnitName, designation: d.designation,
+      roleNames: (d.roles ?? []).map((r) => r.roleName ?? ''), mfaEnabled: d.mfaEnabled, lastLoginAtUtc: d.lastLoginAtUtc,
+    });
+    return {
+      ...mergeDetail(list, d),
+      dataScope: d.dataScopes?.[0]?.displayLabel ?? d.dataScopes?.[0]?.scopeTypeDisplay ?? 'Whole organisation',
+      invitation: d.hasPendingInvitation ? 'Pending' : 'Accepted',
+    };
+  });
+  /** Template reads `viewed` for the reference line and the "sample" suffixes. */
+  get viewed(): IamUser { return this.userC(); }
+
+  private readonly orgName = computed(() => this.auth.user()?.org ?? '');
+  private readonly roleList = computed(() => this.detail()?.roles ?? []);
+
+  private readonly profileC = computed<ProfileHeader>(() => {
+    const u = this.userC();
+    return {
+      name: u.name, initials: initialsOf(u.name || ' '), designation: u.designation || '—', reference: u.ref,
+      organisation: this.orgName(), email: u.email, primaryRole: u.role || '—', primaryRoleNote: u.dataScope,
+      scopeNote: u.dataScope.toLowerCase()
+    };
+  });
+  get profile(): ProfileHeader { return this.profileC(); }
+
+  get heroStatus(): string { return USER_STATUS_LABEL[this.userC().status]; }
+  get heroTone(): string { return this.userC().status === 'active' ? 'green' : ''; }
   protected readonly tabs = TABS;
 
-  protected readonly stats: StatCell[] = this.viewed
-    ? STATS.map((s): StatCell => (s.label === 'Last sign-in · sample'
-        ? { ...s, label: 'Last sign-in', value: this.viewed!.lastSignIn ? fmtDate(this.viewed!.lastSignIn) : 'Never signed in', note: '' }
-        : s.label === 'Two-step verification'
-          ? { ...s, value: this.viewed!.mfaEnrolled ? 'Enrolled' : 'Not enrolled', note: '', tone: this.viewed!.mfaEnrolled ? undefined : 'amber' }
-          : s.label === 'Assigned roles'
-            ? { ...s, note: '' }
-            : s))
-    : STATS;
+  private readonly statsC = computed<StatCell[]>(() => {
+    const u = this.userC();
+    const fields = this.allFieldsC();
+    const filled = fields.filter((f) => f.value !== null).length;
+    const n = this.roleList().length;
+    return [
+      { icon: 'user', label: 'Profile completeness', value: `${filled} of ${fields.length} fields` },
+      { icon: 'shield', label: 'Assigned roles', value: `${n} ${n === 1 ? 'role' : 'roles'}` },
+      { icon: 'lock', label: 'Two-step verification', value: u.mfaEnrolled ? 'Enrolled' : 'Not enrolled', tone: u.mfaEnrolled ? undefined : 'amber' },
+      { icon: 'clock', label: 'Last sign-in', value: u.lastSignIn ? fmtDate(u.lastSignIn) : 'Never signed in' }
+    ];
+  });
+  get stats(): StatCell[] { return this.statsC(); }
 
-  protected readonly identityLeft: FieldRow[] = this.viewed
-    ? [
-        { label: 'Display name', value: this.viewed.name },
-        { label: 'Preferred name', value: this.viewed.preferredName || null },
-        { label: 'Employee ID', value: null },
-        { label: 'Username', value: this.viewed.username, mono: true }
-      ]
-    : IDENTITY_LEFT;
-  protected readonly identityRight: FieldRow[] = this.viewed
-    ? [
-        { label: 'Contact email', value: this.viewed.email },
-        { label: 'Mobile number', value: this.viewed.mobile || null },
-        { label: 'Language', value: 'English (India)' },
-        { label: 'Time zone', value: 'Asia/Kolkata' }
-      ]
-    : IDENTITY_RIGHT;
-  protected readonly orgLeft: FieldRow[] = this.viewed
-    ? [
-        { label: 'Organisation', value: ORG_NAME },
-        { label: 'Business unit', value: this.viewed.unit || null },
-        { label: 'Department', value: this.viewed.department || null }
-      ]
-    : ORG_LEFT;
-  protected readonly orgRight: FieldRow[] = this.viewed
-    ? [
-        { label: 'Designation', value: this.viewed.designation || null },
-        { label: 'Reports to', value: this.viewed.manager || null },
-        { label: 'Access from', value: fmtDate(this.viewed.accessFrom) }
-      ]
-    : ORG_RIGHT;
+  private readonly identityLeftC = computed<FieldRow[]>(() => {
+    const u = this.userC(); const d = this.detail();
+    return [
+      { label: 'Display name', value: u.name || null },
+      { label: 'Preferred name', value: u.preferredName || null },
+      { label: 'Employee ID', value: d?.employeeNumber || null },
+      { label: 'Username', value: u.username || null, mono: true }
+    ];
+  });
+  private readonly identityRightC = computed<FieldRow[]>(() => {
+    const u = this.userC(); const d = this.detail();
+    return [
+      { label: 'Contact email', value: u.email || null },
+      { label: 'Mobile number', value: u.mobile || null },
+      { label: 'Language', value: d?.preferredCulture || null },
+      { label: 'Time zone', value: d?.timeZone || null }
+    ];
+  });
+  private readonly orgLeftC = computed<FieldRow[]>(() => {
+    const u = this.userC();
+    return [
+      { label: 'Organisation', value: this.orgName() || null },
+      { label: 'Business unit', value: u.unit || null },
+      { label: 'Department', value: u.department || null }
+    ];
+  });
+  private readonly orgRightC = computed<FieldRow[]>(() => {
+    const u = this.userC(); const d = this.detail();
+    return [
+      { label: 'Designation', value: u.designation || null },
+      { label: 'Reports to', value: u.manager || null },
+      { label: 'Joined on', value: dateOrNull(d?.joinedOn) }
+    ];
+  });
+  get identityLeft(): FieldRow[] { return this.identityLeftC(); }
+  get identityRight(): FieldRow[] { return this.identityRightC(); }
+  get orgLeft(): FieldRow[] { return this.orgLeftC(); }
+  get orgRight(): FieldRow[] { return this.orgRightC(); }
 
-  protected readonly assignedRoles: AssignedRole[] = this.viewed
-    ? [{
-        name: this.roleName(this.viewed.role),
-        note: 'Primary assignment',
-        scope: this.viewed.unit || ORG_NAME,
-        scopeNote: this.viewed.dataScope,
-        permissions: 'Not loaded',
-        term: this.viewed.status === 'active' ? 'Active' : USER_STATUS_LABEL[this.viewed.status]
-      }]
-    : ROLES;
+  private readonly assignedRolesC = computed<AssignedRole[]>(() => {
+    const scope = this.userC().dataScope;
+    return this.roleList().map((r) => ({
+      name: r.roleName ?? r.roleCode ?? '',
+      note: r.isPrimary ? 'Primary assignment' : 'Additional assignment',
+      scope: this.orgName(),
+      scopeNote: scope,
+      permissions: r.permissionCount !== undefined ? `${r.permissionCount} permissions` : 'Not loaded',
+      term: r.effectiveToUtc ? 'Until ' + fmtDate(r.effectiveToUtc) : 'Permanent'
+    }));
+  });
+  protected get assignedRoles(): AssignedRole[] { return this.assignedRolesC(); }
 
-  protected readonly assignmentSteps: AssignmentStep[] = this.viewed
-    ? [
-        { title: 'Granted by an administrator', detail: `Primary role ${this.roleName(this.viewed.role)} assigned by the platform administrator · ${this.viewed.ref}.` },
-        { title: 'Scope of this assignment', detail: `${this.viewed.dataScope} scope · ${this.viewed.unit || ORG_NAME}.` },
-        { title: this.viewed.invitation === 'Accepted' ? 'Invitation accepted' : `Invitation ${this.viewed.invitation.toLowerCase()}`, detail: `Access from ${fmtDate(this.viewed.accessFrom)} · no end date.` }
-      ]
-    : ASSIGNMENT_STEPS;
+  private readonly assignmentStepsC = computed<AssignmentStep[]>(() => {
+    const u = this.userC();
+    const first = this.roleList()[0];
+    return [
+      { title: 'Granted by an administrator', detail: first?.assignedByName ? `${u.role} assigned by ${first.assignedByName}.` : `${u.role || 'Role'} assigned by an administrator.` },
+      { title: 'Scope of this assignment', detail: `${u.dataScope || 'Whole organisation'} scope · ${u.unit || this.orgName()}.` },
+      { title: u.invitation === 'Accepted' ? 'Invitation accepted' : `Invitation ${u.invitation.toLowerCase()}`, detail: u.accessFrom ? `Access from ${fmtDate(u.accessFrom)}.` : 'Access window not set.' }
+    ];
+  });
+  protected get assignmentSteps(): AssignmentStep[] { return this.assignmentStepsC(); }
 
-  protected readonly signInRows: SecurityRow[] = this.viewed
-    ? SIGN_IN_ROWS.map((r): SecurityRow => (r.title === 'Sign-in email'
-        ? { ...r, detail: this.viewed!.email }
-        : r.title === 'Two-step verification'
-          ? { ...r, detail: this.viewed!.mfaEnrolled ? 'Enrolled · a second factor protects every sign-in.' : 'Not enrolled · a second verification method adds protection at sign-in.' }
-          : r))
-    : SIGN_IN_ROWS;
-  protected readonly sessionRows = SESSION_ROWS;
+  private readonly signInRowsC = computed<SecurityRow[]>(() => {
+    const u = this.userC(); const s = this.sec();
+    return [
+      { icon: 'mail', title: 'Sign-in email', detail: u.email, chip: 'Managed identity' },
+      { icon: 'shield', title: 'Two-step verification', detail: u.mfaEnrolled ? 'Enrolled · a second factor protects every sign-in.' : 'Not enrolled · a second verification method adds protection at sign-in.', action: 'View setup steps' },
+      { icon: 'lock', title: 'Password', detail: s?.passwordChangedAtUtc ? 'Last changed ' + fmtDate(s.passwordChangedAtUtc) : 'Password age has not been loaded.', action: 'View password flow' },
+      { icon: 'shield', title: 'Lockout state', detail: s ? (s.isLockedOut ? 'Locked out' + (s.lockoutReason ? ' · ' + s.lockoutReason : '') : `${s.accessFailedCount ?? 0} failed sign-ins · ${s.attemptsRemaining ?? 0} attempts left`) : 'The account lockout status is currently unavailable.', chip: s ? (s.isLockedOut ? 'Locked' : 'Clear') : 'Not loaded' }
+    ];
+  });
+  protected get signInRows(): SecurityRow[] { return this.signInRowsC(); }
+
+  private readonly sessionRowsC = computed<SecurityRow[]>(() =>
+    (this.sec()?.activeSessions ?? []).map((x) => ({
+      icon: 'devices', title: x.deviceName || [x.browser, x.operatingSystem].filter(Boolean).join(' · ') || 'Session',
+      detail: [x.operatingSystem, x.browser].filter(Boolean).join(' · '),
+      extra: x.issuedAtUtc ? 'Started ' + fmtDate(x.issuedAtUtc) : undefined,
+      ...(x.isCurrent ? { chip: 'Current', chipTone: 'primary' as const } : { action: 'View revoke flow' })
+    })));
+  protected get sessionRows(): SecurityRow[] { return this.sessionRowsC(); }
   protected readonly protectTips = PROTECT_TIPS;
-
-  /** Role code → display name (same lookup the Users screens use). */
-  private roleName(code: string): string {
-    return IAM_ROLES.find((r) => r.code === code)?.name ?? code;
-  }
 
   /** Opens the shared Appearance studio popup (the app shell hosts it, so it opens on any page). */
   protected openStudio(): void {
@@ -279,7 +276,7 @@ export class Profile {
 
   /** Selected avatar image src, or null when initials are used. */
   protected readonly avatarSrc = computed<string | null>(
-    () => (this.viewed ? null : profileImageSrc(this.theme.prefs().profileImage))
+    () => (this.isSelf ? profileImageSrc(this.theme.prefs().profileImage) : null)
   );
 
   /** Same avatar as a CSS background value. */
@@ -289,11 +286,13 @@ export class Profile {
   });
 
   /** Every profile field, used for the "Complete your profile" card. */
-  private readonly allFields: FieldRow[] = [...this.identityLeft, ...this.identityRight, ...this.orgLeft, ...this.orgRight];
+  private readonly allFieldsC = computed<FieldRow[]>(() =>
+    [...this.identityLeftC(), ...this.identityRightC(), ...this.orgLeftC(), ...this.orgRightC()]);
 
   protected readonly completeness = computed(() => {
-    const total = this.allFields.length;
-    const missing = this.allFields.filter((f) => f.value === null).map((f) => f.label);
+    const all = this.allFieldsC();
+    const total = all.length;
+    const missing = all.filter((f) => f.value === null).map((f) => f.label);
     const filled = total - missing.length;
     return {
       filled,
@@ -310,7 +309,7 @@ export class Profile {
 
   readonly visibleRoles = computed(() => {
     const q = this.roleQuery().trim().toLowerCase();
-    return this.assignedRoles.filter((r) => !q || [r.name, r.note, r.scope, r.scopeNote].some((v) => v.toLowerCase().includes(q)));
+    return this.assignedRolesC().filter((r) => !q || [r.name, r.note, r.scope, r.scopeNote].some((v) => v.toLowerCase().includes(q)));
   });
 
   setTab(tab: ProfileTab): void {

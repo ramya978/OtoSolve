@@ -1,5 +1,9 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { DonorDetail } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type DonorType = 'Individual' | 'Organisation' | 'Anonymous';
 export type PeField = 'type' | 'firstName' | 'lastName' | 'phone' | 'language' | 'mayContact' | 'owner';
@@ -37,13 +41,8 @@ export const PE_LANGUAGES = [
   { code: 'ur-IN', label: 'Urdu' }
 ];
 
-export const PE_OWNERS = [
-  { name: 'Imran Iqbal', role: 'Relationship manager' },
-  { name: 'Priya Raman', role: 'Relationship manager' },
-  { name: 'Arjun Mehta', role: 'Major gifts' },
-  { name: 'Sneha Kapoor', role: 'Donor care' },
-  { name: 'Rahul Verma', role: 'Donor care' }
-];
+/** Owners the caller may assign - filled in place from the API. */
+export const PE_OWNERS: { name: string; role: string }[] = [];
 
 const FIELD_LABELS: Record<PeField, string> = {
   type: 'Donor type',
@@ -57,15 +56,8 @@ const FIELD_LABELS: Record<PeField, string> = {
 
 export const REASON_MIN = 10;
 
-const SAMPLE: PeProfile = {
-  type: 'Individual',
-  firstName: 'Abhijit',
-  lastName: 'Tarun',
-  email: 'abhijit.tarun@mail.test',
-  phone: '+919831047265',
-  language: 'bn-IN',
-  mayContact: true,
-  owner: 'Imran Iqbal'
+const BLANK: PeProfile = {
+  type: 'Individual', firstName: '', lastName: '', email: '', phone: '', language: 'en-IN', mayContact: true, owner: ''
 };
 
 const ICONS: Record<string, string> = {
@@ -95,22 +87,28 @@ const ICONS: Record<string, string> = {
   templateUrl: './donor-profile-edit.html',
   styleUrl: './donor-profile-edit.css'
 })
-export class DonorProfileEdit {
+export class DonorProfileEdit implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly api = inject(DonorApiService);
+  private detail: DonorDetail | null = null;
+  private readonly ownerIds = new Map<string, string>();
+  protected readonly loading = signal(false);
 
   protected readonly profilePath = '/app/fundraising/relationships/donor-360';
   protected readonly types = DONOR_TYPES;
   protected readonly languages = PE_LANGUAGES;
   protected readonly reasonMin = REASON_MIN;
 
-  protected readonly code = this.route.snapshot.queryParamMap.get('ref') ?? 'DON-2026-000053';
-  protected readonly status = 'Active';
-  protected readonly updated = '14 Oct 2026';
+  protected readonly code = this.route.snapshot.queryParamMap.get('ref') ?? '';
+  private readonly statusSig = signal('');
+  private readonly updatedSig = signal('');
+  protected get status(): string { return this.statusSig(); }
+  protected get updated(): string { return this.updatedSig(); }
 
-  protected readonly original = signal<PeProfile>({ ...SAMPLE });
+  protected readonly original = signal<PeProfile>({ ...BLANK });
   /** Values being edited. */
-  protected readonly form = signal<PeProfile>({ ...SAMPLE });
+  protected readonly form = signal<PeProfile>({ ...BLANK });
 
   protected readonly reason = signal('');
   protected readonly tried = signal(false);
@@ -120,6 +118,46 @@ export class DonorProfileEdit {
   protected readonly confirmLeave = signal(false);
   protected readonly toast = signal('');
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    forkJoin([
+      this.api.searchDonors({ search: this.code, pageSize: 10 }),
+      this.api.getAssignableOwners()
+    ]).subscribe({
+      next: ([page, owners]) => {
+        PE_OWNERS.length = 0;
+        this.ownerIds.clear();
+        for (const o of owners) { PE_OWNERS.push({ name: o.label, role: o.description ?? '' }); this.ownerIds.set(o.label, o.value); }
+        const hit = page.items.find((x) => x.displayCode === this.code) ?? page.items[0];
+        if (!hit) { this.loading.set(false); this.flash('That donor could not be found.'); return; }
+        this.api.getDonor(hit.id).subscribe({
+          next: (d) => { this.apply(d); this.loading.set(false); },
+          error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+        });
+      },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
+
+  private apply(d: DonorDetail): void {
+    this.detail = d;
+    const org = d.donorType === 'Organisation';
+    const p: PeProfile = {
+      type: (['Individual', 'Organisation', 'Anonymous'].includes(d.donorType) ? d.donorType : 'Individual') as DonorType,
+      firstName: org ? (d.organisationName ?? d.displayName) : (d.firstName ?? ''),
+      lastName: org ? '' : (d.lastName ?? ''),
+      email: d.primaryEmail ?? '',
+      phone: d.primaryPhone ?? '',
+      language: d.preferredLanguage || 'en-IN',
+      mayContact: !d.doNotContact,
+      owner: d.relationshipOwnerName ?? ''
+    };
+    this.statusSig.set(d.status);
+    this.updatedSig.set(new Date(d.updatedAtUtc ?? d.createdAtUtc).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }));
+    this.original.set(p);
+    this.form.set({ ...p });
+  }
 
   /* ---------- derived ---------- */
   protected readonly fullName = computed(() => {
@@ -226,14 +264,31 @@ export class DonorProfileEdit {
       return;
     }
     this.saving.set(true);
-    // TODO: call the API with { changes: this.changes(), reason: this.reason().trim() }
-    setTimeout(() => {
-      this.original.set({ ...this.form() });
-      this.reason.set('');
-      this.tried.set(false);
-      this.saving.set(false);
-      this.flash('Profile saved. The correction is in the audit trail.');
-    }, 600);
+    const f = this.form();
+    const org = f.type === 'Organisation';
+    const ownerChanged = this.changes().some((c) => c.key === 'owner');
+    this.api.correctDonor(this.detail!.id, {
+      donorType: f.type,
+      firstName: org ? null : f.firstName.trim(),
+      lastName: org ? null : f.lastName.trim(),
+      organisationName: org ? f.firstName.trim() : null,
+      primaryPhone: f.phone.trim() || null,
+      preferredLanguage: f.language,
+      doNotContact: !f.mayContact,
+      ...(ownerChanged && this.ownerIds.get(f.owner)
+        ? { relationshipOwnerUserId: this.ownerIds.get(f.owner)!, relationshipOwnerName: f.owner } : {}),
+      correctionReason: this.reason().trim(),
+      expectedVersion: this.detail!.version
+    }).subscribe({
+      next: (d) => {
+        this.apply(d);
+        this.reason.set('');
+        this.tried.set(false);
+        this.saving.set(false);
+        this.flash('Profile saved. The correction is in the audit trail.');
+      },
+      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+    });
   }
 
   private flash(m: string): void {

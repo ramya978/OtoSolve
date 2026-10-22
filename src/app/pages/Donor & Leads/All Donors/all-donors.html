@@ -6,11 +6,11 @@
 <nav class="ad-crumbs" aria-label="Breadcrumb">
   <a routerLink="/app/dashboard">Home</a>
   <span aria-hidden="true">/</span>
-  <b>All Donors</b>
+  <b>{{ heading }}</b>
 </nav>
 
 <header class="ad-head">
-  <h1>All Donors</h1>
+  <h1>{{ heading }}</h1>
   <div class="ad-head-actions">
     <button type="button" class="ad-btn" (click)="refresh()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>

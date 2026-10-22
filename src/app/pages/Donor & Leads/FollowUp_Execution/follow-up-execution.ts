@@ -1,9 +1,10 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   FU_ICONS, FollowUp, FollowUpStore, FuExecution, FuMethod, MONTHS, MONTHS_LONG, WEEKDAYS, channelOf, fmtDate, fmtTime,
   initials, isOpen, isoDay, monthWeeks, pad2, priorityOf, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 /* =====================================================================================================
    FOLLOW-UP EXECUTION  (route /app/fundraising/relationships/follow-up-queue/execute?id=<follow-up id>)
@@ -120,8 +121,11 @@ export class FollowUpExecution {
   protected readonly managers = this.store.managers;
 
   constructor() {
-    const f = this.fu();
-    if (f) this.method.set(f.channel === 'post' ? 'visit' : f.channel);
+    // The follow-up arrives from the API after the page opens; preset the method once, when it does.
+    effect(() => {
+      const f = this.fu();
+      if (f && this.method() === null) this.method.set(f.channel === 'post' ? 'visit' : f.channel);
+    });
   }
 
   /* ---------- record figures ---------- */
@@ -271,7 +275,6 @@ export class FollowUpExecution {
     const f = this.fu();
     if (!f || this.missing().length || this.saving()) return;
     this.saving.set(true);
-    // TODO: upload the files with the report once the API is ready.
     this.store.execute(f.id, {
       method: this.method()!,
       executedAt: `${this.date()}T${this.time()}`,
@@ -286,12 +289,16 @@ export class FollowUpExecution {
       stage: this.stage(),
       disposition: this.disposition()!,
       files: this.files().map((x) => x.name)
+    }).subscribe({
+      next: () => {
+        this.toast.set(this.nextContact() ? 'Follow-up completed - plan the next contact' : 'Follow-up completed');
+        setTimeout(() => {
+          if (this.nextContact()) this.router.navigate([this.planPath], { queryParams: { ref: f.recordCode } });
+          else this.router.navigate([this.queuePath]);
+        }, 700);
+      },
+      error: (e: unknown) => { this.saving.set(false); this.toast.set(apiErrorMessage(e)); }
     });
-    this.toast.set(this.nextContact() ? 'Follow-up completed - plan the next contact' : 'Follow-up completed');
-    setTimeout(() => {
-      if (this.nextContact()) this.router.navigate([this.planPath], { queryParams: { ref: f.recordCode } });
-      else this.router.navigate([this.queuePath]);
-    }, 700);
   }
 
   startQualification(): void {
@@ -307,10 +314,14 @@ export class FollowUpExecution {
     this.escTried.set(true);
     const f = this.fu();
     if (!f || !this.escTo() || !this.escReason().trim()) return;
-    this.store.escalate([f.id], this.escTo()!, this.escReason().trim());
-    this.escOpen.set(false);
-    this.toast.set(`Escalated to ${this.escTo()}`);
-    setTimeout(() => this.router.navigate([this.queuePath]), 900);
+    this.store.escalate([f.id], this.escTo()!, this.escReason().trim()).subscribe({
+      next: () => {
+        this.escOpen.set(false);
+        this.toast.set(`Escalated to ${this.escTo()}`);
+        setTimeout(() => this.router.navigate([this.queuePath]), 900);
+      },
+      error: (e: unknown) => this.toast.set(apiErrorMessage(e))
+    });
   }
   cancel(): void { this.router.navigate([this.queuePath]); }
   back(): void { this.router.navigate([this.queuePath]); }

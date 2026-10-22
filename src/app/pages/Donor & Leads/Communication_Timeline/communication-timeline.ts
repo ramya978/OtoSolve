@@ -2,6 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommunicationStore, OUTCOME_GROUPS, OutcomeGroup, CommEntry, healthLabel, CommChannel, channelOf, isoDay, MONTHS, outcomeOf, COMM_ICONS, entryTitle, outcomeTone, pad2, Temperature, Level3, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type CtTab = 'all' | 'call' | 'email' | 'meeting' | 'important';
 type CtMenu = 'filters' | 'rows' | null;
@@ -24,6 +25,8 @@ export class CommunicationTimeline {
   protected readonly rowOptions = [10, 20, 50];
 
   private readonly ref = this.route.snapshot.queryParamMap.get('ref');
+
+  constructor() { this.store.load(this.ref); }
   protected readonly lead = computed(() => this.store.lead(this.ref));
   protected readonly all = computed(() => this.store.entriesFor(this.lead().code));
   protected readonly today = new Date();
@@ -180,9 +183,19 @@ export class CommunicationTimeline {
   setRows(n: number): void { this.rows.set(n); this.page.set(1); this.menu.set(null); }
   go(step: number): void { this.page.set(Math.min(this.pages(), Math.max(1, this.page() + step))); }
 
-  toggleImportant(e: CommEntry): void { this.store.toggleImportant(e.id); }
-  setTemperature(t: Temperature): void { this.store.setStanding(this.lead().code, { temperature: t }); }
-  setPotential(p: Level3): void { this.store.setStanding(this.lead().code, { potential: p }); }
+  toggleImportant(e: CommEntry): void {
+    this.store.toggleImportant(e.id).subscribe({ error: (err: unknown) => this.flash(apiErrorMessage(err)) });
+  }
+  setTemperature(t: Temperature): void {
+    this.store.setStanding(this.lead().code, { temperature: t }).subscribe({
+      next: () => this.flash('Temperature updated.'), error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
+  }
+  setPotential(p: Level3): void {
+    this.store.setStanding(this.lead().code, { potential: p }).subscribe({
+      next: () => this.flash('Donation potential updated.'), error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
+  }
 
   logCommunication(): void { this.router.navigate([this.logPath], { queryParams: { ref: this.lead().code } }); }
   back(): void { this.router.navigate([this.backPath]); }
@@ -193,16 +206,16 @@ export class CommunicationTimeline {
   }
 
   exportCsv(): void {
-    const head = ['Date', 'Time', 'Channel', 'Direction', 'Outcome', 'Summary', 'Note', 'By', 'Important'];
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = this.filtered().map((e) => [this.date(e.at), this.time(e.at), channelOf(e.channel).label, e.direction === 'out' ? 'Outgoing' : 'Incoming',
-      this.outcome(e), e.summary, e.note, e.by, e.important ? 'Yes' : 'No'].map(esc).join(','));
-    const blob = new Blob([[head.join(','), ...lines].join('\n')], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${this.lead().code}-communications.csv`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    this.store.export(this.lead().code).subscribe({
+      next: ({ blob, fileName }) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      },
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
   }
 
   private flash(m: string): void {

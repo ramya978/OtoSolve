@@ -1,5 +1,10 @@
-import { Component, DestroyRef, HostListener, computed, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, computed, inject, input, output, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { forkJoin, of, catchError } from 'rxjs';
 import { Footer } from '../../../Shared/layout/Footer/footer';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { CommunicationTimelineResponse, LeadDetail } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type LeadStatus = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost' | 'Dormant';
 
@@ -114,66 +119,74 @@ const STATUS_TONES: Record<LeadStatus, StatusTone> = {
   Dormant: 'closed'
 };
 
-/* ---------- sample data (replace with the lead API response) ---------- */
-export const SAMPLE_LEAD: LeadProfileData = {
-  id: 'led-38',
-  reference: 'LED-2026-000038',
-  fullName: 'Preeti Vivek',
-  displayName: 'Preeti Vivek',
-  status: 'Contacted',
-  phone: '+919829414801',
-  otherNumbers: [],
-  email: 'preeti.vivek@mail.test',
-  language: 'hi-IN',
-  bestTimeToCall: null,
-  notes: null,
-
-  health: 44,
-  healthLabel: 'Needs attention',
-  temperature: 'Cold',
-  potential: 'Low',
-  responseClock: 'Breached',
-
-  campaign: 'Girls in STEM Scholarship Fund',
-  leadSource: 'Alumni network event',
-  owner: 'Kavita Ashok',
-  team: 'NORTH',
-  donationLink: 'http://localhost:6700/auth/donor-form?campaign=5eed8a20-3c46-ec13-b415-2ec4684cb299',
-
-  country: null,
-  city: 'Jaipur',
-  regionCode: null,
-  address: null,
-
-  lastOutcome: 'No answer',
-  lastContacted: '2026-10-08T17:49',
-  nextFollowUp: '2026-10-10',
-  plannedAction: 'Third call attempt, then an e-mail',
-
-  captured: '2026-09-27T15:56',
-  lastUpdated: '2026-10-08T17:49',
-  accepted: '2026-09-27T18:56',
-  qualified: null,
-  converted: null,
-
-  consentEvidence: 'OPTIN-0038',
-  consent: [
-    { channel: 'Phone call', decision: 'Opted in', status: 'Active', noticeVersion: 'PN-2026-01', effective: '2026-09-27', expires: null },
-    { channel: 'E-mail', decision: 'Not asked', status: '-', noticeVersion: '-', effective: null, expires: null },
-    { channel: 'SMS', decision: 'Not asked', status: '-', noticeVersion: '-', effective: null, expires: null },
-    { channel: 'WhatsApp', decision: 'Not asked', status: '-', noticeVersion: '-', effective: null, expires: null }
-  ]
+const EMPTY_LEAD: LeadProfileData = {
+  id: '', reference: '', fullName: '', displayName: '', status: 'New', phone: '', otherNumbers: [], email: '', language: '',
+  bestTimeToCall: null, notes: null, health: 0, healthLabel: '', temperature: 'Cold', potential: 'Low', responseClock: 'On time',
+  campaign: '', leadSource: '', owner: '', team: '', donationLink: '', country: null, city: null, regionCode: null, address: null,
+  lastOutcome: '', lastContacted: null, nextFollowUp: null, plannedAction: '', captured: '', lastUpdated: '', accepted: null,
+  qualified: null, converted: null, consentEvidence: '', consent: []
 };
 
-/** Owners offered in "Reassign" (replace with the eligible-owner API). */
-const OWNERS: Owner[] = [
-  { name: 'Kavita Ashok', team: 'NORTH' },
-  { name: 'Rohan Mehta', team: 'NORTH' },
-  { name: 'Sneha Iyer', team: 'SOUTH' },
-  { name: 'Arjun Prakash', team: 'SOUTH' },
-  { name: 'Farah Khan', team: 'WEST' },
-  { name: 'Deepak Bose', team: 'EAST' }
-];
+const nk = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+
+function statusOf(v: string, converted: boolean): LeadStatus {
+  const k = nk(v);
+  if (converted || k.startsWith('convert')) return 'Converted';
+  if (k.startsWith('qualif')) return 'Qualified';
+  if (k.startsWith('contact')) return 'Contacted';
+  if (k.startsWith('assign') || k.startsWith('accept')) return 'Assigned';
+  if (k.startsWith('dormant') || k.startsWith('nurture')) return 'Dormant';
+  if (k.startsWith('lost') || k.startsWith('closed') || k.startsWith('disqual')) return 'Lost';
+  return 'New';
+}
+
+function channelOf(v: string): ConsentRow['channel'] {
+  const k = nk(v);
+  return k.includes('whatsapp') ? 'WhatsApp' : k.includes('sms') ? 'SMS' : k.includes('mail') ? 'E-mail' : 'Phone call';
+}
+
+function toLeadProfile(l: LeadDetail, t: CommunicationTimelineResponse | null): LeadProfileData {
+  const iso = (u: string | null | undefined) => (u ? u.replace('Z', '') : null);
+  const sla = nk(l.slaState);
+  const cap = (v: string | null | undefined, fallback: string) => {
+    const k = nk(v);
+    return k ? k.charAt(0).toUpperCase() + k.slice(1) : fallback;
+  };
+  const consents: ConsentRow[] = (['Phone call', 'E-mail', 'SMS', 'WhatsApp'] as const).map((ch) => {
+    const c = (l.consents ?? []).find((x) => channelOf(x.channel) === ch);
+    if (!c) return { channel: ch, decision: 'Not asked' as const, status: '-' as const, noticeVersion: '-', effective: null, expires: null };
+    const granted = nk(c.consentState).startsWith('grant');
+    return {
+      channel: ch, decision: granted ? 'Opted in' as const : 'Opted out' as const,
+      status: nk(c.status).startsWith('withdr') || !granted ? 'Withdrawn' as const : 'Active' as const,
+      noticeVersion: c.noticeVersion || '-', effective: c.effectiveAtUtc ? c.effectiveAtUtc.slice(0, 10) : null,
+      expires: c.expiryAtUtc ? c.expiryAtUtc.slice(0, 10) : null
+    };
+  });
+  return {
+    id: l.id, reference: l.leadReference,
+    fullName: [l.firstName, l.lastName].filter(Boolean).join(' '), displayName: l.displayName,
+    status: statusOf(l.status, !!l.convertedDonorId), phone: l.mobileNumber ?? '', otherNumbers: l.alternateMobileNumbers ?? [],
+    email: l.emailAddress ?? '', language: l.preferredLanguage ?? '',
+    bestTimeToCall: l.preferredContactTimeUtc ? new Date(l.preferredContactTimeUtc).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null,
+    notes: l.notes,
+    health: t?.healthScore ?? 0, healthLabel: t?.healthBand ?? '',
+    temperature: cap(t?.temperature, 'Cold') as LeadProfileData['temperature'],
+    potential: cap(t?.donationPotential, 'Low') as LeadProfileData['potential'],
+    responseClock: sla.includes('breach') || sla.includes('overdue') ? 'Breached' : sla.includes('soon') || sla.includes('today') ? 'Due soon' : 'On time',
+    campaign: l.campaignName ?? '', leadSource: l.source ?? '', owner: l.ownerName ?? '', team: l.teamCode ?? '',
+    donationLink: l.campaignId ? `${window.location.origin}/auth/donor-form?campaign=${l.campaignId}&lead=${l.id}` : '',
+    country: l.country, city: l.city, regionCode: l.geographyCode, address: l.addressLine,
+    lastOutcome: l.lastContactOutcome ?? '', lastContacted: iso(l.lastContactedAtUtc),
+    nextFollowUp: l.nextActionDueUtc ? l.nextActionDueUtc.slice(0, 10) : null, plannedAction: l.nextAction ?? '',
+    captured: iso(l.createdAtUtc) ?? '', lastUpdated: iso(l.updatedAtUtc ?? l.createdAtUtc) ?? '',
+    accepted: iso(l.acceptedAtUtc), qualified: iso(l.qualifiedAtUtc), converted: iso(l.convertedAtUtc),
+    consentEvidence: l.consentEvidenceReference ?? '', consent: consents
+  };
+}
+
+/** Owners offered in "Reassign" - filled in place from the API. */
+const OWNERS: Owner[] = [];
 
 @Component({
   selector: 'app-lead-profile',
@@ -181,9 +194,17 @@ const OWNERS: Owner[] = [
   templateUrl: './lead-profile.html',
   styleUrl: './lead-profile.css'
 })
-export class LeadProfile {
-  /** The lead to show. Pass the API record; the sample is used until then. */
-  readonly lead = input<LeadProfileData>(SAMPLE_LEAD);
+export class LeadProfile implements OnInit {
+  private readonly api = inject(DonorApiService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly ownerIds = new Map<string, string>();
+  private version = 0;
+
+  /** A lead handed in by a parent screen. When opened by route, the lead is loaded from the API. */
+  readonly leadInput = input<LeadProfileData | null>(null);
+  private readonly loaded = signal<LeadProfileData | null>(null);
+  readonly lead = computed<LeadProfileData>(() => this.loaded() ?? this.leadInput() ?? EMPTY_LEAD);
 
   readonly back = output<void>();
   readonly communicate = output<LeadProfileData>();
@@ -255,6 +276,28 @@ export class LeadProfile {
   });
 
   private readonly destroyRef = inject(DestroyRef);
+
+  ngOnInit(): void {
+    const ref = this.route.snapshot.queryParamMap.get('ref');
+    if (!ref) return;
+    forkJoin([this.api.searchLeads(ref, 5), this.api.getAssignableOwners()]).subscribe({
+      next: ([list, owners]) => {
+        OWNERS.length = 0;
+        this.ownerIds.clear();
+        for (const o of owners) { OWNERS.push({ name: o.label, team: o.description ?? '' }); this.ownerIds.set(o.label, o.value); }
+        const hit = list.find((x) => x.leadReference === ref) ?? list[0];
+        if (!hit) { this.showToast('That lead could not be found.'); return; }
+        forkJoin([
+          this.api.getLead(hit.id),
+          this.api.getCommunicationTimeline(hit.id, null).pipe(catchError(() => of(null)))
+        ]).subscribe({
+          next: ([l, t]) => { this.version = l.version; this.loaded.set(toLeadProfile(l, t)); },
+          error: (e: unknown) => this.showToast(apiErrorMessage(e))
+        });
+      },
+      error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
+  }
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -375,9 +418,21 @@ export class LeadProfile {
   protected pickOwner(o: Owner): void {
     this.closeReassign();
     if (o.name === this.owner()) return;
-    this.ownerOverride.set(o.name);
-    this.reassigned.emit({ lead: this.lead(), owner: o.name });
-    this.showToast(`Lead reassigned to ${o.name}.`);
+    this.api.assignLead(this.lead().id, {
+      newOwnerUserId: this.ownerIds.get(o.name) ?? '',
+      newOwnerName: o.name,
+      teamCode: o.team || null,
+      assignmentReason: `Reassigned to ${o.name} from the lead profile.`,
+      expectedVersion: this.version
+    }).subscribe({
+      next: (l) => {
+        this.version = l.version;
+        this.ownerOverride.set(o.name);
+        this.reassigned.emit({ lead: this.lead(), owner: o.name });
+        this.showToast(`Lead reassigned to ${o.name}.`);
+      },
+      error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
   }
 
   // =================================================================================================
@@ -385,27 +440,38 @@ export class LeadProfile {
   // =================================================================================================
   protected onCommunicate(): void {
     this.communicate.emit(this.lead());
+    this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: this.lead().reference } });
   }
 
   protected onSchedule(): void {
     this.scheduleFollowUp.emit(this.lead());
+    this.router.navigate(['/app/fundraising/relationships/follow-up-queue/plan'], { queryParams: { ref: this.lead().reference } });
   }
 
   protected onLogOutcome(): void {
     this.logOutcome.emit(this.lead());
+    this.router.navigate(['/app/fundraising/relationships/communication-timeline/log'], { queryParams: { ref: this.lead().reference } });
   }
 
   protected close(as: 'Lost' | 'Dormant'): void {
     if (this.isClosed()) return;
-    this.statusOverride.set(as);
-    this.closed.emit({ lead: this.lead(), as });
-    this.showToast(as === 'Lost' ? 'Lead marked as lost.' : 'Lead marked as dormant.');
+    this.api.closeLead(this.lead().id, {
+      reason: as === 'Lost' ? 'Lead marked as lost from the lead profile.' : 'Lead marked as dormant from the lead profile.',
+      expectedVersion: this.version
+    }).subscribe({
+      next: (l) => {
+        this.version = l.version;
+        this.statusOverride.set(as);
+        this.closed.emit({ lead: this.lead(), as });
+        this.showToast(as === 'Lost' ? 'Lead marked as lost.' : 'Lead marked as dormant.');
+      },
+      error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
   }
 
   /** Undo a close made on this page. */
   protected reopen(): void {
-    this.statusOverride.set(null);
-    this.showToast('Lead reopened.');
+    this.showToast('A closed lead cannot be reopened from here. Capture it again or ask an administrator.');
   }
 
   private showToast(text: string): void {

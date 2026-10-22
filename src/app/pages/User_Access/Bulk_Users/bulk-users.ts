@@ -1,8 +1,13 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { initialsOf, ME, IAM_NOW, IamOption, ROLES, USERS, USER_STATUS_LABEL, IamUser, UserStatus, IAM_PATHS, fmtDate } from '../../../Shared/IAM/iam-data';
+import { initialsOf, IAM_NOW, IamOption, USER_STATUS_LABEL, IamUser, UserStatus, IAM_PATHS, fmtDate } from '../../../Shared/IAM/iam-data';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
+import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
+import { BulkUserAdminApiService } from '../../../Service/bulk-user-admin-api.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { BulkActionType } from '../../../Shared/models/iam-contract.model';
 
 
 
@@ -39,7 +44,11 @@ const ACTIONS: BulkAction[] = [
   { key: 'export', group: 'Roles, security & data', label: 'Export', hint: 'Download the selection as a file.', icon: 'download', extra: null }
 ];
 
-const SAMPLE_IDS = ['u5', 'u7', 'u11', 'u16'];
+const API_ACTION: Record<ActionKey, BulkActionType> = {
+  invite: 'invite', activate: 'activate', suspend: 'suspend', lift: 'reactivate', deactivate: 'deactivate',
+  addRole: 'assignRole', removeRole: 'removeRole', resetPassword: 'resetPassword', signOut: 'forceSignOut',
+  resetMfa: 'requireMfaReset', extend: 'extendAccess', export: 'export'
+};
 
 @Component({
   selector: 'app-iam-bulk-users-table',
@@ -47,14 +56,21 @@ const SAMPLE_IDS = ['u5', 'u7', 'u11', 'u16'];
   templateUrl: './bulk-users.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './bulk-users.css']
 })
-export class BulkUsers {
+export class BulkUsers implements OnInit {
   private readonly router = inject(Router);
+  private readonly store = inject(IamDirectoryStore);
+  private readonly api = inject(BulkUserAdminApiService);
+  private readonly toast = inject(ToastService);
+  readonly submitting = signal(false);
+
+  ngOnInit(): void {
+    if (!this.store.users().length) this.store.load();
+  }
 
   readonly actions = ACTIONS;
   readonly groups = ['Account access', 'Roles, security & data'] as const;
   readonly initials = initialsOf;
   readonly fmtDate = fmtDate; 
-  readonly me = ME;
   readonly today = fmtDate(IAM_NOW.toISOString().slice(0, 10));
   readonly selectedIds = signal<string[]>(this.passedIds());
 
@@ -69,7 +85,9 @@ export class BulkUsers {
   readonly submitted = signal<string>('');
   readonly actionOptions: IamOption[] = ACTIONS.map((a) => ({ value: a.key, label: a.label, hint: a.hint, icon: a.icon }));
 
-  readonly roleOptions: IamOption[] = ROLES.map((r) => ({ value: r.code, label: r.name, hint: r.code, initials: initialsOf(r.name) }));
+  private readonly roleOptionsC = computed<IamOption[]>(() =>
+    this.store.roles().map((r) => ({ value: r.id ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '') })));
+  get roleOptions(): IamOption[] { return this.roleOptionsC(); }
 
   readonly dateOptions: IamOption[] = [30, 90, 180, 365].map((d) => {
     const iso = this.addDays(d);
@@ -77,11 +95,11 @@ export class BulkUsers {
   }).concat([{ value: IAM_NOW.getFullYear() + '-12-31', label: fmtDate(IAM_NOW.getFullYear() + '-12-31'), hint: 'End of this year', icon: 'calendar' }]);
 
   readonly addOptions = computed<IamOption[]>(() =>
-    USERS.filter((u) => !this.selectedIds().includes(u.id))
+    this.store.users().filter((u) => !this.selectedIds().includes(u.id))
       .map((u) => ({ value: u.id, label: u.name, hint: u.ref + ' · ' + USER_STATUS_LABEL[u.status], initials: initialsOf(u.name) })));
 
   readonly current = computed(() => ACTIONS.find((a) => a.key === this.action()) ?? ACTIONS[0]);
-  readonly people = computed(() => this.selectedIds().map((id) => USERS.find((u) => u.id === id)).filter((u): u is IamUser => !!u));
+  readonly people = computed(() => this.selectedIds().map((id) => this.store.users().find((u) => u.id === id)).filter((u): u is IamUser => !!u));
 
   readonly statusLine = computed(() => this.statusCounts().filter((s) => s.value).map((s) => s.value + ' ' + s.label.toLowerCase()).join(' · ') || 'Nobody selected');
 
@@ -143,7 +161,7 @@ export class BulkUsers {
   }
 
   roleName(code: string): string {
-    return ROLES.find((r) => r.code === code)?.name ?? code;
+    return this.store.roles().find((r) => r.id === code)?.name ?? code;
   }
 
   outcome(u: IamUser): Outcome {
@@ -172,10 +190,10 @@ export class BulkUsers {
         return ended ? { ok: false, text: 'Skipped — access already ended' } : { ok: true, text: 'Access ends' };
       case 'addRole':
         if (!role) return { ok: true, text: 'Gets the chosen role' };
-        return u.role === role ? { ok: false, text: 'Skipped — already holds it' } : { ok: true, text: 'Gets ' + this.roleName(role) };
+        return u.role === this.roleName(role) ? { ok: false, text: 'Skipped — already holds it' } : { ok: true, text: 'Gets ' + this.roleName(role) };
       case 'removeRole':
         if (!role) return { ok: true, text: 'Loses the chosen role' };
-        return u.role === role ? { ok: true, text: 'Loses ' + this.roleName(role) } : { ok: false, text: 'Skipped — does not hold it' };
+        return u.role === this.roleName(role) ? { ok: true, text: 'Loses ' + this.roleName(role) } : { ok: false, text: 'Skipped — does not hold it' };
       case 'extend':
         return ended ? { ok: false, text: 'Skipped — access already ended' } : { ok: true, text: this.endDate() ? 'Access until ' + fmtDate(this.endDate()) : 'Access window moves' };
       case 'resetPassword':
@@ -217,8 +235,38 @@ export class BulkUsers {
 
   submit(): void {
     this.tried.set(true);
-    if (!this.ready()) return;
-    this.submitted.set('BLK-' + String(Date.now()).slice(-6));
+    if (!this.ready() || this.submitting()) return;
+    const a = this.current();
+    this.submitting.set(true);
+    this.api.createOperation({
+      actionType: API_ACTION[a.key],
+      userIds: this.changing().map((u) => u.id),
+      roleId: a.extra === 'role' ? this.role() || null : null,
+      accessEndsAtUtc: a.extra === 'date' && this.endDate() ? new Date(this.endDate()).toISOString() : null,
+      reason: a.extra === 'reason' && this.reason().trim() ? this.reason().trim() : this.justification().trim(),
+      applyImmediately: false,
+    }).subscribe({
+      next: (validated) => {
+        this.api.apply({ operationId: validated.id, expectedVersion: validated.version ?? 0 }).subscribe({
+          next: (done) => {
+            this.submitting.set(false);
+            this.api.getOperation(done.id ?? validated.id ?? '').subscribe({
+              next: (op) => this.submitted.set(op.operationNumber ?? done.id ?? 'Submitted'),
+              error: () => this.submitted.set(done.id ?? 'Submitted'),
+            });
+            this.toast.show('Bulk action started', done.message ?? 'The action has been applied.', 'success');
+            this.store.load();
+          },
+          error: (e) => this.fail(e),
+        });
+      },
+      error: (e) => this.fail(e),
+    });
+  }
+
+  private fail(e: unknown): void {
+    this.submitting.set(false);
+    this.toast.show('Bulk action failed', apiErrorMessage(e, 'The action could not be completed.'), 'error');
   }
 
   cancel(): void {
@@ -234,7 +282,7 @@ export class BulkUsers {
 
   private passedIds(): string[] {
     const state = (typeof history !== 'undefined' ? history.state : null) as { userIds?: string[] } | null;
-    return state?.userIds?.length ? [...state.userIds] : [...SAMPLE_IDS];
+    return state?.userIds?.length ? [...state.userIds] : [];
   }
 
   private addDays(n: number): string {

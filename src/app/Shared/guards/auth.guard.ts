@@ -14,7 +14,7 @@ import { AuthTokenService } from '../services/auth-token.service';
  * is to send people somewhere sensible, not to protect data.
  *
  * Three outcomes:
- *   • no identity held        → /auth/sign-in, remembering where they were headed
+ *   • no identity held        → /login, remembering where they were headed
  *   • idle for too long       → /auth/reauthenticate
  *   • otherwise               → allow
  */
@@ -26,7 +26,7 @@ export const authGuard: CanActivateFn = (_route, state) => {
   if (!tokens.user()) {
     // returnUrl means the person lands back on the page they asked for after signing in,
     // instead of being dumped on the dashboard.
-    return router.createUrlTree(['/auth/sign-in'], { queryParams: { returnUrl: state.url } });
+    return router.createUrlTree(['/login'], { queryParams: { returnUrl: state.url } });
   }
 
   if (session.isReauthRequired() || session.isIdleTimedOut()) {

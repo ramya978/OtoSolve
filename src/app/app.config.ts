@@ -1,10 +1,10 @@
-import { ApplicationConfig, Injectable, provideBrowserGlobalErrorListeners, inject } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
+import { ApplicationConfig, Injectable, provideAppInitializer, provideBrowserGlobalErrorListeners, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
-import { RouterStateSnapshot, TitleStrategy, provideRouter } from '@angular/router';
+import { RouterStateSnapshot, TitleStrategy, provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './Shared/interceptors/auth.interceptor';
-import {  withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { AuthSessionService } from './Shared/services/auth-session.service';
 
 /**
  * Keeps the browser-tab title fixed to the app name. Every route in this app carries a `title`
@@ -23,9 +23,23 @@ export class AppTitleStrategy extends TitleStrategy {
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(),
-    provideRouter(routes),
+
+    // Instantiated at start-up so a page reloaded while signed in picks its idle clock up again
+    // at once (otherwise the clock stood still after every reload).
+    provideAppInitializer(() => {
+      inject(AuthSessionService);
+    }),
+
+    provideRouter(
+      routes,
+      withComponentInputBinding(),
+      withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' })
+    ),
     { provide: TitleStrategy, useClass: AppTitleStrategy },
-provideHttpClient(withInterceptors([authInterceptor]))
+
+    // authInterceptor attaches the bearer token, sends the HttpOnly refresh cookie
+    // (withCredentials), renews an expired access token once and replays the request, and
+    // unwraps the API's error envelope. withFetch handles credentialed calls predictably.
+    provideHttpClient(withFetch(), withInterceptors([authInterceptor]))
   ]
 };

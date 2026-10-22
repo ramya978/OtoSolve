@@ -1,4 +1,9 @@
-import { Component, HostListener, computed, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { PaymentApiService } from '../../../Service/payment-api.service';
+import { PaymentActivityRow, PaymentActivitySummary } from '../../../Shared/models/payment.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { fetchAllPages } from '../../../Shared/services/paging';
+import { map } from 'rxjs';
 
 export type PaymentStatus = 'successful' | 'pending' | 'failed';
 
@@ -26,87 +31,20 @@ export const inr = (n: number): string =>
 
 export const inrCompact = (n: number): string => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
 
-const utc = (y: number, m: number, d: number, hh: number, mm: number) => Date.UTC(y, m - 1, d, hh, mm);
-
-const FIRST_ROWS: ReceiptRow[] = [
-  { ref: 'evt_CPLj3ZZ3Nsm8lV', subRef: 'INT-5BHBfHDB8EFR', donor: 'Sharmila Dipankar', email: 'sharmila.dipankar@mail.test', amount: 2000, status: 'pending', receivedAt: new Date(utc(2026, 10, 14, 21, 45)) },
-  { ref: 'evt_PAYrcvd7K2mQ9X', subRef: 'INT-8K2M4Q9X7P2R', donor: 'Kiran Manoj', email: 'kiran.manoj@mail.test', amount: 4500, status: 'successful', receivedAt: new Date(utc(2026, 10, 14, 21, 25)) },
-  { ref: 'evt_donFLCgw81ePYP', subRef: 'INT-S77STPK4VQ9Q', donor: 'Ishita Rakesh', email: 'ishita.rakesh@mail.test', amount: 10000, status: 'pending', receivedAt: new Date(utc(2026, 10, 14, 20, 28)) },
-  { ref: 'evt_Nvx3YUdYmpq2t0', subRef: null, donor: null, email: null, amount: 2500, status: 'pending', receivedAt: new Date(utc(2026, 10, 14, 19, 3)) },
-  { ref: 'RCPT/2026-27/00072', subRef: 'RCPT/2026-27/00072', donor: 'Abhijit Tarun', email: 'abhijit.tarun@mail.test', amount: 12000, status: 'successful', receivedAt: new Date(utc(2026, 10, 14, 11, 59)) },
-  { ref: 'RCPT/2026-27/00071', subRef: 'RCPT/2026-27/00071', donor: 'Santosh Vinay', email: 'santosh.vinay@mail.test', amount: 21000, status: 'successful', receivedAt: new Date(utc(2026, 10, 14, 10, 23)) },
-  { ref: 'RCPT/2026-27/00070', subRef: 'RCPT/2026-27/00070', donor: 'Rahul Devraj', email: 'rahul.devraj@mail.test', amount: 9000, status: 'successful', receivedAt: new Date(utc(2026, 10, 14, 8, 38)) },
-  { ref: 'RCPT/2026-27/00069', subRef: 'RCPT/2026-27/00069', donor: 'Ananya Sourav', email: 'ananya.sourav@mail.test', amount: 5000, status: 'successful', receivedAt: new Date(utc(2026, 10, 14, 8, 34)) },
-  { ref: 'RCPT/2026-27/00068', subRef: 'RCPT/2026-27/00068', donor: 'Geetha Raman', email: 'geetha.raman@mail.test', amount: 5000, status: 'successful', receivedAt: new Date(utc(2026, 10, 13, 22, 37)) },
-  { ref: 'RCPT/2026-27/00067', subRef: 'RCPT/2026-27/00067', donor: 'Payal Hitesh', email: 'payal.hitesh@mail.test', amount: 5000, status: 'successful', receivedAt: new Date(utc(2026, 10, 13, 19, 17)) }
-];
-
-const NAMES = [
-  'Aarti Menon', 'Suresh Kumar', 'Vidya Balasubramanian', 'Nandini Iyer', 'Prakash Deshmukh',
-  'Fatima Sheikh', 'Joseph Mathew', 'Lakshmi Narayanan', 'Arjun Pillai', 'Meera Krishnan',
-  'Taranjit Singh', 'Divya Malhotra', 'Ramesh Chandra', 'Sneha Kulkarni', 'Anwar Hussain',
-  'Ganesh Rao', 'Kavya Reddy', 'Milind Joshi', 'Pooja Sharma', 'Harish Nair',
-  'Shruti Bose', 'Aditya Ghosh', 'Rekha Pandey', 'Sanjay Verma', 'Nithya Raghavan',
-  'Arun Prakash', 'Bhavna Thakur', 'Imran Qureshi', 'Leela Menon', 'Sathish Kumar',
-  'Ritu Agarwal', 'Deepak Sethi', 'Anjali Vora', 'Gopal Mishra', 'Sheela Thomas', 'Yogesh Patil'
-];
-
-const AMOUNT_POOL = [5000, 7500, 10000, 12000, 1500, 2100, 25000, 3000, 8000, 4500, 6000, 11000, 20000, 2500, 9000, 15000, 3500, 5000, 13000, 2000];
-
-const TARGET_TOTAL = 2279400;
-const COUNTS: Record<PaymentStatus, number> = { successful: 72, pending: 12, failed: 14 };
-
-const seeded = (seed: number) => {
-  let s = (seed * 2654435761) % 4294967296;
-  return () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
-};
-
-const slug = (rnd: () => number, len: number, abc: string): string =>
-  Array.from({ length: len }, () => abc[Math.floor(rnd() * abc.length)]).join('');
-
-const buildRows = (): ReceiptRow[] => {
-  const rows: ReceiptRow[] = [...FIRST_ROWS];
-  const rnd = seeded(42);
-  const statuses: PaymentStatus[] = [
-    ...Array<PaymentStatus>(COUNTS.successful - 6).fill('successful'),
-    ...Array<PaymentStatus>(COUNTS.pending - 4).fill('pending'),
-    ...Array<PaymentStatus>(COUNTS.failed).fill('failed')
-  ];
-  for (let i = statuses.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [statuses[i], statuses[j]] = [statuses[j], statuses[i]];
-  }
-  let rcptNo = 66;
-  const base = utc(2026, 10, 13, 19, 0);
-  statuses.forEach((status, i) => {
-    const name = NAMES[i % NAMES.length];
-    const donor = i % 23 === 7 ? null : name;
-    const amount = AMOUNT_POOL[i % AMOUNT_POOL.length];
-    const receivedAt = new Date(base - (i + 1) * 3.1 * 3600 * 1000);
-    if (status === 'successful') {
-      const ref = `RCPT/2026-27/${String(rcptNo--).padStart(5, '0')}`;
-      rows.push({ ref, subRef: ref, donor, email: donor ? name.toLowerCase().replace(/ /g, '.') + '@mail.test' : null, amount, status, receivedAt });
-    } else {
-      rows.push({
-        ref: 'evt_' + slug(rnd, 16, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'),
-        subRef: 'INT-' + slug(rnd, 11, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
-        donor,
-        email: donor ? name.toLowerCase().replace(/ /g, '.') + '@mail.test' : null,
-        amount,
-        status,
-        receivedAt
-      });
-    }
-  });
-  const generated = rows.slice(FIRST_ROWS.length);
-  const diff = TARGET_TOTAL - rows.reduce((sum, r) => sum + r.amount, 0);
-  const add = Math.floor(diff / generated.length / 100) * 100;
-  generated.forEach((r) => (r.amount += add));
-  generated[generated.length - 1].amount += diff - add * generated.length;
-  return rows;
-};
-
-export const RECEIPTS: ReceiptRow[] = buildRows();
+function toRow(r: PaymentActivityRow): ReceiptRow {
+  const k = (r.paymentStatus ?? '').toLowerCase();
+  const status: PaymentStatus = k.startsWith('succ') ? 'successful' : k.startsWith('fail') ? 'failed' : 'pending';
+  const issued = !!r.receiptNumber;
+  return {
+    ref: issued ? r.receiptNumber! : r.eventReference,
+    subRef: issued ? r.receiptNumber : (r.receiptOrIntentReference || null),
+    donor: r.donorName,
+    email: r.donorEmail,
+    amount: r.amount?.amount ?? 0,
+    status,
+    receivedAt: new Date(r.occurredAtUtc ?? Date.now())
+  };
+}
 
 export interface StatCard {
   label: string;
@@ -116,13 +54,16 @@ export interface StatCard {
   icon: 'calendar' | 'rupee' | 'check' | 'clock' | 'x';
 }
 
-export const STATS: StatCard[] = [
-  { label: 'Total events', value: String(RECEIPTS.length), note: 'In selected scope', tone: 'ink', icon: 'calendar' },
-  { label: 'Total amount', value: inrCompact(RECEIPTS.reduce((s, r) => s + r.amount, 0)), note: 'In selected scope', tone: 'accent', icon: 'rupee' },
-  { label: 'Successful', value: String(RECEIPTS.filter((r) => r.status === 'successful').length), note: 'Receipt sent', tone: 'teal', icon: 'check' },
-  { label: 'Pending', value: String(RECEIPTS.filter((r) => r.status === 'pending').length), note: 'Awaiting payment', tone: 'blue', icon: 'clock' },
-  { label: 'Failed', value: String(RECEIPTS.filter((r) => r.status === 'failed').length), note: 'Needs retry', tone: 'red', icon: 'x' }
-];
+function toStats(rows: ReceiptRow[], summary: PaymentActivitySummary | null): StatCard[] {
+  const count = (st: PaymentStatus) => rows.filter((r) => r.status === st).length;
+  return [
+    { label: 'Total events', value: String(summary?.totalEvents ?? rows.length), note: 'In selected scope', tone: 'ink', icon: 'calendar' },
+    { label: 'Total amount', value: inrCompact(summary?.totalAmount?.amount ?? rows.reduce((t, r) => t + r.amount, 0)), note: 'In selected scope', tone: 'accent', icon: 'rupee' },
+    { label: 'Successful', value: String(summary?.successful ?? count('successful')), note: 'Receipt sent', tone: 'teal', icon: 'check' },
+    { label: 'Pending', value: String(summary?.pending ?? count('pending')), note: 'Awaiting payment', tone: 'blue', icon: 'clock' },
+    { label: 'Failed', value: String(summary?.failed ?? count('failed')), note: 'Needs retry', tone: 'red', icon: 'x' }
+  ];
+}
 
 const ICON_PATHS: Record<string, string> = {
   calendar: 'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M16 2v4 M8 2v4 M3 10h18',
@@ -148,7 +89,13 @@ const TONE_COLORS: Record<string, string> = {
   templateUrl: './payments-receipts.html',
   styleUrl: './payments-receipts.css'
 })
-export class PaymentsReceipts {
+export class PaymentsReceipts implements OnInit {
+  private readonly api = inject(PaymentApiService);
+  private readonly rows = signal<ReceiptRow[]>([]);
+  private readonly summary = signal<PaymentActivitySummary | null>(null);
+  readonly loading = signal(false);
+  readonly loadError = signal<string | null>(null);
+
   protected readonly inr = inr;
   protected readonly fmtDate = fmtDate;
   readonly query = signal('');
@@ -157,13 +104,29 @@ export class PaymentsReceipts {
   readonly pageSize = signal(10);
   readonly selected = signal<ReceiptRow | null>(null);
 
-  readonly stats = STATS;
-  readonly total = RECEIPTS.length;
+  private readonly statsC = computed(() => toStats(this.rows(), this.summary()));
+  get stats(): StatCard[] { return this.statsC(); }
+  get total(): number { return this.summary()?.totalEvents ?? this.rows().length; }
+
+  ngOnInit(): void {
+    this.loading.set(true);
+    let summary: PaymentActivitySummary | null = null;
+    fetchAllPages((page, size) => this.api.getPaymentActivity({ page, pageSize: size }).pipe(
+      map((r) => { summary = r.summary; return r.rows; })
+    )).subscribe({
+      next: (items) => {
+        this.summary.set(summary);
+        this.rows.set(items.map(toRow));
+        this.loading.set(false);
+      },
+      error: (e: unknown) => { this.loading.set(false); this.loadError.set(apiErrorMessage(e)); }
+    });
+  }
 
   readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const status = this.statusFilter();
-    return RECEIPTS.filter(
+    return this.rows().filter(
       (r) =>
         (status === 'all' || r.status === status) &&
         (!q ||

@@ -2,35 +2,11 @@
    CURRENCIES - master configuration and sample rows
    Drives the currencies list page (currencies.html) and the create / edit page (currency-form.html):
    table columns, filters, overview metrics, form sections with their rules, live preview and the
-   view-drawer details. Sample rows are fictional review values; replace them with the API.
+   view-drawer details. Records come from the API (see MastersStore).
    ===================================================================================================== */
 import {
-  CURRENCY_TYPES, MasterConfig, statusMetrics, MasterRow, MasterStatus, ROUNDING_MODES, STATUS_AD, STATUS_LABEL, dash, notes, numOr, s, sampleAmount, statusChoice, statusColumn, statusFilter
+  MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_AD, STATUS_LABEL, dash, notes, numOr, s, sampleAmount, statusChoice, statusColumn, statusFilter
 } from '../../../Shared/Masters/masters.types';
-
-const currency = (
-  code: string, name: string, numeric: string, symbol: string, decimals: number, minor: string,
-  status: MasterStatus = 'active', position: 'prefix' | 'suffix' = 'prefix'
-): MasterRow => ({
-  id: 'cur-' + code, code, name, numeric, type: 'Fiat', symbol, symbolPosition: position,
-  displayFormat: position === 'prefix' ? `${symbol}{amount}` : `{amount} ${symbol}`, decimals, minor,
-  rounding: 'Half up', step: 'none', status, notes: ''
-});
-
-export const SEED_CURRENCIES: MasterRow[] = [
-  currency('INR', 'Indian Rupee', '356', '₹', 2, 'Paise'),
-  currency('USD', 'United States Dollar', '840', '$', 2, 'Cent'),
-  currency('SGD', 'Singapore Dollar', '702', 'S$', 2, 'Cent'),
-  currency('AED', 'United Arab Emirates Dirham', '784', 'د.إ', 2, 'Fils', 'active', 'suffix'),
-  currency('GBP', 'Pound Sterling', '826', '£', 2, 'Penny'),
-  currency('EUR', 'Euro', '978', '€', 2, 'Cent'),
-  currency('CAD', 'Canadian Dollar', '124', 'C$', 2, 'Cent'),
-  currency('AUD', 'Australian Dollar', '036', 'A$', 2, 'Cent'),
-  currency('JPY', 'Japanese Yen', '392', '¥', 0, '—'),
-  currency('CNY', 'Chinese Yuan', '156', '¥', 2, 'Fen'),
-  currency('LKR', 'Sri Lankan Rupee', '144', 'Rs', 2, 'Cent', 'draft'),
-  { ...currency('XAU', 'Gold (troy ounce)', '959', 'XAU', 4, '—', 'draft', 'suffix'), type: 'Commodity' }
-];
 
 export const CURRENCY: MasterConfig = {
   key: 'currency',
@@ -46,7 +22,7 @@ export const CURRENCY: MasterConfig = {
   searchPlaceholder: 'Code, name or symbol',
   searchKeys: ['code', 'name', 'symbol', 'numeric'],
   filters: [
-    { key: 'type', title: 'Type', allLabel: 'All types', options: CURRENCY_TYPES, match: (r, v) => r['type'] === v },
+    { key: 'type', title: 'Type', allLabel: 'All types', optionsFrom: 'currencyTypes', match: (r, v) => r['type'] === v },
     statusFilter(STATUS_AD)
   ],
   columns: [
@@ -76,7 +52,7 @@ export const CURRENCY: MasterConfig = {
         { key: 'code', label: 'Currency code', hint: 'ISO 4217 · 3 letters', kind: 'text', required: true, upper: true, short: true, maxlength: 3, placeholder: 'INR', pattern: /^[A-Z]{3}$/, patternMsg: 'Use exactly 3 letters.', lockOnEdit: true },
         { key: 'name', label: 'Currency name', kind: 'text', required: true, maxlength: 80, placeholder: 'Indian Rupee' },
         { key: 'numeric', label: 'Numeric code', hint: 'ISO 4217 · 0–999', kind: 'text', short: true, maxlength: 3, placeholder: '356', pattern: /^[0-9]{3}$/, patternMsg: 'Use 3 digits, e.g. 356.' },
-        { key: 'type', label: 'Currency type', kind: 'select', required: true, options: CURRENCY_TYPES, placeholder: 'Select currency type' }
+        { key: 'type', label: 'Currency type', kind: 'select', required: true, optionsFrom: 'currencyTypes', placeholder: 'Select currency type' }
       ]
     },
     {
@@ -92,7 +68,7 @@ export const CURRENCY: MasterConfig = {
       fields: [
         { key: 'decimals', label: 'Decimal places', hint: '2 for most · 0 for JPY', kind: 'choice', required: true, options: ['0', '1', '2', '3', '4'].map((d) => ({ value: d, label: d })) },
         { key: 'minor', label: 'Minor unit', kind: 'text', maxlength: 30, placeholder: 'Paise' },
-        { key: 'rounding', label: 'Rounding mode', kind: 'select', required: true, options: ROUNDING_MODES, placeholder: 'Select rounding mode' },
+        { key: 'rounding', label: 'Rounding mode', kind: 'select', required: true, optionsFrom: 'roundingModes', placeholder: 'Select rounding mode' },
         { key: 'step', label: 'Rounding step', hint: 'For cash rounding', kind: 'choice', options: ['none', '0.01', '0.05', '0.10', '1.00'].map((d) => ({ value: d, label: d === 'none' ? 'None' : d })) }
       ]
     },

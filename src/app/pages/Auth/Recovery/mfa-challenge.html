@@ -1,0 +1,54 @@
+<app-auth-frame>
+  <h1 class="lg-title">Verify it's you</h1>
+  <p class="lg-sub">
+    @if (infoMessage()) { {{ infoMessage() }} }
+    @else if (isAuthenticatorApp()) { Enter the 6-digit code from your authenticator app. }
+    @else { Enter the 6-digit code we sent you{{ challenge()?.maskedDestination ? ' (' + challenge()?.maskedDestination + ')' : '' }}. }
+  </p>
+
+  @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
+
+  @if (mode() === 'code') {
+    <form (submit)="verify($event)" novalidate>
+      <div class="lg-field">
+        <input class="lg-input" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+               placeholder="6-digit code" aria-label="Verification code" [value]="code()" (input)="onCode($event)">
+      </div>
+      <p class="lg-foot">
+        @if (expired()) { This code has expired. Start again from the sign-in screen. }
+        @else { Expires in {{ countdownLabel() }} · {{ attemptsLabel() }} }
+      </p>
+      <button type="submit" class="lg-submit" [disabled]="!canSubmitCode() || expired()">
+        @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Verifying… } @else { Verify }
+      </button>
+    </form>
+
+    <div class="lg-forgot-row">
+      @if (!isAuthenticatorApp()) {
+        <button type="button" class="lg-forgot" [disabled]="resending()" (click)="resend()">{{ resending() ? 'Sending…' : 'Resend code' }}</button>
+      }
+      @if (recoveryAvailable()) {
+        <button type="button" class="lg-forgot" (click)="setMode('recovery')">Use a recovery code</button>
+      }
+    </div>
+    @for (m of alternatives(); track $index) {
+      <div class="lg-forgot-row">
+        <button type="button" class="lg-forgot" (click)="switchMethod(m.id)">Use {{ m.label || methodLabel(m.methodType) }}</button>
+      </div>
+    }
+  } @else {
+    <form (submit)="useRecovery($event)" novalidate>
+      <div class="lg-field">
+        <input class="lg-input" type="text" name="recovery" autocomplete="off" placeholder="Recovery code"
+               aria-label="Recovery code" [value]="recoveryCode()" (input)="onRecovery($event)">
+      </div>
+      <p class="lg-foot">Each recovery code works once.</p>
+      <button type="submit" class="lg-submit" [disabled]="!canSubmitRecovery()">
+        @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Checking… } @else { Use recovery code }
+      </button>
+    </form>
+    <div class="lg-forgot-row"><button type="button" class="lg-forgot" (click)="setMode('code')">Back to code entry</button></div>
+  }
+
+  <p class="lg-foot"><button type="button" class="lg-forgot" (click)="cancel()">Cancel and return to sign in</button></p>
+</app-auth-frame>

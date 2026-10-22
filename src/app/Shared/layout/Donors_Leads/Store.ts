@@ -1,9 +1,12 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, map, of, switchMap, tap } from 'rxjs';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { CommunicationTimelineEntry, CommunicationTimelineResponse } from '../../models/donor-contract.model';
 
 /* =====================================================================================================
    COMMUNICATION STORE - shared by Communication timeline and Log communication.
    Holds the leads and their logged communications as signals, so an entry saved on the
-   Log communication page shows on the timeline straight away. Sample data until the API is wired.
+   Log communication page shows on the timeline straight away. Loaded from the donor API.
    ===================================================================================================== */
 
 export type CommChannel = 'call' | 'email' | 'sms' | 'whatsapp' | 'meeting' | 'visit' | 'note';
@@ -120,59 +123,181 @@ export const COMM_ICONS: Record<string, string> = {
   alert: 'M12 9v4 M12 17h.01 M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'
 };
 
-const LEADS: CommLead[] = [
-  {
-    code: 'LED-2026-000038', name: 'Gopal Krishnan', stage: 'Contacted', phone: '+919830273826', email: 'gopal.krishnan@mail.test',
-    language: 'bn-IN', owner: 'Vivek Sridhar', source: 'Residents’ association QR', campaign: 'Adopt a Day-Care Centre',
-    donationLink: 'https://give.example.org/adopt-day-care?ref=LED-2026-000038', temperature: 'warm', potential: 'low', health: 57,
-    contactRhythm: 'Low frequency', engagement: 'Stable', interestedReplies: 0, followUpsDone: 50
-  },
-  {
-    code: 'LED-2026-000006', name: 'Dinesh Babu', stage: 'Contacted', phone: '+919842161104', email: 'dinesh.babu@mail.test',
-    language: 'ta-IN', owner: 'Vivek Sridhar', source: 'Walk-in enquiry', campaign: 'Mobile Healthcare Units',
-    donationLink: 'https://give.example.org/mobile-health?ref=LED-2026-000006', temperature: 'cold', potential: 'low', health: 44,
-    contactRhythm: 'Low frequency', engagement: 'Stable', interestedReplies: 0, followUpsDone: 0
-  }
-];
+const norm = (v: string | null | undefined) => (v ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-const ENTRIES: CommEntry[] = [
-  {
-    id: 'c-1', lead: 'LED-2026-000038', at: '2026-10-08T11:42', channel: 'call', direction: 'out', outcome: 'no-answer',
-    engagement: null, quality: null, summary: 'Contact attempt - no answer', note: 'Rang twice during the day with no answer; a message was left.',
-    by: 'Vivek Sridhar', important: false, attachment: null
-  },
-  {
-    id: 'c-2', lead: 'LED-2026-000006', at: '2026-10-11T16:05', channel: 'call', direction: 'out', outcome: 'no-answer',
-    engagement: null, quality: null, summary: 'Contact attempt - no answer', note: '',
-    by: 'Vivek Sridhar', important: false, attachment: null
-  }
-];
+const EMPTY_LEAD: CommLead = {
+  code: '', name: '', stage: '', phone: '', email: '', language: '', owner: '', source: '', campaign: '', donationLink: '',
+  temperature: 'cold', potential: 'low', health: 0, contactRhythm: '', engagement: '', interestedReplies: 0, followUpsDone: 0
+};
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const localIso = (utc: string) => {
+  const d = new Date(utc);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
+function channelOfType(v: string | null | undefined): CommChannel {
+  const n = norm(v);
+  if (n.includes('whatsapp')) return 'whatsapp';
+  if (n.includes('sms') || n.includes('text')) return 'sms';
+  if (n.includes('mail')) return 'email';
+  if (n.includes('meeting')) return 'meeting';
+  if (n.includes('visit')) return 'visit';
+  if (n.includes('note')) return 'note';
+  return 'call';
+}
+
+function outcomeKey(v: string | null | undefined, label?: string | null): CommOutcome {
+  const n = norm(v);
+  const l = norm(label);
+  return (OUTCOMES.find((o) => norm(o.key) === n || norm(o.label) === n || norm(o.label) === l)?.key ?? 'connected') as CommOutcome;
+}
+
+const level = (v: string | null | undefined): Level3 | null => {
+  const n = norm(v);
+  return n === 'low' ? 'low' : n === 'medium' ? 'medium' : n === 'high' ? 'high' : null;
+};
+const quality = (v: string | null | undefined): Quality | null => {
+  const n = norm(v);
+  return n === 'poor' || n === 'average' || n === 'good' || n === 'excellent' ? n : null;
+};
 
 @Injectable({ providedIn: 'root' })
 export class CommunicationStore {
-  readonly leads = signal<CommLead[]>(LEADS);
-  readonly entries = signal<CommEntry[]>(ENTRIES);
+  private readonly api = inject(DonorApiService);
+
+  readonly leads = signal<CommLead[]>([]);
+  readonly entries = signal<CommEntry[]>([]);
+  readonly loading = signal(false);
+  readonly error = signal<string | null>(null);
+  /** The server's lists for the Log form (interaction types, outcomes ...). */
+  readonly options = signal<CommunicationTimelineResponse | null>(null);
+
+  private readonly ids = new Map<string, { leadId: string | null; donorId: string | null; version?: number }>();
+  private readonly versions = new Map<string, number>();
 
   lead(code: string | null): CommLead {
-    return this.leads().find((l) => l.code === code) ?? this.leads()[0];
+    return this.leads().find((l) => l.code === code) ?? (code ? EMPTY_LEAD : this.leads()[0] ?? EMPTY_LEAD);
   }
 
   entriesFor(code: string): CommEntry[] {
     return this.entries().filter((e) => e.lead === code).sort((a, b) => b.at.localeCompare(a.at));
   }
 
-  add(entry: Omit<CommEntry, 'id'>): void {
-    // TODO: POST to the API, then refresh.
-    this.entries.update((list) => [{ ...entry, id: 'c-' + Date.now() }, ...list]);
+  /**
+   * Opens a lead's (or donor's) timeline. `ref` is the readable reference from the query string;
+   * with none, the first lead on the work queue is shown.
+   */
+  load(ref: string | null): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.resolve(ref).pipe(
+      switchMap((r) => (r ? this.api.getCommunicationTimeline(r.leadId, r.donorId) : of(null)))
+    ).subscribe({
+      next: (t) => { if (t) this.apply(t); this.loading.set(false); },
+      error: (e: unknown) => { this.loading.set(false); this.error.set(e instanceof Error ? e.message : 'The timeline could not be loaded.'); }
+    });
   }
 
-  toggleImportant(id: string): void {
-    this.entries.update((list) => list.map((e) => (e.id === id ? { ...e, important: !e.important } : e)));
+  private resolve(ref: string | null): Observable<{ leadId: string | null; donorId: string | null } | null> {
+    if (!ref) {
+      return this.api.getLeadWorkQueue({ page: 1, pageSize: 1 }).pipe(
+        map((r) => { const l = r.leads.items[0]; return l ? { leadId: l.id, donorId: null } : null; }));
+    }
+    if (ref.toUpperCase().startsWith('DON')) {
+      return this.api.lookupDonors(ref, 5).pipe(
+        switchMap((list) => (list.length ? of(list) : this.api.searchDonors({ search: ref, pageSize: 5 }).pipe(
+          map((p) => p.items.map((d) => ({ id: d.id, displayName: d.displayName, status: d.status })))))),
+        map((list) => (list[0] ? { leadId: null, donorId: list[0].id } : null)));
+    }
+    return this.api.searchLeads(ref, 5).pipe(
+      map((list) => { const l = list.find((x) => x.leadReference === ref) ?? list[0]; return l ? { leadId: l.id, donorId: null } : null; }));
   }
 
-  setStanding(code: string, patch: Partial<Pick<CommLead, 'temperature' | 'potential'>>): void {
-    // TODO: PATCH the lead.
-    this.leads.update((list) => list.map((l) => (l.code === code ? { ...l, ...patch } : l)));
+  private apply(t: CommunicationTimelineResponse): void {
+    this.options.set(t);
+    const code = t.leadReference ?? t.donorReference ?? '';
+    this.ids.set(code, { leadId: t.leadId, donorId: t.donorId });
+    const lead: CommLead = {
+      code, name: t.displayName, stage: t.status, phone: t.mobileNumber ?? '', email: t.emailAddress ?? '',
+      language: t.preferredLanguage ?? '', owner: t.ownerName ?? '', source: t.source ?? '', campaign: t.campaignName ?? '',
+      donationLink: t.isLead && t.campaignId && t.leadId
+        ? `${window.location.origin}/auth/donor-form?campaign=${t.campaignId}&lead=${t.leadId}` : '',
+      temperature: (norm(t.temperature) === 'hot' ? 'hot' : norm(t.temperature) === 'warm' ? 'warm' : 'cold'),
+      potential: level(t.donationPotential) ?? 'low',
+      health: t.healthScore ?? 0,
+      contactRhythm: t.contactRhythm ?? '',
+      engagement: t.engagementTrend ?? '',
+      interestedReplies: t.interestedCount ?? 0,
+      followUpsDone: t.followUpCount > 0 ? Math.round((t.followUpCompletedCount / t.followUpCount) * 100) : 0
+    };
+    this.leads.update((list) => [lead, ...list.filter((l) => l.code !== code)]);
+    for (const e of t.entries ?? []) this.versions.set(e.id, e.version);
+    const mapped = (t.entries ?? []).map((e) => this.toEntry(code, e));
+    this.entries.update((list) => [...mapped, ...list.filter((e) => e.lead !== code)]);
+  }
+
+  private toEntry(code: string, e: CommunicationTimelineEntry): CommEntry {
+    return {
+      id: e.id, lead: code, at: localIso(e.occurredAtUtc),
+      channel: channelOfType(e.interactionType), direction: norm(e.direction).startsWith('in') ? 'in' : 'out',
+      outcome: outcomeKey(e.outcome, e.outcomeLabel), engagement: level(e.engagementLevel), quality: quality(e.quality),
+      summary: e.summary, note: e.notes ?? '', by: e.performedByName ?? '', important: e.isImportant, attachment: e.attachmentName
+    };
+  }
+
+  private serverValue(list: { value: string; label: string }[] | undefined, word: string): string {
+    const n = norm(word);
+    return (list ?? []).find((o) => norm(o.value) === n || norm(o.label) === n)?.value ?? word;
+  }
+
+  /** Logs a communication; the timeline is reloaded so the new entry arrives as the server holds it. */
+  add(entry: Omit<CommEntry, 'id'>): Observable<unknown> {
+    const o = this.options();
+    const target = this.ids.get(entry.lead);
+    const typeWord = { call: 'Call', email: 'Email', sms: 'SMS', whatsapp: 'WhatsApp', meeting: 'Meeting', visit: 'Visit', note: 'Note' }[entry.channel];
+    const outcomeLabel = OUTCOMES.find((x) => x.key === entry.outcome)?.label ?? entry.outcome;
+    const cap = (v: string | null) => (v ? v.charAt(0).toUpperCase() + v.slice(1) : null);
+    return this.api.logCommunication({
+      leadId: target?.leadId ?? null,
+      donorId: target?.donorId ?? null,
+      interactionType: this.serverValue(o?.interactionTypeOptions, typeWord),
+      direction: this.serverValue(o?.directionOptions, entry.direction === 'in' ? 'Incoming' : 'Outgoing'),
+      occurredAtUtc: new Date(entry.at).toISOString(),
+      outcome: this.serverValue(o?.outcomeOptions, outcomeLabel),
+      summary: entry.summary,
+      notes: entry.note || null,
+      engagementLevel: cap(entry.engagement),
+      quality: cap(entry.quality),
+      isImportant: entry.important,
+      attachmentName: entry.attachment
+    }).pipe(tap(() => this.load(entry.lead)));
+  }
+
+  toggleImportant(id: string): Observable<unknown> {
+    const current = this.entries().find((e) => e.id === id);
+    if (!current) return of(null);
+    const next = !current.important;
+    return this.api.flagCommunication(id, next).pipe(
+      tap(() => this.entries.update((list) => list.map((e) => (e.id === id ? { ...e, important: next } : e)))));
+  }
+
+  setStanding(code: string, patch: Partial<Pick<CommLead, 'temperature' | 'potential'>>): Observable<unknown> {
+    const target = this.ids.get(code);
+    const lead = this.leads().find((l) => l.code === code);
+    if (!target?.leadId || !lead) return of(null);
+    const temp = patch.temperature ?? lead.temperature;
+    const pot = patch.potential ?? lead.potential;
+    const cap = (v: string) => v.charAt(0).toUpperCase() + v.slice(1);
+    return this.api.scoreLead(target.leadId, {
+      temperature: cap(temp), donationPotential: cap(pot), reason: 'Updated from the communication timeline.'
+    }).pipe(tap(() => this.leads.update((list) => list.map((l) => (l.code === code ? { ...l, ...patch } : l)))));
+  }
+
+  /** Server CSV for the open record. */
+  export(code: string): Observable<{ blob: Blob; fileName: string }> {
+    const t = this.ids.get(code);
+    return this.api.exportCommunicationTimeline(t?.leadId ?? null, t?.donorId ?? null);
   }
 }
 

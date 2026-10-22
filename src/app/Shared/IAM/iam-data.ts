@@ -93,29 +93,7 @@ const staff = (n: number, name: string, role: string, unit: string, department: 
   };
 };
 
-export const USERS: IamUser[] = [
-  staff(1, 'Arvind Murali', 'TENANT_ADMIN', 'Head Office - New Delhi', 'Administration', 'Organisation administrator', '', '+91 9810022451'),
-  staff(2, 'Ritu Anil', 'CAMPAIGN_MANAGER', 'Head Office - New Delhi', 'Fundraising', 'Campaign manager', 'Arvind Murali', '+91 9810045122'),
-  staff(3, 'Priyanka Naveen', 'FUNDRAISING_MANAGER', 'Head Office - New Delhi', 'Fundraising', 'Fundraising manager', 'Arvind Murali', '+91 9811078340'),
-  staff(4, 'Aditya Ganesh', 'CAMPAIGN_EXECUTIVE', 'Chennai Regional Office', 'Fundraising', 'Campaign executive', 'Ritu Anil', '+91 9840012876'),
-  staff(5, 'Kavya Srinivasan', 'CAMPAIGN_EXECUTIVE', 'Chennai Regional Office', 'Fundraising', 'Campaign executive', 'Ritu Anil', '+91 9840066213'),
-  staff(6, 'Rahul Menon', 'FUNDRAISER_EXECUTIVE', 'Mumbai Regional Office', 'Fundraising', 'Fundraiser executive', 'Priyanka Naveen', '+91 9820031459'),
-  staff(7, 'Divya Krishnan', 'FUNDRAISER_EXECUTIVE', 'Mumbai Regional Office', 'Fundraising', 'Fundraiser executive', 'Priyanka Naveen', '+91 9820047761'),
-  staff(8, 'Sanjay Pillai', 'DONORCARE', 'Chennai Regional Office', 'Donor Care', 'Donor care associate', 'Priyanka Naveen', '+91 9840090318'),
-  staff(9, 'Nithya Ramesh', 'DONORCARE', 'Mumbai Regional Office', 'Donor Care', 'Donor care associate', 'Priyanka Naveen', '+91 9820058804'),
-  donor(10, 'Ajay Sekar', '+91 9884031275'),
-  donor(11, 'Padma Narayanan'),
-  donor(12, 'Prakash Subhash'),
-  donor(13, 'Ishita Rakesh'),
-  donor(14, 'Ramesh Chandran'),
-  donor(15, 'Anita Jagdish'),
-  donor(16, 'Kiran Manoj'),
-  donor(17, 'Vinod Kishore'),
-  donor(18, 'Joseph Daniel'),
-  donor(19, 'Meena Raghavan'),
-  donor(20, 'Suresh Iyer'),
-  donor(21, 'Lakshmi Prabhu')
-];
+export const USERS: IamUser[] = [];
 
 // -------------------------------------------------------------------------------------
 // PERMISSIONS
@@ -127,13 +105,8 @@ export const PERM_ACTION_LABEL: Record<PermAction, string> = {
 };
 
 export interface PermArea { key: string; name: string; prefix: string; icon: string; }
-export const PERM_AREAS: PermArea[] = [
-  { key: 'campaigns', name: 'Campaigns', prefix: 'cmp', icon: 'flag' },
-  { key: 'donors', name: 'Donors & Leads', prefix: 'don', icon: 'heart' },
-  { key: 'iam', name: 'Identity and Access', prefix: 'iam', icon: 'shield' },
-  { key: 'donations', name: 'Donations', prefix: 'dnt', icon: 'coin' },
-  { key: 'platform', name: 'Platform', prefix: 'plt', icon: 'layers' }
-];
+/** Filled in place from the server's permission matrix (see IamRolesStore). */
+export const PERM_AREAS: PermArea[] = [];
 
 export interface Permission {
   code: string;
@@ -143,67 +116,8 @@ export interface Permission {
   sensitive: boolean;
 }
 
-/** [name, action, sensitive] per area */
-const CATALOG: Record<string, [string, PermAction, boolean][]> = {
-  campaigns: [
-    ['View campaigns', 'view', false], ['View donation attribution', 'view', false], ['View budget and target plans', 'view', false],
-    ['View readiness checklist', 'view', false], ['View tracking assets', 'view', false],
-    ['Create campaigns', 'create', false], ['Create tracking assets', 'create', false],
-    ['Edit campaigns', 'edit', false], ['Allocate budget and target plans', 'edit', false],
-    ['Revise budget and target plans', 'edit', false], ['Edit tracking assets', 'edit', false],
-    ['Submit campaigns for approval', 'submit', false], ['Submit budget plans for approval', 'submit', false],
-    ['Request an attribution correction', 'submit', false],
-    ['Approve campaigns', 'approve', true], ['Approve budget plans', 'approve', true],
-    ['Approve campaign closure', 'approve', true], ['Approve campaign readiness', 'approve', true],
-    ['Pause campaigns', 'operate', true], ['Resume campaigns', 'operate', true],
-    ['Close campaigns', 'operate', true], ['Launch campaigns', 'operate', true],
-    ['Export attributed donations', 'export', true], ['Export budget plans', 'export', false]
-  ],
-  donors: [
-    ['View assignment board', 'view', false], ['View consent centre', 'view', false], ['View donors', 'view', false],
-    ['View leads', 'view', false], ['View follow-ups', 'view', false],
-    ['Create leads', 'create', false], ['Create follow-ups', 'create', false],
-    ['Edit donors', 'edit', false], ['Correct consent', 'edit', true],
-    ['Assign from board', 'operate', false], ['Reassign from board', 'operate', false], ['Bulk route leads', 'operate', true],
-    ['Grant consent', 'operate', true], ['Withdraw consent', 'operate', true],
-    ['Export donors', 'export', true], ['Export leads', 'export', true]
-  ],
-  iam: [
-    ['View Access requests', 'view', false], ['View Access reviews', 'view', false], ['View users', 'view', false],
-    ['View roles', 'view', false], ['View permissions', 'view', false],
-    ['Create Access requests', 'create', false], ['Create users', 'create', true], ['Create roles', 'create', true],
-    ['Edit users', 'edit', true], ['Edit roles', 'edit', true],
-    ['Submit Access requests', 'submit', false], ['Withdraw Access requests', 'submit', false],
-    ['Approve Access requests', 'approve', true], ['Reject Access requests', 'approve', true],
-    ['Suspend users', 'operate', true], ['Reset sign-in', 'operate', true],
-    ['Export Access requests', 'export', true], ['Export users', 'export', true]
-  ],
-  donations: [
-    ['View donations', 'view', false], ['View chargebacks', 'view', false],
-    ['Record an offline donation', 'create', true], ['Correct donations', 'edit', true],
-    ['Submit chargeback evidence', 'submit', true], ['Approve refunds', 'approve', true],
-    ['Assign chargeback cases', 'operate', false], ['Resolve chargeback cases', 'operate', true],
-    ['Reconcile donations', 'operate', true], ['Issue receipts', 'operate', true],
-    ['Export donations', 'export', true], ['Export receipts', 'export', false]
-  ],
-  platform: [
-    ['View Audit', 'view', true], ['View Business units', 'view', false], ['View Organisations', 'view', false],
-    ['View Menu catalogue', 'view', false], ['Create Business units', 'create', true],
-    ['Edit Business units', 'edit', true], ['Edit Organisations', 'edit', true],
-    ['Manage settings Business units', 'operate', true], ['Manage Menu catalogue', 'operate', true],
-    ['Export Audit', 'export', true]
-  ]
-};
-
-export const PERMISSIONS: Permission[] = PERM_AREAS.flatMap((a) =>
-  CATALOG[a.key].map(([name, action, sensitive]) => ({
-    code: `${a.prefix}.${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
-    name, area: a.key, action, sensitive
-  }))
-);
-
-const pick = (fn: (p: Permission) => boolean): string[] => PERMISSIONS.filter(fn).map((p) => p.code);
-const named = (...names: string[]): string[] => PERMISSIONS.filter((p) => names.includes(p.name)).map((p) => p.code);
+/** Filled in place from the server's permission matrix (see IamRolesStore). */
+export const PERMISSIONS: Permission[] = [];
 
 // -------------------------------------------------------------------------------------
 // ROLES
@@ -227,73 +141,14 @@ export interface IamRole {
   incompatible: string[];
   lastChanged: string;
   all?: boolean;
+  /** API identity — set when the role was loaded from the server */
+  id?: string;
+  version?: number;
+  members?: number;
 }
 
-export const ROLES: IamRole[] = [
-  {
-    code: 'TENANT_ADMIN', name: 'Organisation Admin', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Runs the organisation workspace: people, roles, menus, settings and audit. Holds every permission in this organisation.',
-    privileged: true, builtIn: true, isDefault: false, priority: 100, all: true,
-    grants: PERMISSIONS.map((p) => p.code), blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'CAMPAIGN_MANAGER', name: 'Campaign Manager', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: "Owns the organisation's campaigns: plans and prepares them, approves, pauses, resumes and closes them, and decides tracking assets, readiness and budgets. Never approves a campaign they created or submitted.",
-    privileged: true, builtIn: true, isDefault: false, priority: 80,
-    grants: [
-      ...pick((p) => p.area === 'campaigns' && ['view', 'approve', 'operate', 'export'].includes(p.action)),
-      ...named('View donations', 'View Access requests', 'Create Access requests', 'Submit Access requests', 'Withdraw Access requests')
-    ],
-    blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'FUNDRAISING_MANAGER', name: 'Fundraising Manager', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Leads fundraising across donors, leads and donations: routes work to the team, approves refunds and keeps consent and receipts in order.',
-    privileged: true, builtIn: true, isDefault: false, priority: 75,
-    grants: [
-      ...pick((p) => p.area === 'donors' || p.area === 'donations'),
-      ...pick((p) => p.area === 'campaigns' && (p.action === 'view' || p.action === 'export')),
-      ...named('View Access requests', 'Create Access requests', 'Submit Access requests')
-    ],
-    blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'CAMPAIGN_EXECUTIVE', name: 'Campaign Executive', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Prepares campaigns day to day: creates and edits campaigns, tracking assets and budget drafts, then submits them for approval.',
-    privileged: false, builtIn: true, isDefault: true, priority: 60,
-    grants: [
-      ...pick((p) => p.area === 'campaigns' && ['view', 'create', 'edit', 'submit'].includes(p.action)),
-      ...named('View donors', 'View leads', 'View donations', 'View Access requests', 'Create Access requests', 'Submit Access requests')
-    ],
-    blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'FUNDRAISER_EXECUTIVE', name: 'Fundraiser Executive', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Works leads and donors: captures leads, follows up, records offline donations and keeps donor details current.',
-    privileged: false, builtIn: true, isDefault: false, priority: 55,
-    grants: [
-      ...pick((p) => p.area === 'donors' && !p.sensitive),
-      ...named('View campaigns', 'View donations', 'Record an offline donation', 'View Access requests', 'Create Access requests', 'Submit Access requests')
-    ],
-    blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'DONORCARE', name: 'DonorCare', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Looks after donors after they give: consent requests, receipts and chargeback cases.',
-    privileged: false, builtIn: true, isDefault: false, priority: 50,
-    grants: named('View donors', 'View consent centre', 'Grant consent', 'Withdraw consent', 'Correct consent', 'View donations',
-      'View chargebacks', 'Assign chargeback cases', 'Submit chargeback evidence', 'Issue receipts', 'View Access requests',
-      'Create Access requests', 'Submit Access requests'),
-    blocks: [], incompatible: [], lastChanged: ''
-  },
-  {
-    code: 'DONOR', name: 'Donor', status: 'active', type: 'Organisation', owningFunction: '',
-    purpose: 'Self-service access for donors: sees the campaigns they support and their own donations and receipts.',
-    privileged: false, builtIn: true, isDefault: false, priority: 10,
-    grants: named('View campaigns', 'View donations', 'Export receipts', 'View consent centre', 'Grant consent', 'Withdraw consent'),
-    blocks: [], incompatible: [], lastChanged: ''
-  }
-];
+/** Roles now come from the API (IamRolesStore). */
+export const ROLES: IamRole[] = [];
 
 // -------------------------------------------------------------------------------------
 // MENUS
@@ -427,29 +282,7 @@ export interface AuditEvent {
 const ev = (id: number, at: string, action: string, code: string, on: string, onType: string, icon: string): AuditEvent =>
   ({ id: 'e' + id, at, action, code, by: 'Vikram Anand', byRole: 'Platform administrator', on, onType, outcome: 'succeeded', icon });
 
-export const AUDIT_EVENTS: AuditEvent[] = [
-  ev(21, '2026-10-20T11:22:00', 'User contact viewed', 'iam.user.contact.viewed', 'Padma Narayanan', 'User', 'personPlus'),
-  ev(20, '2026-10-20T11:20:40', 'User contact viewed', 'iam.user.contact.viewed', 'Ajay Sekar', 'User', 'personPlus'),
-  ev(19, '2026-10-20T11:20:20', 'User contact viewed', 'iam.user.contact.viewed', 'Prakash Subhash', 'User', 'personPlus'),
-  ev(18, '2026-10-20T11:20:05', 'User contact viewed', 'iam.user.contact.viewed', 'Padma Narayanan', 'User', 'personPlus'),
-  ev(17, '2026-10-20T11:19:00', 'Tenant selected', 'iam.auth.tenant.selected', 'HelpAge India', 'Tenant', 'fingerprint'),
-  ev(16, '2026-10-19T08:10:00', 'Tenant selected', 'iam.auth.tenant.selected', 'HelpAge India', 'Tenant', 'fingerprint'),
-  ev(15, '2026-10-19T07:58:00', 'Role viewed', 'iam.role.viewed', 'Campaign Manager', 'Role', 'role'),
-  ev(14, '2026-10-19T13:05:00', 'Menu catalogue viewed', 'plt.menu.catalogue.viewed', 'Donors & Leads', 'Menu', 'layout'),
-  ev(13, '2026-10-18T20:15:00', 'User created', 'iam.user.created', 'Ajay Sekar', 'User', 'personPlus'),
-  ev(12, '2026-10-18T19:40:00', 'User created', 'iam.user.created', 'Joseph Daniel', 'User', 'personPlus'),
-  ev(11, '2026-10-17T21:30:00', 'Role viewed', 'iam.role.viewed', 'Fundraising Manager', 'Role', 'role'),
-  ev(10, '2026-10-17T19:05:00', 'Tenant selected', 'iam.auth.tenant.selected', 'HelpAge India', 'Tenant', 'fingerprint'),
-  ev(9, '2026-10-16T18:20:00', 'User created', 'iam.user.created', 'Vinod Kishore', 'User', 'personPlus'),
-  ev(8, '2026-10-16T13:45:00', 'Business unit viewed', 'plt.business-unit.viewed', 'Head Office - New Delhi', 'Business unit', 'unit'),
-  ev(7, '2026-10-15T22:10:00', 'User created', 'iam.user.created', 'Kiran Manoj', 'User', 'personPlus'),
-  ev(6, '2026-10-15T20:30:00', 'Role assigned', 'iam.user.role.assigned', 'Arvind Murali', 'User', 'role'),
-  ev(5, '2026-10-14T23:05:00', 'Password changed', 'iam.auth.password.changed', 'Vikram Anand', 'User', 'lock'),
-  ev(4, '2026-10-14T22:03:00', 'Tenant selected', 'iam.auth.tenant.selected', 'HelpAge India', 'Tenant', 'fingerprint'),
-  ev(3, '2026-10-12T19:50:00', 'Organisation created', 'plt.organisation.created', 'HelpAge India', 'Tenant', 'building'),
-  ev(2, '2026-10-11T06:40:00', 'Role viewed', 'iam.role.viewed', 'Organisation Admin', 'Role', 'role'),
-  ev(1, '2026-10-11T07:15:00', 'Menu catalogue viewed', 'plt.menu.catalogue.viewed', 'Users & Access', 'Menu', 'layout')
-];
+export const AUDIT_EVENTS: AuditEvent[] = [];
 
 // -------------------------------------------------------------------------------------
 // MY SECURITY (signed-in account)
@@ -466,21 +299,11 @@ export const ME = {
 };
 
 export interface IamSession { id: string; device: string; detail: string; lastActive: string; current: boolean; }
-export const SESSIONS: IamSession[] = [
-  { id: 's1', device: 'Chrome on Windows', detail: 'Chrome on Windows · 172.18.0.1', lastActive: '2026-10-20T11:24:00', current: true },
-  { id: 's2', device: 'Chrome on Windows', detail: 'Chrome on Windows · 172.18.0.1', lastActive: '2026-10-20T11:19:00', current: false }
-];
+export const SESSIONS: IamSession[] = [];
 
 export interface SecurityActivity { id: string; title: string; detail: string; at: string; }
-export const SECURITY_ACTIVITY: SecurityActivity[] = [
-  '2026-10-20T11:20:00', '2026-10-20T10:06:00', '2026-10-19T09:05:00', '2026-10-18T17:29:00', '2026-10-17T15:42:00',
-  '2026-10-17T14:51:00', '2026-10-16T10:13:00', '2026-10-15T09:16:00', '2026-10-14T22:03:00'
-].map((at, i) => ({ id: 'a' + i, title: 'Signed in', detail: 'Chrome on Windows · from 172.18.0.1', at }));
+export const SECURITY_ACTIVITY: SecurityActivity[] = [];
 
-// -------------------------------------------------------------------------------------
-// ROUTES + CREATE-USER OPTIONS
-// -------------------------------------------------------------------------------------
-/** Routes of the Users & Access screens (same paths as the sidebar menu). */
 export const IAM_PATHS = {
   users: '/app/administration/access/user-directory',
   createUser: '/app/administration/access/create-user',
@@ -494,6 +317,7 @@ export const COUNTRY_CODES: { code: string; country: string }[] = [
   { code: '+880', country: 'Bangladesh' }, { code: '+971', country: 'United Arab Emirates' }, { code: '+65', country: 'Singapore' },
   { code: '+44', country: 'United Kingdom' }, { code: '+1', country: 'United States / Canada' }, { code: '+61', country: 'Australia' }
 ];
+
 
 export const UNITS = ['Head Office - New Delhi', 'Chennai Regional Office', 'Mumbai Regional Office', 'Kolkata Regional Office', 'Bengaluru Regional Office'];
 

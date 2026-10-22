@@ -2,34 +2,11 @@
    COUNTRIES - master configuration and sample rows
    Drives the countries list page (countries.html) and the create / edit page (country-form.html):
    table columns, filters, overview metrics, form sections with their rules, live preview and the
-   view-drawer details. Sample rows are fictional review values; replace them with the API.
+   view-drawer details. Records come from the API (see MastersStore).
    ===================================================================================================== */
 import {
-  MasterConfig, statusMetrics, MasterRow, MasterStatus, REGIONS, STATUS_AI, STATUS_LABEL, dash, numOr, s, sortOrder, statusChoice, statusColumn, statusFilter, yesNo
+  MasterConfig, statusMetrics, MasterRow, MasterStatus, STATUS_AI, STATUS_LABEL, dash, numOr, s, sortOrder, statusChoice, statusColumn, statusFilter, yesNo
 } from '../../../Shared/Masters/masters.types';
-
-const country = (
-  code: string, alpha3: string, numeric: string, name: string, official: string, region: string,
-  currency: string, phone: string, postal: string, subdivisions: boolean, sort: number
-): MasterRow => ({
-  id: 'cty-' + code, code, alpha2: code, alpha3, numeric, name, official, region, currency, phone,
-  postal, subdivisions, status: 'active', sort
-});
-
-export const SEED_COUNTRIES: MasterRow[] = [
-  country('IN', 'IND', '356', 'India', 'Republic of India', 'Asia', 'INR', '+91', '^[1-9][0-9]{5}$', true, 1),
-  country('US', 'USA', '840', 'United States', 'United States of America', 'North America', 'USD', '+1', '^[0-9]{5}(-[0-9]{4})?$', true, 2),
-  country('SG', 'SGP', '702', 'Singapore', 'Republic of Singapore', 'Asia', 'SGD', '+65', '^[0-9]{6}$', false, 3),
-  country('AU', 'AUS', '036', 'Australia', 'Commonwealth of Australia', 'Oceania', 'AUD', '+61', '^[0-9]{4}$', true, 4),
-  country('CA', 'CAN', '124', 'Canada', 'Canada', 'North America', 'CAD', '+1', '^[A-Z][0-9][A-Z] ?[0-9][A-Z][0-9]$', true, 5),
-  country('GB', 'GBR', '826', 'United Kingdom', 'United Kingdom of Great Britain and Northern Ireland', 'Europe', 'GBP', '+44', '^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$', true, 6),
-  country('DE', 'DEU', '276', 'Germany', 'Federal Republic of Germany', 'Europe', 'EUR', '+49', '^[0-9]{5}$', true, 7),
-  country('FR', 'FRA', '250', 'France', 'French Republic', 'Europe', 'EUR', '+33', '^[0-9]{5}$', true, 8),
-  country('JP', 'JPN', '392', 'Japan', 'Japan', 'Asia', 'JPY', '+81', '^[0-9]{3}-?[0-9]{4}$', true, 9),
-  country('CN', 'CHN', '156', 'China', 'People’s Republic of China', 'Asia', 'CNY', '+86', '^[0-9]{6}$', true, 10),
-  country('AE', 'ARE', '784', 'United Arab Emirates', 'United Arab Emirates', 'Middle East', 'AED', '+971', '', true, 11),
-  { ...country('LK', 'LKA', '144', 'Sri Lanka', 'Democratic Socialist Republic of Sri Lanka', 'Asia', 'LKR', '+94', '^[0-9]{5}$', true, 12), status: 'inactive' }
-];
 
 export const COUNTRY: MasterConfig = {
   key: 'country',
@@ -45,7 +22,7 @@ export const COUNTRY: MasterConfig = {
   searchPlaceholder: 'Name, ISO code or region',
   searchKeys: ['name', 'official', 'alpha2', 'alpha3', 'region', 'currency'],
   filters: [
-    { key: 'region', title: 'Region', allLabel: 'All regions', options: REGIONS, match: (r, v) => r['region'] === v },
+    { key: 'region', title: 'Region', allLabel: 'All regions', optionsFrom: 'regions', match: (r, v) => r['region'] === v },
     statusFilter(STATUS_AI)
   ],
   columns: [
@@ -74,7 +51,7 @@ export const COUNTRY: MasterConfig = {
       fields: [
         { key: 'name', label: 'Country name', kind: 'text', required: true, placeholder: 'India', maxlength: 80 },
         { key: 'official', label: 'Official name', kind: 'text', placeholder: 'Republic of India', maxlength: 120 },
-        { key: 'region', label: 'Region', kind: 'select', required: true, options: REGIONS, placeholder: 'Select region' }
+        { key: 'region', label: 'Region', kind: 'select', required: true, optionsFrom: 'regions', placeholder: 'Select region' }
       ]
     },
     {

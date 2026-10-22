@@ -1,6 +1,11 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Footer } from '../../../Shared/layout/Footer/footer';
+import { DonorApiService } from '../../../Service/donor-api.service';
+import { LeadListItem } from '../../../Shared/models/donor-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { fetchAllPages } from '../../../Shared/services/paging';
+import { map } from 'rxjs';
 export type LeadStage = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost';
 export type LeadTemp = 'Cold' | 'Warm' | 'Hot';
 export type LeadPotential = 'Low' | 'Medium' | 'High';
@@ -9,61 +14,61 @@ export type StatTab = 'all' | 'unassigned' | 'assigned' | 'hot' | 'high' | 'rece
 export interface LeadRow {
   id: string; ref: string; name: string; phone: string; email: string;
   campaign: string; source: string; owner: string | null; stage: LeadStage;
-  temp: LeadTemp; potential: LeadPotential; due: string; overdue: number; recent: boolean;
+  temp: LeadTemp; potential: LeadPotential; due: string; dueNote: string; dueTs: number; overdue: number; recent: boolean;
 }
 
-const C = (r: LeadRow): LeadRow => r;
+const DAY = 86_400_000;
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const FIRST: LeadRow[] = [
-  C({ id: 'l38', ref: 'LED-2026-000038', name: 'Gopal Krishnan', phone: '+919830273826', email: 'gopal.krishnan@mail.test', campaign: 'Adopt a Day-Care Centre', source: 'QR poster', owner: 'Vivek Sridhar', stage: 'Contacted', temp: 'Cold', potential: 'Low', due: '10 Oct 2026', overdue: 9, recent: false }),
-  C({ id: 'l81', ref: 'LED-2026-000081', name: 'Tapas Nirmal', phone: '+919830543645', email: 'tapas.nirmal@mail.test', campaign: 'Mobile Healthcare Units', source: 'QR poster', owner: 'Imran Iqbal', stage: 'Contacted', temp: 'Cold', potential: 'Low', due: '11 Oct 2026', overdue: 8, recent: false }),
-  C({ id: 'l23', ref: 'LED-2026-000023', name: 'Geeta Ramesh', phone: '+919839506969', email: 'geeta.ramesh@mail.test', campaign: 'Mobile Healthcare Units', source: 'Newsletter', owner: 'Gaurav Deepak', stage: 'Contacted', temp: 'Cold', potential: 'Low', due: '11 Oct 2026', overdue: 8, recent: false }),
-  C({ id: 'l64', ref: 'LED-2026-000064', name: 'Hari Babu', phone: '+919849810193', email: 'hari.babu@mail.test', campaign: 'Annual Appeal 2026', source: 'Facebook form', owner: null, stage: 'New', temp: 'Cold', potential: 'Low', due: '12 Oct 2026', overdue: 7, recent: false }),
-  C({ id: 'l06', ref: 'LED-2026-000006', name: 'Dinesh Babu', phone: '+919842161104', email: 'dinesh.babu@mail.test', campaign: 'Mobile Healthcare Units', source: 'Newsletter', owner: 'Nisha Karthik', stage: 'Contacted', temp: 'Cold', potential: 'Low', due: '12 Oct 2026', overdue: 7, recent: false }),
-  C({ id: 'l68', ref: 'LED-2026-000068', name: 'Dinesh Kailash', phone: '+919839051359', email: 'dinesh.kailash@mail.test', campaign: 'Winter Relief', source: 'WhatsApp reply', owner: 'Shalini Balaji', stage: 'Contacted', temp: 'Cold', potential: 'Low', due: '12 Oct 2026', overdue: 7, recent: false }),
-  C({ id: 'l50', ref: 'LED-2026-000050', name: 'Sarita Mahesh', phone: '+919822970083', email: 'sarita.mahesh@mail.test', campaign: 'Mobile Healthcare Units', source: 'CSR referral', owner: 'Arvind Murali', stage: 'Contacted', temp: 'Cold', potential: 'Medium', due: '12 Oct 2026', overdue: 7, recent: false }),
-  C({ id: 'l62', ref: 'LED-2026-000062', name: 'Firoz Salim', phone: '+919811386411', email: 'firoz.salim@mail.test', campaign: 'Elder Helpline', source: 'Inbound call', owner: null, stage: 'New', temp: 'Warm', potential: 'High', due: '13 Oct 2026', overdue: 6, recent: false }),
-  C({ id: 'l03', ref: 'LED-2026-000003', name: 'Fathima Ismail', phone: '+919845332260', email: 'fathima.ismail@mail.test', campaign: 'Digital Literacy', source: 'Tech fair', owner: 'Nisha Karthik', stage: 'Assigned', temp: 'Warm', potential: 'Medium', due: '13 Oct 2026', overdue: 6, recent: false }),
-  C({ id: 'l21', ref: 'LED-2026-000021', name: 'Chandni Rakesh', phone: '+919811486562', email: 'chandni.rakesh@mail.test', campaign: 'Elder Helpline', source: 'Website form', owner: 'Gaurav Deepak', stage: 'Assigned', temp: 'Hot', potential: 'Medium', due: '13 Oct 2026', overdue: 6, recent: false }),
-];
-const FN = ['Aarav', 'Meera', 'Kiran', 'Divya', 'Suresh', 'Lakshmi', 'Arjun', 'Pooja', 'Rahul', 'Sneha', 'Vikram', 'Ananya', 'Rohan', 'Priya', 'Kavya', 'Manoj', 'Nandini', 'Sathish', 'Rekha', 'Aditya'];
-const LN = ['Iyer', 'Menon', 'Pillai', 'Reddy', 'Sharma', 'Nair', 'Gupta', 'Joshi', 'Verma', 'Khan', 'Das', 'Kulkarni', 'Bose', 'Singh', 'Rao', 'Malhotra', 'Pandey', 'Ghosh', 'Thakur', 'Sheikh'];
-const CAMPS: Array<[string, string]> = [
-  ['Mobile Healthcare Units - Care at the Doorstep', 'Newsletter sign-up'],
-  ['Adopt a Day-Care Centre', "Residents' association QR poster"],
-  ['Winter Relief - Warmth for Elders', 'WhatsApp broadcast reply'],
-  ['Elder Helpline - Keep the Line Open', 'Website enquiry form'],
-  ['Care for the Elderly - Annual Appeal 2026', 'Facebook lead form'],
-  ['Digital Literacy for Seniors', 'Senior tech fair counter'],
-  ['Palliative Care at Home', 'CSR desk referral'],
-  ['Walkathon for Elders 2027', 'Inbound call to donor services'],
-];
-const OWNERS = ['Vivek Sridhar', 'Imran Iqbal', 'Gaurav Deepak', 'Nisha Karthik', 'Shalini Balaji', 'Arvind Murali', 'Kavita Ashok', 'Rohan Mehta', 'Sneha Iyer'];
-const HOT = new Set([11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47, 50, 53, 56, 59, 62, 65, 68]);
-const HIGH = new Set([11, 13, 15, 17, 19, 23, 25, 27, 29, 31, 33, 35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61]);
-const UNASS = new Set([15, 27, 39, 51, 63, 75]);
-const CONV = new Set([20, 32, 44, 56, 68, 78, 83]);
-const RECENT = new Set([12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72, 78, 84]);
-
-function build(): LeadRow[] {
-  const rows = [...FIRST];
-  for (let i = 11; i <= 84; i++) {
-    const fn = FN[(i * 7) % FN.length]; const ln = LN[(i * 11) % LN.length];
-    const pair = CAMPS[i % CAMPS.length];
-    const temp: LeadTemp = HOT.has(i) ? 'Hot' : i % 3 === 0 ? 'Warm' : 'Cold';
-    const pot: LeadPotential = HIGH.has(i) ? 'High' : i % 3 === 1 ? 'Medium' : 'Low';
-    const stage: LeadStage = CONV.has(i) ? 'Converted' : i % 9 === 4 ? 'New' : i % 5 === 0 ? 'Assigned' : i % 7 === 0 ? 'Qualified' : 'Contacted';
-    rows.push({
-      id: 'lx' + i, ref: 'LED-2026-' + String(i).padStart(6, '0'), name: fn + ' ' + ln,
-      phone: '+9198' + String(1000000 + ((i * 7919) % 8999999)), email: fn.toLowerCase() + '.' + ln.toLowerCase() + '@mail.test',
-      campaign: pair[0], source: pair[1], owner: UNASS.has(i) ? null : OWNERS[i % OWNERS.length],
-      stage, temp, potential: pot, due: (13 + ((i - 10) % 12)) + ' Oct 2026',
-      overdue: Math.max(0, 6 - Math.floor((i - 10) / 14)), recent: RECENT.has(i),
-    });
-  }
-  return rows;
+function stageOf(status: string): LeadStage {
+  const n = (status ?? '').toLowerCase();
+  if (n.includes('convert')) return 'Converted';
+  if (n.includes('qualif') && !n.includes('disqual')) return 'Qualified';
+  if (n.includes('contact')) return 'Contacted';
+  if (n.includes('assign')) return 'Assigned';
+  if (n.includes('lost') || n.includes('closed') || n.includes('disqual') || n.includes('reject')) return 'Lost';
+  return 'New';
 }
-export const LEADS: LeadRow[] = build();
+
+function titleCase<T extends string>(v: string, fallback: T, allowed: readonly T[]): T {
+  const t = (v ?? '').charAt(0).toUpperCase() + (v ?? '').slice(1).toLowerCase();
+  return (allowed as readonly string[]).includes(t) ? (t as T) : fallback;
+}
+
+/** Whole calendar days from today to the given day (negative = already past), in the browser's day. */
+function daysFromToday(d: Date): number {
+  const a = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const t = new Date();
+  const b = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+  return Math.round((a - b) / DAY);
+}
+
+function toRow(l: LeadListItem): LeadRow {
+  const due = l.nextActionDueUtc ? new Date(l.nextActionDueUtc) : null;
+  const valid = !!due && !Number.isNaN(due.getTime());
+  const diff = valid ? daysFromToday(due as Date) : 0;
+  const converted = !!l.isConverted;
+  // A converted lead has nothing left to chase, so it never reads as overdue.
+  const overdueDays = valid && !converted && diff < 0 ? -diff : 0;
+  const dueNote = !valid ? 'No follow-up planned'
+    : converted ? 'Converted'
+    : diff < 0 ? ''
+    : diff === 0 ? 'Due today'
+    : diff === 1 ? 'Due tomorrow'
+    : `Due in ${diff} days`;
+  return {
+    id: l.id, ref: l.leadReference, name: l.name, phone: l.mobileNumber ?? '', email: l.emailAddress ?? '',
+    campaign: l.campaignName ?? '', source: l.source ?? '', owner: l.ownerName,
+    stage: converted ? 'Converted' : stageOf(l.status),
+    temp: titleCase(l.temperature, 'Cold', ['Cold', 'Warm', 'Hot'] as const),
+    potential: titleCase(l.donationPotential, 'Low', ['Low', 'Medium', 'High'] as const),
+    due: valid ? `${(due as Date).getDate()} ${MONTH_ABBR[(due as Date).getMonth()]} ${(due as Date).getFullYear()}` : '—',
+    dueNote,
+    dueTs: valid ? (due as Date).getTime() : Number.MAX_SAFE_INTEGER,
+    overdue: overdueDays,
+    recent: !!l.createdAtUtc && Date.now() - new Date(l.createdAtUtc).getTime() < 7 * DAY,
+  };
+}
 
 const ICONS: Record<string, string> = {
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3',
@@ -103,9 +108,23 @@ interface Opt { value: string; label: string; }
   templateUrl: './lead-work-queue.html',
   styleUrl: './lead-work-queue.css',
 })
-export class LeadWorkQueue {
+export class LeadWorkQueue implements OnInit {
   private readonly router = inject(Router);
-  protected readonly all = LEADS;
+  private readonly api = inject(DonorApiService);
+  private readonly route = inject(ActivatedRoute);
+  /** My Leads is this same screen, told by the route to show only the leads assigned to the signed-in user. */
+  protected readonly mine = !!this.route.snapshot.data['mine'];
+  protected get heading(): string { return this.mine ? 'My Leads' : 'Lead Work Queue'; }
+  /** Active (not converted) leads: what "All leads" and every other tab count. */
+  private readonly rows = signal<LeadRow[]>([]);
+  /** Converted leads, fetched only once the Converted tab is opened. */
+  private readonly convertedRows = signal<LeadRow[]>([]);
+  private readonly convertedTotal = signal(0);
+  private convertedLoaded = false;
+  protected readonly loading = signal(false);
+  /** The rows the current tab works over. */
+  private readonly current = computed(() => (this.tab() === 'converted' ? this.convertedRows() : this.rows()));
+  protected get all(): LeadRow[] { return this.rows(); }
   protected readonly query = signal('');
   protected readonly tab = signal<StatTab>('all');
   protected readonly page = signal(1);
@@ -133,8 +152,8 @@ export class LeadWorkQueue {
     { value: 'newest', label: 'Newest first' },
   ];
 
-  protected readonly sources = computed(() => [...new Set(this.all.map((r) => r.source))].sort());
-  protected readonly owners = computed(() => [...new Set(this.all.map((r) => r.owner).filter((o): o is string => !!o))].sort());
+  protected readonly sources = computed(() => [...new Set(this.rows().map((r) => r.source).filter(Boolean))].sort());
+  protected readonly owners = computed(() => [...new Set(this.rows().map((r) => r.owner).filter((o): o is string => !!o))].sort());
   protected readonly srcOpts = computed<Opt[]>(() => [{ value: 'all', label: 'All' }, ...this.sources().map((v) => ({ value: v, label: v }))]);
   protected readonly ownerOpts = computed<Opt[]>(() => [{ value: 'all', label: 'All' }, { value: 'none', label: 'Unassigned' }, ...this.owners().map((v) => ({ value: v, label: v }))]);
   /** The five filter dropdowns, rendered with one @for. */
@@ -148,21 +167,21 @@ export class LeadWorkQueue {
   /** Number of filters that are not "All" - shown on the Filters button. */
   protected readonly activeFilters = computed(() => [this.fStage(), this.fTemp(), this.fPot(), this.fSrc(), this.fOwner()].filter((v) => v !== 'all').length);
   protected readonly counts = computed(() => ({
-    all: this.all.length,
-    unassigned: this.all.filter((r) => !r.owner).length,
-    assigned: this.all.filter((r) => !!r.owner).length,
-    hot: this.all.filter((r) => r.temp === 'Hot').length,
-    high: this.all.filter((r) => r.potential === 'High').length,
-    recent: this.all.filter((r) => r.recent).length,
-    converted: this.all.filter((r) => r.stage === 'Converted').length,
+    all: this.rows().length,
+    unassigned: this.rows().filter((r) => !r.owner).length,
+    assigned: this.rows().filter((r) => !!r.owner).length,
+    hot: this.rows().filter((r) => r.temp === 'Hot').length,
+    high: this.rows().filter((r) => r.potential === 'High').length,
+    recent: this.rows().filter((r) => r.recent).length,
+    converted: this.convertedTotal(),
   }));
   protected readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
     const t = this.tab();
-    return this.all.filter((r) =>
+    return this.current().filter((r) =>
       (t === 'all' || (t === 'unassigned' && !r.owner) || (t === 'assigned' && !!r.owner) ||
         (t === 'hot' && r.temp === 'Hot') || (t === 'high' && r.potential === 'High') ||
-        (t === 'recent' && r.recent) || (t === 'converted' && r.stage === 'Converted')) &&
+        (t === 'recent' && r.recent) || t === 'converted') &&
       (this.fStage() === 'all' || r.stage === this.fStage()) &&
       (this.fTemp() === 'all' || r.temp === this.fTemp()) &&
       (this.fPot() === 'all' || r.potential === this.fPot()) &&
@@ -173,7 +192,7 @@ export class LeadWorkQueue {
         const k = this.sort();
         if (k === 'name') return a.name.localeCompare(b.name);
         if (k === 'newest') return b.ref.localeCompare(a.ref);
-        return b.overdue - a.overdue || Date.parse(a.due) - Date.parse(b.due);
+        return b.overdue - a.overdue || a.dueTs - b.dueTs;
       });
   });
   protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
@@ -199,7 +218,10 @@ export class LeadWorkQueue {
   protected readonly allChecked = computed(() => this.pageRows().length > 0 && this.pageRows().every((r) => this.checked().has(r.id)));
 
   setQuery(v: string): void { this.query.set(v); this.page.set(1); }
-  setTab(t: StatTab): void { this.tab.set(t); this.page.set(1); }
+  setTab(t: StatTab): void {
+    this.tab.set(t); this.page.set(1);
+    if (t === 'converted') this.loadConverted();
+  }
   setF(which: Dd, v: string): void {
     if (which === 's') this.fStage.set(v);
     if (which === 't') this.fTemp.set(v);
@@ -241,8 +263,8 @@ export class LeadWorkQueue {
   }
   labelOf(opts: Opt[], v: string | number): string { return opts.find((o) => o.value === String(v))?.label ?? String(v); }
   readonly rowOpts: Opt[] = [10, 25, 50].map((n) => ({ value: String(n), label: String(n) }));
-  exportSelected(): void { this.flash('Export queued for ' + this.checked().size + ' selected leads.'); }
-  assignSelected(): void { this.flash(this.checked().size + ' leads ready to assign - pick an owner from the lead profile.'); }
+  exportSelected(): void { this.doExport(); }
+  assignSelected(): void { this.router.navigate(['/app/fundraising/relationships/assignment-board']); }
   isChecked(id: string): boolean { return this.checked().has(id); }
   goCapture(): void { this.router.navigate(['/app/fundraising/relationships/lead-capture']); }
   openLead(r: LeadRow): void { this.router.navigate(['/app/fundraising/Lead/Lead-view'], { queryParams: { ref: r.ref } }); }
@@ -251,7 +273,61 @@ export class LeadWorkQueue {
     if (kind === 'assign') { this.flash((r.owner ? 'Reassign ' : 'Assign ') + r.name + ' from the lead profile.'); return; }
     this.flash('Note for ' + r.name + ' — log it from the lead profile.');
   }
-  doExport(): void { this.flash('Export queued — the filtered CSV will download shortly.'); }
+  doExport(): void {
+    this.api.exportLeads({ search: this.query().trim() || undefined, leadIds: this.checked().size ? [...this.checked()].join(',') : undefined }).subscribe({
+      next: ({ blob, fileName }) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = fileName; a.click();
+        URL.revokeObjectURL(url);
+        this.flash('Lead export downloaded.');
+      },
+      error: (e: unknown) => this.flash(apiErrorMessage(e)),
+    });
+  }
+
+  ngOnInit(): void { this.load(); }
+
+  private fetch(isConverted: boolean | null) {
+    return fetchAllPages((p, size) => this.api.getLeadWorkQueue({
+      page: p, pageSize: size, isConverted, onlyMine: this.mine ? true : null,
+    }).pipe(map((r) => r.leads)));
+  }
+
+  /** Active leads only. The server leaves converted leads out of the queue unless asked for them. */
+  load(): void {
+    this.loading.set(true);
+    this.convertedLoaded = false;
+    this.convertedRows.set([]);
+    this.fetch(null).subscribe({
+      next: (active) => {
+        const seen = new Set<string>();
+        const unique = active.filter((l) => !l.isConverted && (seen.has(l.id) ? false : (seen.add(l.id), true)));
+        this.rows.set(unique.map(toRow));
+        this.loading.set(false);
+      },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); },
+    });
+    // Only the number for the Converted card; the rows wait until somebody opens that tab.
+    this.api.getLeadWorkQueue({ page: 1, pageSize: 1, isConverted: true, onlyMine: this.mine ? true : null }).subscribe({
+      next: (r) => this.convertedTotal.set(r.leads.totalCount ?? 0),
+      error: () => this.convertedTotal.set(0),
+    });
+  }
+
+  private loadConverted(): void {
+    if (this.convertedLoaded) return;
+    this.convertedLoaded = true;
+    this.loading.set(true);
+    this.fetch(true).subscribe({
+      next: (list) => {
+        this.convertedRows.set(list.map(toRow));
+        this.convertedTotal.set(list.length);
+        this.loading.set(false);
+      },
+      error: (e: unknown) => { this.convertedLoaded = false; this.loading.set(false); this.flash(apiErrorMessage(e)); },
+    });
+  }
   icon(n: string): string { return ICONS[n] ?? ''; }
   bars(p: LeadPotential): number { return p === 'Low' ? 1 : p === 'Medium' ? 2 : 3; }
   private flash(t: string): void {

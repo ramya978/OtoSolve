@@ -98,7 +98,9 @@ export const SIGN_IN_ROUTES: Record<SignInResultStatus, string> = {
   // The picker at /auth/select-organisation still exists and is still reached from the
   // organisationContextGuard: somebody who opens an Organisation-scoped screen without having
   // named an Organisation is asked which one, at the point where the answer is needed.
-  tenantSelectionRequired: '/app/administration/organisation/directory',
+  // In this build the Organisation switcher lives in the top bar of every /app page, so a root
+  // user lands on the dashboard and picks the Organisation to work in from there.
+  tenantSelectionRequired: '/app/dashboard',
 
   passwordChangeRequired: '/auth/reset-password',
 };
