@@ -231,4 +231,9 @@ protected async submit(event: Event): Promise<void> {
     const raw = this.route.snapshot.queryParamMap.get('returnUrl');
     return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
   }
+
+    protected forgotPassword(): void {
+    void this.router.navigate(['/auth/forgot-password']);
+  }
+
 }
