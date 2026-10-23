@@ -1135,13 +1135,7 @@
   :host *::after { animation: none !important; transition: none !important }
 }
 
-/* ---------- edit profile popup (added: the page had no edit form) ---------- */
-.pf-dlg-back { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--pf-heading) 38%, transparent); }
-.pf-dlg { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; }
-.pf-dlg-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--pf-row-line); }
-.pf-dlg-head h3 { margin: 0; color: var(--pf-heading); font-size: calc(16px * var(--font-scale, 1)); }
-.pf-dlg-head p { margin: 4px 0 0; color: var(--pf-muted); font-size: calc(12px * var(--font-scale, 1)); }
-.pf-dlg-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 16px 20px; }
+/* ---------- inline card editing (replaces the edit popup) ---------- */
 .pf-dlg-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .pf-dlg-f > span { color: var(--pf-muted); font-size: calc(11px * var(--font-scale, 1)); font-weight: 600; }
 .pf-dlg-f input, .pf-dlg-f select { height: 36px; padding: 0 10px; border: 1px solid var(--pf-line); border-radius: var(--btn-radius); background: var(--white); color: var(--pf-ink); font: inherit; min-width: 0; }
@@ -1149,5 +1143,34 @@
 .pf-dlg-f small { color: var(--status-danger-ink, #b3261e); font-size: calc(11px * var(--font-scale, 1)); }
 .pf-dlg-row { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: start; }
 .pf-dlg-wide { grid-column: 1 / -1; }
-.pf-dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--pf-row-line); }
-@media (max-width: 560px) { .pf-dlg-body { grid-template-columns: 1fr; } }
+/* bar shown below the cards when a card (or all) is being edited inline */
+.pf-edit-bar { margin: 10px 16px 14px; padding: 10px 14px; border: 1px solid var(--pf-line); border-radius: var(--btn-radius); background: color-mix(in srgb, var(--pf-primary) 4%, var(--white)); display: flex; flex-direction: column; gap: 10px; }
+.pf-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+@media (max-width: 560px) { .pf-edit-bar { margin: 10px; padding: 10px 12px; } }
+
+
+/* Append this to profile.css (replaces the earlier .pf-edit-foot / .pf-edit-btns rules). */
+
+/* An edited row keeps the same label-left / value-right layout as the read-only rows. */
+.pf-field-edit { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.pf-field-edit .pf-field-label { flex: 0 0 auto; }
+.pf-ctl { flex: 1 1 0; min-width: 0; max-width: 340px; display: flex; flex-direction: column; gap: 4px; }
+.pf-ctl input, .pf-ctl select, .pf-ctl textarea {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit; color: inherit;
+  background: var(--surface, #fff); border: 1px solid var(--border, #d9dce3); border-radius: 8px;
+}
+.pf-ctl input, .pf-ctl select { height: 36px; }
+.pf-ctl textarea { resize: vertical; min-height: 60px; }
+.pf-ctl input:focus, .pf-ctl select:focus, .pf-ctl textarea:focus { outline: 2px solid var(--primary, #7a2e4d); outline-offset: 1px; }
+.pf-ctl .bad { border-color: #c0392b; }
+.pf-err { color: #c0392b; font-size: 12px; }
+.pf-phone { display: flex; gap: 8px; }
+.pf-phone .pf-code { flex: 0 0 76px; width: 76px; }
+
+/* Reason for this change: full-width row, label above the box. */
+.pf-field-wide { grid-column: 1 / -1; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; }
+.pf-field-wide .pf-ctl { max-width: none; }
+
+/* The pencil turns into a save icon while the card is being edited. */
+.pf-iconbtn-save { color: var(--primary, #7a2e4d); }
+.pf-iconbtn-save:disabled { opacity: .5; cursor: progress; }

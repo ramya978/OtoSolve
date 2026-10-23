@@ -79,7 +79,7 @@ function toOrg(o: OrganisationListItemResponse): Org {
     status: STATUS_OF[o.status ?? 'invited'] ?? 'invited'
   };
 }
-const PAGE_SIZE = 12;
+const PAGE_SIZES = [10, 25, 50];
 
 /** Organisations — Workspace Kit layout: heading and one card: KPI widgets, filters,
  *  a card grid or list, and pagination. */
@@ -101,6 +101,9 @@ export class Organisations {
   readonly status = signal<Status | ''>('');
   readonly view = signal<View>('cards');
   readonly page = signal(1);
+  readonly pageSize = signal(10);
+  readonly pageSizes = PAGE_SIZES;
+  readonly openRows = signal(false);
   readonly selected = signal<ReadonlySet<string>>(new Set());
   readonly statuses = (Object.keys(STATUS) as Status[]).map((key) => ({ key, label: STATUS[key].label }));
   readonly notice = signal('');
@@ -150,14 +153,29 @@ export class Organisations {
 
   readonly hasFilters = computed(() => !!(this.query().trim() || this.status()));
 
-  readonly pages = computed(() => Math.max(1, Math.ceil(this.rows().length / PAGE_SIZE)));
-  readonly current = computed(() => Math.min(this.page(), this.pages()));
-  readonly paged = computed(() => this.rows().slice((this.current() - 1) * PAGE_SIZE, this.current() * PAGE_SIZE));
-  readonly from = computed(() => (this.rows().length ? (this.current() - 1) * PAGE_SIZE + 1 : 0));
-  readonly to = computed(() => Math.min(this.current() * PAGE_SIZE, this.rows().length));
+  readonly pageSafe = computed(() => Math.min(this.page(), this.totalPages()));
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
+  /** Page buttons with gaps: 1 … 4 5 6 … 9 (0 = gap). Mirrors Lead Work Queue. */
+  readonly pages = computed<number[]>(() => {
+    const n = this.totalPages(), p = this.pageSafe();
+    if (n <= 7) return Array.from({ length: n }, (_, i) => i + 1);
+    const out: number[] = [1];
+    const from = Math.max(2, p - 1), to = Math.min(n - 1, p + 1);
+    if (from > 2) out.push(0);
+    for (let i = from; i <= to; i++) out.push(i);
+    if (to < n - 1) out.push(0);
+    out.push(n);
+    return out;
+  });
+  readonly rangeFrom = computed(() => (this.rows().length ? (this.pageSafe() - 1) * this.pageSize() + 1 : 0));
+  readonly rangeTo = computed(() => Math.min(this.pageSafe() * this.pageSize(), this.rows().length));
+  readonly pageRows = computed(() => {
+    const start = (this.pageSafe() - 1) * this.pageSize();
+    return this.rows().slice(start, start + this.pageSize());
+  });
 
   /** every organisation on the current page is ticked */
-  readonly allSelected = computed(() => this.paged().length > 0 && this.paged().every((o) => this.selected().has(o.id)));
+  readonly allSelected = computed(() => this.pageRows().length > 0 && this.pageRows().every((o) => this.selected().has(o.id)));
 
   icon(name: string): string { return ICONS[name] ?? ''; }
   label(s: Status): string { return STATUS[s].label; }
@@ -176,13 +194,13 @@ export class Organisations {
     this.selected.update((set) => { const next = new Set(set); next.has(id) ? next.delete(id) : next.add(id); return next; });
   }
   toggleAll(): void {
-    const ids = this.paged().map((o) => o.id);
+    const ids = this.pageRows().map((o) => o.id);
     const all = this.allSelected();
     this.selected.update((set) => { const next = new Set(set); ids.forEach((id) => (all ? next.delete(id) : next.add(id))); return next; });
   }
   clearSelection(): void { this.selected.set(new Set()); }
 
-  go(delta: number): void { this.page.set(Math.min(this.pages(), Math.max(1, this.current() + delta))); }
+  go(delta: number): void { this.page.set(Math.min(this.totalPages(), Math.max(1, this.pageSafe() + delta))); }
   setView(v: View): void { this.view.set(v); }
   clearFilters(): void { this.query.set(''); this.status.set(''); this.page.set(1); }
 

@@ -335,6 +335,8 @@ const APP_ROUTES: Routes = [
   { path: 'app/masters/timezone/new', component: TimeZoneForm, title: 'New time zone' },
   { path: 'app/masters/timezone/:id/edit', component: TimeZoneForm, title: 'Edit time zone' },
   { path: 'app/auth/profile', component: Profile, title: 'Profile', data: { name: 'Profile', route: '/app/auth/profile' } },
+  { path: 'app/auth/user-profile', component: Profile, title: 'Profile', data: { name: 'User Profile', route: '/app/auth/user-profile' } },
+
   { path: 'app/fundraising/Lead/Lead-view', component: LeadProfile, title: 'Lead_Profile', data: { name: 'Lead_Profile', route: '/app/fundraising/Lead/Lead-view' } },
   ...menuRoutes
 ];

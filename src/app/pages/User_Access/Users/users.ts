@@ -8,21 +8,40 @@ import {
 import { IamDirectoryStore, mergeDetail } from '../../../Shared/IAM/iam-directory.store';
 import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type View = 'cards' | 'list';
 
 interface UserDraft {
-  name: string;
+  title: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  name: string;            // display name
+  preferredName: string;
   email: string;
-  mobile: string;
-  role: string;
+  countryCode: string;
+  mobile: string;          // number only (country code is separate)
+  employeeNumber: string;
+  designation: string;
+  workLocation: string;
   unit: string;
   department: string;
-  designation: string;
+  role: string;
+  preferredCulture: string;
+  timeZone: string;
+  reason: string;
 }
 
-const EMPTY_DRAFT: UserDraft = { name: '', email: '', mobile: '', role: '', unit: '', department: '', designation: '' };
+const EMPTY_DRAFT: UserDraft = {
+  title: '', firstName: '', middleName: '', lastName: '', name: '', preferredName: '', email: '', countryCode: '', mobile: '',
+  employeeNumber: '', designation: '', workLocation: '', unit: '', department: '', role: '', preferredCulture: '', timeZone: '', reason: ''
+};
+
+const TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof'];
+const DIAL_CODES = ['+91', '+1', '+44', '+61', '+65', '+971', '+49', '+33', '+81', '+86'];
+const REASON_MIN = 10;
 
 /** Users — Workspace Kit "People directory" pattern: summary strip, filters, cards ↔ compact list,
  *  record detail drawer and an invite / edit drawer. */
@@ -37,6 +56,7 @@ export class Users implements OnInit {
   private readonly store = inject(IamDirectoryStore);
   private readonly api = inject(UserDirectoryApiService);
   private readonly toast = inject(ToastService);
+  private readonly geo = inject(GeoMasterService);
 
   readonly users = this.store.users;
   readonly loading = this.store.loading;
@@ -45,6 +65,8 @@ export class Users implements OnInit {
 
   ngOnInit(): void {
     this.store.load();
+    this.geo.getTimeZoneOptions().subscribe({ next: (z) => this.tzList.set(z.map((t) => t.ianaKey)), error: () => undefined });
+    this.geo.getLanguageOptions().subscribe({ next: (l) => this.langList.set(l.map((x) => x.cultureCode)), error: () => undefined });
   }
 
   readonly view = signal<View>('cards');
@@ -63,6 +85,44 @@ export class Users implements OnInit {
   readonly drawer = signal<'create' | 'edit' | null>(null);
   readonly draft = signal<UserDraft>({ ...EMPTY_DRAFT });
   readonly tried = signal(false);
+
+  // ---- edit-drawer dropdown options ----
+  private readonly tzList = signal<string[]>([]);
+  private readonly langList = signal<string[]>([]);
+  readonly reasonMin = REASON_MIN;
+  readonly titleOptions: IamOption[] = [{ value: '', label: 'None' }, ...TITLES.map((t) => ({ value: t, label: t }))];
+  /** Options always include the stored value, so opening the editor never drops it. */
+  readonly countryCodeOptions = computed<IamOption[]>(() => {
+    const c = this.draft().countryCode;
+    const all = c && !DIAL_CODES.includes(c) ? [c, ...DIAL_CODES] : DIAL_CODES;
+    return all.map((v) => ({ value: v, label: v }));
+  });
+  readonly languageOptions = computed<IamOption[]>(() => {
+    const c = this.draft().preferredCulture;
+    const l = this.langList();
+    const all = c && !l.includes(c) ? [c, ...l] : l;
+    return [{ value: '', label: 'Organisation default' }, ...all.map((v) => ({ value: v, label: this.langLabel(v) }))];
+  });
+  readonly timeZoneOptions = computed<IamOption[]>(() => {
+    const c = this.draft().timeZone;
+    const l = this.tzList();
+    const all = c && !l.includes(c) ? [c, ...l] : l;
+    return [{ value: '', label: 'Organisation default' }, ...all.map((v) => ({ value: v, label: this.tzLabel(v) }))];
+  });
+  readonly reasonLength = computed(() => this.draft().reason.trim().length);
+
+  /** "ta-IN" becomes "Tamil (India)". */
+  private langLabel(code: string): string {
+    try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code; } catch { return code; }
+  }
+  /** "Asia/Calcutta" becomes "Asia/Calcutta (UTC+05:30)". */
+  private tzLabel(zone: string): string {
+    try {
+      const off = new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'longOffset' })
+        .formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value ?? '';
+      return `${zone.replace(/_/g, ' ')} (${off.replace('GMT', 'UTC') || 'UTC'})`;
+    } catch { return zone; }
+  }
 
   readonly statusOptions = computed<IamOption[]>(() => [
     { value: '', label: 'All statuses' },
@@ -244,9 +304,30 @@ export class Users implements OnInit {
   }
   openEdit(u: IamUser): void {
     this.selectedId.set(u.id);
-    this.draft.set({ name: u.name, email: u.email, mobile: u.mobile, role: u.role, unit: u.unit, department: u.department, designation: u.designation });
+    const [cc, ...num] = (u.mobile ?? '').trim().split(/\s+/);
+    this.draft.set({
+      ...EMPTY_DRAFT,
+      name: u.name, preferredName: u.preferredName ?? '', email: u.email,
+      countryCode: num.length ? cc : '', mobile: num.length ? num.join('') : (u.mobile ?? ''),
+      role: u.role, unit: u.unit, department: u.department, designation: u.designation
+    });
     this.tried.set(false);
     this.drawer.set('edit');
+    // The list row has no split name / employee / location / language fields: fill them from the full record.
+    this.api.getUser(u.id).subscribe({
+      next: (d) => {
+        if (this.drawer() !== 'edit' || this.selectedId() !== u.id) return;
+        this.draft.update((cur) => ({
+          ...cur,
+          title: d.title ?? '', firstName: d.firstName ?? '', middleName: d.middleName ?? '', lastName: d.lastName ?? '',
+          name: d.displayName ?? cur.name, preferredName: d.preferredName ?? '',
+          countryCode: d.mobileCountryCode ?? cur.countryCode, mobile: d.mobileNumber ?? cur.mobile,
+          employeeNumber: d.employeeNumber ?? '', designation: d.designation ?? cur.designation, workLocation: d.workLocation ?? '',
+          preferredCulture: d.preferredCulture ?? '', timeZone: d.timeZone ?? ''
+        }));
+      },
+      error: () => undefined,
+    });
   }
   closeDrawer(): void {
     this.drawer.set(null);
@@ -257,9 +338,15 @@ export class Users implements OnInit {
   emailOk(): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.draft().email.trim());
   }
+  mobileOk(): boolean {
+    const d = this.draft();
+    if (!d.mobile.trim()) return true;
+    return /^\+?\d{1,4}$/.test(d.countryCode.trim()) && /^\d{6,15}$/.test(d.mobile.replace(/[\s-]/g, ''));
+  }
   canSave(): boolean {
     const d = this.draft();
-    return d.name.trim().length > 1 && this.emailOk() && !!d.role;
+    return d.name.trim().length > 1 && !!d.firstName.trim() && !!d.lastName.trim() && !!d.role
+      && this.mobileOk() && d.reason.trim().length >= REASON_MIN;
   }
   save(): void {
     this.tried.set(true);
@@ -271,15 +358,27 @@ export class Users implements OnInit {
       next: (cur) => {
         const units = this.store.units();
         const depts = this.store.departments();
-        const [cc, ...num] = d.mobile.trim().split(/\s+/);
+        const number = d.mobile.replace(/[\s-]/g, '');
+        // Optional text goes as '' when emptied (never null): null means "leave alone", '' means "clear".
         this.api.updateUser(id, {
           expectedVersion: cur.version,
+          title: d.title.trim(),
+          firstName: d.firstName.trim(),
+          middleName: d.middleName.trim(),
+          lastName: d.lastName.trim(),
           displayName: d.name.trim(),
+          preferredName: d.preferredName.trim(),
+          employeeNumber: d.employeeNumber.trim(),
           designation: d.designation.trim(),
-          organisationUnitId: units.find((x) => x.name === d.unit)?.id ?? cur.organisationUnitId,
-          departmentId: depts.find((x) => x.name === d.department)?.id ?? cur.departmentId,
-          mobileCountryCode: num.length ? cc : cur.mobileCountryCode,
-          mobileNumber: num.length ? num.join('') : (d.mobile.trim() || cur.mobileNumber),
+          workLocation: d.workLocation.trim(),
+          preferredCulture: d.preferredCulture.trim(),
+          timeZone: d.timeZone.trim(),
+          mobileCountryCode: number ? d.countryCode.trim() : '',
+          mobileNumber: number,
+          organisationUnitId: units.find((x) => x.name === d.unit)?.id ?? cur.organisationUnitId ?? null,
+          departmentId: depts.find((x) => x.name === d.department)?.id ?? cur.departmentId ?? null,
+          managerUserId: cur.managerUserId ?? null,
+          reason: d.reason.trim(),
         }).subscribe({
           next: () => {
             this.saving.set(false);

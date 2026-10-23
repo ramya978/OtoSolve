@@ -74,6 +74,7 @@ export class PermissionCatalogue implements OnInit {
   readonly query = signal('');
   readonly page = signal(1);
   readonly pageSize = signal(10);
+  readonly openRows = signal(false);
   readonly copied = signal<string>('');
 
   /* stats */
@@ -174,16 +175,17 @@ export class PermissionCatalogue implements OnInit {
   readonly hasFilters = computed(() => !!(this.module() || this.group() || this.action() || this.sensitiveOnly() || this.query().trim()));
 
   readonly pages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
+  readonly pageSafe = computed(() => Math.min(this.page(), this.pages()));
   readonly pageRows = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
+    const start = (this.pageSafe() - 1) * this.pageSize();
     return this.rows().slice(start, start + this.pageSize());
   });
-  readonly from = computed(() => (this.rows().length ? (this.page() - 1) * this.pageSize() + 1 : 0));
-  readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.rows().length));
+  readonly from = computed(() => (this.rows().length ? (this.pageSafe() - 1) * this.pageSize() + 1 : 0));
+  readonly to = computed(() => Math.min(this.pageSafe() * this.pageSize(), this.rows().length));
 
   /** page numbers with gaps, e.g. [1, 2, '…', 26] */
   readonly pageList = computed<(number | '…')[]>(() => {
-    const t = this.pages(), c = this.page();
+    const t = this.pages(), c = this.pageSafe();
     const keep = new Set([1, 2, t, c - 1, c, c + 1].filter((n) => n >= 1 && n <= t));
     const sorted = [...keep].sort((a, b) => a - b);
     const out: (number | '…')[] = [];
@@ -225,8 +227,7 @@ export class PermissionCatalogue implements OnInit {
   pickAction(key: ActionKey | ''): void { this.action.set(key); this.page.set(1); }
   toggleSensitive(): void { this.sensitiveOnly.update((v) => !v); this.page.set(1); }
   onSearch(e: Event): void { this.query.set((e.target as HTMLInputElement).value); this.page.set(1); }
-  onPageSize(e: Event): void { this.pageSize.set(+(e.target as HTMLSelectElement).value); this.page.set(1); }
-  go(n: number | '…'): void { if (typeof n === 'number' && n >= 1 && n <= this.pages()) this.page.set(n); }
+  go(n: number | '…'): void { if (typeof n === 'number' && n >= 1 && n <= this.pages()) { this.page.set(n); this.page.set(Math.min(this.page(), this.pages())); } }
 
   clearFilters(): void {
     this.module.set('');

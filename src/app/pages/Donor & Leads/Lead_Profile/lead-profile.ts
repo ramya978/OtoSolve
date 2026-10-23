@@ -1,7 +1,6 @@
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of, catchError } from 'rxjs';
-import { Footer } from '../../../Shared/layout/Footer/footer';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { CommunicationTimelineResponse, LeadDetail } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -190,7 +189,7 @@ const OWNERS: Owner[] = [];
 
 @Component({
   selector: 'app-lead-profile',
-  imports: [Footer],
+  imports: [],
   templateUrl: './lead-profile.html',
   styleUrl: './lead-profile.css'
 })

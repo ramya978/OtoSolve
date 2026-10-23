@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Sidebar } from './Shared/layout/Sidebar/sidebar';
+import { Footer } from './Shared/layout/Footer/footer';
 import { ThemeSettingsService, profileImageSrc } from './pages/Auth/Profile/theme-settings';
 import { ThemeSettings } from './pages/Auth/Profile/settings';
 import { ClockSettingsService, ClockZone, cityOf } from './Shared/studio/data/clock-settings';
@@ -61,7 +62,7 @@ const SIDEBAR_KEY = 'ydot-sidebar-collapsed';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Sidebar, ThemeSettings],
+  imports: [RouterOutlet, Sidebar, Footer, ThemeSettings],
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
   encapsulation: ViewEncapsulation.None
@@ -345,7 +346,7 @@ export class App {
   /** Account menu → My profile: opens the Auth · Profile screen. */
   protected openProfile(): void {
     this.closeUserMenu();
-    void this.router.navigateByUrl('/app/auth/profile');
+    void this.router.navigateByUrl('/app/auth/user-profile');
   }
 
   /**

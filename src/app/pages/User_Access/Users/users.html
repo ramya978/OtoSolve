@@ -270,29 +270,76 @@
 
       <div class="i-drawer-body">
         <section class="i-detail-sec">
-          <h3>Identity</h3>
+          <h3>Name</h3>
           <div class="i-grid-2">
+            <div class="i-field">
+              <span class="i-field-label">Title</span>
+              <iam-select [options]="titleOptions" [value]="draft().title" placeholder="Title" (valueChange)="patch('title', $event)" />
+            </div>
             <label class="i-field">
-              <span class="i-field-label">Display name <em>*</em></span>
-              <input class="i-input" [class.is-invalid]="tried() && draft().name.trim().length < 2" placeholder="e.g. Ajay Sekar"
-                     [value]="draft().name" (input)="patch('name', $any($event.target).value)" />
+              <span class="i-field-label">First name <em>*</em></span>
+              <input class="i-input" [class.is-invalid]="tried() && !draft().firstName.trim()" [value]="draft().firstName" (input)="patch('firstName', $any($event.target).value)" />
+              @if (tried() && !draft().firstName.trim()) { <span class="i-err">Enter the first name.</span> }
             </label>
             <label class="i-field">
+              <span class="i-field-label">Middle name</span>
+              <input class="i-input" [value]="draft().middleName" (input)="patch('middleName', $any($event.target).value)" />
+            </label>
+            <label class="i-field">
+              <span class="i-field-label">Last name <em>*</em></span>
+              <input class="i-input" [class.is-invalid]="tried() && !draft().lastName.trim()" [value]="draft().lastName" (input)="patch('lastName', $any($event.target).value)" />
+              @if (tried() && !draft().lastName.trim()) { <span class="i-err">Enter the last name.</span> }
+            </label>
+            <label class="i-field">
+              <span class="i-field-label">Display name <em>*</em></span>
+              <input class="i-input" [class.is-invalid]="tried() && draft().name.trim().length < 2" placeholder="e.g. Ajay Sekar" [value]="draft().name" (input)="patch('name', $any($event.target).value)" />
+              @if (tried() && draft().name.trim().length < 2) { <span class="i-err">Enter a display name.</span> }
+            </label>
+            <label class="i-field">
+              <span class="i-field-label">Preferred name</span>
+              <input class="i-input" [value]="draft().preferredName" (input)="patch('preferredName', $any($event.target).value)" />
+            </label>
+          </div>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Contact</h3>
+          <div class="i-grid-2">
+            <div class="i-field">
+              <span class="i-field-label">Country code</span>
+              <iam-select [options]="countryCodeOptions()" [value]="draft().countryCode" placeholder="Code" (valueChange)="patch('countryCode', $event)" />
+            </div>
+            <label class="i-field">
               <span class="i-field-label">Mobile</span>
-              <input class="i-input" placeholder="+91 98765 43210" [value]="draft().mobile" (input)="patch('mobile', $any($event.target).value)" />
+              <input class="i-input" type="tel" [class.is-invalid]="tried() && !mobileOk()" placeholder="98765 43210"
+                     [value]="draft().mobile" (input)="patch('mobile', $any($event.target).value)" />
+              @if (tried() && !mobileOk()) { <span class="i-err">Add the country code and a valid mobile number.</span> }
             </label>
           </div>
           <label class="i-field us-mt">
-            <span class="i-field-label">E-mail <em>*</em></span>
-            <input class="i-input" type="email" [class.is-invalid]="tried() && !emailOk()" placeholder="name@example.org"
-                   [value]="draft().email" (input)="patch('email', $any($event.target).value)" />
-            @if (tried() && !emailOk()) { <span class="i-err">Enter a valid e-mail address.</span> }
+            <span class="i-field-label">E-mail</span>
+            <input class="i-input" type="email" [value]="draft().email" disabled />
+            <span class="i-help">The sign-in e-mail can't be changed here.</span>
           </label>
         </section>
 
         <section class="i-detail-sec">
-          <h3>Organisation</h3>
+          <h3>Work</h3>
           <div class="i-grid-2">
+            <label class="i-field">
+              <span class="i-field-label">Employee number</span>
+              <input class="i-input" [value]="draft().employeeNumber" (input)="patch('employeeNumber', $any($event.target).value)" />
+            </label>
+            <label class="i-field">
+              <span class="i-field-label">Designation</span>
+              <input class="i-input" placeholder="e.g. Campaign executive" [value]="draft().designation" (input)="patch('designation', $any($event.target).value)" />
+            </label>
+          </div>
+          <label class="i-field us-mt">
+            <span class="i-field-label">Work location</span>
+            <input class="i-input" [value]="draft().workLocation" (input)="patch('workLocation', $any($event.target).value)" />
+          </label>
+          <div class="i-grid-2 us-mt">
             <div class="i-field">
               <span class="i-field-label">Unit</span>
               <iam-select [options]="unitChoice()" [value]="draft().unit" placeholder="Choose a unit" (valueChange)="patch('unit', $event)" />
@@ -302,10 +349,6 @@
               <iam-select [options]="deptChoice()" [value]="draft().department" placeholder="Choose a department" (valueChange)="patch('department', $event)" />
             </div>
           </div>
-          <label class="i-field us-mt">
-            <span class="i-field-label">Designation</span>
-            <input class="i-input" placeholder="e.g. Campaign executive" [value]="draft().designation" (input)="patch('designation', $any($event.target).value)" />
-          </label>
         </section>
 
         <section class="i-detail-sec">
@@ -317,12 +360,42 @@
             <span class="i-help">The primary role decides what they can see and do.</span>
           </div>
         </section>
+
+        <section class="i-detail-sec">
+          <h3>Preferences</h3>
+          <div class="i-grid-2">
+            <div class="i-field">
+              <span class="i-field-label">Preferred language</span>
+              <iam-select [options]="languageOptions()" [value]="draft().preferredCulture" placeholder="Organisation default" (valueChange)="patch('preferredCulture', $event)" />
+            </div>
+            <div class="i-field">
+              <span class="i-field-label">Time zone</span>
+              <iam-select [options]="timeZoneOptions()" [value]="draft().timeZone" placeholder="Organisation default" (valueChange)="patch('timeZone', $event)" />
+            </div>
+          </div>
+        </section>
+
+        <section class="i-detail-sec">
+          <h3>Reason for this change <em>*</em></h3>
+          <label class="i-field">
+            <textarea class="i-input us-reason" rows="3" maxlength="300" aria-label="Reason for this change"
+                      [class.is-invalid]="tried() && reasonLength() < reasonMin"
+                      placeholder="For example: corrected the spelling of the surname at the user's request."
+                      [value]="draft().reason" (input)="patch('reason', $any($event.target).value)"></textarea>
+            <span class="us-reason-meta">
+              <span>Recorded in the audit trail.</span>
+              <span [class.is-ok]="reasonLength() >= reasonMin">{{ reasonLength() }} / {{ reasonMin }} min</span>
+            </span>
+            @if (tried() && reasonLength() < reasonMin) { <span class="i-err">Give a reason of at least {{ reasonMin }} characters.</span> }
+          </label>
+        </section>
       </div>
 
       <footer class="i-drawer-foot">
         <span class="i-foot-note">{{ mode === 'edit' ? 'Changes apply at their next sign-in.' : 'An invitation e-mail is sent when you create.' }}</span>
-        <button type="button" class="i-btn" (click)="closeDrawer()">Cancel</button>
-        <button type="button" class="i-btn i-btn--primary" (click)="save()">
+        <button type="button" class="i-btn" (click)="closeDrawer()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
+        <button type="button" class="i-btn i-btn--primary" [disabled]="saving()" (click)="save()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(mode === 'edit' ? 'save' : 'plus')" /></svg>
           {{ mode === 'edit' ? 'Save' : 'Invite' }}
         </button>

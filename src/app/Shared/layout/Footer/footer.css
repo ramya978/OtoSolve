@@ -14,7 +14,10 @@
   flex-wrap: wrap;
   color: color-mix(in srgb, var(--muted) 72%, var(--white));
   font-size: calc(10px * var(--font-scale, 1));
-  margin-top: 25px
+    margin-top: 25px;
+    margin-left: 47px;
+    margin-right: 47px;
+    margin-bottom: 14px;
 }
 
 @media (max-width: 640px) {

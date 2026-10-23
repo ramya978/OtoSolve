@@ -406,7 +406,9 @@
 /* ================= summary widgets (simple: label · big number · note) ================= */
 .lwq-stats {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  /* always one row: widgets share the width equally; low-priority ones hide on narrower screens (see container queries) */
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   padding: 6px 0;
   border-top: 1px solid var(--lwq-row);
 }
@@ -835,9 +837,24 @@ col.c-act { width: 128px; }
 }
 
 /* ================= responsive (container queries, no horizontal scroll) ================= */
+/* summary widgets stay on ONE line: hide the least important first (Recently added, High potential, Hot, Assigned) */
 @container lwq (max-width: 1280px) {
-  .lwq-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .lwq-stat:nth-child(4n + 1)::before { display: none; }
+  .lwq-stat:nth-child(6) { display: none; }
+}
+
+@container lwq (max-width: 1100px) {
+  .lwq-stat:nth-child(5) { display: none; }
+}
+
+@container lwq (max-width: 900px) {
+  .lwq-stat:nth-child(4) { display: none; }
+}
+
+@container lwq (max-width: 640px) {
+  .lwq-stat:nth-child(3) { display: none; }
+  .lwq-stat { padding: 14px 14px 16px; }
+  .lwq-stat::after { right: 14px; left: 14px; }
+  .lwq-stat strong { font-size: calc(24px * var(--font-scale, 1)); }
 }
 
 @container lwq (max-width: 1500px) {
@@ -873,9 +890,6 @@ col.c-act { width: 128px; }
   col.c-next { width: 35%; }
   .lwq-overdue { white-space: normal; }
   .lwq-fbar-lead { width: 100%; }
-  .lwq-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lwq-stat::before { display: block !important; }
-  .lwq-stat:nth-child(2n + 1)::before { display: none !important; }
 }
 
 @container lwq (max-width: 560px) {

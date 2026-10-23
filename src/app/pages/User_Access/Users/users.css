@@ -26,7 +26,7 @@
 /* ---------- people cards ---------- */
 .us-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(416px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(333px, 1fr));
   gap: 16px;
   padding: 20px 24px;
   background: color-mix(in srgb, var(--i-line) 12%, #fff);
@@ -157,3 +157,8 @@
   .us-views button { flex: 1; justify-content: center; }
   .us-pageof { display: none; }
 }
+
+/* ---------- edit drawer: reason for this change ---------- */
+.us-reason { width: 100%; height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; font: inherit; line-height: 1.5; }
+.us-reason-meta { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; color: var(--i-muted); font-size: calc(12px * var(--font-scale, 1)); }
+.us-reason-meta .is-ok { color: var(--i-success, #3d7a68); }

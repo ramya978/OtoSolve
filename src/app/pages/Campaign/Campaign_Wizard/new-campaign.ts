@@ -165,7 +165,7 @@ const fromIso = (iso: string): Date => {
 
 @Component({
   selector: 'app-new-campaign',
-  imports: [NgTemplateOutlet, RouterLink, Footer],
+  imports: [NgTemplateOutlet, RouterLink],
   templateUrl: './new-campaign.html',
   styleUrl: './new-campaign.css'
 })

@@ -1,6 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Footer } from '../../../Shared/layout/Footer/footer';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { LeadListItem } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -104,7 +103,7 @@ interface Opt { value: string; label: string; }
 
 @Component({
   selector: 'app-lead-work-queue',
-  imports: [Footer],
+  imports: [],
   templateUrl: './lead-work-queue.html',
   styleUrl: './lead-work-queue.css',
 })

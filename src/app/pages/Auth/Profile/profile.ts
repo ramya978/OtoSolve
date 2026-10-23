@@ -14,11 +14,23 @@ import { UserDetailResponse, UserSecurityResponse } from '../../../Shared/models
 
 export type ProfileTab = 'overview' | 'access' | 'security';
 
+/** Which card's edit icon opened the inline editor ("all" = header "Edit profile" button). */
+export type EditCard = 'all' | 'identity' | 'organisation';
+
+/** Every field of the inline editor form. */
+export interface ProfileForm {
+  title: string; displayName: string; preferredName: string; mobileCountryCode: string; mobileNumber: string;
+  designation: string; workLocation: string; preferredCulture: string; timeZone: string;
+}
+
 /** One label / value line in the Identity or Organisation card ("null" = Not provided). */
 export interface FieldRow {
   label: string;
   value: string | null;
   mono?: boolean;
+  /** Set when the row turns into an input while its card is edited; rows without it stay read-only. */
+  key?: keyof ProfileForm;
+  card?: EditCard;
 }
 
 export interface StatCell {
@@ -80,6 +92,7 @@ const ICON_PATHS: Record<string, string> = {
   appearance: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 2v20 M2 12h20',
   edit: 'M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z',
   pencil: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z',
+  save: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8',
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
   lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4 M12 15v3',
@@ -117,6 +130,13 @@ export class Profile implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly geo = inject(GeoMasterService);
 
+  /** Editing (header button, card pencil / save icons) works only on /app/auth/user-profile. */
+  readonly canEdit: boolean = (() => {
+    const url = this.router.getCurrentNavigation()?.finalUrl?.toString() ?? this.router.url;
+    const path = url.split(/[?#]/)[0].replace(/\/+$/, '').toLowerCase();
+    return path === '/app/auth/user-profile';
+  })();
+
   /** Person opened from the Users drawer's "Full profile" button; null means the signed-in account. */
   private readonly passed: IamUser | null =
     (this.router.getCurrentNavigation()?.extras.state as { user?: IamUser } | null | undefined)?.user ?? null;
@@ -144,37 +164,79 @@ export class Profile implements OnInit {
     if (this.isSelf) this.security.getMySecurity().subscribe({ next: (x) => this.sec.set(x), error: () => undefined });
   }
 
-  // ---------- edit profile ----------
-  readonly editOpen = signal(false);
+  // ---------- inline card editing (no popup) ----------
+  /** Which card is being edited inline: null = view mode. 'all' = header "Edit profile" button (every card). */
+  readonly editingCard = signal<EditCard | null>(null);
   readonly saving = signal(false);
   readonly editTried = signal(false);
   readonly serverErrors = signal<Record<string, string>>({});
   readonly editReason = signal('');
-  readonly form = signal({
+  readonly form = signal<ProfileForm>({
     title: '', displayName: '', preferredName: '', mobileCountryCode: '', mobileNumber: '',
     designation: '', workLocation: '', preferredCulture: '', timeZone: ''
   });
+  /** Is a given card's fields shown inline-editable right now? */
+  isCardEditable(card: EditCard): boolean { return this.editingCard() === card || this.editingCard() === 'all'; }
+
+  /** The Reason row lives in the Identity card only (shown while Identity is being edited). */
+  protected showReason(card: EditCard): boolean {
+    const e = this.editingCard();
+    return card === 'identity' && (e === 'identity' || e === 'all');
+  }
+
+  /** Fields editable for the chosen card ("reason" is always shown separately). */
+  private editableKeys(card: EditCard): (keyof ProfileForm)[] {
+    switch (card) {
+      case 'identity': return ['displayName', 'preferredName', 'mobileCountryCode', 'mobileNumber', 'preferredCulture', 'timeZone'];
+      case 'organisation': return ['designation', 'workLocation'];
+      default: return ['title', 'displayName', 'preferredName', 'mobileCountryCode', 'mobileNumber', 'designation', 'workLocation', 'preferredCulture', 'timeZone'];
+    }
+  }
   private readonly tzList = signal<string[]>([]);
   private readonly langList = signal<string[]>([]);
 
-  /** Options always include the stored value, so opening the dialog never drops it. */
+  /** Options always include the stored value, so opening the inline editor never drops it. */
   get timeZones(): string[] { const c = this.form().timeZone; const l = this.tzList(); return c && !l.includes(c) ? [c, ...l] : l; }
   get languages(): string[] { const c = this.form().preferredCulture; const l = this.langList(); return c && !l.includes(c) ? [c, ...l] : l; }
 
+  /** "ta-IN" becomes "Tamil (India)". */
+  protected langLabel(code: string | null | undefined): string {
+    if (!code) return '';
+    try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code) ?? code; } catch { return code; }
+  }
+
+  /** "Asia/Calcutta" becomes "Asia/Calcutta (UTC+05:30)". */
+  protected tzLabel(zone: string | null | undefined): string {
+    if (!zone) return '';
+    try {
+      const off = new Intl.DateTimeFormat('en', { timeZone: zone, timeZoneName: 'longOffset' })
+        .formatToParts(new Date()).find((p) => p.type === 'timeZoneName')?.value ?? '';
+      return `${zone.replace(/_/g, ' ')} (${off.replace('GMT', 'UTC') || 'UTC'})`;
+    } catch { return zone; }
+  }
+
   readonly formErrors = computed(() => {
+    const card = this.editingCard();
+    if (!card) return this.serverErrors();
     const f = this.form();
+    const shown = this.editableKeys(card);
     const e: Record<string, string> = {};
-    if (f.displayName.trim().length < 2) e['displayName'] = 'Enter your display name.';
-    const code = f.mobileCountryCode.trim();
-    if (f.mobileNumber.trim() && !/^\+?\d{1,4}$/.test(code)) e['mobileNumber'] = 'Add the country code for this number, for example +91.';
-    if (f.mobileNumber.trim() && !/^\d{6,15}$/.test(f.mobileNumber.replace(/[\s-]/g, ''))) e['mobileNumber'] = 'Enter a valid mobile number.';
-    if (this.editReason().trim().length < 10) e['reason'] = 'Give a reason of at least 10 characters.';
+    if (shown.includes('displayName') && f.displayName.trim().length < 2) e['displayName'] = 'Enter your display name.';
+    if (shown.includes('mobileCountryCode') || shown.includes('mobileNumber')) {
+      const code = f.mobileCountryCode.trim();
+      if (f.mobileNumber.trim() && !/^\+?\d{1,4}$/.test(code)) e['mobileNumber'] = 'Add the country code for this number, for example +91.';
+      if (f.mobileNumber.trim() && !/^\d{6,15}$/.test(f.mobileNumber.replace(/[\s-]/g, ''))) e['mobileNumber'] = 'Enter a valid mobile number.';
+    }
+    if (card !== 'organisation' && this.editReason().trim().length < 10) e['reason'] = 'Give a reason of at least 10 characters.';
     return { ...e, ...this.serverErrors() };
   });
 
-  protected openEdit(): void {
+  /** Start inline editing for a card (or all cards from the header "Edit profile" button). */
+  protected startEdit(card: EditCard = 'all'): void {
+    if (!this.canEdit) return;
     const d = this.detail();
     if (!d) { this.toast.show('Profile not ready', 'The profile is still loading. Try again in a moment.', 'info'); return; }
+    this.editingCard.set(card);
     this.form.set({
       title: d.title ?? '', displayName: d.displayName ?? '', preferredName: d.preferredName ?? '',
       mobileCountryCode: d.mobileCountryCode ?? '', mobileNumber: d.mobileNumber ?? '', designation: d.designation ?? '',
@@ -183,19 +245,30 @@ export class Profile implements OnInit {
     this.editReason.set('');
     this.editTried.set(false);
     this.serverErrors.set({});
-    this.editOpen.set(true);
-    setTimeout(() => document.querySelector<HTMLElement>('.pf-dlg input')?.focus());
   }
 
-  protected closeEdit(): void { if (!this.saving()) this.editOpen.set(false); }
+  protected cancelEdit(): void { if (!this.saving()) this.editingCard.set(null); }
 
-  protected setField(key: keyof ReturnType<typeof this.form>, value: string): void {
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void { if (this.editingCard()) this.cancelEdit(); }
+
+  protected setField(key: keyof ProfileForm, value: string): void {
     this.serverErrors.set({});
     this.form.update((f) => ({ ...f, [key]: value }));
   }
 
-  @HostListener('document:keydown.escape')
-  protected onEscape(): void { if (this.editOpen()) this.closeEdit(); }
+  protected fieldValue(key: keyof ProfileForm): string {
+    return this.form()[key];
+  }
+
+  protected maxLen(key: keyof ProfileForm): number {
+    return key === 'workLocation' ? 200 : key === 'designation' ? 120 : 160;
+  }
+
+  protected setReason(value: string): void {
+    this.serverErrors.set({});
+    this.editReason.set(value);
+  }
 
   protected saveEdit(): void {
     this.editTried.set(true);
@@ -213,8 +286,12 @@ export class Profile implements OnInit {
       displayName: f.displayName.trim(), title: f.title.trim(), preferredName: f.preferredName.trim(),
       mobileCountryCode: number ? f.mobileCountryCode.trim() : '', mobileNumber: number,
       designation: f.designation.trim(), workLocation: f.workLocation.trim(),
-      preferredCulture: f.preferredCulture.trim(), timeZone: f.timeZone.trim(), reason: this.editReason().trim()
+      preferredCulture: f.preferredCulture.trim(), timeZone: f.timeZone.trim(),
+      // The Reason box is only in the Identity card; an Organisation-only edit sends a standard reason.
+      reason: this.editingCard() === 'organisation' ? 'Organisation details updated from the profile page.' : this.editReason().trim()
     };
+    // Keys of the card(s) being edited, so the saved values can be shown straight away.
+    const savedKeys = this.editableKeys(this.editingCard() ?? 'all');
     this.saving.set(true);
     // Own record: PUT /my-profile (no permission or organisation needed). Somebody else's: PUT /users/{id}.
     const request = this.isSelf
@@ -226,7 +303,10 @@ export class Profile implements OnInit {
     request.subscribe({
       next: (outcome) => {
         this.saving.set(false);
-        this.editOpen.set(false);
+        this.editingCard.set(null);
+        // Show the saved values immediately; loadData() below then refreshes them from the server.
+        const patch = Object.fromEntries(savedKeys.map((k) => [k, (common as Record<string, unknown>)[k]]));
+        this.detail.update((cur) => (cur ? { ...cur, ...patch } : cur));
         this.toast.show('Profile updated', outcome?.message ?? 'The changes have been saved.', 'success');
         this.loadData();
       },
@@ -296,8 +376,8 @@ export class Profile implements OnInit {
   private readonly identityLeftC = computed<FieldRow[]>(() => {
     const u = this.userC(); const d = this.detail();
     return [
-      { label: 'Display name', value: u.name || null },
-      { label: 'Preferred name', value: u.preferredName || null },
+      { label: 'Display name', value: u.name || null, key: 'displayName', card: 'identity' },
+      { label: 'Preferred name', value: u.preferredName || null, key: 'preferredName', card: 'identity' },
       { label: 'Employee ID', value: d?.employeeNumber || null },
       { label: 'Username', value: u.username || null, mono: true }
     ];
@@ -306,23 +386,24 @@ export class Profile implements OnInit {
     const u = this.userC(); const d = this.detail();
     return [
       { label: 'Contact email', value: u.email || null },
-      { label: 'Mobile number', value: u.mobile || null },
-      { label: 'Language', value: d?.preferredCulture || null },
-      { label: 'Time zone', value: d?.timeZone || null }
+      { label: 'Mobile number', value: u.mobile || null, key: 'mobileNumber', card: 'identity' },
+      { label: 'Language', value: this.langLabel(d?.preferredCulture) || null, key: 'preferredCulture', card: 'identity' },
+      { label: 'Time zone', value: this.tzLabel(d?.timeZone) || null, key: 'timeZone', card: 'identity' }
     ];
   });
   private readonly orgLeftC = computed<FieldRow[]>(() => {
-    const u = this.userC();
+    const u = this.userC(); const d = this.detail();
     return [
       { label: 'Organisation', value: this.orgName() || null },
       { label: 'Business unit', value: u.unit || null },
-      { label: 'Department', value: u.department || null }
+      { label: 'Department', value: u.department || null },
+      { label: 'Work location', value: d?.workLocation || null, key: 'workLocation', card: 'organisation' }
     ];
   });
   private readonly orgRightC = computed<FieldRow[]>(() => {
     const u = this.userC(); const d = this.detail();
     return [
-      { label: 'Designation', value: u.designation || null },
+      { label: 'Designation', value: u.designation || null, key: 'designation', card: 'organisation' },
       { label: 'Reports to', value: u.manager || null },
       { label: 'Joined on', value: dateOrNull(d?.joinedOn) }
     ];

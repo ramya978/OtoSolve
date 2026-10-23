@@ -357,7 +357,17 @@ small {
 }
 
 .main {
-  min-width: 0
+  min-width: 0;
+  display: flex;
+  flex-direction: column
+}
+
+/* shared footer: keep it at the bottom of the shell even when page content is short */
+.content.route-page {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0;
+  margin-bottom: 0
 }
 
 /* =====================================================================================================

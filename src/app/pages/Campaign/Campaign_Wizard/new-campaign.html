@@ -568,9 +568,6 @@
   </aside>
 </div>
 
-<!-- ============================== FOOTER ============================== -->
-<app-footer />
-
 @if (toast(); as t) {
   <div class="cp-toast" [class.is-warn]="t.tone === 'warn'" role="status">
     <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(t.tone === 'ok' ? 'check' : 'alert')" /></svg>

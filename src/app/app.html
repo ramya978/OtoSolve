@@ -275,7 +275,7 @@
             </div>
 
             <!-- current organisation -->
-            <button type="button" class="hd-menu-org" role="menuitem" (click)="openOrgFromMenu($event)">
+            <!-- <button type="button" class="hd-menu-org" role="menuitem" (click)="openOrgFromMenu($event)">
               <span class="hd-menu-org-ico">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>
               </span>
@@ -284,7 +284,7 @@
                 <strong>{{ selectedOrg()?.name ?? 'Choose an organisation' }}</strong>
               </span>
               <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-            </button>
+            </button> -->
 
             <div class="hd-menu-sep"></div>
 
@@ -330,6 +330,11 @@
 
     <div class="content route-page"><router-outlet /></div>
     <main class="content" id="content" tabindex="-1"></main>
+
+    <!-- shared page footer: shown at the bottom of every workspace page (hidden on auth/login screens) -->
+    @if (!onAuthScreen()) {
+      <app-footer />
+    }
 
     <!-- shared Appearance studio: opened from Preferences in the account menu (and the profile page) -->
     @if (theme.studioOpen()) {
