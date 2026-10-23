@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { ThemeSettingsService, profileImageSrc } from './theme-settings';
@@ -7,6 +7,9 @@ import { toIamUser, mergeDetail } from '../../../Shared/IAM/iam-directory.store'
 import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
 import { SecurityApiService } from '../../../Service/security-api.service';
 import { AuthService } from '../../../Shared/Auth/auth.service';
+import { ToastService } from '../../../Shared/services/toast.service';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
+import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
 import { UserDetailResponse, UserSecurityResponse } from '../../../Shared/models/iam-contract.model';
 
 export type ProfileTab = 'overview' | 'access' | 'security';
@@ -111,6 +114,8 @@ export class Profile implements OnInit {
   private readonly users = inject(UserDirectoryApiService);
   private readonly security = inject(SecurityApiService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
+  private readonly geo = inject(GeoMasterService);
 
   /** Person opened from the Users drawer's "Full profile" button; null means the signed-in account. */
   private readonly passed: IamUser | null =
@@ -122,6 +127,12 @@ export class Profile implements OnInit {
   readonly loadError = signal('');
 
   ngOnInit(): void {
+    this.loadData();
+    this.geo.getTimeZoneOptions().subscribe({ next: (z) => this.tzList.set(z.map((t) => t.ianaKey)), error: () => undefined });
+    this.geo.getLanguageOptions().subscribe({ next: (l) => this.langList.set(l.map((x) => x.cultureCode)), error: () => undefined });
+  }
+
+  private loadData(): void {
     const detail$ = this.passed ? this.users.getUser(this.passed.id) : this.users.getMyProfile();
     detail$.subscribe({
       next: (d) => {
@@ -131,6 +142,103 @@ export class Profile implements OnInit {
       error: () => this.loadError.set('The profile could not be loaded.'),
     });
     if (this.isSelf) this.security.getMySecurity().subscribe({ next: (x) => this.sec.set(x), error: () => undefined });
+  }
+
+  // ---------- edit profile ----------
+  readonly editOpen = signal(false);
+  readonly saving = signal(false);
+  readonly editTried = signal(false);
+  readonly serverErrors = signal<Record<string, string>>({});
+  readonly editReason = signal('');
+  readonly form = signal({
+    title: '', displayName: '', preferredName: '', mobileCountryCode: '', mobileNumber: '',
+    designation: '', workLocation: '', preferredCulture: '', timeZone: ''
+  });
+  private readonly tzList = signal<string[]>([]);
+  private readonly langList = signal<string[]>([]);
+
+  /** Options always include the stored value, so opening the dialog never drops it. */
+  get timeZones(): string[] { const c = this.form().timeZone; const l = this.tzList(); return c && !l.includes(c) ? [c, ...l] : l; }
+  get languages(): string[] { const c = this.form().preferredCulture; const l = this.langList(); return c && !l.includes(c) ? [c, ...l] : l; }
+
+  readonly formErrors = computed(() => {
+    const f = this.form();
+    const e: Record<string, string> = {};
+    if (f.displayName.trim().length < 2) e['displayName'] = 'Enter your display name.';
+    const code = f.mobileCountryCode.trim();
+    if (f.mobileNumber.trim() && !/^\+?\d{1,4}$/.test(code)) e['mobileNumber'] = 'Add the country code for this number, for example +91.';
+    if (f.mobileNumber.trim() && !/^\d{6,15}$/.test(f.mobileNumber.replace(/[\s-]/g, ''))) e['mobileNumber'] = 'Enter a valid mobile number.';
+    if (this.editReason().trim().length < 10) e['reason'] = 'Give a reason of at least 10 characters.';
+    return { ...e, ...this.serverErrors() };
+  });
+
+  protected openEdit(): void {
+    const d = this.detail();
+    if (!d) { this.toast.show('Profile not ready', 'The profile is still loading. Try again in a moment.', 'info'); return; }
+    this.form.set({
+      title: d.title ?? '', displayName: d.displayName ?? '', preferredName: d.preferredName ?? '',
+      mobileCountryCode: d.mobileCountryCode ?? '', mobileNumber: d.mobileNumber ?? '', designation: d.designation ?? '',
+      workLocation: d.workLocation ?? '', preferredCulture: d.preferredCulture ?? '', timeZone: d.timeZone ?? ''
+    });
+    this.editReason.set('');
+    this.editTried.set(false);
+    this.serverErrors.set({});
+    this.editOpen.set(true);
+    setTimeout(() => document.querySelector<HTMLElement>('.pf-dlg input')?.focus());
+  }
+
+  protected closeEdit(): void { if (!this.saving()) this.editOpen.set(false); }
+
+  protected setField(key: keyof ReturnType<typeof this.form>, value: string): void {
+    this.serverErrors.set({});
+    this.form.update((f) => ({ ...f, [key]: value }));
+  }
+
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void { if (this.editOpen()) this.closeEdit(); }
+
+  protected saveEdit(): void {
+    this.editTried.set(true);
+    const d = this.detail();
+    if (!d?.id || this.saving()) return;
+    if (Object.keys(this.formErrors()).length) {
+      this.toast.show('Check the highlighted fields', 'Please correct the fields marked below.', 'warning');
+      return;
+    }
+    const f = this.form();
+    const number = f.mobileNumber.trim();
+    // Optional text goes as '' when emptied (never null): null means "leave alone", '' means "clear".
+    const common = {
+      expectedVersion: d.version ?? 0,
+      displayName: f.displayName.trim(), title: f.title.trim(), preferredName: f.preferredName.trim(),
+      mobileCountryCode: number ? f.mobileCountryCode.trim() : '', mobileNumber: number,
+      designation: f.designation.trim(), workLocation: f.workLocation.trim(),
+      preferredCulture: f.preferredCulture.trim(), timeZone: f.timeZone.trim(), reason: this.editReason().trim()
+    };
+    this.saving.set(true);
+    // Own record: PUT /my-profile (no permission or organisation needed). Somebody else's: PUT /users/{id}.
+    const request = this.isSelf
+      ? this.users.updateMyProfile(common)
+      : this.users.updateUser(d.id, {
+          ...common, firstName: d.firstName, middleName: d.middleName, lastName: d.lastName, employeeNumber: d.employeeNumber,
+          organisationUnitId: d.organisationUnitId ?? null, departmentId: d.departmentId ?? null, managerUserId: d.managerUserId ?? null
+        });
+    request.subscribe({
+      next: (outcome) => {
+        this.saving.set(false);
+        this.editOpen.set(false);
+        this.toast.show('Profile updated', outcome?.message ?? 'The changes have been saved.', 'success');
+        this.loadData();
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        const fields = apiFieldErrors(e);
+        const mapped: Record<string, string> = {};
+        for (const [k, v] of Object.entries(fields)) mapped[k.charAt(0).toLowerCase() + k.slice(1)] = v;
+        this.serverErrors.set(mapped);
+        this.toast.show('Could not save the changes', Object.values(mapped).join(' ') || apiErrorMessage(e, 'The profile could not be saved.'), 'error');
+      }
+    });
   }
 
   private readonly userC = computed<IamUser>(() => {

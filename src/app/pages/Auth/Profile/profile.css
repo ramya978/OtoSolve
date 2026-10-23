@@ -1134,3 +1134,20 @@
   :host *::before,
   :host *::after { animation: none !important; transition: none !important }
 }
+
+/* ---------- edit profile popup (added: the page had no edit form) ---------- */
+.pf-dlg-back { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--pf-heading) 38%, transparent); }
+.pf-dlg { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: flex; flex-direction: column; }
+.pf-dlg-head { padding: 18px 20px 12px; border-bottom: 1px solid var(--pf-row-line); }
+.pf-dlg-head h3 { margin: 0; color: var(--pf-heading); font-size: calc(16px * var(--font-scale, 1)); }
+.pf-dlg-head p { margin: 4px 0 0; color: var(--pf-muted); font-size: calc(12px * var(--font-scale, 1)); }
+.pf-dlg-body { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 16px 20px; }
+.pf-dlg-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.pf-dlg-f > span { color: var(--pf-muted); font-size: calc(11px * var(--font-scale, 1)); font-weight: 600; }
+.pf-dlg-f input, .pf-dlg-f select { height: 36px; padding: 0 10px; border: 1px solid var(--pf-line); border-radius: var(--btn-radius); background: var(--white); color: var(--pf-ink); font: inherit; min-width: 0; }
+.pf-dlg-f input.bad { border-color: var(--status-danger-ink, #b3261e); }
+.pf-dlg-f small { color: var(--status-danger-ink, #b3261e); font-size: calc(11px * var(--font-scale, 1)); }
+.pf-dlg-row { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: start; }
+.pf-dlg-wide { grid-column: 1 / -1; }
+.pf-dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px 16px; border-top: 1px solid var(--pf-row-line); }
+@media (max-width: 560px) { .pf-dlg-body { grid-template-columns: 1fr; } }

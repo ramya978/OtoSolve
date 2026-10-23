@@ -35,7 +35,7 @@
       <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'appearance' }" />
       Appearance
     </button> -->
-    <button type="button" class="pf-hbtn btn-primary">
+    <button type="button" class="pf-hbtn btn-primary" (click)="openEdit()">
       <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'edit' }" />
       Edit profile
     </button>
@@ -118,7 +118,7 @@
               <h3>Identity &amp; contact</h3>
               <p>Keep personal details clear and separate from sign-in credentials.</p>
             </div>
-            <button type="button" class="pf-iconbtn" aria-label="Edit identity and contact">
+            <button type="button" class="pf-iconbtn" aria-label="Edit identity and contact" (click)="openEdit()">
               <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'pencil' }" />
             </button>
           </header>
@@ -136,7 +136,7 @@
               <h3>Organisation &amp; reporting</h3>
               <p>Place this account in the right unit, department and reporting line.</p>
             </div>
-            <button type="button" class="pf-iconbtn" aria-label="Edit organisation and reporting">
+            <button type="button" class="pf-iconbtn" aria-label="Edit organisation and reporting" (click)="openEdit()">
               <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'pencil' }" />
             </button>
           </header>
@@ -379,3 +379,52 @@
 </ng-template>
 
 <!-- the Appearance studio popup is hosted by the app shell (app.html) so it opens on every page -->
+
+<!-- edit profile popup (opens from the Edit profile button) -->
+@if (editOpen()) {
+  <div class="pf-dlg-back" (click)="closeEdit()">
+    <div class="pf-dlg pf-card" role="dialog" aria-modal="true" aria-labelledby="pf-dlg-title" (click)="$event.stopPropagation()">
+      <header class="pf-dlg-head">
+        <h3 id="pf-dlg-title">Edit profile</h3>
+        <p>Your name, contact and regional details. Sign-in e-mail and organisation placement are managed by an administrator.</p>
+      </header>
+      <div class="pf-dlg-body">
+        <label class="pf-dlg-f"><span>Title</span>
+          <input type="text" maxlength="20" [value]="form().title" (input)="setField('title', $any($event.target).value)" /></label>
+        <label class="pf-dlg-f"><span>Display name *</span>
+          <input type="text" maxlength="160" [class.bad]="editTried() && formErrors()['displayName']" [value]="form().displayName" (input)="setField('displayName', $any($event.target).value)" />
+          @if (editTried() && formErrors()['displayName']) { <small>{{ formErrors()['displayName'] }}</small> }</label>
+        <label class="pf-dlg-f"><span>Preferred name</span>
+          <input type="text" maxlength="160" [value]="form().preferredName" (input)="setField('preferredName', $any($event.target).value)" /></label>
+        <label class="pf-dlg-f"><span>Designation</span>
+          <input type="text" maxlength="120" [value]="form().designation" (input)="setField('designation', $any($event.target).value)" /></label>
+        <div class="pf-dlg-row">
+          <label class="pf-dlg-f pf-dlg-code"><span>Code</span>
+            <input type="text" maxlength="5" placeholder="+91" [value]="form().mobileCountryCode" (input)="setField('mobileCountryCode', $any($event.target).value)" /></label>
+          <label class="pf-dlg-f"><span>Mobile number</span>
+            <input type="tel" [class.bad]="editTried() && formErrors()['mobileNumber']" [value]="form().mobileNumber" (input)="setField('mobileNumber', $any($event.target).value)" />
+            @if (editTried() && formErrors()['mobileNumber']) { <small>{{ formErrors()['mobileNumber'] }}</small> }</label>
+        </div>
+        <label class="pf-dlg-f"><span>Work location</span>
+          <input type="text" maxlength="200" [value]="form().workLocation" (input)="setField('workLocation', $any($event.target).value)" /></label>
+        <label class="pf-dlg-f"><span>Language</span>
+          <select (change)="setField('preferredCulture', $any($event.target).value)">
+            <option value="" [selected]="!form().preferredCulture">Not set</option>
+            @for (o of languages; track o) { <option [value]="o" [selected]="o === form().preferredCulture">{{ o }}</option> }
+          </select></label>
+        <label class="pf-dlg-f"><span>Time zone</span>
+          <select (change)="setField('timeZone', $any($event.target).value)">
+            <option value="" [selected]="!form().timeZone">Not set</option>
+            @for (o of timeZones; track o) { <option [value]="o" [selected]="o === form().timeZone">{{ o }}</option> }
+          </select></label>
+        <label class="pf-dlg-f pf-dlg-wide"><span>Reason for this change *</span>
+          <input type="text" [class.bad]="editTried() && formErrors()['reason']" placeholder="At least 10 characters" [value]="editReason()" (input)="serverErrors.set({}); editReason.set($any($event.target).value)" />
+          @if (editTried() && formErrors()['reason']) { <small>{{ formErrors()['reason'] }}</small> }</label>
+      </div>
+      <footer class="pf-dlg-foot">
+        <button type="button" class="pf-hbtn btn-secondary" [disabled]="saving()" (click)="closeEdit()">Cancel</button>
+        <button type="button" class="pf-hbtn btn-primary" [disabled]="saving()" (click)="saveEdit()">{{ saving() ? 'Saving…' : 'Save changes' }}</button>
+      </footer>
+    </div>
+  </div>
+}
