@@ -350,11 +350,17 @@ const APP_ROUTES: Routes = [
 export const routes: Routes = [
   { path: 'login', component: Login, canActivate: [guestGuard], title: 'Sign in' },
   { path: 'auth/account-activate', component: ActivateAccount,title: 'Activate' },
+  // The invitation e-mail links to /auth/invitation?token=... (and /auth/invitation/:token for links already out).
+  { path: 'auth/invitation', component: ActivateAccount, title: 'Activate' },
+  { path: 'auth/invitation/:token', component: ActivateAccount, title: 'Activate' },
 
   // Account recovery and second-factor screens. Public: they are reached mid sign-in or from an
   // e-mailed link, before (or without) a full session.
   { path: 'auth/sign-in', redirectTo: 'login', pathMatch: 'full' },
     { path: 'auth/donorform', component: DonorForm, title: 'Donor &amp; Payment Details' },
+  // Donation links built elsewhere in the app point at /auth/donor-form.
+  { path: 'auth/donor-form', component: DonorForm, title: 'Donor &amp; Payment Details' },
+  { path: 'Donor-form', redirectTo: 'auth/donor-form', pathMatch: 'full' },
   { path: 'auth/mfa', component: MfaChallenge,canActivate: [guestGuard], title: 'Verify it\'s you' },
   { path: 'auth/forgot-password', component: ForgotPassword,canActivate: [guestGuard], title: 'Forgot password' },
   { path: 'auth/reset-password', component: ResetPassword, title: 'Set a new password' },

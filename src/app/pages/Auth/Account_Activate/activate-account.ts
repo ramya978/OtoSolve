@@ -1,33 +1,14 @@
 import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { toDataURL } from 'qrcode'; // npm i qrcode && npm i -D @types/qrcode
+import { toDataURL } from 'qrcode';
 
-/* ===== Local types and sample data (no API). Replace SAMPLE_INVITATION with your real response later. ===== */
-type MfaMethodType = 'authenticatorApp' | 'email';
-const MFA_METHOD_LABELS: Record<MfaMethodType, string> = { authenticatorApp: 'Authenticator application', email: 'E-mail one-time code' };
+import { AuthApiService } from '../../../Service/auth-api.service';
+import { AuthSessionService } from '../../../Shared/services/auth-session.service';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { MFA_METHOD_LABELS } from '../../../Shared/models/auth.model';
+import { InvitationPreviewResponse, MfaEnrolmentResponse, MfaMethodType } from '../../../Shared/models/iam-contract.model';
 
-interface InvitationPreviewResponse {
-  isValid: boolean; message?: string; displayName: string; username: string; email: string;
-  organisationUnit: string; department?: string; designation?: string; invitedRoleSummary: string;
-  tenantName?: string; businessUnitName?: string; accessStartsAtUtc: string; accessEndsAtUtc: string | null; expiresAtUtc: string;
-  mfaMandatory: boolean; allowedMfaMethods: MfaMethodType[];
-  passwordMinimumLength: number; passwordRequireUppercase: boolean; passwordRequireLowercase: boolean;
-  passwordRequireDigit: boolean; passwordRequireNonAlphanumeric: boolean;
-}
-interface MfaEnrolmentResponse { methodType: MfaMethodType; methodId: string; sharedSecret?: string; provisioningUri?: string; maskedDestination?: string; message?: string }
-
-const SAMPLE_INVITATION: InvitationPreviewResponse = {
-  isValid: true, message: 'Check the details below, then set up your account.',
-  displayName: 'ramya Developer', username: 'ngcoder81', email: 'ngcoder.81@gmail.com',
-  organisationUnit: 'Head Office - New Delhi', department: 'Resource Mobilisation', designation: 'Manager',
-  invitedRoleSummary: 'Campaign Manager', tenantName: 'HelpAge India',
-  accessStartsAtUtc: '2026-10-22T05:30:00Z', accessEndsAtUtc: null, expiresAtUtc: '2026-10-29T15:51:29Z',
-  mfaMandatory: true, allowedMfaMethods: ['authenticatorApp', 'email'],
-  passwordMinimumLength: 10, passwordRequireUppercase: true, passwordRequireLowercase: true,
-  passwordRequireDigit: true, passwordRequireNonAlphanumeric: true
-};
-const SAMPLE_REFERENCE = 'USR-00022';
 const LOGIN_PATH = '/auth/sign-in';
 const DASHBOARD_PATH = '/app/dashboard';
 
@@ -104,7 +85,9 @@ const STEP_COPY: Record<Step, { title: string; text: string }> = {
 export class ActivateAccount implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  
+  private readonly authApi = inject(AuthApiService);
+  private readonly session = inject(AuthSessionService);
+
   // ---- Toast (local) --------------------------------------------------------------------------
   readonly toastMsg = signal<{ title: string; text: string } | null>(null);
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -253,21 +236,32 @@ export class ActivateAccount implements OnInit {
   // =========================================================================================
 
   ngOnInit(): void {
-    // Sample mode: no API. The token is read only so ?state=expired can preview the error screen.
-    this.token.set(this.route.snapshot.queryParamMap.get('token') ?? this.route.snapshot.paramMap.get('token') ?? 'sample-token');
-    const expired = this.route.snapshot.queryParamMap.get('state') === 'expired';
+    // The e-mail sends ?token=...; /auth/invitation/:token stays supported for links already out.
+    const token = this.route.snapshot.queryParamMap.get('token') ?? this.route.snapshot.paramMap.get('token') ?? '';
+    this.token.set(token);
 
-    setTimeout(() => {
-      const view = expired
-        ? { ...SAMPLE_INVITATION, isValid: false, message: 'This invitation has expired. Ask for a new one below.' }
-        : SAMPLE_INVITATION;
+    if (!token) {
       this.loading.set(false);
-      this.invitation.set(view);
-      if (!view.isValid) { this.errorMessage.set(view.message ?? 'That invitation link is not valid.'); return; }
-      const [first] = view.allowedMfaMethods;
-      if (first) this.selectedMethod.set(first);
-      this.enrolMfa.set(view.mfaMandatory === true);
-    }, 400);
+      this.errorMessage.set('This activation link is incomplete. Open the link from your invitation e-mail again.');
+      return;
+    }
+
+    this.authApi.previewInvitation(token).subscribe({
+      next: (view) => {
+        this.loading.set(false);
+        this.invitation.set(view);
+        if (!view.isValid) { this.errorMessage.set(view.message ?? 'That invitation link is not valid.'); return; }
+        // Start on whichever factor the organisation lists first.
+        const [first] = view.allowedMfaMethods ?? [];
+        if (first) this.selectedMethod.set(first);
+        // Mandatory: the toggle starts on and cannot be turned off. Otherwise it is the person's choice.
+        this.enrolMfa.set(view.mfaMandatory === true);
+      },
+      error: (e: unknown) => {
+        this.loading.set(false);
+        this.errorMessage.set(apiErrorMessage(e, 'The invitation could not be read.'));
+      }
+    });
   }
 
   // =========================================================================================
@@ -437,27 +431,23 @@ export class ActivateAccount implements OnInit {
     this.qrDataUrl.set('');
     this.verificationCode.set('');
 
-    // Sample: build the setup locally. Real version = your "begin MFA enrolment" call.
-    setTimeout(() => {
-      const method = this.selectedMethod();
-      const secret = this.randomSecret();
-      const inv = SAMPLE_INVITATION;
-      const setup: MfaEnrolmentResponse = method === 'authenticatorApp'
-        ? {
-            methodType: method, methodId: 'sample-method', sharedSecret: secret.replace(/(.{4})/g, '$1 ').trim(),
-            provisioningUri: `otpauth://totp/${encodeURIComponent(BRAND)}:${encodeURIComponent(inv.email)}?secret=${secret}&issuer=${encodeURIComponent(BRAND)}`,
-            maskedDestination: inv.email
-          }
-        : { methodType: method, methodId: 'sample-method', message: `We sent a six-digit code to ${inv.email}.` };
-      this.settingUp.set(false);
-      this.setup.set(setup);
-      if (setup.provisioningUri) void this.renderQrCode(setup.provisioningUri);
-      if (method === 'email') {
-        this.notify('Code sent', setup.message ?? '');
-        // the e-mail screen has nothing to scan, so the cursor goes straight to the code box
-        setTimeout(() => this.codeInput?.nativeElement.focus(), 60);
+    this.authApi.beginInvitationMfaEnrolment({ token: this.token(), methodType: this.selectedMethod() }).subscribe({
+      next: (setup: MfaEnrolmentResponse) => {
+        this.settingUp.set(false);
+        this.setup.set(setup);
+        this.infoMessage.set(setup.message ?? '');
+        if (setup.provisioningUri) void this.renderQrCode(setup.provisioningUri);
+        if (this.selectedMethod() === 'email') {
+          this.notify('Code sent', setup.message ?? 'We sent a six-digit code to your e-mail.');
+          // the e-mail screen has nothing to scan, so the cursor goes straight to the code box
+          setTimeout(() => this.codeInput?.nativeElement.focus(), 60);
+        }
+      },
+      error: (e: unknown) => {
+        this.settingUp.set(false);
+        this.errorMessage.set(apiErrorMessage(e, 'The second factor could not be set up.'));
       }
-    }, 300);
+    });
   }
 
   /**
@@ -484,17 +474,6 @@ export class ActivateAccount implements OnInit {
     }
   }
 
-  private randomSecret(): string {
-    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-    return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => alphabet[b % 32]).join('');
-  }
-
-  private randomCode(): string {
-    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
-    const pick = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => alphabet[b % alphabet.length]).join('');
-    return `${pick(5)}-${pick(5)}`;
-  }
-
   toggleSecret(): void {
     this.secretVisible.update((shown) => !shown);
   }
@@ -517,12 +496,20 @@ export class ActivateAccount implements OnInit {
     this.submitting.set(true);
     this.errorMessage.set('');
 
-    // Sample: any six digits are accepted. Real version = your "verify MFA method" call.
-    setTimeout(() => {
-      this.submitting.set(false);
-      this.methodVerified.set(true);
-      this.notify('Verified', 'Your second factor is confirmed.');
-    }, 300);
+    const setup = this.setup();
+    this.authApi.verifyInvitationMfaMethod({ token: this.token(), methodId: setup!.methodId!, code: this.verificationCode().trim() }).subscribe({
+      next: (outcome) => {
+        this.submitting.set(false);
+        this.methodVerified.set(true);
+        this.infoMessage.set(outcome.message ?? '');
+        this.notify('Verified', 'Your second factor is confirmed.');
+      },
+      error: (e: unknown) => {
+        this.submitting.set(false);
+        this.verificationCode.set('');
+        this.errorMessage.set(apiErrorMessage(e, 'That code was not accepted.'));
+      }
+    });
   }
 
   // =========================================================================================
@@ -534,21 +521,32 @@ export class ActivateAccount implements OnInit {
     this.submitting.set(true);
     this.errorMessage.set('');
 
-    // Sample: nothing is saved; recovery codes are made in the browser. Real version = your "accept invitation" call.
-    setTimeout(() => {
-      this.submitting.set(false);
-      const enrolled = this.enrolMfa();
-      this.recoveryCodes.set(enrolled ? Array.from({ length: 10 }, () => this.randomCode()) : []);
-      this.recoveryNotice.set(enrolled
-        ? 'Save these codes somewhere safe. Each one works once, and this is the only time they can be shown.'
-        : 'You can add a second factor any time from My Security.');
-      this.mfaEnrolledResult.set(enrolled);
-      this.userCode.set(SAMPLE_REFERENCE);
-      this.step.set('complete');
-      this.password = '';
-      this.confirmPassword = '';
-      this.notify('Account activated', 'Your account is active.');
-    }, 400);
+    this.authApi.acceptInvitation({
+      token: this.token(),
+      password: this.password,
+      confirmPassword: this.confirmPassword,
+      acceptTerms: this.termsAccepted(),
+      clientType: 'web'
+    }).subscribe({
+      next: (activation) => {
+        this.submitting.set(false);
+        this.recoveryCodes.set(activation.recoveryCodes ?? []);
+        this.recoveryNotice.set(activation.recoveryCodeNotice ?? '');
+        this.mfaEnrolledResult.set(activation.mfaEnrolled === true);
+        this.userCode.set(activation.user?.code ?? '');
+        // Activation signs the person in, so the session starts now. The recovery codes stay on
+        // screen until they are acknowledged - this is the only time they are shown.
+        this.session.startSession(activation);
+        this.step.set('complete');
+        this.password = '';
+        this.confirmPassword = '';
+        this.notify('Account activated', activation.message ?? 'Your account is active.');
+      },
+      error: (e: unknown) => {
+        this.submitting.set(false);
+        this.errorMessage.set(apiErrorMessage(e, 'The account could not be activated.'));
+      }
+    });
   }
 
   // =========================================================================================
@@ -598,13 +596,18 @@ export class ActivateAccount implements OnInit {
   requestNewInvitation(): void {
     this.submitting.set(true);
     this.errorMessage.set('');
-    // Sample: pretends to send. Real version = your "request new invitation" call.
-    setTimeout(() => {
-      this.submitting.set(false);
-      const message = 'If that invitation is still open, a new link is on its way.';
-      this.infoMessage.set(message);
-      this.notify('New invitation sent', message);
-    }, 400);
+    this.authApi.requestNewInvitation(this.token()).subscribe({
+      next: (outcome) => {
+        this.submitting.set(false);
+        const message = outcome.message ?? 'If that invitation is still open, a new link is on its way.';
+        this.infoMessage.set(message);
+        this.notify('New invitation sent', message);
+      },
+      error: (e: unknown) => {
+        this.submitting.set(false);
+        this.errorMessage.set(apiErrorMessage(e, 'A new invitation could not be requested.'));
+      }
+    });
   }
 
   goToSignIn(): void {
