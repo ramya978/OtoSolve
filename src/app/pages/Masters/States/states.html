@@ -205,27 +205,78 @@
     }
 
     <!-- pager -->
-    <div class="ml-pagination">
-      <div class="ml-pagination-left">
-        <span>Showing {{ from() }}–{{ to() }} of {{ sorted().length }}</span>
-        <span class="ml-rows">
-          <span>Rows per page</span>
-          <ms-select class="ml-rows-select" [up]="true" ariaLabel="Rows per page" [options]="pageSizes"
-                     [value]="'' + pageSize()" (valueChange)="setPageSize($event)" />
-        </span>
-      </div>
-      <div class="ml-pager">
-        <button type="button" class="m-icon-btn" aria-label="Previous page" [disabled]="page() === 1" (click)="goPage(page() - 1)">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron-left')" /></svg>
-        </button>
-        @for (p of pages(); track p) {
-          <button type="button" class="ml-page" [attr.aria-current]="p === page() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+   <div class="ml-pagination">
+
+  <!-- Left: Results count + page size -->
+  <div class="ml-pagination-left">
+    <span class="ml-pagination-info">
+      Showing <strong>{{ from() }}–{{ to() }}</strong>
+      of <strong>{{ sorted().length }}</strong>
+    </span>
+
+    <div class="ml-rows">
+      <span class="ml-rows-label">Rows</span>
+
+      <select
+        class="ml-rows-select-native"
+        [value]="pageSize()"
+        (change)="setPageSize($any($event.target).value)"
+        aria-label="Rows per page"
+      >
+        @for (size of pageSizes; track size.value) {
+          <option [value]="size.value">{{ size.label }}</option>
         }
-        <button type="button" class="m-icon-btn" aria-label="Next page" [disabled]="page() === totalPages()" (click)="goPage(page() + 1)">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron-right')" /></svg>
-        </button>
-      </div>
+      </select>
     </div>
+  </div>
+
+  <!-- Right: Page navigation -->
+  <nav class="ml-pager" aria-label="Pagination">
+
+    <!-- Previous -->
+    <button
+      type="button"
+      class="ml-page ml-page-arrow"
+      (click)="goPage(page() - 1)"
+      [disabled]="page() === 1"
+      aria-label="Previous page"
+    >
+      ‹
+    </button>
+
+    <!-- Page numbers -->
+    @for (p of pages(); track $index) {
+
+      @if (p === '…') {
+        <span class="ml-page-ellipsis">...</span>
+      } @else {
+        <button
+          type="button"
+          class="ml-page"
+          [class.is-active]="page() === p"
+          [attr.aria-current]="page() === p ? 'page' : null"
+          (click)="goPage(p)"
+          [attr.aria-label]="'Page ' + p"
+        >
+          {{ p }}
+        </button>
+      }
+
+    }
+
+    <!-- Next -->
+    <button
+      type="button"
+      class="ml-page ml-page-arrow"
+      (click)="goPage(page() + 1)"
+      [disabled]="page() === totalPages()"
+      aria-label="Next page"
+    >
+      ›
+    </button>
+
+  </nav>
+</div>
   </section>
 
 

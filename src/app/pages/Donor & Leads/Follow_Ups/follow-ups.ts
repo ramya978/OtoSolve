@@ -226,24 +226,7 @@ export class FollowUps {
   protected readonly filterCount = computed(() =>
     this.fStatus().length + this.fChannel().length + this.fPriority().length + (this.fOwner() ? 1 : 0) + (this.fCampaign() ? 1 : 0) + (this.fFrom() || this.fTo() ? 1 : 0));
 
-  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.rows())));
-  protected readonly pageRows = computed(() => {
-    const p = Math.min(this.page(), this.pages());
-    return this.filtered().slice((p - 1) * this.rows(), p * this.rows());
-  });
-  protected readonly range = computed(() => {
-    const n = this.filtered().length;
-    const p = Math.min(this.page(), this.pages());
-    return n ? { from: (p - 1) * this.rows() + 1, to: Math.min(p * this.rows(), n), n } : { from: 0, to: 0, n };
-  });
-  protected readonly pageList = computed(() => {
-    const total = this.pages(), cur = Math.min(this.page(), total);
-    const set = new Set([1, total, cur - 1, cur, cur + 1].filter((p) => p >= 1 && p <= total));
-    const sorted = [...set].sort((a, b) => a - b);
-    const out: (number | '…')[] = [];
-    sorted.forEach((p, i) => { if (i && p - sorted[i - 1] > 1) out.push('…'); out.push(p); });
-    return out;
-  });
+
   protected readonly allOnPage = computed(() => this.pageRows().length > 0 && this.pageRows().every((f) => this.selected().includes(f.id)));
 
   /* ---------- week strip ---------- */
@@ -490,6 +473,46 @@ export class FollowUps {
       error: (err: unknown) => this.flash(apiErrorMessage(err))
     });
   }
+
+
+
+
+// Pagination
+
+  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.rows())));
+
+  /** Current page, never past the last page (e.g. after a filter shrinks the list). */
+  protected readonly safePage = computed(() => Math.min(this.page(), this.pages()));
+
+  protected readonly pageRows = computed(() => {
+    const p = this.safePage();
+    return this.filtered().slice((p - 1) * this.rows(), p * this.rows());
+  });
+
+  protected readonly range = computed(() => {
+    const n = this.filtered().length;
+    const p = this.safePage();
+    return n ? { from: (p - 1) * this.rows() + 1, to: Math.min(p * this.rows(), n), n } : { from: 0, to: 0, n };
+  });
+
+  /** 5 pages or fewer: all. More: 1 2 ... 9, 1 ... 4 5 6 ... 9, 1 ... 8 9 */
+  protected readonly pageList = computed<(number | '…')[]>(() => {
+    const total = this.pages();
+    const cur = this.safePage();
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+
+    const out: (number | '…')[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push('…');
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push('…');
+    out.push(total);
+    return out;
+  });
+
+
+
 
   /* ---------- page actions ---------- */
   refresh(): void { this.now.set(new Date()); this.store.reload(); this.flash('Queue refreshed.'); }

@@ -92,14 +92,46 @@
         </tbody>
       </table>
 
-      <footer class="nf-foot">
-        <span>Showing <b>{{ range() }}</b></span>
-        <div class="nf-pager">
-          <button type="button" class="fu-icon" [disabled]="page() <= 1" (click)="goPage(page() - 1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
-          <span>Page <b>{{ page() }}</b> of {{ pages() }}</span>
-          <button type="button" class="fu-icon" [disabled]="page() >= pages()" (click)="goPage(page() + 1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
-        </div>
-      </footer>
+    <footer class="nf-foot">
+  <div class="nf-foot-left">
+    <span>Showing <b>{{ range() }}</b></span>
+    <div class="nf-rows-dd" (click)="$event.stopPropagation()">
+      <button type="button" class="nf-rows" [class.is-open]="rowsOpen()"
+              aria-haspopup="listbox" [attr.aria-expanded]="rowsOpen()" aria-label="Rows per page"
+              (click)="toggleRows($event)">
+        <span>Rows <b>{{ perPage() }}</b></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+      </button>
+      @if (rowsOpen()) {
+        <ul class="nf-rows-menu" role="listbox" aria-label="Rows per page">
+          @for (n of rowOptions; track n) {
+            <li><button type="button" role="option" [class.is-on]="n === perPage()" [attr.aria-selected]="n === perPage()" (click)="setPerPage(n)">{{ n }}</button></li>
+          }
+        </ul>
+      }
+    </div>
+  </div>
+
+  <nav class="nf-pager" aria-label="Pagination">
+    <button type="button" class="nf-pg" [disabled]="safePage() <= 1" (click)="goPage(safePage() - 1)" aria-label="Previous page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+    </button>
+
+    @for (p of pages(); track $index) {
+      @if (p === 0) {
+        <span class="nf-pg-gap" aria-hidden="true">...</span>
+      } @else {
+        <button type="button" class="nf-pg" [class.is-on]="p === safePage()"
+                [attr.aria-current]="p === safePage() ? 'page' : null" [attr.aria-label]="'Page ' + p"
+                (click)="goPage(p)">{{ p }}</button>
+      }
+    }
+
+    <button type="button" class="nf-pg" [disabled]="safePage() >= totalPages()" (click)="goPage(safePage() + 1)" aria-label="Next page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+    </button>
+  </nav>
+</footer>
     </section>
 
     <!-- ===== already scheduled ===== -->

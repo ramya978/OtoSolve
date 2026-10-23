@@ -64,7 +64,83 @@ export class PermissionCatalogue implements OnInit {
     });
   }
   readonly actions: ActionDef[] = ACTIONS;
+
+
+  // Pagination
+
   readonly pageSizes = [10, 25, 50];
+readonly pageSize = signal(10);
+readonly page = signal(1);
+
+readonly pages = computed(() =>
+  Math.max(1, Math.ceil(this.rows().length / this.pageSize()))
+);
+
+readonly current = computed(() =>
+  Math.min(this.page(), this.pages())
+);
+
+readonly paged = computed(() => {
+  const start = (this.current() - 1) * this.pageSize();
+  return this.rows().slice(start, start + this.pageSize());
+});
+
+readonly from = computed(() =>
+  this.rows().length
+    ? (this.current() - 1) * this.pageSize() + 1
+    : 0
+);
+
+readonly to = computed(() =>
+  Math.min(this.current() * this.pageSize(), this.rows().length)
+);
+
+readonly visiblePages = computed<(number | '...')[]>(() => {
+  const total = this.pages();
+  const current = this.current();
+
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  if (current <= 2) {
+    return [1, 2, '...', total];
+  }
+
+  if (current >= total - 1) {
+    return [1, '...', total - 1, total];
+  }
+
+  return [1, '...', current, '...', total];
+});
+
+onPageSizeChange(event: Event): void {
+  const size = Number((event.target as HTMLSelectElement).value);
+
+  if (!this.pageSizes.includes(size)) {
+    return;
+  }
+
+  this.pageSize.set(size);
+  this.page.set(1);
+}
+
+go(delta: number): void {
+  this.page.set(
+    Math.min(this.pages(), Math.max(1, this.current() + delta))
+  );
+}
+
+goToPage(page: number | '...'): void {
+  if (typeof page !== 'number') {
+    return;
+  }
+
+  this.page.set(Math.min(this.pages(), Math.max(1, page)));
+}
+
+
+
 
   /* filters */
   readonly module = signal<string>('');
@@ -72,8 +148,6 @@ export class PermissionCatalogue implements OnInit {
   readonly action = signal<ActionKey | ''>('');
   readonly sensitiveOnly = signal(false);
   readonly query = signal('');
-  readonly page = signal(1);
-  readonly pageSize = signal(10);
   readonly openRows = signal(false);
   readonly copied = signal<string>('');
 
@@ -174,14 +248,11 @@ export class PermissionCatalogue implements OnInit {
 
   readonly hasFilters = computed(() => !!(this.module() || this.group() || this.action() || this.sensitiveOnly() || this.query().trim()));
 
-  readonly pages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
   readonly pageSafe = computed(() => Math.min(this.page(), this.pages()));
   readonly pageRows = computed(() => {
     const start = (this.pageSafe() - 1) * this.pageSize();
     return this.rows().slice(start, start + this.pageSize());
   });
-  readonly from = computed(() => (this.rows().length ? (this.pageSafe() - 1) * this.pageSize() + 1 : 0));
-  readonly to = computed(() => Math.min(this.pageSafe() * this.pageSize(), this.rows().length));
 
   /** page numbers with gaps, e.g. [1, 2, '…', 26] */
   readonly pageList = computed<(number | '…')[]>(() => {
@@ -227,7 +298,6 @@ export class PermissionCatalogue implements OnInit {
   pickAction(key: ActionKey | ''): void { this.action.set(key); this.page.set(1); }
   toggleSensitive(): void { this.sensitiveOnly.update((v) => !v); this.page.set(1); }
   onSearch(e: Event): void { this.query.set((e.target as HTMLInputElement).value); this.page.set(1); }
-  go(n: number | '…'): void { if (typeof n === 'number' && n >= 1 && n <= this.pages()) { this.page.set(n); this.page.set(Math.min(this.page(), this.pages())); } }
 
   clearFilters(): void {
     this.module.set('');

@@ -76,7 +76,9 @@ export class Users implements OnInit {
   readonly unit = signal('');
   readonly role = signal('');
   readonly page = signal(1);
-  readonly pageSize = 12;
+  readonly pageSize = signal(12);
+  readonly pageSizes = [12, 24, 48];
+  readonly rowsOpen = signal(false);
   readonly checked = signal<Set<string>>(new Set());
   /** person open in the detail drawer ('' = closed) */
   readonly selectedId = signal<string>('');
@@ -176,11 +178,42 @@ export class Users implements OnInit {
       (!q || (u.name + ' ' + u.email + ' ' + u.ref + ' ' + u.username).toLowerCase().includes(q))
     );
   });
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
-  readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
-  readonly pageRows = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
-  readonly from = computed(() => (this.filtered().length ? (this.page() - 1) * this.pageSize + 1 : 0));
-  readonly to = computed(() => Math.min(this.page() * this.pageSize, this.filtered().length));
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  /** Current page kept inside 1..totalPages (a filter or rows change can shrink the page count). */
+  readonly safePage = computed(() => Math.min(Math.max(1, this.page()), this.totalPages()));
+  /** Page buttons with gaps: 1 2 ... 9 (null = "..."). Up to 7 pages are all shown. */
+  readonly pages = computed<(number | null)[]>(() => {
+    const total = this.totalPages();
+    const cur = this.safePage();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const out: (number | null)[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push(null);
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push(null);
+    out.push(total);
+    return out;
+  });
+  readonly pageRows = computed(() => this.filtered().slice((this.safePage() - 1) * this.pageSize(), this.safePage() * this.pageSize()));
+  readonly from = computed(() => (this.filtered().length ? (this.safePage() - 1) * this.pageSize() + 1 : 0));
+  readonly to = computed(() => Math.min(this.safePage() * this.pageSize(), this.filtered().length));
+
+  // ---- pager actions ----
+  goPage(p: number): void { this.page.set(Math.min(Math.max(1, p), this.totalPages())); }
+  prevPage(): void { this.goPage(this.safePage() - 1); }
+  nextPage(): void { this.goPage(this.safePage() + 1); }
+  toggleRows(event: Event): void {
+    event.stopPropagation();
+    this.rowsOpen.update((o) => !o);
+  }
+  setPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(1);
+    this.rowsOpen.set(false);
+  }
+  @HostListener('document:click')
+  onDocClick(): void { this.rowsOpen.set(false); }
 
   readonly selected = computed(() => this.users().find((u) => u.id === this.selectedId()) ?? null);
   readonly activeFilters = computed(() => [this.department(), this.unit(), this.role(), this.status(), this.query().trim()].filter(Boolean).length);
@@ -401,7 +434,8 @@ export class Users implements OnInit {
 
   @HostListener('document:keydown.escape')
   onEsc(): void {
-    if (this.drawer()) this.drawer.set(null);
+    if (this.rowsOpen()) this.rowsOpen.set(false);
+    else if (this.drawer()) this.drawer.set(null);
     else this.selectedId.set('');
   }
 }

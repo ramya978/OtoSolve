@@ -351,12 +351,15 @@
 
   <div class="card-foot cr-foot">
     <div class="cr-foot-left">
-      <span class="muted">Showing <strong>{{ from() }}–{{ to() }}</strong> of {{ filtered().length }}</span>
+      <span class="cr-showing">
+        Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
+      </span>
+
       <!-- rows per page: custom dropdown (opens upward) -->
       <div class="cr-dd cr-dd-sm" [class.is-open]="openMenu() === 'rows'">
-        <span class="cr-rows-label">Rows</span>
         <button type="button" class="cr-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
                 [attr.aria-expanded]="openMenu() === 'rows'" (click)="toggleMenu('rows', $event)">
+          <span class="cr-dd-key-plain">Rows</span>
           <span class="cr-dd-val">{{ pageSize() }}</span>
           <svg class="cr-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"
                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
@@ -371,16 +374,30 @@
         }
       </div>
     </div>
-    <div class="cr-pager">
-      <button type="button" class="cr-page" [disabled]="page() === 1" (click)="page.set(page() - 1)"
-              aria-label="Previous page">‹</button>
-      @for (p of pages(); track p) {
-        <button type="button" class="cr-page" [class.active]="p === page()"
-                [attr.aria-current]="p === page() ? 'page' : null" (click)="page.set(p)">{{ p }}</button>
+
+    <nav class="cr-pager" aria-label="Pagination">
+      <button type="button" class="cr-page cr-page-nav" [disabled]="page() === 1" (click)="prevPage()"
+              aria-label="Previous page">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      </button>
+
+      @for (p of pages(); track $index) {
+        @if (p === '…') {
+          <span class="cr-page-gap" aria-hidden="true">...</span>
+        } @else {
+          <button type="button" class="cr-page" [class.active]="p === page()"
+                  [attr.aria-current]="p === page() ? 'page' : null"
+                  [attr.aria-label]="'Page ' + p" (click)="goToPage(p)">{{ p }}</button>
+        }
       }
-      <button type="button" class="cr-page" [disabled]="page() === totalPages()"
-              (click)="page.set(page() + 1)" aria-label="Next page">›</button>
-    </div>
+
+      <button type="button" class="cr-page cr-page-nav" [disabled]="page() === totalPages()" (click)="nextPage()"
+              aria-label="Next page">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+    </nav>
   </div>
 </section>
 

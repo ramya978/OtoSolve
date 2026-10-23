@@ -292,24 +292,44 @@
             </tbody>
           </table>
 
-          <footer class="fq-foot">
-            <span>Showing <b>{{ range().from }}–{{ range().to }}</b> of <b>{{ range().n }}</b></span>
-            <div class="fu-dd">
-              <button type="button" class="fq-rows" (click)="toggleMenu('rows', $event)">Rows <b>{{ rows() }}</b><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
-              @if (menu() === 'rows') {
-                <ul class="fu-menu is-up" (click)="$event.stopPropagation()">
-                  @for (r of rowOptions; track r) { <li><button type="button" [class.is-on]="rows() === r" (click)="setRows(r)">{{ r }} rows</button></li> }
-                </ul>
-              }
-            </div>
-            <nav class="fq-pager" aria-label="Pages">
-              <button type="button" class="fu-icon" [disabled]="page() <= 1" (click)="go(-1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
-              @for (p of pageList(); track $index) {
-                <button type="button" class="fq-pg" [class.is-on]="p === page()" [disabled]="p === '…'" (click)="goPage(p)">{{ p }}</button>
-              }
-              <button type="button" class="fu-icon" [disabled]="page() >= pages()" (click)="go(1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
-            </nav>
-          </footer>
+        <footer class="fq-foot">
+  <div class="fq-foot-left">
+    <span>Showing <b>{{ range().from }}–{{ range().to }}</b> of <b>{{ range().n }}</b></span>
+    <div class="fu-dd">
+      <button type="button" class="fq-rows" [class.is-open]="menu() === 'rows'"
+              aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'rows'" aria-label="Rows per page"
+              (click)="toggleMenu('rows', $event)">
+        <span>Rows <b>{{ rows() }}</b></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+      </button>
+      @if (menu() === 'rows') {
+        <ul class="fu-menu is-up" role="listbox" (click)="$event.stopPropagation()">
+          @for (r of rowOptions; track r) { <li><button type="button" [class.is-on]="rows() === r" (click)="setRows(r)">{{ r }}</button></li> }
+        </ul>
+      }
+    </div>
+  </div>
+
+  <nav class="fq-pager" aria-label="Pagination">
+    <button type="button" class="fq-pg" [disabled]="safePage() <= 1" (click)="go(-1)" aria-label="Previous page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+    </button>
+
+    @for (p of pageList(); track $index) {
+      @if (p === '…') {
+        <span class="fq-pg-gap" aria-hidden="true">...</span>
+      } @else {
+        <button type="button" class="fq-pg" [class.is-on]="p === safePage()"
+                [attr.aria-current]="p === safePage() ? 'page' : null" [attr.aria-label]="'Page ' + p"
+                (click)="goPage(p)">{{ p }}</button>
+      }
+    }
+
+    <button type="button" class="fq-pg" [disabled]="safePage() >= pages()" (click)="go(1)" aria-label="Next page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+    </button>
+  </nav>
+</footer>
         }
 
         @case ('board') {

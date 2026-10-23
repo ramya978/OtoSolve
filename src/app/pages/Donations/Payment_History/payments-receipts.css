@@ -784,3 +784,100 @@ td.empty {
   :host *::before,
   :host *::after { animation: none !important; transition: none !important }
 }
+/* =====================================================================================================
+   PAGINATION - "Showing 1-10 of 84" · Rows dropdown · chevron pager with page gaps (1 2 ... 9)
+   ===================================================================================================== */
+.pr-foot { padding: 12px 20px }
+
+.pr-showing { color: var(--pr-muted); font-size: calc(12px * var(--font-scale, 1)) }
+.pr-showing b { color: var(--pr-heading); font-weight: 600 }
+
+.pr-foot-left { gap: 12px }
+
+/* rows dropdown */
+.pr-dd { position: relative }
+
+.pr-rowsbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--muted) 28%, var(--line));
+  border-radius: var(--btn-radius);
+  background: var(--white);
+  color: var(--pr-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease
+}
+
+.pr-rowsbtn b { color: var(--pr-heading); font-weight: 600 }
+.pr-rowsbtn:hover { border-color: var(--pr-primary-soft) }
+.pr-dd.is-open .pr-rowsbtn { border-color: var(--pr-primary-ink); box-shadow: 0 0 0 3px var(--pr-primary-soft) }
+
+.pr-chev { width: 13px; height: 13px; color: var(--pr-muted); transition: transform .2s ease }
+.pr-dd.is-open .pr-chev { transform: rotate(180deg) }
+
+.pr-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 100%;
+  margin: 0;
+  padding: 5px;
+  border: 1px solid var(--pr-line);
+  border-radius: var(--btn-radius);
+  background: var(--white);
+  box-shadow: 0 12px 28px #19374b1f;
+  list-style: none;
+  animation: pr-drop .16s ease-out
+}
+
+.pr-menu li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: max(3px, calc(var(--btn-radius) - 3px));
+  font-size: calc(12px * var(--font-scale, 1));
+  white-space: nowrap;
+  cursor: pointer
+}
+
+.pr-menu li svg { width: 14px; height: 14px; opacity: 0; color: var(--pr-primary-ink) }
+.pr-menu li:hover { background: var(--pr-hover) }
+.pr-menu li.is-on { background: var(--pr-primary-soft); color: var(--pr-primary-ink); font-weight: 600 }
+.pr-menu li.is-on svg { opacity: 1 }
+
+/* pager */
+.pr-pager { gap: 4px; flex-wrap: nowrap }
+
+.pr-page {
+  display: grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--btn-radius);
+  font-size: calc(12px * var(--font-scale, 1));
+  font-weight: 500;
+  font-variant-numeric: tabular-nums
+}
+
+.pr-page svg { width: 15px; height: 15px }
+.pr-page.active { border-color: var(--pr-primary-soft); background: var(--pr-primary-soft); color: var(--pr-primary-ink); font-weight: 600 }
+
+.pr-gap { min-width: 22px; color: var(--pr-muted); text-align: center }
+
+.pr-rowsbtn svg,
+.pr-menu li svg,
+.pr-page svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round }
+
+@keyframes pr-drop { from { opacity: 0; transform: translateY(4px) } }
+
+@media (max-width: 760px) {
+  .pr-foot { justify-content: center; padding: 12px 16px }
+}

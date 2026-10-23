@@ -1,6 +1,6 @@
 <!-- =====================================================================================================
      TRACKING ASSET MANAGER (tracking-assets.ts · tracking-assets.css)
-     Header + section tabs · KPI strip · scope / search / type / status · table · pager · asset drawer.
+     Header · KPI strip · search / type / status · table · pager (rows per page + page buttons) · asset drawer.
      ===================================================================================================== -->
 <cw-page-head section="Tracking asset manager">
   <a actions class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
@@ -9,7 +9,7 @@
   </a>
 </cw-page-head>
 
-<!-- ===== KPI cards (outside the header so they always show) ===== -->
+<!-- ===== KPI cards ===== -->
 <section class="ta-kpis" aria-label="Tracking asset figures">
   <div class="ta-kpi">
     <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
@@ -156,20 +156,56 @@
     </tbody>
   </table>
 
-  <footer class="ta-foot">
-    <span>Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong></span>
-    <nav class="ta-pager" aria-label="Pages">
-      <button type="button" class="ta-page" [disabled]="page() === 1" aria-label="Previous page" (click)="goPage(page() - 1)">
-        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronLeft')" /></svg>
+  <!-- ===== pager: showing range · rows per page · page buttons ===== -->
+<div class="card-foot ta-foot">
+  <div class="ta-foot-left">
+    <span class="ta-showing">
+      Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
+    </span>
+
+    <div class="ta-dd" [class.is-open]="rowsOpen()">
+      <button type="button" class="ta-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
+              [attr.aria-expanded]="rowsOpen()" (click)="toggleRows($event)">
+        <span class="ta-dd-key">Rows</span>
+        <span class="ta-dd-val">{{ pageSize() }}</span>
+        <svg class="ta-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
       </button>
-      @for (p of pages(); track p) {
-        <button type="button" class="ta-page" [class.is-on]="p === page()" [attr.aria-current]="p === page() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+      @if (rowsOpen()) {
+        <ul class="ta-dd-menu" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
+          @for (n of pageSizes; track n) {
+            <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
+                (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
+          }
+        </ul>
       }
-      <button type="button" class="ta-page" [disabled]="page() === totalPages()" aria-label="Next page" (click)="goPage(page() + 1)">
-        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronRight')" /></svg>
-      </button>
-    </nav>
-  </footer>
+    </div>
+  </div>
+
+  <nav class="ta-pager" aria-label="Pagination">
+    <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === 1" (click)="prevPage()" aria-label="Previous page">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+    </button>
+
+    @for (p of pages(); track $index) {
+      @if (p === null) {
+        <span class="ta-page-gap" aria-hidden="true">...</span>
+      } @else {
+        <button type="button" class="ta-page" [class.active]="p === safePage()"
+                [attr.aria-current]="p === safePage() ? 'page' : null"
+                [attr.aria-label]="'Page ' + p" (click)="goPage(p)">{{ p }}</button>
+      }
+    }
+
+    <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === totalPages()" (click)="nextPage()" aria-label="Next page">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+    </button>
+  </nav>
+</div>
+
+
 </section>
 
 <!-- ===== asset drawer ===== -->

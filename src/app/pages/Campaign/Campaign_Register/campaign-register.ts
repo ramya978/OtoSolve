@@ -289,7 +289,22 @@ export class CampaignRegister {
     const start = (this.page() - 1) * this.pageSize();
     return this.filtered().slice(start, start + this.pageSize());
   });
-  readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+
+  /** Page buttons with ellipsis: 1 2 … 10 (numbers, or '…' for gaps).
+   *  Page 1 → 1 2 … 10 · Page 5 → 1 … 4 5 6 … 10 · Page 10 → 1 … 9 10 */
+   readonly pages = computed<(number | '…')[]>(() => {
+    const total = this.totalPages();
+    const cur = this.page();
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    const out: (number | '…')[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push('…');
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push('…');
+    out.push(total);
+    return out;
+  });
   readonly from = computed(() => (this.filtered().length === 0 ? 0 : (this.page() - 1) * this.pageSize() + 1));
   readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.filtered().length));
 
@@ -309,7 +324,7 @@ export class CampaignRegister {
     return owner.match(/\+\d+$/)?.[0] ?? '';
   }
 
- 
+
   ownersOf(r: CampaignRow): string[] {
     const extra = Number(r.owner.match(/\+(\d+)/)?.[1] ?? 0);
     const base = ownerBase(r.owner);
@@ -412,6 +427,20 @@ export class CampaignRegister {
   }
   hasFilters(): boolean {
     return !!this.query().trim() || this.statusFilter() !== 'all' || this.ownerFilter() !== 'all';
+  }
+
+  // ---- pagination ----
+  goToPage(p: number | '…'): void {
+    if (typeof p !== 'number') return;
+    this.page.set(Math.min(Math.max(1, p), this.totalPages()));
+  }
+
+  prevPage(): void {
+    this.goToPage(this.page() - 1);
+  }
+
+  nextPage(): void {
+    this.goToPage(this.page() + 1);
   }
 
   toggleMenu(menu: 'owner' | 'rows', event: Event): void {

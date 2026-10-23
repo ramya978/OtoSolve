@@ -136,25 +136,41 @@
 
   <div class="card-foot pr-foot">
     <div class="pr-foot-left">
-      <span class="muted">Showing {{ from() }}–{{ to() }} of {{ filtered().length }}</span>
-      <label class="pr-rows">Rows
-        <select [value]="pageSize()" (change)="setPageSize($any($event.target).value)" aria-label="Rows per page">
-          <option [value]="10">10</option>
-          <option [value]="25">25</option>
-          <option [value]="50">50</option>
-        </select>
-      </label>
+      <span class="pr-showing">Showing <b>{{ from() }}–{{ to() }}</b> of <b>{{ filtered().length }}</b></span>
+      <div class="pr-dd" [class.is-open]="openDd() === 'rows'">
+        <button type="button" class="pr-rowsbtn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'rows'"
+                aria-label="Rows per page" (click)="toggleDd('rows', $event)">
+          <span>Rows <b>{{ pageSize() }}</b></span>
+          <svg class="pr-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath('chev')" /></svg>
+        </button>
+        @if (openDd() === 'rows') {
+          <ul class="pr-menu" role="listbox" (click)="$event.stopPropagation()">
+            @for (o of rowOpts; track o) {
+              <li role="option" [attr.aria-selected]="o === pageSize()" [class.is-on]="o === pageSize()" (click)="pickRows(o)">
+                {{ o }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath('tick')" /></svg>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     </div>
-    <div class="pr-pager">
-      <button type="button" class="pr-page" [disabled]="page() === 1" (click)="page.set(page() - 1)"
-              aria-label="Previous page">‹</button>
-      @for (p of pages(); track p) {
-        <button type="button" class="pr-page" [class.active]="p === page()"
-                [attr.aria-current]="p === page() ? 'page' : null" (click)="page.set(p)">{{ p }}</button>
+
+    <nav class="pr-pager" aria-label="Pages">
+      <button type="button" class="pr-page" [disabled]="pageSafe() === 1" (click)="goPage(pageSafe() - 1)" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath('left')" /></svg>
+      </button>
+      @for (p of pages(); track $index) {
+        @if (p === 0) {
+          <span class="pr-gap">…</span>
+        } @else {
+          <button type="button" class="pr-page" [class.active]="p === pageSafe()"
+                  [attr.aria-current]="p === pageSafe() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+        }
       }
-      <button type="button" class="pr-page" [disabled]="page() === totalPages()"
-              (click)="page.set(page() + 1)" aria-label="Next page">›</button>
-    </div>
+      <button type="button" class="pr-page" [disabled]="pageSafe() === totalPages()" (click)="goPage(pageSafe() + 1)" aria-label="Next page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath('right')" /></svg>
+      </button>
+    </nav>
   </div>
 </section>
 

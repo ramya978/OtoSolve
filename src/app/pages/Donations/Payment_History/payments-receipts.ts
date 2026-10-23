@@ -73,7 +73,11 @@ const ICON_PATHS: Record<string, string> = {
   'check-circle': 'M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3',
   x: 'M18 6 6 18 M6 6l12 12',
   search: 'M3 11a8 8 0 1 0 16 0 8 8 0 1 0-16 0 M21 21l-4.35-4.35',
-  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  chev: 'M6 9l6 6 6-6',
+  left: 'M15 18l-6-6 6-6',
+  right: 'M9 18l6-6-6-6',
+  tick: 'M20 6 9 17l-5-5'
 };
 
 const TONE_COLORS: Record<string, string> = {
@@ -136,18 +140,55 @@ export class PaymentsReceipts implements OnInit {
 
   readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
 
+  /** Current page kept inside 1..totalPages (a filter or page-size change can shrink the page count). */
+  readonly pageSafe = computed(() => Math.min(Math.max(1, this.page()), this.totalPages()));
+
   readonly pageRows = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
+    const start = (this.pageSafe() - 1) * this.pageSize();
     return this.filtered().slice(start, start + this.pageSize());
   });
 
-  readonly pages = computed(() => {
+  /** Page buttons with gaps: 1 2 … 9 (0 = "…"). Up to 7 pages are all shown. */
+  readonly pages = computed<number[]>(() => {
     const total = this.totalPages();
-    return Array.from({ length: total }, (_, i) => i + 1);
+    const cur = this.pageSafe();
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const out: number[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push(0);
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push(0);
+    out.push(total);
+    return out;
   });
 
-  readonly from = computed(() => (this.filtered().length === 0 ? 0 : (this.page() - 1) * this.pageSize() + 1));
-  readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.filtered().length));
+  readonly from = computed(() => (this.filtered().length === 0 ? 0 : (this.pageSafe() - 1) * this.pageSize() + 1));
+  readonly to = computed(() => Math.min(this.pageSafe() * this.pageSize(), this.filtered().length));
+
+  // ---- rows-per-page dropdown ----
+  readonly rowOpts = [10, 25, 50];
+  readonly openDd = signal<'rows' | null>(null);
+
+  toggleDd(key: 'rows', event: Event): void {
+    event.stopPropagation();
+    this.openDd.update((cur) => (cur === key ? null : key));
+  }
+
+  pickRows(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(1);
+    this.openDd.set(null);
+  }
+
+  goPage(p: number): void {
+    this.page.set(Math.min(Math.max(1, p), this.totalPages()));
+  }
+
+  @HostListener('document:click')
+  onDocClick(): void {
+    this.openDd.set(null);
+  }
 
   setQuery(value: string): void {
     this.query.set(value);
@@ -170,7 +211,8 @@ export class PaymentsReceipts implements OnInit {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    this.close();
+    if (this.openDd()) this.openDd.set(null);
+    else this.close();
   }
 
   iconPath(name: string): string {

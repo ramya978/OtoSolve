@@ -110,14 +110,23 @@ export abstract class MasterListBase implements OnInit {
     });
   });
 
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.sorted().length / this.pageSize())));
+protected readonly totalPages = computed(() =>
+  Math.max(1, Math.ceil(this.sorted().length / this.pageSize()))
+);
   protected readonly pageRows = computed(() => {
     const start = (this.page() - 1) * this.pageSize();
     return this.sorted().slice(start, start + this.pageSize());
   });
   protected readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
-  protected readonly from = computed(() => (this.sorted().length ? (this.page() - 1) * this.pageSize() + 1 : 0));
-  protected readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.sorted().length));
+ protected readonly from = computed(() =>
+  this.sorted().length
+    ? (this.page() - 1) * this.pageSize() + 1
+    : 0
+);
+
+protected readonly to = computed(() =>
+  Math.min(this.page() * this.pageSize(), this.sorted().length)
+);
   protected readonly hasFilters = computed(() => !!this.query().trim() || Object.values(this.filters()).some((v) => !!v));
 
   // ---- template helpers ----

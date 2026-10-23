@@ -1342,47 +1342,70 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 12px 22px;
+  padding: 14px 22px;
 }
 
 .cr-foot-left {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   color: var(--cr-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(13px * var(--font-scale, 1));
 }
 
-.cr-foot-left strong {
+.cr-showing strong {
+  color: var(--cr-heading);
+  font-weight: 650;
+}
+
+/* "Rows 10 ⌄" - one outlined box like the reference */
+.cr-dd-sm .cr-dd-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: var(--btn-radius, 8px);
+  font-size: calc(13px * var(--font-scale, 1));
+}
+
+.cr-dd-key-plain {
   color: var(--cr-ink);
-  font-weight: 600;
+  font-weight: 500;
+}
+
+.cr-dd-sm .cr-dd-val {
+  color: var(--cr-heading);
+  font-weight: 650;
 }
 
 .cr-pager {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
-/* square outlined page buttons; the current page is a soft primary tile with bold text */
+/* square outlined page buttons; current page = soft primary tile with bold text */
 .cr-page {
   display: inline-grid;
   place-items: center;
-  min-width: 40px;
-  height: 40px;
+  min-width: 34px;
+  height: 34px;
   padding: 0 10px;
   border: 1px solid color-mix(in srgb, var(--muted) 35%, var(--line));
   border-radius: var(--btn-radius, 8px);
   background: var(--cr-surface);
   color: var(--cr-ink);
   font-family: var(--cr-number-font);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(13px * var(--font-scale, 1));
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+
+.cr-page-nav {
+  padding: 0;
+  width: 34px;
 }
 
 .cr-page:hover:not(:disabled):not(.active) {
@@ -1408,6 +1431,18 @@
   border-color: color-mix(in srgb, var(--line) 70%, var(--white));
   color: color-mix(in srgb, var(--muted) 55%, var(--white));
   cursor: default;
+}
+
+/* the "..." gap between page numbers */
+.cr-page-gap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 36px;
+  color: var(--cr-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  letter-spacing: 1px;
+  user-select: none;
 }
 
 /* ---------- view dialog ---------- */
@@ -1633,7 +1668,9 @@ html[data-motion="reduce"] .cr-overlay {
 
   .cr-pager { justify-content: center; gap: 6px; }
 
-  .cr-page { min-width: 34px; height: 34px; padding: 0 8px; font-size: calc(13px * var(--font-scale, 1)); }
+  .cr-page { min-width: 32px; height: 32px; padding: 0 8px; font-size: calc(12px * var(--font-scale, 1)); }
+  .cr-page-nav { width: 32px; padding: 0; }
+  .cr-page-gap { height: 32px; }
 }
 
 /* ---------- responsive (page) ---------- */

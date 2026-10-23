@@ -1,18 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { OrganisationApiService } from '../../../Service/organisation-api.service';
-import { OrganisationListItemResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
-import { apiErrorMessage } from '../../../Shared/models/api-response.model';
-import { AuthTokenService } from '../../../Shared/services/auth-token.service';
-import { NavigationService } from '../../../Shared/services/navigation.service';
-import { OrganisationContextService } from '../../../Shared/services/organisation-context.service';
-import { fetchPages } from '../../../Shared/services/paging';
 
 /** change these to your real routes */
 const ORGS_PATH = '/app/administration/organisation/details';
 const CREATE_PATH = '/app/administration/organisation/setup-wizard';
 
-type Status = 'active' | 'review' | 'invited' | 'suspended' | 'rejected' | 'archived';
+type Status = 'active' | 'review' | 'invited' | 'suspended';
 type View = 'table' | 'cards';
 
 interface Org {
@@ -26,13 +19,19 @@ interface Org {
   status: Status;
 }
 
+/** sample data — replace with your organisations store / API */
+const ORGS: Org[] = [
+  { id: 'o4', code: 'TEN004', name: 'Unity for Change', domain: 'unityforchange.localhost', adminEmail: 'rahul.mukund@unityforchange.test', people: 1, created: 'Oct 14, 2026', status: 'invited' },
+  { id: 'o3', code: 'TEN003', name: 'Global Relief Foundation', domain: 'globalrelief.localhost', adminEmail: 'farah.naseem@globalreliefoundation.test', people: 1, created: 'Oct 14, 2026', status: 'invited' },
+  { id: 'o2', code: 'TEN002', name: 'HelpAge India', domain: 'helpageindia.localhost', adminEmail: 'arvind.murali@helpageindia.test', people: 21, created: 'Oct 14, 2026', status: 'active' },
+  { id: 'o1', code: 'TEN001', name: 'Smile Foundation', domain: 'smilefoundation.localhost', adminEmail: 'anjali.prakash@smilefoundationindia.test', people: 21, created: 'Oct 14, 2026', status: 'active' }
+];
+
 const STATUS: Record<Status, { label: string; tone: 'ok' | 'warn' | 'info' | 'bad' }> = {
   active: { label: 'Active', tone: 'ok' },
   review: { label: 'Awaiting review', tone: 'warn' },
   invited: { label: 'Invitation sent', tone: 'info' },
-  suspended: { label: 'Suspended', tone: 'bad' },
-  rejected: { label: 'Rejected', tone: 'bad' },
-  archived: { label: 'Archived', tone: 'warn' }
+  suspended: { label: 'Suspended', tone: 'bad' }
 };
 
 const ICONS: Record<string, string> = {
@@ -56,30 +55,8 @@ const ICONS: Record<string, string> = {
   next: 'M9 18l6-6-6-6'
 };
 
-const STATUS_ICON: Record<Status, string> = { active: 'check', review: 'clock', invited: 'mail', suspended: 'ban', rejected: 'ban', archived: 'clock' };
-
-/** The server's organisation statuses in this screen's words. */
-const STATUS_OF: Record<TenantStatus, Status> = {
-  active: 'active', approved: 'active',
-  invited: 'invited', invitationAccepted: 'invited', profileIncomplete: 'invited',
-  submitted: 'review', underReview: 'review', resubmitted: 'review',
-  suspended: 'suspended', rejected: 'rejected', archived: 'archived'
-};
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-function when(iso: string | undefined): string {
-  const d = iso ? new Date(iso) : null;
-  return d && !Number.isNaN(d.getTime()) ? `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : '';
-}
-
-function toOrg(o: OrganisationListItemResponse): Org {
-  return {
-    id: o.id ?? '', code: o.code ?? '', name: o.name ?? '', domain: o.hostName ?? o.subdomain ?? '',
-    adminEmail: o.adminEmail ?? '', people: o.userCount ?? 0, created: when(o.createdAtUtc),
-    status: STATUS_OF[o.status ?? 'invited'] ?? 'invited'
-  };
-}
-const PAGE_SIZES = [10, 25, 50];
+const STATUS_ICON: Record<Status, string> = { active: 'check', review: 'clock', invited: 'mail', suspended: 'ban' };
+const PAGE_SIZES = [10, 25, 50] as const;
 
 /** Organisations — Workspace Kit layout: heading and one card: KPI widgets, filters,
  *  a card grid or list, and pagination. */
@@ -90,20 +67,12 @@ const PAGE_SIZES = [10, 25, 50];
 })
 export class Organisations {
   private readonly router = inject(Router);
-  private readonly api = inject(OrganisationApiService);
-  private readonly tokens = inject(AuthTokenService);
-  private readonly context = inject(OrganisationContextService);
-  private readonly navigation = inject(NavigationService);
 
-  readonly orgs = signal<Org[]>([]);
-  readonly loading = signal(false);
+  readonly orgs = signal<Org[]>(ORGS);
   readonly query = signal('');
   readonly status = signal<Status | ''>('');
   readonly view = signal<View>('cards');
   readonly page = signal(1);
-  readonly pageSize = signal(10);
-  readonly pageSizes = PAGE_SIZES;
-  readonly openRows = signal(false);
   readonly selected = signal<ReadonlySet<string>>(new Set());
   readonly statuses = (Object.keys(STATUS) as Status[]).map((key) => ({ key, label: STATUS[key].label }));
   readonly notice = signal('');
@@ -151,31 +120,110 @@ export class Organisations {
       (!q || [o.name, o.code, o.domain, o.adminEmail].some((v) => v.toLowerCase().includes(q))));
   });
 
+// Pagination
+
+
+// Pagination
+readonly pageSizes = PAGE_SIZES;
+
+readonly pageSize = signal<number>(10);
+
+readonly pages = computed(() =>
+  Math.max(
+    1,
+    Math.ceil(this.rows().length / this.pageSize())
+  )
+);
+
+readonly current = computed(() =>
+  Math.min(this.page(), this.pages())
+);
+
+readonly paged = computed(() => {
+  const start = (this.current() - 1) * this.pageSize();
+
+  return this.rows().slice(
+    start,
+    start + this.pageSize()
+  );
+});
+
+readonly from = computed(() =>
+  this.rows().length
+    ? (this.current() - 1) * this.pageSize() + 1
+    : 0
+);
+
+readonly to = computed(() =>
+  Math.min(
+    this.current() * this.pageSize(),
+    this.rows().length
+  )
+);
+
+readonly pageNumbers = computed<(number | '...')[]>(() => {
+  const total = this.pages();
+  const current = this.current();
+
+  if (total <= 7) {
+    return Array.from(
+      { length: total },
+      (_, index) => index + 1
+    );
+  }
+
+  const result: (number | '...')[] = [1];
+
+  const start = Math.max(2, current - 2);
+  const end = Math.min(total - 1, current + 2);
+
+  if (start > 2) {
+    result.push('...');
+  }
+
+  for (let p = start; p <= end; p++) {
+    result.push(p);
+  }
+
+  if (end < total - 1) {
+    result.push('...');
+  }
+
+  result.push(total);
+
+  return result;
+});
+
+// Navigate to a page
+goPage(page: number): void {
+  this.page.set(
+    Math.min(this.pages(), Math.max(1, page))
+  );
+}
+
+// Change page size
+setPageSize(value: string): void {
+  const size = Number(value);
+
+  if (PAGE_SIZES.some((allowed) => allowed === size)) {
+    this.pageSize.set(size);
+    this.page.set(1);
+  }
+}
+
+/**
+ * Displays page numbers with ellipsis when there are
+ * more than seven pages.
+ *
+ * Example: [1, 2, '...', 10]
+ */
+
+
   readonly hasFilters = computed(() => !!(this.query().trim() || this.status()));
 
-  readonly pageSafe = computed(() => Math.min(this.page(), this.totalPages()));
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
-  /** Page buttons with gaps: 1 … 4 5 6 … 9 (0 = gap). Mirrors Lead Work Queue. */
-  readonly pages = computed<number[]>(() => {
-    const n = this.totalPages(), p = this.pageSafe();
-    if (n <= 7) return Array.from({ length: n }, (_, i) => i + 1);
-    const out: number[] = [1];
-    const from = Math.max(2, p - 1), to = Math.min(n - 1, p + 1);
-    if (from > 2) out.push(0);
-    for (let i = from; i <= to; i++) out.push(i);
-    if (to < n - 1) out.push(0);
-    out.push(n);
-    return out;
-  });
-  readonly rangeFrom = computed(() => (this.rows().length ? (this.pageSafe() - 1) * this.pageSize() + 1 : 0));
-  readonly rangeTo = computed(() => Math.min(this.pageSafe() * this.pageSize(), this.rows().length));
-  readonly pageRows = computed(() => {
-    const start = (this.pageSafe() - 1) * this.pageSize();
-    return this.rows().slice(start, start + this.pageSize());
-  });
 
   /** every organisation on the current page is ticked */
-  readonly allSelected = computed(() => this.pageRows().length > 0 && this.pageRows().every((o) => this.selected().has(o.id)));
+  readonly allSelected = computed(() => this.paged().length > 0 && this.paged().every((o) => this.selected().has(o.id)));
 
   icon(name: string): string { return ICONS[name] ?? ''; }
   label(s: Status): string { return STATUS[s].label; }
@@ -194,32 +242,20 @@ export class Organisations {
     this.selected.update((set) => { const next = new Set(set); next.has(id) ? next.delete(id) : next.add(id); return next; });
   }
   toggleAll(): void {
-    const ids = this.pageRows().map((o) => o.id);
+    const ids = this.paged().map((o) => o.id);
     const all = this.allSelected();
     this.selected.update((set) => { const next = new Set(set); ids.forEach((id) => (all ? next.delete(id) : next.add(id))); return next; });
   }
   clearSelection(): void { this.selected.set(new Set()); }
 
-  go(delta: number): void { this.page.set(Math.min(this.totalPages(), Math.max(1, this.pageSafe() + delta))); }
+  go(delta: number): void { this.page.set(Math.min(this.pages(), Math.max(1, this.current() + delta))); }
   setView(v: View): void { this.view.set(v); }
   clearFilters(): void { this.query.set(''); this.status.set(''); this.page.set(1); }
-
-  constructor() { this.load(); }
-
-  /** Every organisation the caller may see (all pages), filtered and paged on this screen. */
-  load(): void {
-    this.loading.set(true);
-    fetchPages((page, size) => this.api.search({ page, pageSize: size })).subscribe({
-      next: ({ items }) => { this.orgs.set(items.map(toOrg)); this.loading.set(false); },
-      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e, 'The organisations could not be loaded.')); }
-    });
-  }
 
   primary(o: Org): { label: string; icon: string } | null {
     switch (o.status) {
       case 'invited': return { label: 'Re-send invitation', icon: 'mail' };
-      // Working inside another organisation is the platform administrator's move.
-      case 'active': return this.tokens.isSuperAdmin() ? { label: 'Work inside', icon: 'enter' } : null;
+      case 'active': return { label: 'Work inside', icon: 'enter' };
       case 'review': return { label: 'Review', icon: 'check' };
       default: return null;
     }
@@ -227,17 +263,7 @@ export class Organisations {
 
   runPrimary(o: Org): void {
     if (o.status === 'invited') {
-      this.api.resendInvitation(o.id).subscribe({
-        next: (r) => { this.flash(r.invitationSent ? `Invitation re-sent to ${r.adminEmail ?? o.adminEmail}` : 'The invitation was renewed, but the e-mail could not be sent.'); this.load(); },
-        error: (e: unknown) => this.flash(apiErrorMessage(e, 'The invitation could not be re-sent.'))
-      });
-    } else if (o.status === 'active') {
-      this.context.select(o.id).subscribe({
-        next: () => { this.flash(`You are now working inside ${o.name}.`); void this.router.navigateByUrl(this.navigation.landingRoute()); },
-        error: (e: unknown) => this.flash(apiErrorMessage(e, 'Could not switch organisation.'))
-      });
-    } else if (o.status === 'review') {
-      this.open(o);
+      this.flash(`Invitation re-sent to ${o.adminEmail}`);
     }
   }
 

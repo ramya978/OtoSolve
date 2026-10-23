@@ -142,19 +142,107 @@
       }
 
       <!-- PAGINATION -->
-      <footer class="ol-foot">
-        <p>
-          <b>{{ from() }}–{{ to() }}</b> of {{ rows().length }} organisations
-          @if (selected().size) { · {{ selected().size }} selected <button type="button" class="i-link ol-link" (click)="clearSelection()">Clear</button> }
-        </p>
-        <div class="ol-pager">
-          <span>Page {{ current() }} of {{ pages() }}</span>
-          <button type="button" aria-label="Previous page" [disabled]="current() <= 1" (click)="go(-1)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('prev')" /></svg></button>
-          <button type="button" aria-label="Next page" [disabled]="current() >= pages()" (click)="go(1)">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg></button>
-        </div>
-      </footer>
+
+<!-- PAGINATION -->
+<!-- PAGINATION -->
+<footer class="ol-foot">
+
+  <!-- Left: Record count and page size -->
+  <div class="ol-foot-left">
+
+    <p class="ol-pagination-info">
+      Showing
+      <strong>{{ from() }}–{{ to() }}</strong>
+      of
+      <strong>{{ rows().length }}</strong>
+    </p>
+
+    <label class="ol-rows-control">
+      <span class="ol-sr">Rows per page</span>
+
+      <select
+        class="ol-rows-select"
+        [value]="pageSize()"
+        (change)="setPageSize($any($event.target).value)"
+        aria-label="Rows per page"
+      >
+        @for (size of pageSizes; track size) {
+          <option [value]="size">{{ size }}</option>
+        }
+      </select>
+    </label>
+
+    @if (selected().size) {
+      <span class="ol-selected-info">
+        {{ selected().size }} selected
+      </span>
+
+      <button
+        type="button"
+        class="i-link ol-link"
+        (click)="clearSelection()"
+      >
+        Clear
+      </button>
+    }
+
+  </div>
+
+  <!-- Right: Pagination buttons -->
+  <nav class="ol-pager" aria-label="Pagination">
+
+    <!-- Previous -->
+    <button
+      type="button"
+      class="ol-page-btn ol-page-arrow"
+      aria-label="Previous page"
+      [disabled]="current() === 1"
+      (click)="goPage(current() - 1)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('prev')" />
+      </svg>
+    </button>
+
+    <!-- Page numbers -->
+    @for (p of pageNumbers(); track $index) {
+
+      @if (p === '...') {
+        <span class="ol-page-ellipsis" aria-hidden="true">
+          ...
+        </span>
+      } @else {
+        <button
+          type="button"
+          class="ol-page-btn"
+          [class.is-active]="current() === p"
+          [attr.aria-current]="current() === p ? 'page' : null"
+          [attr.aria-label]="'Page ' + p"
+          (click)="goPage(p)"
+        >
+          {{ p }}
+        </button>
+      }
+
+    }
+
+    <!-- Next -->
+    <button
+      type="button"
+      class="ol-page-btn ol-page-arrow"
+      aria-label="Next page"
+      [disabled]="current() === pages()"
+      (click)="goPage(current() + 1)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('next')" />
+      </svg>
+    </button>
+
+  </nav>
+
+</footer>
+
 
     } @else {
       <div class="ol-pad">

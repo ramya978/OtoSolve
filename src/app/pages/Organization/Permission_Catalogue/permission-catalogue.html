@@ -254,37 +254,71 @@
     </div>
 
     <!-- PAGINATION -->
-    <footer class="pc-foot">
-      <p class="pc-showing">Showing <b>{{ from() }}–{{ to() }}</b> of <b>{{ rows().length }}</b></p>
+<!-- PAGINATION -->
+<footer class="pc-foot">
+  <div class="pc-foot-left">
+    <p class="pc-showing">
+      Showing <b>{{ from() }}–{{ to() }}</b> of
+      <b>{{ rows().length }}</b>
+    </p>
 
-      <div class="pc-pager">
-        <div class="ml-rows" [class.is-open]="openRows()">
-          <button type="button" class="ml-rows-btn" (click)="openRows.set(!openRows())" aria-label="Rows per page">
-            <span>Rows <b>{{ pageSize() }}</b></span>
-            <svg class="ml-rows-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
-          </button>
-          <ul class="ml-rows-menu" role="listbox" aria-label="Rows per page">
-            @for (n of pageSizes; track n) {
-              <li role="option" [attr.aria-selected]="n === pageSize()" [class.is-on]="n === pageSize()" (click)="pageSize.set(n); openRows.set(false)">{{ n }}</li>
-            }
-          </ul>
-        </div>
-
-        <button type="button" class="pc-pg pc-page-icon-btn" aria-label="Previous page" [disabled]="pageSafe() === 1" (click)="go(pageSafe() - 1)">
-          <svg class="pc-page-icon" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('prev')" /></svg>
-        </button>
-        @for (n of pageList(); track $index) {
-          @if (n === '…') {
-            <span class="pc-gap">…</span>
-          } @else {
-            <button type="button" class="pc-pg" [class.is-on]="n === pageSafe()" [attr.aria-current]="n === pageSafe() ? 'page' : null"
-                    (click)="go(n)">{{ n }}</button>
-          }
+    <label class="pc-rows">
+      <span class="pc-sr-only">Rows per page</span>
+      <select
+        aria-label="Rows per page"
+        [value]="pageSize()"
+        (change)="onPageSizeChange($event)"
+      >
+        @for (size of pageSizes; track size) {
+          <option [value]="size">{{ size }}</option>
         }
-        <button type="button" class="pc-pg pc-page-icon-btn" aria-label="Next page" [disabled]="pageSafe() === pages()" (click)="go(pageSafe() + 1)">
-          <svg class="pc-page-icon" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg>
+      </select>
+      <span>Rows</span>
+    </label>
+  </div>
+
+  <nav class="pc-pager" aria-label="Pagination">
+    <button
+      type="button"
+      class="pc-pg"
+      aria-label="Previous page"
+      [disabled]="current() <= 1"
+      (click)="go(-1)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('prev')" />
+      </svg>
+    </button>
+
+    @for (p of visiblePages(); track p) {
+      @if (p === '...') {
+        <span class="pc-gap" aria-hidden="true">...</span>
+      } @else {
+        <button
+          type="button"
+          class="pc-pg"
+          [class.is-on]="current() === p"
+          [attr.aria-current]="current() === p ? 'page' : null"
+          [attr.aria-label]="'Page ' + p"
+          (click)="goToPage(p)"
+        >
+          {{ p }}
         </button>
-      </div>
-    </footer>
+      }
+    }
+
+    <button
+      type="button"
+      class="pc-pg"
+      aria-label="Next page"
+      [disabled]="current() >= pages()"
+      (click)="go(1)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('next')" />
+      </svg>
+    </button>
+  </nav>
+</footer>
   </section>
 </div>

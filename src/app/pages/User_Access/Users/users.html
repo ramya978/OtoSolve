@@ -56,7 +56,7 @@
         <input type="checkbox" class="i-check" [checked]="allFilteredChecked()" (change)="toggleAllFiltered()" aria-label="Select all users" />
         <span>Select all</span>
       </label>
-   
+
       <div class="us-views" role="radiogroup" aria-label="View">
         <button type="button" role="radio" [class.is-on]="view() === 'cards'" [attr.aria-checked]="view() === 'cards'" (click)="view.set('cards')">
           <svg class="i-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg>Cards</button>
@@ -151,16 +151,55 @@
       </div>
     }
 
-    <footer class="i-foot">
-      <span><strong>{{ from() }}–{{ to() }}</strong> of {{ filtered().length }} people
-        @if (checked().size) { · <strong>{{ checked().size }}</strong> selected }</span>
-      <span class="i-pager">
-        <span class="us-pageof">Page {{ page() }} of {{ totalPages() }}</span>
-        <button type="button" class="i-icon-btn" [disabled]="page() === 1" (click)="page.set(page() - 1)" aria-label="Previous page">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronLeft')" /></svg></button>
-        <button type="button" class="i-icon-btn" [disabled]="page() === totalPages()" (click)="page.set(page() + 1)" aria-label="Next page">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg></button>
-      </span>
+    <!-- ============ footer: showing · rows · pager ============ -->
+    <footer class="i-foot us-foot">
+      <div class="us-foot-left">
+        <span class="us-showing">
+          Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
+          @if (checked().size) { · <strong>{{ checked().size }}</strong> selected }
+        </span>
+
+        <!-- rows per page (opens upward) -->
+        <div class="us-dd" [class.is-open]="rowsOpen()">
+          <button type="button" class="us-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
+                  [attr.aria-expanded]="rowsOpen()" (click)="toggleRows($event)">
+            <span class="us-dd-key">Rows</span>
+            <span class="us-dd-val">{{ pageSize() }}</span>
+            <svg class="us-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+                 stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          @if (rowsOpen()) {
+            <ul class="us-dd-menu" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
+              @for (n of pageSizes; track n) {
+                <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
+                    (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+
+      <nav class="us-pager1" aria-label="Pagination">
+        <button type="button" class="us-page1 us-page-nav" [disabled]="safePage() === 1" (click)="prevPage()" aria-label="Previous page">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+        </button>
+
+        @for (p of pages(); track $index) {
+          @if (p === null) {
+            <span class="us-page-gap" aria-hidden="true">...</span>
+          } @else {
+            <button type="button" class="us-page1" [class.active]="p === safePage()"
+                    [attr.aria-current]="p === safePage() ? 'page' : null"
+                    [attr.aria-label]="'Page ' + p" (click)="goPage(p)">{{ p }}</button>
+          }
+        }
+
+        <button type="button" class="us-page1 us-page-nav" [disabled]="safePage() === totalPages()" (click)="nextPage()" aria-label="Next page">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+        </button>
+      </nav>
     </footer>
   </section>
 </div>

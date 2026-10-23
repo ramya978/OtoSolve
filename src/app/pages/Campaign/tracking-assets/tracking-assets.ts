@@ -11,6 +11,8 @@ import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 
 type Scope = 'campaign' | 'all';
 type RowAction = 'edit' | 'approve' | 'approveDisable' | 'requestDisable' | null;
+/** A page number, or null for the "..." gap. */
+type PageItem = number | null;
 
 @Component({
   selector: 'app-tracking-assets',
@@ -33,8 +35,12 @@ export class TrackingAssets {
   protected readonly query = signal('');
   protected readonly type = signal('');
   protected readonly status = signal('');
+
+  // ---- pagination ----
   protected readonly page = signal(1);
-  protected readonly pageSize = 8;
+  protected readonly pageSize = signal(10);
+  protected readonly pageSizes = [10, 25, 50];
+  protected readonly rowsOpen = signal(false);
 
   protected readonly typeOptions: CwOption[] = [
     { value: '', label: 'All types' },
@@ -83,11 +89,37 @@ export class TrackingAssets {
       .sort((a, b) => a.ref.localeCompare(b.ref));
   });
 
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize)));
-  protected readonly rows = computed(() => this.filtered().slice((this.page() - 1) * this.pageSize, this.page() * this.pageSize));
-  protected readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
-  protected readonly from = computed(() => (this.filtered().length ? (this.page() - 1) * this.pageSize + 1 : 0));
-  protected readonly to = computed(() => Math.min(this.page() * this.pageSize, this.filtered().length));
+  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  /** current page, never past the last page (e.g. after a status change shrinks the list) */
+  protected readonly safePage = computed(() => Math.min(this.page(), this.totalPages()));
+  protected readonly rows = computed(() => {
+    const size = this.pageSize();
+    const start = (this.safePage() - 1) * size;
+    return this.filtered().slice(start, start + size);
+  });
+
+  /** 1 2 ... 10 style pager: first, last, and the pages around the current one. */
+protected readonly pages = computed<PageItem[]>(() => {
+  const total = this.totalPages();
+  const cur = this.safePage();
+  if (total <= 4) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const out: PageItem[] = [1];
+  const start = Math.max(2, cur - 1);
+  const end = Math.min(total - 1, cur + 1);
+  if (start > 2) out.push(null);
+  for (let p = start; p <= end; p++) out.push(p);
+  if (end < total - 1) out.push(null);
+  out.push(total);
+  return out;
+});
+
+protected prevPage(): void { this.goPage(this.safePage() - 1); }
+protected nextPage(): void { this.goPage(this.safePage() + 1); }
+
+
+  protected readonly from = computed(() => (this.filtered().length ? (this.safePage() - 1) * this.pageSize() + 1 : 0));
+  protected readonly to = computed(() => Math.min(this.safePage() * this.pageSize(), this.filtered().length));
 
   // ---- drawer ----
   protected readonly openRef = signal<string | null>(null);
@@ -170,8 +202,20 @@ export class TrackingAssets {
     this.page.set(1);
   }
 
+  // ---- pagination actions ----
   protected goPage(p: number): void {
     this.page.set(Math.min(this.totalPages(), Math.max(1, p)));
+  }
+
+  protected toggleRows(e: Event): void {
+    e.stopPropagation();
+    this.rowsOpen.set(!this.rowsOpen());
+  }
+
+  protected setPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(1);
+    this.rowsOpen.set(false);
   }
 
   // ---- drawer actions ----
@@ -198,8 +242,15 @@ export class TrackingAssets {
     window.open(url, '_blank', 'noopener');
   }
 
+  /** click anywhere else closes the "Rows" menu */
+  @HostListener('document:click')
+  protected onDocClick(): void {
+    if (this.rowsOpen()) this.rowsOpen.set(false);
+  }
+
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
+    if (this.rowsOpen()) { this.rowsOpen.set(false); return; }
     this.openRef.set(null);
   }
 }

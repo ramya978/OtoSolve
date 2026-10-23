@@ -275,15 +275,89 @@ export class AllDonors implements OnInit {
     const dir = this.sortDir() === 'desc' ? -1 : 1;
     return [...rows].sort((a, b) => (a.lastGift - b.lastGift) * dir);
   });
+// =====================================================================
+// all-donors.ts  -  pagination changes (same logic as Tracking Assets)
+// =====================================================================
+// Pagination
 
-  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  /** Rows-per-page choices + open state of the "Rows" dropdown. */
+  protected readonly pageSizes = [10, 25, 50];
+  protected readonly rowsOpen = signal(false);
+
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.filtered().length / this.pageSize()))
+  );
+
+  /** Current page, never past the last page (e.g. after a search shrinks the list). */
+  protected readonly safePage = computed(() => Math.min(this.page(), this.totalPages()));
+
   protected readonly pageRows = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
-    return this.filtered().slice(start, start + this.pageSize());
+    const size = this.pageSize();
+    const start = (this.safePage() - 1) * size;
+    return this.filtered().slice(start, start + size);
   });
-  protected readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
-  protected readonly from = computed(() => (this.filtered().length === 0 ? 0 : (this.page() - 1) * this.pageSize() + 1));
-  protected readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.filtered().length));
+
+  /**
+   * Pager with dots. 0 = the "..." gap.
+   * 9 pages: page 1 -> 1 2 ... 9 | page 5 -> 1 ... 4 5 6 ... 9 | page 9 -> 1 ... 8 9
+   */
+/** 0 = the "..." gap */
+protected readonly pages = computed<number[]>(() => {
+  const total = this.totalPages();
+  const cur = this.safePage();
+
+  // 5 pages or fewer: show all
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const out: number[] = [1];
+  const start = Math.max(2, cur - 1);
+  const end = Math.min(total - 1, cur + 1);
+
+  if (start > 2) out.push(0);
+  for (let p = start; p <= end; p++) out.push(p);
+  if (end < total - 1) out.push(0);
+
+  out.push(total);
+  return out;
+});
+  protected readonly from = computed(() =>
+    this.filtered().length ? (this.safePage() - 1) * this.pageSize() + 1 : 0
+  );
+  protected readonly to = computed(() =>
+    Math.min(this.safePage() * this.pageSize(), this.filtered().length)
+  );
+
+  goPage(p: number): void {
+    this.page.set(Math.min(this.totalPages(), Math.max(1, p)));
+  }
+
+  toggleRows(e: Event): void {
+    e.stopPropagation();
+    this.menuFor.set(null);
+    this.rowsOpen.set(!this.rowsOpen());
+  }
+
+  setPageSize(n: number): void {
+    this.pageSize.set(n);
+    this.page.set(1);
+    this.rowsOpen.set(false);
+  }
+
+  /** Any click outside an open menu closes it. */
+  @HostListener('document:click')
+  onDocClick(): void {
+    this.menuFor.set(null);
+    this.rowsOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.toast.set(null);
+    this.menuFor.set(null);
+    this.rowsOpen.set(false);
+  }
+
+
 
   setQuery(value: string): void {
     this.query.set(value);
@@ -297,11 +371,6 @@ export class AllDonors implements OnInit {
 
   toggleDir(): void {
     this.sortDir.set(this.sortDir() === 'desc' ? 'asc' : 'desc');
-  }
-
-  setPageSize(value: string): void {
-    this.pageSize.set(Number(value) || 10);
-    this.page.set(1);
   }
 
   /** Donor 360 opens with the donor reference in the query string. */
@@ -380,17 +449,7 @@ export class AllDonors implements OnInit {
     }
   }
 
-  /** Any click outside an open menu closes it. */
-  @HostListener('document:click')
-  onDocClick(): void {
-    this.menuFor.set(null);
-  }
-
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    this.toast.set(null);
-    this.menuFor.set(null);
-  }
+ 
 
   icon(name: string): string {
     return ICON_PATHS[name] ?? '';

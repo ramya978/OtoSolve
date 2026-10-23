@@ -125,6 +125,45 @@ export class AssignmentBoard {
     });
   });
 
+
+
+  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.rows())));
+
+  /** Current page, never past the last page (e.g. after a filter shrinks the list). */
+  protected readonly safePage = computed(() => Math.min(this.page(), this.totalPages()));
+
+  protected readonly pageRows = computed(() => {
+    const p = this.safePage();
+    return this.filtered().slice((p - 1) * this.rows(), p * this.rows());
+  });
+
+  protected readonly range = computed(() => {
+    const n = this.filtered().length;
+    if (!n) return '0 of 0';
+    const p = this.safePage();
+    return `${(p - 1) * this.rows() + 1}–${Math.min(p * this.rows(), n)} of ${n}`;
+  });
+
+  /** 0 = the "..." gap. 5 pages or fewer: show all. */
+  protected readonly pages = computed<number[]>(() => {
+    const total = this.totalPages();
+    const cur = this.safePage();
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+
+    const out: number[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push(0);
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push(0);
+    out.push(total);
+    return out;
+  });
+
+
+  goPage(n: number): void { this.page.set(Math.min(Math.max(1, n), this.totalPages())); }
+
+
   protected readonly chips = computed(() => {
     const c: { key: string; label: string }[] = [];
     if (this.fOwner()) c.push({ key: 'owner', label: 'Owner: ' + this.fOwner() });
@@ -135,17 +174,7 @@ export class AssignmentBoard {
   });
   protected readonly filterCount = computed(() => (this.fOwner() ? 1 : 0) + (this.fCampaign() ? 1 : 0) + this.fSla().length);
 
-  protected readonly pages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.rows())));
-  protected readonly pageRows = computed(() => {
-    const p = Math.min(this.page(), this.pages());
-    return this.filtered().slice((p - 1) * this.rows(), p * this.rows());
-  });
-  protected readonly range = computed(() => {
-    const n = this.filtered().length;
-    if (!n) return '0 of 0';
-    const p = Math.min(this.page(), this.pages());
-    return `${(p - 1) * this.rows() + 1}-${Math.min(p * this.rows(), n)} of ${n}`;
-  });
+
   protected readonly allOnPage = computed(() => this.pageRows().length > 0 && this.pageRows().every((p) => this.selected().includes(p.code)));
 
   /* ---------- owners panel ---------- */
@@ -207,7 +236,7 @@ export class AssignmentBoard {
   }
   clearAll(): void { this.fOwner.set(null); this.fCampaign.set(null); this.fSla.set([]); this.query.set(''); this.dueToday.set(false); this.reset(); }
   setRows(n: number): void { this.rows.set(n); this.menu.set(null); this.page.set(1); }
-  goPage(n: number): void { this.page.set(Math.min(Math.max(1, n), this.pages())); }
+
 
   toggleSel(p: FuPerson): void { this.selected.update((l) => (l.includes(p.code) ? l.filter((x) => x !== p.code) : [...l, p.code])); }
   togglePage(): void {

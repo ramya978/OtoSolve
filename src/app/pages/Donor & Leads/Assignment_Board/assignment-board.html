@@ -165,22 +165,51 @@
             </tbody>
           </table>
 
-      <footer class="ab-foot">
-        <span>Showing <b>{{ range() }}</b></span>
-        <div class="fu-dd" [class.is-open]="menu() === 'rows'">
-          <button type="button" class="ab-rows" (click)="toggleMenu('rows', $event)">{{ rows() }} per page <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
-          @if (menu() === 'rows') {
-            <ul class="fu-menu is-up" role="listbox" (click)="$event.stopPropagation()">
-              @for (n of rowOptions; track n) { <li><button type="button" [class.is-on]="rows() === n" (click)="setRows(n)">{{ n }} per page</button></li> }
-            </ul>
+   <footer class="ab-foot">
+  <div class="ab-foot-left">
+    <span>Showing <b>{{ range() }}</b></span>
+
+    <div class="fu-dd ab-rows-dd" [class.is-open]="menu() === 'rows'">
+      <button type="button" class="ab-rows" [class.is-open]="menu() === 'rows'"
+              aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'rows'" aria-label="Rows per page"
+              (click)="toggleMenu('rows', $event)">
+        <span>Rows <b>{{ rows() }}</b></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+      </button>
+      @if (menu() === 'rows') {
+        <ul class="fu-menu is-up" role="listbox" (click)="$event.stopPropagation()">
+          @for (n of rowOptions; track n) {
+            <li><button type="button" [class.is-on]="rows() === n" (click)="setRows(n)">{{ n }}</button></li>
           }
-        </div>
-        <div class="ab-pager">
-          <button type="button" class="fu-icon" [disabled]="page() <= 1" (click)="goPage(page() - 1)" aria-label="Previous page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
-          <span>Page {{ page() }} of {{ pages() }}</span>
-          <button type="button" class="fu-icon" [disabled]="page() >= pages()" (click)="goPage(page() + 1)" aria-label="Next page"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
-        </div>
-      </footer>
+        </ul>
+      }
+    </div>
+  </div>
+
+  <nav class="ab-pager" aria-label="Pagination">
+    <button type="button" class="ab-page" [disabled]="safePage() <= 1"
+            aria-label="Previous page" (click)="goPage(safePage() - 1)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+    </button>
+
+    @for (p of pages(); track $index) {
+      @if (p === 0) {
+        <span class="ab-gap" aria-hidden="true">...</span>
+      } @else {
+        <button type="button" class="ab-page" [class.is-on]="p === safePage()"
+                [attr.aria-current]="p === safePage() ? 'page' : null" [attr.aria-label]="'Page ' + p"
+                (click)="goPage(p)">{{ p }}</button>
+      }
+    }
+
+    <button type="button" class="ab-page" [disabled]="safePage() >= totalPages()"
+            aria-label="Next page" (click)="goPage(safePage() + 1)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+    </button>
+  </nav>
+</footer>
+
+
     </section>
 
     <!-- ===== owners ===== -->
