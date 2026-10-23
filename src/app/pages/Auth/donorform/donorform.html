@@ -136,11 +136,11 @@
               <div class="df-three">
                 <div class="df-field">
                   <span class="df-lbl">Country</span>
-                  <input #countryBox type="text" class="df-input" placeholder="Select country" [value]="country()" (input)="country.set(countryBox.value)" />
+                  <input #countryBox type="text" class="df-input" placeholder="Select country" [value]="country()" (input)="country.set(countryBox.value)" (blur)="onCountryEntered()" />
                 </div>
                 <div class="df-field">
                   <span class="df-lbl">State</span>
-                  <input #stateBox type="text" class="df-input" placeholder="Select state" [value]="state()" (input)="state.set(stateBox.value)" />
+                  <input #stateBox type="text" class="df-input" placeholder="Select state" [value]="state()" (input)="state.set(stateBox.value)" (blur)="onStateEntered()" />
                 </div>
                 <div class="df-field">
                   <span class="df-lbl">City</span>
