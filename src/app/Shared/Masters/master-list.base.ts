@@ -117,7 +117,34 @@ protected readonly totalPages = computed(() =>
     const start = (this.page() - 1) * this.pageSize();
     return this.sorted().slice(start, start + this.pageSize());
   });
-  protected readonly pages = computed(() => Array.from({ length: this.totalPages() }, (_, i) => i + 1));
+  protected readonly pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.page();
+    const maxVisible = 5;
+
+    if (total <= maxVisible) {
+      return Array.from({ length: total }, (_, i) => i + 1) as (number | string)[];
+    }
+
+    const result: (number | string)[] = [];
+    const half = Math.floor(maxVisible / 2);
+
+    let start = Math.max(2, current - half);
+    let end = Math.min(total - 1, current + half);
+
+    if (end - start < maxVisible - 2) {
+      if (start === 2) end = Math.min(total - 1, start + maxVisible - 3);
+      else start = Math.max(2, end - maxVisible + 3);
+    }
+
+    result.push(1);
+    if (start > 2) result.push('…');
+    for (let i = start; i <= end; i++) result.push(i);
+    if (end < total - 1) result.push('…');
+    result.push(total);
+
+    return result;
+  });
  protected readonly from = computed(() =>
   this.sorted().length
     ? (this.page() - 1) * this.pageSize() + 1
@@ -219,7 +246,8 @@ protected readonly to = computed(() =>
     this.page.set(1);
   }
 
-  protected goPage(p: number): void {
+  protected goPage(p: number | string): void {
+    if (typeof p !== 'number') return; // ignore ellipsis markers
     this.page.set(Math.min(this.totalPages(), Math.max(1, p)));
   }
 
