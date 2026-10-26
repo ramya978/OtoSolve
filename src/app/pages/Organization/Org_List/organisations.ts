@@ -1,11 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { OrganisationListItemResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { AuthTokenService } from '../../../Shared/services/auth-token.service';
+import { NavigationService } from '../../../Shared/services/navigation.service';
+import { OrganisationContextService } from '../../../Shared/services/organisation-context.service';
+import { fetchPages } from '../../../Shared/services/paging';
 
 /** change these to your real routes */
 const ORGS_PATH = '/app/administration/organisation/details';
 const CREATE_PATH = '/app/administration/organisation/setup-wizard';
 
-type Status = 'active' | 'review' | 'invited' | 'suspended';
+type Status = 'active' | 'review' | 'invited' | 'suspended' | 'rejected' | 'archived';
 type View = 'table' | 'cards';
 
 interface Org {
@@ -18,20 +25,16 @@ interface Org {
   created: string;
   status: Status;
 }
+const PAGE_SIZES = [10, 25, 50] as const;
 
-/** sample data — replace with your organisations store / API */
-const ORGS: Org[] = [
-  { id: 'o4', code: 'TEN004', name: 'Unity for Change', domain: 'unityforchange.localhost', adminEmail: 'rahul.mukund@unityforchange.test', people: 1, created: 'Oct 14, 2026', status: 'invited' },
-  { id: 'o3', code: 'TEN003', name: 'Global Relief Foundation', domain: 'globalrelief.localhost', adminEmail: 'farah.naseem@globalreliefoundation.test', people: 1, created: 'Oct 14, 2026', status: 'invited' },
-  { id: 'o2', code: 'TEN002', name: 'HelpAge India', domain: 'helpageindia.localhost', adminEmail: 'arvind.murali@helpageindia.test', people: 21, created: 'Oct 14, 2026', status: 'active' },
-  { id: 'o1', code: 'TEN001', name: 'Smile Foundation', domain: 'smilefoundation.localhost', adminEmail: 'anjali.prakash@smilefoundationindia.test', people: 21, created: 'Oct 14, 2026', status: 'active' }
-];
 
 const STATUS: Record<Status, { label: string; tone: 'ok' | 'warn' | 'info' | 'bad' }> = {
   active: { label: 'Active', tone: 'ok' },
   review: { label: 'Awaiting review', tone: 'warn' },
   invited: { label: 'Invitation sent', tone: 'info' },
-  suspended: { label: 'Suspended', tone: 'bad' }
+  suspended: { label: 'Suspended', tone: 'bad' },
+  rejected: { label: 'Rejected', tone: 'bad' },
+  archived: { label: 'Archived', tone: 'warn' }
 };
 
 const ICONS: Record<string, string> = {
@@ -55,8 +58,30 @@ const ICONS: Record<string, string> = {
   next: 'M9 18l6-6-6-6'
 };
 
-const STATUS_ICON: Record<Status, string> = { active: 'check', review: 'clock', invited: 'mail', suspended: 'ban' };
-const PAGE_SIZES = [10, 25, 50] as const;
+const STATUS_ICON: Record<Status, string> = { active: 'check', review: 'clock', invited: 'mail', suspended: 'ban', rejected: 'ban', archived: 'clock' };
+
+/** The server's organisation statuses in this screen's words. */
+const STATUS_OF: Record<TenantStatus, Status> = {
+  active: 'active', approved: 'active',
+  invited: 'invited', invitationAccepted: 'invited', profileIncomplete: 'invited',
+  submitted: 'review', underReview: 'review', resubmitted: 'review',
+  suspended: 'suspended', rejected: 'rejected', archived: 'archived'
+};
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function when(iso: string | undefined): string {
+  const d = iso ? new Date(iso) : null;
+  return d && !Number.isNaN(d.getTime()) ? `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : '';
+}
+
+function toOrg(o: OrganisationListItemResponse): Org {
+  return {
+    id: o.id ?? '', code: o.code ?? '', name: o.name ?? '', domain: o.hostName ?? o.subdomain ?? '',
+    adminEmail: o.adminEmail ?? '', people: o.userCount ?? 0, created: when(o.createdAtUtc),
+    status: STATUS_OF[o.status ?? 'invited'] ?? 'invited'
+  };
+}
+const PAGE_SIZE = 12;
 
 /** Organisations — Workspace Kit layout: heading and one card: KPI widgets, filters,
  *  a card grid or list, and pagination. */
@@ -67,8 +92,13 @@ const PAGE_SIZES = [10, 25, 50] as const;
 })
 export class Organisations {
   private readonly router = inject(Router);
+  private readonly api = inject(OrganisationApiService);
+  private readonly tokens = inject(AuthTokenService);
+  private readonly context = inject(OrganisationContextService);
+  private readonly navigation = inject(NavigationService);
 
-  readonly orgs = signal<Org[]>(ORGS);
+  readonly orgs = signal<Org[]>([]);
+  readonly loading = signal(false);
   readonly query = signal('');
   readonly status = signal<Status | ''>('');
   readonly view = signal<View>('cards');
@@ -78,50 +108,9 @@ export class Organisations {
   readonly notice = signal('');
   private noticeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  /** KPI widgets: big number, one side figure and a short footnote */
-  readonly kpis = computed(() => {
-    const all = this.orgs();
-    const total = all.length;
-    const by = (st: Status) => all.filter((o) => o.status === st);
-    const share = (n: number) => (total ? Math.round((n / total) * 100) : 0) + '%';
-    const active = by('active');
-    const largest = [...active].sort((x, y) => y.people - x.people)[0];
-    return [
-      {
-        label: 'Organisations', icon: 'building', tone: 'plain', value: total,
-        sideValue: String(all.reduce((n, o) => n + o.people, 0)), sideLabel: 'People',
-        note: `${active.length} active · ${by('invited').length} onboarding`
-      },
-      {
-        label: 'Active', icon: 'check', tone: 'ok', value: active.length,
-        sideValue: share(active.length), sideLabel: 'Of all',
-        note: largest ? `Largest: ${largest.name} (${largest.people} people)` : 'No active organisations yet'
-      },
-      {
-        label: 'Awaiting review', icon: 'clock', tone: 'warn', value: by('review').length,
-        sideValue: share(by('review').length), sideLabel: 'Of all', note: 'Waiting for approval'
-      },
-      {
-        label: 'Onboarding', icon: 'pencil', tone: 'info', value: by('invited').length,
-        sideValue: share(by('invited').length), sideLabel: 'Of all', note: 'Invitation sent, not yet activated'
-      },
-      {
-        label: 'Suspended', icon: 'ban', tone: 'bad', value: by('suspended').length,
-        sideValue: share(by('suspended').length), sideLabel: 'Of all', note: 'Temporarily suspended'
-      }
-    ];
-  });
 
-  readonly rows = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    const s = this.status();
-    return this.orgs().filter((o) =>
-      (!s || o.status === s) &&
-      (!q || [o.name, o.code, o.domain, o.adminEmail].some((v) => v.toLowerCase().includes(q))));
-  });
 
-// Pagination
-
+  
 
 // Pagination
 readonly pageSizes = PAGE_SIZES;
@@ -201,26 +190,52 @@ goPage(page: number): void {
   );
 }
 
-// Change page size
-setPageSize(value: string): void {
-  const size = Number(value);
 
-  if (PAGE_SIZES.some((allowed) => allowed === size)) {
-    this.pageSize.set(size);
-    this.page.set(1);
-  }
-}
 
-/**
- * Displays page numbers with ellipsis when there are
- * more than seven pages.
- *
- * Example: [1, 2, '...', 10]
- */
 
+  /** KPI widgets: big number, one side figure and a short footnote */
+  readonly kpis = computed(() => {
+    const all = this.orgs();
+    const total = all.length;
+    const by = (st: Status) => all.filter((o) => o.status === st);
+    const share = (n: number) => (total ? Math.round((n / total) * 100) : 0) + '%';
+    const active = by('active');
+    const largest = [...active].sort((x, y) => y.people - x.people)[0];
+    return [
+      {
+        label: 'Organisations', icon: 'building', tone: 'plain', value: total,
+        sideValue: String(all.reduce((n, o) => n + o.people, 0)), sideLabel: 'People',
+        note: `${active.length} active · ${by('invited').length} onboarding`
+      },
+      {
+        label: 'Active', icon: 'check', tone: 'ok', value: active.length,
+        sideValue: share(active.length), sideLabel: 'Of all',
+        note: largest ? `Largest: ${largest.name} (${largest.people} people)` : 'No active organisations yet'
+      },
+      {
+        label: 'Awaiting review', icon: 'clock', tone: 'warn', value: by('review').length,
+        sideValue: share(by('review').length), sideLabel: 'Of all', note: 'Waiting for approval'
+      },
+      {
+        label: 'Onboarding', icon: 'pencil', tone: 'info', value: by('invited').length,
+        sideValue: share(by('invited').length), sideLabel: 'Of all', note: 'Invitation sent, not yet activated'
+      },
+      {
+        label: 'Suspended', icon: 'ban', tone: 'bad', value: by('suspended').length,
+        sideValue: share(by('suspended').length), sideLabel: 'Of all', note: 'Temporarily suspended'
+      }
+    ];
+  });
+
+  readonly rows = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    const s = this.status();
+    return this.orgs().filter((o) =>
+      (!s || o.status === s) &&
+      (!q || [o.name, o.code, o.domain, o.adminEmail].some((v) => v.toLowerCase().includes(q))));
+  });
 
   readonly hasFilters = computed(() => !!(this.query().trim() || this.status()));
-
 
   /** every organisation on the current page is ticked */
   readonly allSelected = computed(() => this.paged().length > 0 && this.paged().every((o) => this.selected().has(o.id)));
@@ -252,10 +267,22 @@ setPageSize(value: string): void {
   setView(v: View): void { this.view.set(v); }
   clearFilters(): void { this.query.set(''); this.status.set(''); this.page.set(1); }
 
+  constructor() { this.load(); }
+
+  /** Every organisation the caller may see (all pages), filtered and paged on this screen. */
+  load(): void {
+    this.loading.set(true);
+    fetchPages((page, size) => this.api.search({ page, pageSize: size })).subscribe({
+      next: ({ items }) => { this.orgs.set(items.map(toOrg)); this.loading.set(false); },
+      error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e, 'The organisations could not be loaded.')); }
+    });
+  }
+
   primary(o: Org): { label: string; icon: string } | null {
     switch (o.status) {
       case 'invited': return { label: 'Re-send invitation', icon: 'mail' };
-      case 'active': return { label: 'Work inside', icon: 'enter' };
+      // Working inside another organisation is the platform administrator's move.
+      case 'active': return this.tokens.isSuperAdmin() ? { label: 'Work inside', icon: 'enter' } : null;
       case 'review': return { label: 'Review', icon: 'check' };
       default: return null;
     }
@@ -263,7 +290,17 @@ setPageSize(value: string): void {
 
   runPrimary(o: Org): void {
     if (o.status === 'invited') {
-      this.flash(`Invitation re-sent to ${o.adminEmail}`);
+      this.api.resendInvitation(o.id).subscribe({
+        next: (r) => { this.flash(r.invitationSent ? `Invitation re-sent to ${r.adminEmail ?? o.adminEmail}` : 'The invitation was renewed, but the e-mail could not be sent.'); this.load(); },
+        error: (e: unknown) => this.flash(apiErrorMessage(e, 'The invitation could not be re-sent.'))
+      });
+    } else if (o.status === 'active') {
+      this.context.select(o.id).subscribe({
+        next: () => { this.flash(`You are now working inside ${o.name}.`); void this.router.navigateByUrl(this.navigation.landingRoute()); },
+        error: (e: unknown) => this.flash(apiErrorMessage(e, 'Could not switch organisation.'))
+      });
+    } else if (o.status === 'review') {
+      this.open(o);
     }
   }
 
