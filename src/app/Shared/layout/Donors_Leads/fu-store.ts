@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { AuthService } from '../../Auth/auth.service';
+import { CurrentUserService } from '../../services/current-user.service';
 import { DonLookupItem, FollowUp as ApiFollowUp, FollowUpQueueResponse } from '../../models/donor-contract.model';
 import { fetchPages } from '../../services/paging';
 
@@ -288,6 +289,7 @@ function toFollowUp(r: ApiFollowUp): FollowUp {
 export class FollowUpStore {
   private readonly api = inject(DonorApiService);
   private readonly auth = inject(AuthService);
+  private readonly roles = inject(CurrentUserService);
 
   readonly followUps = signal<FollowUp[]>([]);
   readonly people = signal<FuPerson[]>([]);
@@ -295,6 +297,15 @@ export class FollowUpStore {
   readonly error = signal<string | null>(null);
   /** The server's lists (channels, execution statuses, reasons, dispositions ...). */
   readonly options = signal<FollowUpQueueResponse | null>(null);
+  /**
+   * The queue tab the Follow-ups screen is on, as the server's `view` value (completedToday, overdue ...).
+   * The rows that view returns are kept apart in `viewRows`, so `followUps` stays the caller's whole
+   * scope for the planner, the board and the figures.
+   */
+  readonly queueView = signal<string | null>(null);
+  readonly viewRows = signal<FollowUp[] | null>(null);
+  readonly viewLoading = signal(false);
+  private viewSub: { unsubscribe(): void } | null = null;
 
   /** Same arrays as the exported constants - filled in place. */
   readonly owners = FU_OWNERS;
@@ -336,6 +347,30 @@ export class FollowUpStore {
     return (list ?? []).find((o) => norm(o.value) === n || norm(o.label) === n)?.value ?? word;
   }
 
+  /** DonorCare works only the leads and donors assigned to them. */
+  get ownRecordsOnly(): boolean { return this.roles.current().role === 'DonorCare'; }
+
+  /** Loads the rows of one server view (null = no view, back to the whole scope). */
+  setQueueView(view: string | null): void {
+    this.queueView.set(view);
+    this.loadView();
+  }
+
+  private loadView(): void {
+    this.viewSub?.unsubscribe();
+    const view = this.queueView();
+    if (!view) { this.viewRows.set(null); this.viewLoading.set(false); return; }
+    this.viewLoading.set(true);
+    this.viewSub = this.api.getFollowUpQueue({ view }).subscribe({
+      next: (r) => { this.viewRows.set((r.followUps ?? []).map(toFollowUp)); this.viewLoading.set(false); },
+      error: (e: unknown) => {
+        this.viewRows.set(null);
+        this.viewLoading.set(false);
+        this.error.set(e instanceof Error ? e.message : 'The follow-ups could not be loaded.');
+      }
+    });
+  }
+
   reload(): void {
     this.loading.set(true);
     this.error.set(null);
@@ -351,6 +386,7 @@ export class FollowUpStore {
         this.error.set(e instanceof Error ? e.message : 'The follow-ups could not be loaded.');
       }
     });
+    this.loadView();
     this.loadPeople();
   }
 
@@ -370,7 +406,9 @@ export class FollowUpStore {
   }
 
   private loadPeople(): void {
-    const donors$ = fetchPages((page, size) => this.api.searchDonors({ page, pageSize: size }), 100, 1000).pipe(
+    // The role flow: DonorCare is offered only the donors and leads assigned to them.
+    const onlyMine = this.ownRecordsOnly ? true : null;
+    const donors$ = fetchPages((page, size) => this.api.searchDonors({ page, pageSize: size, onlyMine }), 100, 1000).pipe(
       map(({ items }) => items.map((d): FuPerson => ({
         id: d.id, code: d.displayCode, name: d.displayName, type: 'donor', stage: d.status,
         owner: d.relationshipOwnerName, email: d.emailAddress ?? '', phone: d.mobileNumber ?? '', language: '',
@@ -380,7 +418,7 @@ export class FollowUpStore {
       catchError(() => of([] as FuPerson[]))
     );
     const leads$ = fetchPages(
-      (page, size) => this.api.getLeadWorkQueue({ page, pageSize: size }).pipe(map((r) => r.leads)), 100, 1000
+      (page, size) => this.api.getLeadWorkQueue({ page, pageSize: size, onlyMine }).pipe(map((r) => r.leads)), 100, 1000
     ).pipe(
       map(({ items }) => items.map((l): FuPerson => ({
         id: l.id, code: l.leadReference, name: l.name, type: 'lead', stage: l.status,
@@ -395,7 +433,76 @@ export class FollowUpStore {
 
   private replace(updated: ApiFollowUp): void {
     const next = toFollowUp(updated);
-    this.followUps.update((list) => list.map((f) => (f.uid === next.uid ? next : f)));
+    const swap = (list: FollowUp[]) => list.map((f) => (f.uid === next.uid ? next : f));
+    this.followUps.update(swap);
+    this.viewRows.update((list) => (list ? swap(list) : list));
+    // A follow-up that moved out of the open states drops out of the tab it was in on the next load.
+    if (this.queueView()) this.loadView();
+  }
+
+  /** The full record with its history, which the queue rows do not always carry. */
+  loadDetail(id: string): Observable<unknown> {
+    const f = this.find(id) ?? this.viewRows()?.find((x) => x.id === id) ?? null;
+    if (!f?.uid) return of(null);
+    return this.api.getFollowUp(f.uid).pipe(
+      tap((u) => {
+        const next = toFollowUp(u);
+        const swap = (list: FollowUp[]) => list.map((x) => (x.uid === next.uid ? next : x));
+        this.followUps.update(swap);
+        this.viewRows.update((list) => (list ? swap(list) : list));
+      }),
+      catchError(() => of(null))
+    );
+  }
+
+  /** Moves a follow-up to a new date and time (the assignee's own action). */
+  reschedule(id: string, dueAt: string, reason: string): Observable<unknown> {
+    const f = this.byRef(id);
+    return this.api.rescheduleFollowUp(f.uid!, {
+      dueAtUtc: new Date(dueAt).toISOString(),
+      rescheduleReason: reason.trim() || 'Rescheduled from the follow-up queue.',
+      expectedVersion: f.version
+    }).pipe(tap((u) => this.replace(u)));
+  }
+
+  /** Cancels a follow-up with a reason (the assignee's own action). */
+  cancel(id: string, reason: string): Observable<unknown> {
+    const f = this.byRef(id);
+    return this.api.cancelFollowUp(f.uid!, { reason: reason.trim(), expectedVersion: f.version })
+      .pipe(tap((u) => this.replace(u)));
+  }
+
+  /** Whether the server lets the caller do this to this follow-up (Reschedule, Cancel, Reassign, Escalate, Execute). */
+  can(f: FollowUp, action: string): boolean { return isOpen(f) && (f.permitted ?? []).includes(action); }
+
+  /** A lead or donor loaded by id for the planner - the record's own contact details and owner. */
+  loadPerson(type: FuRecordType, id: string): Observable<FuPerson> {
+    if (type === 'lead') {
+      return this.api.getLead(id).pipe(map((l): FuPerson => ({
+        id: l.id, code: l.leadReference, name: [l.firstName, l.lastName].filter(Boolean).join(' '), type: 'lead', stage: l.status,
+        owner: l.ownerName, email: l.emailAddress ?? '', phone: l.mobileNumber ?? '', language: l.preferredLanguage ?? '',
+        bestTime: null, campaign: l.campaignName ?? '', region: l.city ?? '', consent: {},
+        slaDue: l.nextActionDueUtc ? localIso(l.nextActionDueUtc) : null, source: l.source ?? ''
+      })));
+    }
+    return this.api.getDonor(id).pipe(map((d): FuPerson => ({
+      id: d.id, code: d.donorNumber, name: d.displayName, type: 'donor', stage: d.status,
+      owner: d.relationshipOwnerName, email: d.primaryEmail ?? '', phone: d.primaryPhone ?? '', language: d.preferredLanguage ?? '',
+      bestTime: null, campaign: '', region: '', consent: {}, slaDue: null, source: ''
+    })));
+  }
+
+  /** Finds a lead or donor by its reference code when the page was opened with only `?ref=`. */
+  findPersonByCode(code: string): Observable<FuPerson | null> {
+    const known = this.person(code);
+    if (known) return of(known);
+    const own = this.ownRecordsOnly ? true : null;
+    const leads$ = this.api.getLeadWorkQueue({ search: code, pageSize: 5, onlyMine: own }).pipe(
+      map((r) => r.leads.items.find((l) => l.leadReference === code)?.id ?? null), catchError(() => of(null)));
+    const donors$ = this.api.searchDonors({ search: code, pageSize: 5, onlyMine: own }).pipe(
+      map((r) => r.items.find((d) => d.displayCode === code)?.id ?? null), catchError(() => of(null)));
+    return forkJoin([leads$, donors$]).pipe(switchMap(([leadId, donorId]) =>
+      leadId ? this.loadPerson('lead', leadId) : donorId ? this.loadPerson('donor', donorId) : of(null)));
   }
 
   private byRef(id: string): FollowUp {

@@ -277,8 +277,10 @@
                           <ul class="fu-menu is-right" role="menu" (click)="$event.stopPropagation()">
                             <!-- @if (canRun(f)) { <li><button type="button" role="menuitem" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute follow-up</button></li> } -->
                             <li><button type="button" role="menuitem" (click)="openDetails(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Open details</button></li>
-                            <li><button type="button" role="menuitem" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button></li>
-                            <li><button type="button" role="menuitem" [disabled]="f.status === 'escalated'" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button></li>
+                            @if (can(f, 'Reschedule')) { <li><button type="button" role="menuitem" (click)="startReschedule(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Reschedule</button></li> }
+                            @if (can(f, 'Reassign')) { <li><button type="button" role="menuitem" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button></li> }
+                            @if (can(f, 'Escalate')) { <li><button type="button" role="menuitem" [disabled]="f.status === 'escalated'" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button></li> }
+                            @if (can(f, 'Cancel')) { <li><button type="button" role="menuitem" (click)="startCancel(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel task</button></li> }
                             <li><button type="button" role="menuitem" (click)="showHistory(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg> View history</button></li>
                           </ul>
                         }
@@ -560,8 +562,10 @@
             <button type="button" class="fu-btn is-primary" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute</button>
           }
 
-          <button type="button" class="fu-btn" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button>
-          <button type="button" class="fu-btn" [disabled]="f.status === 'escalated' || !!f.completedAt" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
+          @if (can(f, 'Reschedule')) { <button type="button" class="fu-btn" (click)="startReschedule(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Reschedule</button> }
+          @if (can(f, 'Reassign')) { <button type="button" class="fu-btn" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button> }
+          @if (can(f, 'Escalate')) { <button type="button" class="fu-btn" [disabled]="f.status === 'escalated'" (click)="startEscalate([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button> }
+          @if (can(f, 'Cancel')) { <button type="button" class="fu-btn" (click)="startCancel(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel task</button> }
         </div>
 
         <section class="fq-dr-sec">
@@ -646,6 +650,65 @@
         <footer class="fu-dlg-foot">
           <button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
           <button type="button" class="fu-btn is-primary" [class.is-off]="!!(eErrors().to || eErrors().reason)" (click)="confirmEscalate()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('escalate')" /></svg> Escalate</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== reschedule ===== -->
+  @if (dialog() === 'reschedule') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-s-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
+          <div><h2 id="fq-s-title">Reschedule follow-up</h2><p>Move it to another date and time.</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <p class="fq-targets">@for (t of targetItems().slice(0, 1); track t.id) { <span class="fu-chip">{{ t.name }} · {{ date(t.dueAt) }} {{ time(t.dueAt) }}</span> }</p>
+          <div class="fu-field" [class.has-err]="tried() && sErrors().date">
+            <span class="fu-lbl">New date <em>*</em></span>
+            <input class="fu-input" type="date" [min]="todayIso()" [value]="sDate()" (input)="setText(sDate, $event)" />
+            @if (tried() && sErrors().date) { <p class="fu-err">{{ sErrors().date }}</p> }
+          </div>
+          <div class="fu-field" [class.has-err]="tried() && sErrors().time">
+            <span class="fu-lbl">New time <em>*</em></span>
+            <input class="fu-input" type="time" [value]="sTime()" (input)="setText(sTime, $event)" />
+            @if (tried() && sErrors().time) { <p class="fu-err">{{ sErrors().time }}</p> }
+          </div>
+          <div class="fu-field">
+            <span class="fu-lbl">Reason <small>Optional</small></span>
+            <input class="fu-input" type="text" placeholder="Why is it moving?" [value]="sReason()" (input)="setText(sReason, $event)" />
+          </div>
+        </div>
+        <footer class="fu-dlg-foot">
+          <button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close</button>
+          <button type="button" class="fu-btn is-primary" [class.is-off]="!!(sErrors().date || sErrors().time)" (click)="confirmReschedule()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Reschedule</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== cancel task ===== -->
+  @if (dialog() === 'cancel') {
+    <div class="fu-overlay" (click)="closeDialog()">
+      <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-c-title" (click)="$event.stopPropagation()">
+        <header class="fu-dlg-head">
+          <span class="fu-dlg-ico tone-amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></span>
+          <div><h2 id="fq-c-title">Cancel follow-up</h2><p>The follow-up is closed and kept in the history. Say why.</p></div>
+          <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+        <div class="fu-dlg-body">
+          <p class="fq-targets">@for (t of targetItems().slice(0, 1); track t.id) { <span class="fu-chip">{{ t.name }} · {{ t.id }}</span> }</p>
+          <div class="fu-field" [class.has-err]="tried() && cError()">
+            <span class="fu-lbl">Reason <em>*</em></span>
+            <input class="fu-input" type="text" placeholder="Why is it being cancelled?" [value]="cReason()" (input)="setText(cReason, $event)" />
+            @if (tried() && cError()) { <p class="fu-err">{{ cError() }}</p> }
+          </div>
+        </div>
+        <footer class="fu-dlg-foot">
+          <button type="button" class="fu-btn" (click)="closeDialog()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Keep it</button>
+          <button type="button" class="fu-btn is-primary" [class.is-off]="!!cError()" (click)="confirmCancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel follow-up</button>
         </footer>
       </div>
     </div>

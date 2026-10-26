@@ -41,7 +41,7 @@
     <!-- ===== records ===== -->
     <section class="fu-card ab-main">
       <header class="ab-head">
-        <div class="ab-title"><h2>{{ type() === 'lead' ? 'Leads' : 'Donors' }}</h2><span class="fu-count">{{ filtered().length }}</span></div>
+        <div class="ab-title"><h2>{{ type() === 'lead' ? 'Leads' : 'Donors' }}</h2><span class="fu-count">{{ totalRows() }}</span></div>
         <div class="ab-tools">
           <label class="fu-search ab-search">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>

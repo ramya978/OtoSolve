@@ -1,4 +1,4 @@
-import { Component, HostListener, WritableSignal, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, WritableSignal, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   FU_CAMPAIGNS, FU_CHANNELS, FU_ICONS, FU_PRIORITIES, FU_STATUSES, FollowUp, FollowUpStore, FuChannel, FuPriority, FuStatus,
@@ -12,7 +12,13 @@ export type FuTab = 'all' | 'mine' | 'today' | 'overdue' | 'upcoming' | 'done-to
 export type FuView = 'list' | 'board' | 'calendar';
 export type FuSort = 'latest' | 'oldest' | 'due' | 'priority';
 type FuMenu = 'sort' | 'owner' | 'campaign' | 'from' | 'to' | 'row' | 'rows' | 'r-owner' | 'e-manager' | 'c-date' | 'c-cat' | 'c-staff' | null;
-type FuDialog = 'reassign' | 'escalate' | 'history' | 'day' | null;
+type FuDialog = 'reassign' | 'escalate' | 'reschedule' | 'cancel' | 'history' | 'day' | null;
+
+/** The queue endpoint's own `view` word for each tab ('all' sends none). */
+const SERVER_VIEW: Record<FuTab, string | null> = {
+  all: null, mine: 'mine', today: 'today', overdue: 'overdue', upcoming: 'upcoming',
+  'done-today': 'completedToday', high: 'high', attention: 'attention', escalated: 'escalated', calls: 'calls'
+};
 
 const PRIORITY_RANK: Record<FuPriority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
 
@@ -22,7 +28,7 @@ const PRIORITY_RANK: Record<FuPriority, number> = { urgent: 0, high: 1, normal: 
   templateUrl: './follow-ups.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './follow-ups.css']
 })
-export class FollowUps {
+export class FollowUps implements OnDestroy {
   private readonly router = inject(Router);
   protected readonly store = inject(FollowUpStore);
 
@@ -78,6 +84,10 @@ export class FollowUps {
   protected readonly eReason = signal('');
   protected readonly eNotes = signal('');
   protected readonly tried = signal(false);
+  protected readonly sDate = signal('');                           // reschedule: new date (yyyy-mm-dd)
+  protected readonly sTime = signal('');                           // reschedule: new time (hh:mm)
+  protected readonly sReason = signal('');
+  protected readonly cReason = signal('');
   protected readonly toast = signal('');
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -94,12 +104,14 @@ export class FollowUps {
   /* ---------- figures ---------- */
   protected readonly figures = computed(() => {
     const a = this.all();
+    // The server counts these over the caller's whole scope; the local count is only the fallback.
+    const s = this.store.options()?.summary;
     return [
-      { key: 'today' as FuTab, label: 'Due today', value: a.filter((f) => this.isDueToday(f)).length, icon: 'clock', tone: 'blue' },
-      { key: 'upcoming' as FuTab, label: 'Upcoming', value: a.filter((f) => this.isUpcoming(f)).length, icon: 'calendar', tone: 'green' },
-      { key: 'overdue' as FuTab, label: 'Overdue', value: a.filter((f) => this.isOverdue(f)).length, icon: 'alert', tone: 'red' },
-      { key: 'done-today' as FuTab, label: 'Completed today', value: a.filter((f) => this.isDoneToday(f)).length, icon: 'checkCircle', tone: 'primary' },
-      { key: 'escalated' as FuTab, label: 'Escalated', value: a.filter((f) => f.status === 'escalated').length, icon: 'flag', tone: 'amber' }
+      { key: 'today' as FuTab, label: 'Due today', value: s?.dueToday ?? a.filter((f) => this.isDueToday(f)).length, icon: 'clock', tone: 'blue' },
+      { key: 'upcoming' as FuTab, label: 'Upcoming', value: s?.upcoming ?? a.filter((f) => this.isUpcoming(f)).length, icon: 'calendar', tone: 'green' },
+      { key: 'overdue' as FuTab, label: 'Overdue', value: s?.overdue ?? a.filter((f) => this.isOverdue(f)).length, icon: 'alert', tone: 'red' },
+      { key: 'done-today' as FuTab, label: 'Completed today', value: s?.completedToday ?? a.filter((f) => this.isDoneToday(f)).length, icon: 'checkCircle', tone: 'primary' },
+      { key: 'escalated' as FuTab, label: 'Escalated', value: s?.escalated ?? a.filter((f) => f.status === 'escalated').length, icon: 'flag', tone: 'amber' }
     ];
   });
 
@@ -197,7 +209,9 @@ export class FollowUps {
   }
   protected readonly tabs = computed(() => {
     const a = this.all();
-    const n = (t: FuTab) => a.filter((f) => this.matchTab(f, t)).length;
+    const served = this.store.options()?.views ?? [];
+    // The tab's count is the server's, over the whole scope, when it sends one for that view.
+    const n = (t: FuTab) => served.find((v) => v.value === SERVER_VIEW[t])?.count ?? a.filter((f) => this.matchTab(f, t)).length;
     return [
       [{ key: 'all' as FuTab, label: 'All', n: a.length }, { key: 'mine' as FuTab, label: 'Mine', n: n('mine') }, { key: 'today' as FuTab, label: 'Today', n: n('today') },
         { key: 'overdue' as FuTab, label: 'Overdue', n: n('overdue') }, { key: 'upcoming' as FuTab, label: 'Upcoming', n: n('upcoming') }, { key: 'done-today' as FuTab, label: 'Done today', n: n('done-today') }],
@@ -210,8 +224,11 @@ export class FollowUps {
     const q = this.query().trim().toLowerCase();
     const st = this.fStatus(), ch = this.fChannel(), pr = this.fPriority();
     const owner = this.fOwner(), camp = this.fCampaign(), from = this.fFrom(), to = this.fTo(), day = this.fDay();
-    const list = this.all().filter((f) =>
-      this.matchTab(f, this.tab()) &&
+    // A tab other than "All" is the server's own view of the queue (view=completedToday ...). Until its
+    // rows arrive the local rule stands in, so the list is never blank.
+    const served = this.store.viewRows();
+    const list = (served ?? this.all()).filter((f) =>
+      (served !== null || this.matchTab(f, this.tab())) &&
       (!q || `${f.name} ${f.id} ${f.recordCode} ${f.purpose}`.toLowerCase().includes(q)) &&
       (!st.length || st.includes(f.status)) && (!ch.length || ch.includes(f.channel)) && (!pr.length || pr.includes(f.priority)) &&
       (!owner || f.owner === owner) && (!camp || f.campaign === camp) &&
@@ -323,6 +340,11 @@ export class FollowUps {
   protected readonly current = computed(() => (this.drawer() ? this.store.find(this.drawer()!) : null));
   protected readonly targetItems = computed(() => this.targets().map((id) => this.store.find(id)).filter((f): f is FollowUp => !!f));
   protected readonly rError = computed(() => (!this.rOwner() ? 'Choose the new owner.' : ''));
+  protected readonly sErrors = computed(() => ({
+    date: !this.sDate() ? 'Pick the new date.' : this.sDate() < this.todayIso() ? 'The new date cannot be in the past.' : '',
+    time: !this.sTime() ? 'Pick the new time.' : ''
+  }));
+  protected readonly cError = computed(() => (this.cReason().trim().length < 10 ? 'Give a reason (at least 10 characters).' : ''));
   protected readonly eErrors = computed(() => ({ to: !this.eTo() ? 'Choose a manager.' : '', reason: !this.eReason().trim() ? 'Give a reason.' : '' }));
 
   /* ---------- helpers ---------- */
@@ -358,7 +380,11 @@ export class FollowUps {
   dayTitle(iso: string | null): string { if (!iso) return ''; const d = toDate(iso); return `${pad(d.getDate())} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
 
   /* ---------- tabs / search / filters ---------- */
-  setTab(t: FuTab): void { this.tab.set(t); this.page.set(1); this.selected.set([]); }
+  setTab(t: FuTab): void {
+    this.tab.set(t); this.page.set(1); this.selected.set([]);
+    this.store.setQueueView(SERVER_VIEW[t]);
+  }
+  ngOnDestroy(): void { this.store.setQueueView(null); }
   setQuery(e: Event): void { this.query.set((e.target as HTMLInputElement).value); this.page.set(1); }
   toggleIn<T>(sig: WritableSignal<T[]>, v: T): void {
     const l = sig();
@@ -426,14 +452,39 @@ export class FollowUps {
   go(step: number): void { this.page.set(Math.min(this.pages(), Math.max(1, this.page() + step))); }
 
   /* ---------- row actions ---------- */
-  openDetails(id: string): void { this.menu.set(null); this.dialog.set(null); this.drawer.set(id); }
-  startReassign(ids: string[]): void {
+  openDetails(id: string): void { this.menu.set(null); this.dialog.set(null); this.drawer.set(id); this.store.loadDetail(id).subscribe(); }
+  /** The ticked or clicked follow-ups the server lets the caller do this to; says so when some are left out. */
+  private allowed(ids: string[], action: string): string[] {
+    const ok = ids.filter((id) => { const f = this.store.find(id); return !!f && this.store.can(f, action); });
+    if (!ok.length) this.flash('That follow-up is closed, or you are not allowed to do this to it.');
+    else if (ok.length < ids.length) this.flash(`${ids.length - ok.length} of ${ids.length} left out: closed, or not yours to change.`);
+    return ok;
+  }
+  can(f: FollowUp, action: string): boolean { return this.store.can(f, action); }
+  startReassign(all: string[]): void {
+    const ids = this.allowed(all, 'Reassign'); if (!ids.length) return;
     this.menu.set(null); this.targets.set(ids); this.rOwner.set(null); this.rReason.set(''); this.tried.set(false); this.dialog.set('reassign');
   }
-  startEscalate(ids: string[]): void {
+  startEscalate(all: string[]): void {
+    const ids = this.allowed(all, 'Escalate'); if (!ids.length) return;
     this.menu.set(null); this.targets.set(ids); this.eTo.set(null); this.eReason.set(''); this.eNotes.set(''); this.tried.set(false); this.dialog.set('escalate');
   }
-  showHistory(id: string): void { this.menu.set(null); this.targets.set([id]); this.dialog.set('history'); }
+  startReschedule(id: string): void {
+    const f = this.store.find(id);
+    if (!f || !this.store.can(f, 'Reschedule')) { this.flash('That follow-up is closed, or assigned to somebody else.'); return; }
+    this.menu.set(null); this.targets.set([id]); this.sDate.set(f.dueAt.slice(0, 10)); this.sTime.set(f.dueAt.slice(11, 16));
+    this.sReason.set(''); this.tried.set(false); this.dialog.set('reschedule');
+  }
+  startCancel(id: string): void {
+    const f = this.store.find(id);
+    if (!f || !this.store.can(f, 'Cancel')) { this.flash('That follow-up is closed, or assigned to somebody else.'); return; }
+    this.menu.set(null); this.targets.set([id]); this.cReason.set(''); this.tried.set(false); this.dialog.set('cancel');
+  }
+  /** History comes from the follow-up's own record, because the queue rows do not always carry it. */
+  showHistory(id: string): void {
+    this.menu.set(null); this.targets.set([id]); this.dialog.set('history');
+    this.store.loadDetail(id).subscribe();
+  }
   closeDialog(): void { this.dialog.set(null); this.menu.set(null); }
   setText(sig: WritableSignal<string>, e: Event): void { sig.set((e.target as HTMLInputElement).value); }
   pickROwner(o: string): void { this.rOwner.set(o); this.menu.set(null); }
@@ -464,6 +515,23 @@ export class FollowUps {
         this.selected.set([]);
         this.dialog.set(null);
       },
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
+  }
+  confirmReschedule(): void {
+    this.tried.set(true);
+    const e = this.sErrors();
+    if (e.date || e.time) return;
+    this.store.reschedule(this.targets()[0], `${this.sDate()}T${this.sTime()}`, this.sReason()).subscribe({
+      next: () => { this.flash('Follow-up rescheduled.'); this.dialog.set(null); },
+      error: (err: unknown) => this.flash(apiErrorMessage(err))
+    });
+  }
+  confirmCancel(): void {
+    this.tried.set(true);
+    if (this.cError()) return;
+    this.store.cancel(this.targets()[0], this.cReason()).subscribe({
+      next: () => { this.flash('Follow-up cancelled.'); this.dialog.set(null); },
       error: (err: unknown) => this.flash(apiErrorMessage(err))
     });
   }

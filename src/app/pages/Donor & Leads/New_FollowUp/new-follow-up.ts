@@ -128,7 +128,9 @@ export class NewFollowUp {
   toggleRows(e: Event): void { e.stopPropagation(); this.rowsOpen.set(!this.rowsOpen()); }
   setPerPage(n: number): void { this.perPage.set(n); this.page.set(1); this.rowsOpen.set(false); }
 
-  plan(p: FuPerson): void { this.router.navigate([this.planPath], { queryParams: { ref: p.code } }); }
+  plan(p: FuPerson): void {
+    this.router.navigate([this.planPath], { queryParams: { ref: p.code, [p.type === 'lead' ? 'leadId' : 'donorId']: p.id } });
+  }
   back(): void { this.router.navigate([this.queuePath]); }
 
   /** Any click outside the Rows menu closes it. */

@@ -4,6 +4,7 @@ import { DonorApiService } from '../../../Service/donor-api.service';
 import { DonorListItem, DonorListSummary } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
+import { currencyMark, formatMoney } from '../../../Shared/services/money-format';
 import { catchError, of, switchMap } from 'rxjs';
 
 
@@ -26,6 +27,8 @@ export interface Donor {
   lastGift: number;
   lastGiftAgo: string;
   lifetime: number;
+  /** ISO code the amounts on this row are recorded in. */
+  currency: string;
   lifetimePct: number;
   followUp: 'none' | 'overdue';
   identity: 'unchecked' | 'verified';
@@ -36,6 +39,16 @@ export interface Donor {
 export const rupees = (n: number): string => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
 
 export const rupeesLakh = (n: number): string => '₹' + (n / 100000).toFixed(2) + ' L';
+
+/** An amount in ITS OWN currency ("₹3,00,000", "$1,250"); the code comes from the donor row or the summary. */
+export const money = (n: number, currency?: string | null): string => formatMoney(n || 0, currency || null, { style: 'whole' });
+
+/** The big headline figure: lakhs for rupees ("₹23.82 L"), a compact number for any other currency ("$2.4M"). */
+export const moneyCompact = (n: number, currency?: string | null): string => {
+  const mark = currencyMark(currency || null);
+  if ((currency || '').toUpperCase() === 'INR' || !currency) return mark + (n / 100000).toFixed(2) + ' L';
+  return mark + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 2 }).format(n);
+};
 
 const AGO_UNITS: [number, string][] = [[365, 'year'], [30, 'month'], [7, 'week'], [1, 'day']];
 
@@ -75,6 +88,7 @@ function toDonor(r: DonorListItem, maxLifetime: number): Donor {
     lastGift: r.lastDonationAmount ?? 0,
     lastGiftAgo: ago(r.lastDonationAtUtc),
     lifetime: r.lifetimeGiving ?? 0,
+    currency: r.currency ?? '',
     lifetimePct: maxLifetime > 0 ? Math.round(((r.lifetimeGiving ?? 0) / maxLifetime) * 100) : 0,
     followUp: (r.followUpStatus ?? '').toLowerCase() === 'overdue' ? 'overdue' : 'none',
     identity: verified ? 'verified' : 'unchecked',
@@ -159,6 +173,7 @@ export class AllDonors implements OnInit {
   protected get all(): Donor[] { return this.rows(); }
   protected readonly rupees = rupees;
   protected readonly rupeesLakh = rupeesLakh;
+  protected readonly money = money;
   protected readonly cardMenu = CARD_MENU;
 
   private readonly tabsC = computed<Tab[]>(() => {
@@ -197,14 +212,14 @@ export class AllDonors implements OnInit {
     const prospect = c('prospect');
     const other = Math.max(0, total - active - prospect);
     return {
-      lifetime: rupeesLakh(s?.lifetimeReceived ?? 0),
-      perDonor: rupees(s?.averagePerGiver ?? 0),
+      lifetime: moneyCompact(s?.lifetimeReceived ?? 0, s?.currency),
+      perDonor: money(s?.averagePerGiver ?? 0, s?.currency),
       donors: total,
       active,
       prospect,
       other,
       recent: s?.recentGivers ?? 0,
-      recentAmount: rupees(s?.recentGiving ?? 0),
+      recentAmount: money(s?.recentGiving ?? 0, s?.currency),
       yetToGive: s?.yetToGive ?? 0,
       activePct: pct(active),
       prospectPct: pct(prospect),

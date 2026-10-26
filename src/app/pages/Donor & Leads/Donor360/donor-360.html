@@ -272,6 +272,9 @@
                   <small>Since {{ c.since }} · Public thanks: {{ c.publicThanks ? 'yes' : 'no' }}</small>
                 </span>
                 <span [class]="'dx-dotted ' + consentTone(c.state)"><i></i>{{ c.state }}</span>
+                @for (action of c.actions; track action) {
+                  <button type="button" class="dx-btn sm" (click)="openConsent(c, action)">{{ action }}</button>
+                }
               </div>
             }
           </div>
@@ -494,6 +497,48 @@
         <button type="button" class="di-btn" (click)="closeIntent()">Cancel</button>
         <button type="button" class="di-btn is-primary" (click)="submitIntent()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Create intent
+        </button>
+      </footer>
+    </div>
+  </div>
+}
+
+<!-- ================= grant / withdraw consent on one channel ================= -->
+@if (consentEdit(); as ce) {
+  <div class="di-overlay" (click)="closeConsent()">
+    <div class="di-dialog" role="dialog" aria-modal="true" aria-labelledby="dc-title" (click)="$event.stopPropagation()">
+      <header class="di-head">
+        <h2 id="dc-title">{{ ce.action }} {{ ce.ch.channel }} consent</h2>
+        <button type="button" class="di-x" (click)="closeConsent()" aria-label="Close dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        </button>
+      </header>
+      <div class="di-body">
+        <div class="di-hero">
+          <div class="di-hero-text">
+            <span class="di-eyebrow">Consent · <span class="di-eyebrow-ref">{{ d().code }}</span></span>
+            <h3 class="di-hero-name">{{ d().name }}</h3>
+          </div>
+          <span class="di-pill">{{ ce.ch.stateLabel }}</span>
+        </div>
+        <div class="di-field" [class.is-err]="consentTried() && consentReason().trim().length < consentMin">
+          <label for="dc-reason">{{ ce.action === 'Grant' ? 'Purpose' : 'Reason' }} <span class="req">*</span><span class="di-count">{{ consentReason().trim().length }} / {{ consentMin }} min</span></label>
+          <textarea id="dc-reason" rows="3" maxlength="2000"
+                    [value]="consentReason()" (input)="consentReason.set($any($event.target).value)"></textarea>
+          @if (consentTried() && consentReason().trim().length < consentMin) { <span class="di-msg">Add at least {{ consentMin }} characters</span> }
+        </div>
+        <p class="di-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>
+          <span>
+            @if (ce.action === 'Grant') { Records that {{ d().name }} agrees to be contacted by {{ ce.ch.channel }}. }
+            @else { Records that {{ d().name }} no longer agrees to be contacted by {{ ce.ch.channel }}. Follow-ups on this channel will be refused. }
+          </span>
+        </p>
+      </div>
+      <footer class="di-foot">
+        <button type="button" class="di-btn" [disabled]="consentBusy()" (click)="closeConsent()">Cancel</button>
+        <button type="button" class="di-btn is-primary" [disabled]="consentBusy()" (click)="confirmConsent()">
+          {{ consentBusy() ? 'Saving…' : ce.action + ' consent' }}
         </button>
       </footer>
     </div>
