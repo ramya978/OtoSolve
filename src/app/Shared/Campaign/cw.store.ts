@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CampaignApiService } from '../../Service/campaign-api.service';
@@ -6,13 +6,14 @@ import { AuthService } from '../Auth/auth.service';
 import { PaymentApiService } from '../../Service/payment-api.service';
 import { DonationListItem } from '../models/payment.model';
 import { fetchAllPages } from '../services/paging';
+import { PeopleDirectoryService } from '../services/people-directory.service';
 import { apiErrorMessage } from '../models/api-response.model';
 import {
   AttributionListItem, CampaignDetail, CampaignHistoryEntry, CampaignListItem, CampaignReadiness, CampaignReferenceData,
   CampaignStatus, ReadinessCheckCategory, ReadinessCheckListItem, ReadinessPerson, TrackingAssetListItem, TrackingAssetStatus
 } from '../models/campaign-contract.model';
 import {
-  ACTIVITY, ASSETS, CAMPAIGNS, CHECKS, PEOPLE, Activity, ActivityKind, AssetStatus, AssetType, CampaignInfo,
+  ACTIVITY, ASSETS, CAMPAIGNS, CATEGORIES, CHECKS, PEOPLE, Activity, ActivityKind, AssetStatus, AssetType, CampaignInfo,
   CheckCategory, CheckStatus, Donation, Lifecycle, Medium, ReadinessCheck, TrackingAsset
 } from './cw.data';
 
@@ -44,6 +45,7 @@ export class CampaignWorkspaceStore {
   private readonly api = inject(CampaignApiService);
   private readonly auth = inject(AuthService);
   private readonly payments = inject(PaymentApiService);
+  private readonly directory = inject(PeopleDirectoryService);
 
   readonly campaigns = signal<CampaignInfo[]>([]);
   readonly checks = signal<ReadinessCheck[]>([]);
@@ -58,7 +60,18 @@ export class CampaignWorkspaceStore {
 
   /** Campaign shown on the campaign pages (picked in the page header). */
   readonly selectedCode = signal('');
-  readonly campaign = computed(() => this.campaigns().find((c) => c.code === this.selectedCode()) ?? this.campaigns()[0] ?? EMPTY_CAMPAIGN);
+  /**
+   * The campaign on the page. A code that names no campaign gives an empty one (see `notFound`) -
+   * it never quietly becomes the first campaign in the list, which is how a change meant for one
+   * campaign landed on another. Only when no code has been asked for does the first one show.
+   */
+  readonly campaign = computed(() => {
+    const code = this.selectedCode();
+    const hit = this.campaigns().find((c) => c.code === code);
+    return hit ?? (code ? EMPTY_CAMPAIGN : this.campaigns()[0] ?? EMPTY_CAMPAIGN);
+  });
+  /** True when the campaigns are loaded and the code asked for is not one of them. */
+  readonly notFound = computed(() => !this.loading() && this.campaigns().length > 0 && !!this.selectedCode() && !this.findCampaign(this.selectedCode()));
 
   /** One-line toast shared by the pages. */
   readonly toast = signal<{ text: string; tone: 'ok' | 'warn' | 'danger' } | null>(null);
@@ -71,8 +84,30 @@ export class CampaignWorkspaceStore {
   private readonly assetMeta = new Map<string, { id: string; version: number }>();
   private people: ReadinessPerson[] = [];
 
+  /** The user ids behind each campaign's activity lines and requests, kept so the names can be filled in when the directory arrives. */
+  private readonly actorIds = new Map<string, (string | null)[]>();
+  private readonly requesterIds = new Map<string, { ready: string | null; close: string | null }>();
+
   constructor() {
     this.load();
+    // Names come from the people directory, which loads on its own clock: apply them again when it lands.
+    effect(() => { this.directory.all(); this.applyNames(); });
+  }
+
+  /** Writes "who did it" onto the activity lines and the readiness / close requests, by name. */
+  private applyNames(): void {
+    for (const [code, ids] of this.actorIds) {
+      let i = 0;
+      this.activity.update((all) => all.map((a) => (a.campaign === code ? { ...a, by: ids[i++] ? this.directory.name(ids[i - 1]) : '' } : a)));
+    }
+    for (const [code, who] of this.requesterIds) {
+      const c = this.findCampaign(code);
+      if (!c) continue;
+      const patch: Partial<CampaignInfo> = {};
+      if (c.readinessRequest && who.ready) patch.readinessRequest = { ...c.readinessRequest, by: this.directory.name(who.ready) };
+      if (c.closeRequest && who.close) patch.closeRequest = { ...c.closeRequest, by: this.directory.name(who.close) };
+      if (Object.keys(patch).length) this.patchCampaign(code, patch, false);
+    }
   }
 
   // ------------------------------------------------------------------ loading
@@ -94,7 +129,10 @@ export class CampaignWorkspaceStore {
         this.people = people;
         PEOPLE.length = 0;
         PEOPLE.push(...people.map((p) => p.displayName ?? '').filter(Boolean));
-        if (!this.findCampaign(this.selectedCode())) this.selectedCode.set(this.campaigns()[0]?.code ?? '');
+        // Only when nothing has been asked for does the first campaign show; a code that matches none stays unmatched.
+        if (!this.selectedCode()) this.selectedCode.set(this.campaigns()[0]?.code ?? '');
+        const cats = reference?.readinessCategories ?? [];
+        if (cats.length) { CATEGORIES.length = 0; CATEGORIES.push(...cats.map((o) => o.label)); }
         this.loading.set(false);
         if (this.selectedCode()) this.select(this.selectedCode());
       },
@@ -120,6 +158,8 @@ export class CampaignWorkspaceStore {
       if (detail) this.mergeDetail(detail);
       if (readiness) this.mergeReadiness(code, readiness);
       this.activity.update((all) => [...all.filter((a) => a.campaign !== code), ...history.map((h) => this.toActivity(code, h))]);
+      this.actorIds.set(code, history.map((h) => h.actorUserId));
+      this.applyNames();
       const counted = (gifts ?? []).filter((g) => g.status !== 'refunded' && g.status !== 'chargedBack' && g.status !== 'voided');
       this.donationList.update((all) => [
         ...all.filter((d) => d.campaign !== code),
@@ -136,20 +176,21 @@ export class CampaignWorkspaceStore {
       ...(prev ?? EMPTY_CAMPAIGN),
       id: c.id, version: c.version, code: c.code, name: c.name, lifecycle: LIFECYCLE[c.status] ?? 'draft',
       owners: (c.owners ?? []).map((o) => o.displayName ?? '').filter(Boolean), fund: c.fundOrProgramme,
-      start: day(c.startDate), end: day(c.endDate), target: c.targetAmount, raised: c.raisedAmount ?? 0,
+      start: day(c.startDate), end: day(c.endDate), target: c.targetAmount, raised: c.raisedAmount ?? 0, currency: c.currencyCode ?? prev?.currency ?? '',
       updatedAt: minute(c.updatedAtUtc)
     };
   }
 
   private mergeDetail(d: CampaignDetail): void {
     this.ids.set(d.code, { id: d.id, version: d.version });
+    this.requesterIds.set(d.code, { ready: d.submittedByUserId, close: d.pendingCloseRequest?.requestedByUserId ?? null });
     const location = [d.countryName, d.stateName, d.cityName, d.zipCode].filter(Boolean).join(' · ');
     this.patchCampaign(d.code, {
       id: d.id, version: d.version, lifecycle: LIFECYCLE[d.status] ?? 'draft', description: d.publicDescription || d.purpose,
-      location, fund: d.fundOrProgramme, start: day(d.startDate), end: day(d.endDate), target: d.targetAmount,
-      readinessRequest: d.status === 'submitted' ? { by: '', at: minute(d.submittedAtUtc) } : undefined,
+      location, fund: d.fundOrProgramme, start: day(d.startDate), end: day(d.endDate), target: d.targetAmount, currency: d.currencyCode ?? '',
+      readinessRequest: d.status === 'submitted' ? { by: this.directory.name(d.submittedByUserId), at: minute(d.submittedAtUtc) } : undefined,
       closeRequest: d.pendingCloseRequest
-        ? { by: '', at: minute(d.pendingCloseRequest.createdAtUtc), reason: d.pendingCloseRequest.detailedReason ?? '' }
+        ? { by: this.directory.name(d.pendingCloseRequest.requestedByUserId), at: minute(d.pendingCloseRequest.createdAtUtc), reason: d.pendingCloseRequest.detailedReason ?? '' }
         : undefined,
     }, false);
   }
@@ -163,11 +204,22 @@ export class CampaignWorkspaceStore {
   private toCheck(code: string, i: ReadinessCheckListItem): ReadinessCheck {
     this.checkMeta.set(i.id, { version: i.version });
     return {
-      id: i.id, campaign: code, name: i.checkName, category: title(i.category) as CheckCategory,
+      id: i.id, campaign: code, name: i.checkName, category: this.categoryLabel(i.category),
       owner: i.owner?.displayName ?? '', due: day(i.dueDate), required: i.requiredForLaunch,
       status: i.status as CheckStatus, description: i.description ?? '', criteria: i.successCriteria, notes: i.notes ?? '',
       verdictNote: i.status === 'pending' ? '' : i.notes ?? ''
     };
+  }
+
+  /** The server's display word for a category value ('content' -> 'Content'). */
+  private categoryLabel(value: string): CheckCategory {
+    const hit = (this.reference()?.readinessCategories ?? []).find((o) => o.value.toLowerCase() === String(value).toLowerCase());
+    return hit?.label ?? title(String(value));
+  }
+  /** The server's value for a display word. */
+  private categoryValue(label: string): ReadinessCheckCategory {
+    const hit = (this.reference()?.readinessCategories ?? []).find((o) => o.label === label || o.value.toLowerCase() === label.toLowerCase());
+    return (hit?.value ?? label.toLowerCase()) as ReadinessCheckCategory;
   }
 
   private toAsset(a: TrackingAssetListItem): TrackingAsset {
@@ -320,7 +372,7 @@ export class CampaignWorkspaceStore {
     const campaignId = this.ids.get(check.campaign)?.id;
     if (!campaignId) return;
     const body = {
-      checkName: check.name, category: check.category.toLowerCase() as ReadinessCheckCategory, successCriteria: check.criteria,
+      checkName: check.name, category: this.categoryValue(check.category), successCriteria: check.criteria,
       description: check.description || null, requiredForLaunch: check.required, ownerUserId: this.personId(check.owner),
       dueDate: check.due || null, notes: check.notes || null,
     };

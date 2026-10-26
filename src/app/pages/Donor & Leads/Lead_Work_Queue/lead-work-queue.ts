@@ -263,7 +263,10 @@ export class LeadWorkQueue implements OnInit {
   labelOf(opts: Opt[], v: string | number): string { return opts.find((o) => o.value === String(v))?.label ?? String(v); }
   readonly rowOpts: Opt[] = [10, 25, 50].map((n) => ({ value: String(n), label: String(n) }));
   exportSelected(): void { this.doExport(); }
-  assignSelected(): void { this.router.navigate(['/app/fundraising/relationships/assignment-board']); }
+  assignSelected(): void {
+    const ids = [...this.checked()];
+    this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: ids.length ? { leadIds: ids.join(',') } : {} });
+  }
   isChecked(id: string): boolean { return this.checked().has(id); }
   goCapture(): void { this.router.navigate(['/app/fundraising/relationships/lead-capture']); }
   openLead(r: LeadRow): void { this.router.navigate(['/app/fundraising/Lead/Lead-view'], { queryParams: { ref: r.ref } }); }
@@ -271,7 +274,7 @@ export class LeadWorkQueue implements OnInit {
     if (kind === 'view') return this.openLead(r);
     // The conversation icon opens this lead's communication timeline; the assign icon opens the board.
     if (kind === 'note') { this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: r.ref } }); return; }
-    this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: { ref: r.ref } });
+    this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: { leadId: r.id } });
   }
   doExport(): void {
     this.api.exportLeads({ search: this.query().trim() || undefined, leadIds: this.checked().size ? [...this.checked()].join(',') : undefined }).subscribe({

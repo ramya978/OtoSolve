@@ -4,6 +4,7 @@ import { PaymentActivityRow, PaymentActivitySummary } from '../../../Shared/mode
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
+import { formatMoney } from '../../../Shared/services/money-format';
 
 export type PaymentStatus = 'successful' | 'pending' | 'failed';
 
@@ -13,8 +14,10 @@ export interface ReceiptRow {
   subRef: string | null;
   donor: string | null;
   email: string | null;
-  /** Whole rupees. */
+  /** In the payment's own currency. */
   amount: number;
+  /** ISO code of that currency; empty means the organisation's own. */
+  currency: string;
   status: PaymentStatus;
   receivedAt: Date;
 }
@@ -26,10 +29,10 @@ export const fmtDate = (d: Date): string => {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 };
 
-export const inr = (n: number): string =>
-  'INR ' + new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+/** An amount in its own currency, to the currency's decimals - by the platform's money rules, not a fixed currency. */
+export const curreny = (n: number, currency?: string | null): string => formatMoney(n, currency, { style: 'exact' });
 
-export const inrCompact = (n: number): string => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
+export const currenyCompact = (n: number, currency?: string | null): string => formatMoney(n, currency, { style: 'whole' });
 
 function toRow(r: PaymentActivityRow): ReceiptRow {
   const k = (r.paymentStatus ?? '').toLowerCase();
@@ -41,6 +44,7 @@ function toRow(r: PaymentActivityRow): ReceiptRow {
     donor: r.donorName,
     email: r.donorEmail,
     amount: r.amount?.amount ?? 0,
+    currency: r.amount?.currencyCode ?? '',
     status,
     receivedAt: new Date(r.occurredAtUtc ?? Date.now())
   };
@@ -58,7 +62,7 @@ function toStats(rows: ReceiptRow[], summary: PaymentActivitySummary | null): St
   const count = (st: PaymentStatus) => rows.filter((r) => r.status === st).length;
   return [
     { label: 'Total events', value: String(summary?.totalEvents ?? rows.length), note: 'In selected scope', tone: 'ink', icon: 'calendar' },
-    { label: 'Total amount', value: inrCompact(summary?.totalAmount?.amount ?? rows.reduce((t, r) => t + r.amount, 0)), note: 'In selected scope', tone: 'accent', icon: 'rupee' },
+    { label: 'Total amount', value: currenyCompact(summary?.totalAmount?.amount ?? rows.reduce((t, r) => t + r.amount, 0), summary?.totalAmount?.currencyCode ?? rows[0]?.currency), note: 'In selected scope', tone: 'accent', icon: 'rupee' },
     { label: 'Successful', value: String(summary?.successful ?? count('successful')), note: 'Receipt sent', tone: 'teal', icon: 'check' },
     { label: 'Pending', value: String(summary?.pending ?? count('pending')), note: 'Awaiting payment', tone: 'blue', icon: 'clock' },
     { label: 'Failed', value: String(summary?.failed ?? count('failed')), note: 'Needs retry', tone: 'red', icon: 'x' }
@@ -100,7 +104,7 @@ export class PaymentsReceipts implements OnInit {
   readonly loading = signal(false);
   readonly loadError = signal<string | null>(null);
 
-  protected readonly inr = inr;
+  protected readonly curreny = curreny;
   protected readonly fmtDate = fmtDate;
   readonly query = signal('');
   readonly statusFilter = signal<'all' | PaymentStatus>('all');

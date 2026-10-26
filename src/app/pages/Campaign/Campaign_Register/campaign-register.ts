@@ -1,9 +1,13 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { CampaignApiService } from '../../../Service/campaign-api.service';
+import { CampaignStatistics } from '../../../Shared/models/campaign-contract.model';
+import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
-import { CampaignInfo, inr, PEOPLE } from '../../../Shared/Campaign/cw.data';
+import { CampaignInfo, PEOPLE } from '../../../Shared/Campaign/cw.data';
+import { formatMoney } from '../../../Shared/services/money-format';
 
 export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'paused' | 'closing' | 'closed';
 
@@ -19,6 +23,7 @@ export interface CampaignRow {
   /** List-view engagement metrics that back the KPI strip (single source of truth). */
   received: number;
   target: number;
+  currency: string;
   delivered: number;
   replies: number;
   overdue: number;
@@ -135,7 +140,15 @@ export class CampaignRegister {
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly store = inject(CampaignWorkspaceStore);
+  private readonly api = inject(CampaignApiService);
   protected readonly paths = CW_PATHS;
+
+  /** The server's counts per status (GET /campaigns/statistics), over every campaign rather than a loaded page. */
+  private readonly stats = signal<CampaignStatistics | null>(null);
+
+  constructor() {
+    this.api.getCampaignStatistics().subscribe({ next: (s) => this.stats.set(s), error: () => this.stats.set(null) });
+  }
 
   private readonly rows = computed<CampaignRow[]>(() =>
     this.store.campaigns().map((c) => {
@@ -147,7 +160,7 @@ export class CampaignRegister {
         progress: c.target ? Math.min(100, Math.round((c.raised / c.target) * 100)) : 0,
         owner: owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : (owners[0] ?? '—'),
         launch: startDate ? fmtDate(startDate) : '—', ends: endDate ? fmtDate(endDate) : '—',
-        received: c.raised, target: c.target, delivered: 0, replies: 0, overdue: 0
+        received: c.raised, target: c.target, currency: c.currency ?? '', delivered: 0, replies: 0, overdue: 0
       };
     }));
   protected get campaigns(): CampaignRow[] { return this.rows(); }
@@ -180,6 +193,8 @@ export class CampaignRegister {
    *  for the rows matching the current search + owner filter. */
   readonly kpis = computed<CampaignKpi[]>(() => {
     const rows = this.baseRows();
+    // With no search or owner narrowing the list, the status counts are the server's.
+    const st = !this.query().trim() && this.ownerFilter() === 'all' ? this.stats() : null;
     const time = (d: string): number => Date.parse(d + ' UTC') || 0;
     const now = Date.now();
     const count = (s: CampaignStatus): number => rows.filter((r) => r.status === s).length;
@@ -190,47 +205,58 @@ export class CampaignRegister {
     const lead = active.slice().sort((a, b) => b.progress - a.progress)[0];
     const avgProgress = active.length ? Math.round(active.reduce((t, r) => t + r.progress, 0) / active.length) : 0;
 
-    const pausedRows = rows.filter((r) => r.status === 'paused');
-    const pausedReceived = pausedRows.reduce((t, r) => t + r.received, 0);
+    // Money is only added up within one currency: the most used one among these campaigns.
+    const tally = new Map<string, number>();
+    for (const r of rows) tally.set(r.currency, (tally.get(r.currency) ?? 0) + 1);
+    const currency = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const money = (n: number): string => formatMoney(n, currency, { style: 'whole' });
+    const sameCurrency = rows.filter((r) => r.currency === currency);
 
-    const receivedTotal = rows.reduce((t, r) => t + r.received, 0);
-    const targetTotal = rows.reduce((t, r) => t + r.target, 0);
+    const pausedRows = rows.filter((r) => r.status === 'paused');
+    const pausedReceived = pausedRows.filter((r) => r.currency === currency).reduce((t, r) => t + r.received, 0);
+
+    const receivedTotal = sameCurrency.reduce((t, r) => t + r.received, 0);
+    const targetTotal = sameCurrency.reduce((t, r) => t + r.target, 0);
     const receivedPct = targetTotal ? Math.round((receivedTotal / targetTotal) * 100) : 0;
 
     const scheduled = rows.filter((r) => r.status === 'scheduled').sort((a, b) => time(a.launch) - time(b.launch));
     const nextLaunch = scheduled.find((r) => time(r.launch) >= now) ?? scheduled[0];
 
-    const drafts = count('draft');
-    const submitted = count('submitted');
+    const drafts = st?.draft ?? count('draft');
+    const submitted = st?.submitted ?? count('submitted');
 
     const closing = rows.filter((r) => r.status === 'closing').sort((a, b) => time(a.ends) - time(b.ends));
     const nextEnd = closing.find((r) => time(r.ends) >= now) ?? closing[closing.length - 1];
-    const closed = count('closed');
+    const closed = st?.closed ?? count('closed');
     const goalReached = rows.filter((r) => r.progress >= 100).length;
 
-    const ended = closing.length + closed;
+    const closingCount = st?.closing ?? closing.length;
+    const activeCount = st?.active ?? active.length;
+    const pausedCount = st?.paused ?? pausedRows.length;
+    const scheduledCount = st?.scheduled ?? scheduled.length;
+    const ended = closingCount + closed;
     const endedGoal = rows.filter((r) => (r.status === 'closing' || r.status === 'closed') && r.progress >= 100).length;
     const short = (d?: string) => (d ? d.split(' ').slice(0, 2).join(' ') : '—');
 
     return [
       {
-        key: 'total', side: { value: String(owners), label: 'Owners' }, label: 'Campaigns', value: String(rows.length), icon: 'case',
-        note: `${active.length} running now · ${scheduled.length} scheduled`
+        key: 'total', side: { value: String(owners), label: 'Owners' }, label: 'Campaigns', value: String(st?.total ?? rows.length), icon: 'case',
+        note: `${activeCount} running now · ${scheduledCount} scheduled`
       },
       {
-        key: 'active', side: { value: avgProgress + '%', label: 'Avg progress' }, label: 'Active', value: String(active.length), icon: 'flag',
+        key: 'active', side: { value: avgProgress + '%', label: 'Avg progress' }, label: 'Active', value: String(activeCount), icon: 'flag',
         note: lead ? `Furthest along: ${lead.name} (${lead.progress}%)` : 'No campaign is running'
       },
       {
-        key: 'paused', side: { value: inr(pausedReceived), label: 'On hold' }, label: 'Paused', value: String(pausedRows.length), icon: 'pause',
-        note: pausedRows.length ? `${pausedRows.length} campaign${pausedRows.length === 1 ? '' : 's'} paused · ${inr(pausedReceived)} held` : 'No campaign is paused'
+        key: 'paused', side: { value: money(pausedReceived), label: 'On hold' }, label: 'Paused', value: String(pausedCount), icon: 'pause',
+        note: pausedCount ? `${pausedCount} campaign${pausedCount === 1 ? '' : 's'} paused · ${money(pausedReceived)} held` : 'No campaign is paused'
       },
       {
-        key: 'received', side: { value: receivedPct + '%', label: 'Of target' }, label: 'Received', value: inr(receivedTotal), icon: 'money',
-        note: `${rows.length} campaign${rows.length === 1 ? '' : 's'} · target ${inr(targetTotal)}`
+        key: 'received', side: { value: receivedPct + '%', label: 'Of target' }, label: 'Received', value: money(receivedTotal), icon: 'money',
+        note: `${rows.length} campaign${rows.length === 1 ? '' : 's'} · target ${money(targetTotal)}`
       },
       {
-        key: 'scheduled', side: { value: short(nextLaunch?.launch), label: 'Next launch' }, label: 'Scheduled to launch', value: String(scheduled.length), icon: 'calendar',
+        key: 'scheduled', side: { value: short(nextLaunch?.launch), label: 'Next launch' }, label: 'Scheduled to launch', value: String(scheduledCount), icon: 'calendar',
         note: nextLaunch ? `Next: ${nextLaunch.name}` : 'Nothing scheduled'
       },
       {
@@ -238,9 +264,9 @@ export class CampaignRegister {
         note: `${drafts} draft${drafts === 1 ? '' : 's'} not yet submitted for approval`
       },
       {
-        key: 'ending', side: { value: (ended ? Math.round((endedGoal / ended) * 100) : 0) + '%', label: 'Reached goal' }, label: 'Closing & closed', value: String(closing.length + closed), icon: 'check',
+        key: 'ending', side: { value: (ended ? Math.round((endedGoal / ended) * 100) : 0) + '%', label: 'Reached goal' }, label: 'Closing & closed', value: String(closingCount + closed), icon: 'check',
         note: nextEnd
-          ? `${closing.length} closing, ${closed} closed · ${nextEnd.name} ${time(nextEnd.ends) >= now ? 'ends' : 'ended'} ${nextEnd.ends}`
+          ? `${closingCount} closing, ${closed} closed · ${nextEnd.name} ${time(nextEnd.ends) >= now ? 'ends' : 'ended'} ${nextEnd.ends}`
           : `${closed} closed · ${goalReached} reached the goal`
       }
     ];
@@ -259,6 +285,8 @@ export class CampaignRegister {
 
   /** Count per status tab (and 'all') for the current search + owner. */
   readonly statusCounts = computed(() => {
+    const st = !this.query().trim() && this.ownerFilter() === 'all' ? this.stats() : null;
+    if (st) return { all: st.total, draft: st.draft, submitted: st.submitted, scheduled: st.scheduled, active: st.active, paused: st.paused, closing: st.closing, closed: st.closed };
     const out: Record<string, number> = { all: this.baseRows().length };
     for (const s of STATUS_ORDER) out[s] = 0;
     for (const r of this.baseRows()) out[r.status]++;
@@ -475,6 +503,35 @@ export class CampaignRegister {
     this.checked.set(next);
   }
 
+  /** Export: the server writes (and logs) the file under the register's current search and status tab. */
+  exportAll(): void {
+    const status = this.statusFilter();
+    this.api.exportCampaigns({ search: this.query().trim() || undefined, status: status === 'all' ? null : status }).subscribe({
+      next: ({ blob, fileName }) => { this.download(blob, fileName || 'campaigns.csv'); this.toast.show('Export ready', 'The campaign list was downloaded.', 'success'); },
+      error: (e: unknown) => this.toast.show('Export failed', apiErrorMessage(e), 'error')
+    });
+  }
+
+  /** Export selected: the ticked rows as they appear in the register (the export endpoint takes no id list). */
+  exportChecked(): void {
+    const ids = this.checked();
+    const rows = this.rows().filter((r) => ids.has(r.id));
+    if (!rows.length) return;
+    const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const head = ['Code', 'Name', 'Status', 'Owner', 'Launch', 'Ends', 'Progress %', 'Received', 'Target'];
+    const lines = rows.map((r) => [r.code, r.name, STATUS_META[r.status].label, r.owner, r.launch, r.ends, r.progress, r.received, r.target].map(esc).join(','));
+    this.download(new Blob([[head.join(','), ...lines].join('\n')], { type: 'text/csv' }), 'campaigns-selected.csv');
+    this.toast.show('Export ready', `${rows.length} selected campaign${rows.length === 1 ? '' : 's'} downloaded.`, 'success');
+  }
+
+  private download(blob: Blob, name: string): void {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   /** Header checkbox: checked when every row on the page is ticked. */
   allChecked(): boolean {
     const rows = this.pageRows();
@@ -561,6 +618,7 @@ export class CampaignRegister {
       location: '',
       target: 0,
       raised: 0,
+      currency: r.currency,
       monthlyRevenue: 0,
       monthlyRevenuePrev: 0,
       donors: 0,

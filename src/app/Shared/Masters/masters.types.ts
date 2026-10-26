@@ -100,6 +100,18 @@ export interface FilterDef {
   match: (r: MasterRow, value: string) => boolean;
 }
 
+/** Totals the server reports for a master (no rows are loaded to count them). */
+export interface MasterCounts {
+  total: number;
+  active: number;
+  draft: number;
+  inactive: number;
+  /** The master's own extra figure (countries with states, federal states, metro cities ...). */
+  extra: number;
+}
+
+export const NO_COUNTS: MasterCounts = { total: 0, active: 0, draft: 0, inactive: 0, extra: 0 };
+
 export interface Metric {
   label: string;
   value: string;
@@ -147,7 +159,7 @@ export interface MasterConfig {
   filters: FilterDef[];
   columns: ColumnDef[];
   defaultSort: { key: string; dir: 'asc' | 'desc' };
-  metrics: (rows: MasterRow[]) => Metric[];
+  metrics: (counts: MasterCounts) => Metric[];
   /** Form */
   formTitle: string;
   formSubtitle: string;
@@ -283,12 +295,12 @@ export const statusFilter = (options: Option[]): FilterDef => ({
   match: (r, v) => r['status'] === v
 });
 
-export const statusMetrics = (rows: MasterRow[], noun: string, draft = true): Metric[] => {
+export const statusMetrics = (c: MasterCounts, noun: string, draft = true): Metric[] => {
   const out: Metric[] = [
-    { label: `Active ${noun}`, value: String(count(rows, 'status', 'active')), note: 'Offered in dropdowns', accent: true }
+    { label: `Active ${noun}`, value: String(c.active), note: 'Offered in dropdowns', accent: true }
   ];
-  if (draft) out.push({ label: 'Draft', value: String(count(rows, 'status', 'draft')), note: 'Prepared, not offered yet' });
-  out.push({ label: 'Inactive', value: String(count(rows, 'status', 'inactive')), note: 'Kept for existing records' });
+  if (draft) out.push({ label: 'Draft', value: String(c.draft), note: 'Prepared, not offered yet' });
+  out.push({ label: 'Inactive', value: String(c.inactive), note: 'Kept for existing records' });
   return out;
 };
 

@@ -33,10 +33,10 @@ export const TIME_ZONE: MasterConfig = {
     statusColumn
   ],
   defaultSort: { key: 'display', dir: 'asc' },
-  metrics: (rows) => [
-    { label: 'Time zones', value: String(rows.length), note: 'UTC offsets for scheduling' },
-    ...statusMetrics(rows, 'zones'),
-    { label: 'Observe DST', value: String(count(rows, 'dst', true)), note: 'Clocks change during the year' }
+  metrics: (c) => [
+    { label: 'Time zones', value: String(c.total), note: 'UTC offsets for scheduling' },
+    ...statusMetrics(c, 'zones'),
+    { label: 'Observe DST', value: String(c.extra), note: 'Clocks change during the year' }
   ],
   formTitle: 'New time zone',
   formSubtitle: 'Add an IANA time zone with its standard offset and daylight-saving behaviour.',

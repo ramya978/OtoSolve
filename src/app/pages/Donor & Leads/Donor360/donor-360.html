@@ -73,7 +73,7 @@
         <div class="dx-sec-side">
           <h2>Overview</h2>
           <span class="dx-eyebrow">Money on record</span>
-          <b class="dx-big">{{ rupees(stages().total) }}</b>
+          <b class="dx-big">{{ money(stages().total) }}</b>
           <ul class="dx-legend">
             @for (m of stages().parts; track m.label) {
               <li [class]="'tone-' + m.tone"><i></i>{{ m.label }} · {{ m.pct }}%</li>
@@ -97,7 +97,7 @@
                 <span class="dx-j-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg></span>
                 <span class="dx-j-txt">
                   <small>{{ s.label }}</small>
-                  <b>{{ rupees(s.amount) }}</b>
+                  <b>{{ money(s.amount) }}</b>
                   <em>{{ s.note }}</em>
                 </span>
               </li>
@@ -119,14 +119,14 @@
         <div class="dx-sec-side">
           <h2>Gifts</h2>
           <span class="dx-eyebrow">Received to date</span>
-          <b class="dx-big is-sm">{{ rupees(received()) }}</b>
+          <b class="dx-big is-sm">{{ money(received()) }}</b>
         </div>
         <div class="dx-sec-body">
           <div class="dx-gstrip">
             @for (s of stages().parts; track s.label) {
               <div [class]="'dx-gs tone-' + s.tone">
                 <small><i></i>{{ s.label }}</small>
-                <b>{{ rupees(s.amount) }} <em>{{ s.pct }}%</em></b>
+                <b>{{ money(s.amount) }} <em>{{ s.pct }}%</em></b>
               </div>
             }
             <div class="dx-gs">
@@ -147,7 +147,7 @@
                   <td><b class="dx-mono">{{ g.ref }}</b></td>
                   <td class="c-hide-sm">{{ longDate(g.date) }}</td>
                   <td [attr.title]="g.campaign">{{ g.campaign }}</td>
-                  <td class="num"><b>{{ rupees(g.amount) }}</b></td>
+                  <td class="num"><b>{{ money(g.amount) }}</b></td>
                   <td><span class="dx-dotted tone-blue"><i></i>{{ g.status }}</span></td>
                 </tr>
               } @empty {
@@ -171,7 +171,7 @@
               @for (p of d().promises; track p.due) {
                 <li>
                   <span>{{ p.due ? longDate(p.due) : 'No date set' }}</span>
-                  <b>{{ rupees(p.amount) }}</b>
+                  <b>{{ money(p.amount) }}</b>
                   <span [class]="'dx-dotted ' + (p.status === 'Fulfilled' ? 'tone-green' : 'tone-amber')"><i></i>{{ p.status }}</span>
                 </li>
               }
@@ -211,7 +211,7 @@
                 <dl class="dx-tiles is-4">
                   <div class="dx-tile"><dt>Came via</dt><dd class="dx-mono">{{ c.via }}</dd></div>
                   <div class="dx-tile"><dt>Converted</dt><dd>{{ c.converted || '-' }}</dd></div>
-                  <div class="dx-tile"><dt>Given</dt><dd>{{ rupees(c.given) }}</dd></div>
+                  <div class="dx-tile"><dt>Given</dt><dd>{{ money(c.given) }}</dd></div>
                   <div class="dx-tile"><dt>Gifts</dt><dd>{{ c.gifts }}</dd></div>
                 </dl>
               </article>
@@ -427,7 +427,7 @@
           <div class="di-chips">
             @for (q of quickAmounts; track q) {
               <button type="button" class="di-chip" [class.is-on]="iAmountNum() === q" (click)="setAmount('' + q)">
-                {{ iSymbol() }}{{ iCurrency() === 'INR' ? rupees(q).slice(1) : q.toLocaleString('en-US') }}
+                {{ iSymbol() }}{{ intentNum(q) }}
               </button>
             }
           </div>

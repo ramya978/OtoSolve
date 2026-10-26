@@ -5,6 +5,7 @@ import { Footer } from '../../../Shared/layout/Footer/footer';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CampaignApiService } from '../../../Service/campaign-api.service';
+import { formatMoney } from '../../../Shared/services/money-format';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { PeopleDirectoryService } from '../../../Shared/services/people-directory.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -180,6 +181,8 @@ export class NewCampaign {
   private readonly people = inject(PeopleDirectoryService);
 
   private readonly countryRows = signal<CountryLookup[]>([]);
+  /** Currency code of the campaign being edited (its currency is fixed once created). */
+  private readonly editCurrency = signal('');
   private readonly stateRows = signal<MasterLookup[]>([]);
   private readonly cityRows = signal<MasterLookup[]>([]);
   private editDetail: CampaignDetail | null = null;
@@ -423,6 +426,7 @@ export class NewCampaign {
     this.api.getCampaign(id).subscribe({
       next: (d) => {
         this.editDetail = d;
+        this.editCurrency.set(d.currencyCode ?? '');
         this.isEdit.set(true);
         const hm = /^(\d{1,2}):(\d{2})/.exec(d.reminderTime ?? '');
         const h24 = hm ? Number(hm[1]) : 10;
@@ -484,9 +488,17 @@ export class NewCampaign {
     return fromIso(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
+  /** The campaign's currency: the chosen country's default, or the saved campaign's own when editing. */
+  protected readonly currencyCode = computed(() => {
+    const saved = this.editCurrency();
+    if (saved) return saved;
+    const name = this.form().country;
+    return this.countryRows().find((c) => c.name === name)?.defaultCurrencyCode || '—';
+  });
+
   protected money(value: string): string {
     if (!MONEY.test(value)) return '—';
-    return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value));
+    return formatMoney(Number(value), this.currencyCode() === '—' ? '' : this.currencyCode(), { style: 'exact' });
   }
 
   protected charCount(key: EditorKey): number {

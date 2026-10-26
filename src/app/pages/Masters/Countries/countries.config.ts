@@ -34,10 +34,10 @@ export const COUNTRY: MasterConfig = {
     statusColumn
   ],
   defaultSort: { key: 'name', dir: 'asc' },
-  metrics: (rows) => [
-    { label: 'Countries', value: String(rows.length), note: 'In the registry' },
-    ...statusMetrics(rows, 'countries', false),
-    { label: 'Regions covered', value: String(new Set(rows.map((r) => r['region'])).size), note: 'Distinct world regions' }
+  metrics: (c) => [
+    { label: 'Countries', value: String(c.total), note: 'In the registry' },
+    ...statusMetrics(c, 'countries', false),
+    { label: 'With states', value: String(c.extra), note: 'Subdivisions defined' }
   ],
   formTitle: 'New country',
   formSubtitle: 'Register a nation with its ISO 3166 codes, dialling prefix and default currency.',

@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import {
@@ -23,6 +23,7 @@ type AbDialog = 'assign' | 'history' | null;
 })
 export class AssignmentBoard implements OnInit {
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly api = inject(DonorApiService);
   protected readonly store = inject(FollowUpStore);
 
@@ -88,7 +89,24 @@ export class AssignmentBoard implements OnInit {
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly sideDone = new Set<string>();
 
-  ngOnInit(): void { this.loadBoard(); }
+  /**
+   * The leads the queue handed over (Assign / Reassign on one row, or Assign on a ticked set). The board
+   * lists only those and ticks them, so the person lands on the records they chose, not on the whole board.
+   */
+  protected readonly pinned = signal<string[]>([]);
+
+  ngOnInit(): void {
+    const q = this.route.snapshot.queryParamMap;
+    if ((q.get('recordType') ?? '').toLowerCase().startsWith('donor')) {
+      // From the Donor list: the donor's number is searched for, so the row is on the page.
+      this.type.set('donor');
+      this.query.set(q.get('search') ?? '');
+    } else {
+      const ids = [q.get('leadId'), ...(q.get('leadIds') ?? '').split(',')].map((v) => (v ?? '').trim()).filter(Boolean);
+      this.pinned.set([...new Set(ids)]);
+    }
+    this.loadBoard();
+  }
 
   private norm(v: string | null | undefined): string { return (v ?? '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
   private slaKey(state: string | null | undefined): AbSla {
@@ -123,6 +141,7 @@ export class AssignmentBoard implements OnInit {
     const owner = this.ownerIdOf(this.fOwner());
     if (owner) f['ownerUserId'] = owner;
     if (type === 'lead') {
+      if (this.pinned().length) f['leadIds'] = this.pinned().join(',');
       // The id, not the label: the dropdowns show names, the API filters on the lookup value.
       const campaign = this.campaignOptions.find((c) => c.label === this.fCampaign());
       if (campaign) f['campaignId'] = campaign.value;
@@ -162,6 +181,8 @@ export class AssignmentBoard implements OnInit {
       return p;
     });
     this.boardRows.set(people);
+    // Rows handed over from the queue arrive ticked, ready for Assign.
+    if (this.pinned().length && !this.selected().length) this.selected.set(people.map((p) => p.code));
     this.totalRows.set(r.rows.totalCount);
     this.pageCount.set(Math.max(1, r.rows.totalPages));
     this.boardOwners.set(r.owners ?? []);
@@ -289,6 +310,7 @@ export class AssignmentBoard implements OnInit {
     const c: { key: string; label: string }[] = [];
     if (this.fOwner()) c.push({ key: 'owner', label: 'Owner: ' + this.fOwner() });
     if (this.fCampaign()) c.push({ key: 'campaign', label: 'Campaign: ' + this.fCampaign() });
+    if (this.pinned().length) c.push({ key: 'pinned', label: this.pinned().length === 1 ? 'The lead opened from the queue' : `${this.pinned().length} leads selected in the queue` });
     for (const s of this.fSla()) c.push({ key: 'sla:' + s, label: 'SLA: ' + this.slaOptions.find((o) => o.key === s)!.label });
     if (this.query().trim()) c.push({ key: 'query', label: `"${this.query().trim()}"` });
     return c;
@@ -348,13 +370,14 @@ export class AssignmentBoard implements OnInit {
   pickCampaign(c: string | null): void { this.fCampaign.set(c); this.menu.set(null); this.reset(); }
   toggleSla(s: AbSla): void { this.fSla.update((l) => (l.includes(s) ? l.filter((x) => x !== s) : [...l, s])); this.reset(); }
   removeChip(key: string): void {
-    if (key === 'owner') this.fOwner.set(null);
+    if (key === 'pinned') this.pinned.set([]);
+    else if (key === 'owner') this.fOwner.set(null);
     else if (key === 'campaign') this.fCampaign.set(null);
     else if (key === 'query') this.query.set('');
     else if (key.startsWith('sla:')) this.fSla.update((l) => l.filter((x) => x !== key.slice(4)));
     this.reset();
   }
-  clearAll(): void { this.fOwner.set(null); this.fCampaign.set(null); this.fSla.set([]); this.query.set(''); this.dueToday.set(false); this.reset(); }
+  clearAll(): void { this.pinned.set([]); this.fOwner.set(null); this.fCampaign.set(null); this.fSla.set([]); this.query.set(''); this.dueToday.set(false); this.reset(); }
   setRows(n: number): void { this.rows.set(n); this.menu.set(null); this.page.set(1); this.loadBoard(); }
 
 

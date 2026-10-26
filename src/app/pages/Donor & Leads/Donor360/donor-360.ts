@@ -3,6 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { DonLookupItem, Donor360Response } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { formatMoney } from '../../../Shared/services/money-format';
 
 export type FollowFilter = 'all' | 'open' | 'overdue' | 'closed';
 export type D360Tab = 'overview' | 'giving' | 'activity' | 'profile' | 'documents';
@@ -30,6 +31,8 @@ export interface D360Donor {
   language: string;
   contactBy: string[];
   pledged: number;
+  /** The currency the donor's money is held in, from their donation totals; empty = the organisation's own. */
+  currency: string;
   documents: number;
   stages: { label: string; amount: number; asOf: string; tone: 'primary' | 'green' | 'amber' | 'blue' }[];
   gifts: D360Gift[];
@@ -44,7 +47,7 @@ export interface D360Donor {
 
 const EMPTY: D360Donor = {
   code: '', name: '', status: 'Active', updated: '', phone: '', email: '', owner: '', language: '', contactBy: [],
-  pledged: 0, documents: 0, stages: [], gifts: [], campaigns: [], promises: [], followUps: [],
+  pledged: 0, currency: '', documents: 0, stages: [], gifts: [], campaigns: [], promises: [], followUps: [],
   consent: { state: 'Unknown', doNotContact: false, lastRecorded: '', notice: '' }, channels: [], activity: [], latestDocument: null
 };
 
@@ -98,6 +101,7 @@ function toD360(r: Donor360Response): D360Donor {
     language: d.preferredLanguage ?? '',
     contactBy: prefs.filter((p) => consentState(p.consentState) === 'Granted').map((p) => p.channel),
     pledged: (r.donationTotalsByStage ?? []).filter((t) => n(t.stage).includes('pledge')).reduce((x, t) => x + t.totalAmount, 0),
+    currency: (r.donationTotalsByStage ?? [])[0]?.currency || (r.donations ?? [])[0]?.currency || (r.promises ?? [])[0]?.currency || '',
     documents: (r.documents ?? []).length,
     stages: (r.donationTotalsByStage ?? []).map((t, i) => ({
       label: t.stage, amount: t.totalAmount, asOf: fmt(t.asAtUtc), tone: tones[i % tones.length]
@@ -217,7 +221,6 @@ function inWords(n: number): string {
 
 const iso = (d: Date): string => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
-const rupees = (n: number): string => '₹' + new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
 const parse = (iso: string): Date => new Date(iso + 'T00:00:00');
 
 @Component({
@@ -233,7 +236,10 @@ export class Donor360 implements OnInit {
   private donorId = '';
   protected readonly loading = signal(false);
 
-  protected readonly rupees = rupees;
+  /** An amount in the donor's own currency (whole units), written by the platform's money rules. */
+  protected readonly money = (n: number): string => formatMoney(n, this.d().currency, { style: 'whole' });
+  /** A bare number in the currency being given in (no mark), for the amount chips and the typed amount. */
+  protected readonly intentNum = (n: number): string => formatMoney(n, this.iCurrency(), { style: 'whole', marker: false });
   protected readonly listPath = '/app/fundraising/relationships/all-donors';
   protected readonly editPath = '/app/fundraising/relationships/donor-360/edit';
   /** "today" for overdue checks - the server date in the real app */
@@ -444,8 +450,8 @@ export class Donor360 implements OnInit {
     const lg = this.latestGift();
     return [
       { key: 'follow', icon: 'calendar', label: 'Next follow-up', text: nf ? nf.title + ' · ' + this.longDate(nf.due) : 'Nothing scheduled', empty: !nf },
-      { key: 'promise', icon: 'promise', label: 'Next promise', text: pr ? rupees(pr.amount) + ' · ' + this.longDate(pr.due) : 'No pending promise', empty: !pr },
-      { key: 'gift', icon: 'gift', label: 'Latest gift', text: lg ? rupees(lg.amount) + ' · ' + this.longDate(lg.date) : 'No gifts yet', empty: !lg }
+      { key: 'promise', icon: 'promise', label: 'Next promise', text: pr ? this.money(pr.amount) + ' · ' + this.longDate(pr.due) : 'No pending promise', empty: !pr },
+      { key: 'gift', icon: 'gift', label: 'Latest gift', text: lg ? this.money(lg.amount) + ' · ' + this.longDate(lg.date) : 'No gifts yet', empty: !lg }
     ];
   });
 
@@ -494,8 +500,8 @@ export class Donor360 implements OnInit {
     const pc = this.promiseCounts();
     const fc = this.followCounts();
     return [
-      { key: 'lifetime', label: 'Lifetime received', value: rupees(this.received()), note: d.gifts.length + (d.gifts.length === 1 ? ' successful gift' : ' successful gifts'), icon: 'gift', tone: 'green', view: 'giving' as D360Tab },
-      { key: 'pledged', label: 'Pledged amount', value: rupees(d.pledged), note: d.pledged ? 'Open pledges' : 'No pledge recorded', icon: 'heart', tone: 'primary', view: 'giving' as D360Tab },
+      { key: 'lifetime', label: 'Lifetime received', value: this.money(this.received()), note: d.gifts.length + (d.gifts.length === 1 ? ' successful gift' : ' successful gifts'), icon: 'gift', tone: 'green', view: 'giving' as D360Tab },
+      { key: 'pledged', label: 'Pledged amount', value: this.money(d.pledged), note: d.pledged ? 'Open pledges' : 'No pledge recorded', icon: 'heart', tone: 'primary', view: 'giving' as D360Tab },
       { key: 'promises', label: 'Pending promises', value: String(pc.pending), note: pc.pending ? pc.pending + ' awaiting payment' : 'Nothing awaiting payment', icon: 'calendar', tone: 'amber', view: 'giving' as D360Tab },
       { key: 'followups', label: 'Open follow-ups', value: String(fc.open), note: fc.closed + ' completed · ' + fc.overdue + ' overdue', icon: 'clock', tone: 'blue', view: 'activity' as D360Tab },
       { key: 'documents', label: 'Documents', value: String(d.documents), note: d.documents ? 'On file' : 'No files attached', icon: 'file', tone: 'red', view: 'documents' as D360Tab }
@@ -580,7 +586,7 @@ export class Donor360 implements OnInit {
   protected readonly iAmountText = computed(() => {
     const n = this.iAmountNum();
     if (!n) return '';
-    return new Intl.NumberFormat(this.iCurrency() === 'INR' ? 'en-IN' : 'en-US').format(n);
+    return this.intentNum(n);
   });
   protected readonly iWords = computed(() => {
     const n = this.iAmountNum();

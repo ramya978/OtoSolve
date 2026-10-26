@@ -34,10 +34,10 @@ export const CITY: MasterConfig = {
     statusColumn
   ],
   defaultSort: { key: 'country', dir: 'asc' },
-  metrics: (rows) => [
-    { label: 'Cities', value: String(rows.length), note: `Mapped to ${new Set(rows.map((r) => `${r['country']}-${r['state']}`)).size} states` },
-    ...statusMetrics(rows, 'cities'),
-    { label: 'Metro cities', value: String(count(rows, 'metro', true)), note: 'Used in analytics' }
+  metrics: (c) => [
+    { label: 'Cities', value: String(c.total), note: 'Across all states' },
+    ...statusMetrics(c, 'cities'),
+    { label: 'Metro cities', value: String(c.extra), note: 'Used in analytics' }
   ],
   formTitle: 'New city',
   formSubtitle: 'Add a city under its state, with postal pattern and map position.',

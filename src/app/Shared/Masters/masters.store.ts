@@ -1,14 +1,13 @@
 import { Injectable, WritableSignal, computed, inject, signal } from '@angular/core';
-import { BehaviorSubject, Observable, Subscription, filter, forkJoin, map, of, switchMap, take, tap } from 'rxjs';
+import { BehaviorSubject, Observable, Subscription, catchError, filter, forkJoin, map, of, switchMap, take, tap, throwError } from 'rxjs';
 import { MasterService } from '../../Service/master.service';
 import { apiErrorMessage, apiFieldErrors } from '../models/api-response.model';
 import {
   CityDetail, CityListItem, CountryDetail, CountryListItem, CurrencyDetail, CurrencyListItem, EnumOption,
-  GlobalMasterReferenceData, MasterDataStatus, StateProvinceDetail, StateProvinceListItem, TimeZoneDetail, TimeZoneListItem
+  GlobalMasterReferenceData, MasterDataStatus, MasterLookup, StateProvinceDetail, StateProvinceListItem, TimeZoneDetail, TimeZoneListItem
 } from '../models/global-master.model';
-import { fetchPages } from '../services/paging';
 import {
-  CURRENCY_TYPES, JURISDICTIONS, Lookup, MasterKey, MasterRow, MasterStatus, Option, OptionSource, REGIONS, ROUNDING_MODES, fmtOffset
+  CURRENCY_TYPES, JURISDICTIONS, Lookup, MasterCounts, MasterKey, MasterRow, MasterStatus, Option, OptionSource, REGIONS, ROUNDING_MODES, fmtOffset
 } from './masters.types';
 
 /** Last change, shown as a notice on the list page after a create / save / delete. */
@@ -26,8 +25,23 @@ export interface MasterWriteError {
 
 const KEYS: MasterKey[] = ['country', 'state', 'city', 'currency', 'timezone'];
 
-/** The most rows a grid will hold. The API caps a page at 100; further pages are fetched in parallel. */
-const FETCH_LIMIT = 5000;
+/** What a list page asks the server for: its own search box, filters, sort and page. */
+export interface MasterQuery {
+  search: string;
+  filters: Record<string, string>;
+  sort: { key: string; dir: 'asc' | 'desc' };
+  page: number;
+  pageSize: number;
+}
+
+/** Column key -> the API's sort field, per master (an unknown key is sent as it is). */
+const SORT_FIELDS: Record<MasterKey, Record<string, string>> = {
+  country: { name: 'countryName', iso: 'iso2', region: 'region', currency: 'defaultCurrencyCode' },
+  state: { name: 'stateProvinceName', country: 'countryName', jurisdiction: 'jurisdictionType', gst: 'gstStateCode' },
+  city: { name: 'cityName', state: 'stateProvinceName', country: 'countryName' },
+  currency: { name: 'currencyName', symbol: 'symbol', type: 'currencyType', decimals: 'decimalPlaces' },
+  timezone: { display: 'displayName', offset: 'standardUtcOffsetMinutes', dst: 'supportsDaylightSaving', recommended: 'isDefaultRecommended' }
+};
 
 /** "northAmerica" -> "North America" (used only when the server's option list has not arrived). */
 const humanize = (code: string): string =>
@@ -77,11 +91,17 @@ export class MastersStore {
   readonly truncated = signal(false);
 
   private readonly reference = signal<GlobalMasterReferenceData | null>(null);
+  /** Active states per country (by alpha-2), read on demand for the dependent dropdowns. */
+  private readonly statesByCountry = signal<Record<string, MasterLookup[]>>({});
+  private readonly stateLoads = new Set<string>();
+  /** Names carried by list rows, so a country / state column never needs the other registry loaded. */
+  private readonly countryNames = new Map<string, string>();
+  private readonly stateNames = new Map<string, string>();
   private loadedOnce = false;
   private inFlight: Subscription | null = null;
   private readonly ready$ = new BehaviorSubject(false);
 
-  /** Emits once the masters have been read (immediately when they already were). */
+  /** Emits once the option lists have been read (immediately when they already were). */
   whenReady(): Observable<void> {
     return this.ready$.pipe(filter(Boolean), take(1), map(() => undefined));
   }
@@ -91,8 +111,9 @@ export class MastersStore {
   // =========================================================================================
 
   /**
-   * Reads every master (and the server's option lists) once. Pages call it from ngOnInit; calling
-   * it again is a no-op unless `force` is set, which a write does so the next screen sees the change.
+   * Reads the server's option lists (countries, currencies, time zones, enum labels) once - one
+   * small call, not the registries. The rows themselves are read a page at a time by `search`.
+   * Calling it again is a no-op unless `force` is set, which a write does so the next screen sees the change.
    */
   ensureLoaded(force = false): void {
     if (this.loadedOnce && !force) return;
@@ -104,28 +125,9 @@ export class MastersStore {
     this.loading.set(true);
     this.loadError.set(null);
 
-    const all = <T>(fetch: (page: number, size: number) => Observable<{ items: T[]; totalCount: number; pageSize: number; page: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean }>) =>
-      fetchPages<T>(fetch, 100, FETCH_LIMIT);
-
-    this.inFlight = forkJoin({
-      ref: this.api.getReferenceData(),
-      countries: all<CountryListItem>((page, pageSize) => this.api.searchCountries({ page, pageSize, sort: 'sortOrder' })),
-      states: all<StateProvinceListItem>((page, pageSize) => this.api.searchStates({ page, pageSize })),
-      cities: all<CityListItem>((page, pageSize) => this.api.searchCities({ page, pageSize })),
-      currencies: all<CurrencyListItem>((page, pageSize) => this.api.searchCurrencies({ page, pageSize })),
-      zones: all<TimeZoneListItem>((page, pageSize) => this.api.searchTimeZones({ page, pageSize }))
-    }).subscribe({
-      next: (r) => {
-        this.reference.set(r.ref);
-        // Zones first: states point at them; countries before states and cities for the same reason.
-        this.data.timezone.set(r.zones.items.map((i) => this.zoneRow(i)));
-        this.data.currency.set(r.currencies.items.map((i) => this.currencyRow(i)));
-        this.data.country.set(r.countries.items.map((i) => this.countryRow(i)));
-        this.data.state.set(r.states.items.map((i) => this.stateRow(i)));
-        this.data.city.set(r.cities.items.map((i) => this.cityRow(i)));
-        this.truncated.set(
-          [r.countries, r.states, r.cities, r.currencies, r.zones].some((p) => p.totalCount > p.items.length)
-        );
+    this.inFlight = this.api.getReferenceData().subscribe({
+      next: (ref) => {
+        this.reference.set(ref);
         this.loadedOnce = true;
         this.ready$.next(true);
         this.loading.set(false);
@@ -135,6 +137,145 @@ export class MastersStore {
         this.loadError.set(apiErrorMessage(error, 'The master data could not be loaded.'));
       }
     });
+  }
+
+  private withReference(): Observable<unknown> {
+    return this.reference() ? of(null) : this.api.getReferenceData().pipe(tap((ref) => this.reference.set(ref)));
+  }
+
+  /** One page of a master, searched, filtered and sorted by the server. */
+  search(key: MasterKey, q: MasterQuery): Observable<{ rows: MasterRow[]; total: number }> {
+    return this.withReference().pipe(
+      switchMap(() => {
+        const filter = this.serverFilter(key, q);
+        return this.searchRaw(key, filter).pipe(
+          // A sort spelling the server does not know must not empty the grid: retry unsorted.
+          catchError((error: unknown) => (filter['sort'] ? this.searchRaw(key, { ...filter, sort: undefined }) : throwError(() => error)))
+        );
+      }),
+      map((page) => {
+        const rows = (page.items as never[]).map((i) => this.rowFor(key, i));
+        this.data[key].set(rows);
+        return { rows, total: page.totalCount };
+      })
+    );
+  }
+
+  /** Totals for the overview cards, counted by the server (one row per request, only the count is used). */
+  counts(key: MasterKey): Observable<MasterCounts> {
+    const count = (extra: Record<string, unknown>) =>
+      this.searchRaw(key, { ...extra, page: 1, pageSize: 1 }).pipe(map((p) => p.totalCount), catchError(() => of(0)));
+    return this.withReference().pipe(
+      switchMap(() =>
+        forkJoin({
+          total: count({}),
+          active: count({ status: 'active' }),
+          draft: count({ status: 'draft' }),
+          inactive: count({ status: 'inactive' }),
+          extra: count(this.extraFilter(key))
+        })
+      )
+    );
+  }
+
+  /** The master's own fourth figure on the overview cards. */
+  private extraFilter(key: MasterKey): Record<string, unknown> {
+    switch (key) {
+      case 'country': return { hasStates: true };
+      case 'state': return { isFederalJurisdiction: true };
+      case 'city': return { isMetro: true };
+      case 'currency': return { currencyType: this.enumCode('currencyTypes', 'Fiat') };
+      case 'timezone': return { supportsDaylightSaving: true };
+    }
+  }
+
+  /** The list page's search box and filter dropdowns, as the API's own filter fields. */
+  private serverFilter(key: MasterKey, q: MasterQuery, paged = true): Record<string, unknown> {
+    const f = q.filters;
+    const out: Record<string, unknown> = {
+      search: q.search.trim() || undefined,
+      status: f['status'] || undefined
+    };
+    if (paged) {
+      out['page'] = q.page;
+      out['pageSize'] = q.pageSize;
+      if (q.sort.key) {
+        const field = SORT_FIELDS[key][q.sort.key] ?? q.sort.key;
+        out['sort'] = q.sort.dir === 'desc' ? `-${field}` : field;
+      }
+    }
+    switch (key) {
+      case 'country':
+        if (f['region']) out['region'] = this.regionCode(f['region']);
+        break;
+      case 'state':
+        if (f['country']) out['countryId'] = this.countryId(f['country']) || undefined;
+        if (f['jurisdiction']) out['jurisdictionType'] = this.enumCode('jurisdictionTypes', f['jurisdiction']);
+        break;
+      case 'city':
+        if (f['country']) out['countryId'] = this.countryId(f['country']) || undefined;
+        if (f['state']) out['stateProvinceId'] = this.stateId(f['country'] ?? '', f['state']) || undefined;
+        break;
+      case 'currency':
+        if (f['type']) out['currencyType'] = this.enumCode('currencyTypes', f['type']);
+        break;
+      case 'timezone':
+        if (f['dst']) out['supportsDaylightSaving'] = f['dst'] === 'yes';
+        break;
+    }
+    return out;
+  }
+
+  private searchRaw(key: MasterKey, filter: Record<string, unknown>) {
+    switch (key) {
+      case 'country': return this.api.searchCountries(filter as never) as Observable<{ items: unknown[]; totalCount: number }>;
+      case 'state': return this.api.searchStates(filter as never) as Observable<{ items: unknown[]; totalCount: number }>;
+      case 'city': return this.api.searchCities(filter as never) as Observable<{ items: unknown[]; totalCount: number }>;
+      case 'currency': return this.api.searchCurrencies(filter as never) as Observable<{ items: unknown[]; totalCount: number }>;
+      case 'timezone': return this.api.searchTimeZones(filter as never) as Observable<{ items: unknown[]; totalCount: number }>;
+    }
+  }
+
+  private rowFor(key: MasterKey, item: never): MasterRow {
+    switch (key) {
+      case 'country': return this.countryRow(item);
+      case 'state': return this.stateRow(item);
+      case 'city': return this.cityRow(item);
+      case 'currency': return this.currencyRow(item);
+      case 'timezone': return this.zoneRow(item);
+    }
+  }
+
+  /** Downloads the master as the server exports it, honouring the search and filters on screen. */
+  exportFile(key: MasterKey, q: MasterQuery): Observable<Blob> {
+    return this.withReference().pipe(
+      switchMap(() => {
+        const filter = this.serverFilter(key, q, false) as never;
+        switch (key) {
+          case 'country': return this.api.exportCountries(filter);
+          case 'state': return this.api.exportStates(filter);
+          case 'city': return this.api.exportCities(filter);
+          case 'currency': return this.api.exportCurrencies(filter);
+          case 'timezone': return this.api.exportTimeZones(filter);
+        }
+      })
+    );
+  }
+
+  /** Reads a country's states for the dependent dropdowns (once per country). */
+  loadStates(countryAlpha2: string): void {
+    if (!countryAlpha2 || this.stateLoads.has(countryAlpha2)) return;
+    const go = (): void => {
+      const id = this.countryId(countryAlpha2);
+      if (!id) return;
+      this.stateLoads.add(countryAlpha2);
+      this.api.lookupStates(id).subscribe({
+        next: (list) => this.statesByCountry.update((m) => ({ ...m, [countryAlpha2]: list })),
+        error: () => this.stateLoads.delete(countryAlpha2)
+      });
+    };
+    if (this.reference()) go();
+    else this.whenReady().subscribe(go);
   }
 
   rows(key: MasterKey): MasterRow[] {
@@ -158,21 +299,26 @@ export class MastersStore {
       case 'currency': request = this.api.getCurrency(id).pipe(map((d) => this.currencyRow(d, d))); break;
       case 'timezone': request = this.api.getTimeZone(id).pipe(map((d) => this.zoneRow(d, d))); break;
     }
-    return request.pipe(
+    return this.withReference().pipe(
+      switchMap(() => request),
       tap((row) => this.data[key].update((rows) => (rows.some((r) => r.id === id) ? rows.map((r) => (r.id === id ? row : r)) : [row, ...rows])))
     );
   }
 
-  /** True when another record already uses this code (case-insensitive). The server also enforces it. */
+  /**
+   * True when another record already uses this code (case-insensitive), judged from the option
+   * lists already read. The server enforces it for everything else and its message is shown on the field.
+   */
   isDuplicate(key: MasterKey, field: string, value: string, exceptId: string | null, scope?: { field: string; value: string }): boolean {
     const v = value.trim().toLowerCase();
     if (!v) return false;
-    return this.data[key]().some(
-      (r) =>
-        r.id !== exceptId &&
-        String(r[field] ?? '').toLowerCase() === v &&
-        (!scope || String(r[scope.field] ?? '') === scope.value)
-    );
+    const ref = this.reference();
+    let known: MasterLookup[] = [];
+    if (key === 'country') known = ref?.countries ?? [];
+    else if (key === 'currency') known = ref?.currencies ?? [];
+    else if (key === 'timezone') known = ref?.timeZones ?? [];
+    else if (key === 'state') known = this.statesByCountry()[scope?.value ?? ''] ?? [];
+    return known.some((l) => l.id !== exceptId && String(l.code ?? '').toLowerCase() === v);
   }
 
   // =========================================================================================
@@ -235,6 +381,10 @@ export class MastersStore {
   private afterWrite(): void {
     // Dropdowns elsewhere (country/currency/time-zone pickers) must not offer a stale catalogue.
     this.api.invalidateReferenceData();
+    // ...and so must this store's own copy of them.
+    this.statesByCountry.set({});
+    this.stateLoads.clear();
+    this.api.getReferenceData().subscribe({ next: (ref) => this.reference.set(ref), error: () => undefined });
   }
 
   private create(key: MasterKey, row: MasterRow): Observable<MasterRow> {
@@ -368,6 +518,7 @@ export class MastersStore {
 
   private countryRow(i: CountryListItem, d?: CountryDetail): MasterRow {
     const cur = this.data.country().find((r) => r.id === i.id);
+    this.countryNames.set(i.iso2 || i.countryCode, i.countryName);
     return {
       id: i.id, version: i.version, platform: i.isPlatformRow,
       code: i.iso2 || i.countryCode, alpha2: i.iso2 || i.countryCode, alpha3: i.iso3 ?? '',
@@ -381,29 +532,30 @@ export class MastersStore {
 
   private stateRow(i: StateProvinceListItem, d?: StateProvinceDetail): MasterRow {
     const cur = this.data.state().find((r) => r.id === i.id);
-    const country = this.data.country().find((c) => c.id === i.countryId);
-    const zone = d?.defaultTimeZoneId ? this.data.timezone().find((z) => z.id === d.defaultTimeZoneId) : null;
+    const zoneKey = d?.defaultTimeZoneId ? this.reference()?.timeZones.find((z) => z.id === d.defaultTimeZoneId)?.code : null;
+    if (i.countryName) this.countryNames.set(i.countryCode, i.countryName);
     return {
       id: i.id, version: i.version, platform: i.isPlatformRow, countryId: i.countryId,
       code: i.stateProvinceCode, name: i.stateProvinceName,
       display: i.displayName || `${i.stateProvinceName} (${i.stateProvinceCode})`,
-      country: str(country?.['alpha2']) || i.countryCode, jurisdiction: this.enumLabel('jurisdictionTypes', i.jurisdictionType, i.jurisdictionDescription),
+      country: i.countryCode, jurisdiction: this.enumLabel('jurisdictionTypes', i.jurisdictionType, i.jurisdictionDescription),
       federal: i.isFederalJurisdiction, gst: i.gstStateCode ?? '',
       postal: d ? str(d.postalCodePattern) : str(cur?.['postal']),
       addressFormat: d ? str(d.addressFormatHint) : str(cur?.['addressFormat']),
       taxCode: d ? str(d.stateTaxJurisdictionCode) : str(cur?.['taxCode']),
-      timezone: d ? str(zone?.['zone']) : str(cur?.['timezone']),
+      timezone: d ? str(zoneKey) : str(cur?.['timezone']),
       status: i.status, sort: i.sortOrder, notes: d ? str(d.notes) : str(cur?.['notes'])
     };
   }
 
   private cityRow(i: CityListItem, d?: CityDetail): MasterRow {
     const cur = this.data.city().find((r) => r.id === i.id);
-    const country = this.data.country().find((c) => c.id === i.countryId);
+    if (i.countryName) this.countryNames.set(i.countryCode, i.countryName);
+    if (i.stateProvinceName) this.stateNames.set(`${i.countryCode}|${i.stateProvinceCode}`, i.stateProvinceName);
     return {
       id: i.id, version: i.version, platform: i.isPlatformRow, stateId: i.stateProvinceId,
       code: i.cityCode, name: i.cityName, display: i.displayName || `${i.cityName} (${i.cityCode})`,
-      country: str(country?.['alpha2']) || i.countryCode, state: i.stateProvinceCode, metro: i.isMetro,
+      country: i.countryCode, state: i.stateProvinceCode, metro: i.isMetro,
       lat: i.latitude ?? 0, lng: i.longitude ?? 0,
       postal: d ? str(d.defaultPostalCodePattern) : str(cur?.['postal']), status: i.status,
       notes: d ? str(d.notes) : str(cur?.['notes'])
@@ -465,15 +617,15 @@ export class MastersStore {
   // ---- ids behind the codes the pages work with ----
 
   private countryId(alpha2: string): string {
-    return str(this.data.country().find((r) => r['alpha2'] === alpha2)?.id);
+    return str(this.reference()?.countries.find((r) => r.code === alpha2)?.id);
   }
 
   private stateId(countryAlpha2: string, stateCode: string): string {
-    return str(this.data.state().find((r) => r['country'] === countryAlpha2 && r['code'] === stateCode)?.id);
+    return str((this.statesByCountry()[countryAlpha2] ?? []).find((r) => r.code === stateCode)?.id);
   }
 
   private zoneId(zoneKey: string): string | null {
-    return zoneKey ? (this.data.timezone().find((r) => r['zone'] === zoneKey)?.id ?? null) : null;
+    return zoneKey ? (this.reference()?.timeZones.find((r) => r.code === zoneKey)?.id ?? null) : null;
   }
 
   private int(v: unknown): number | null {
@@ -500,31 +652,24 @@ export class MastersStore {
   // =========================================================================================
 
   private readonly countryOptions = computed<Option[]>(() =>
-    this.data.country()
-      .filter((r) => r['status'] !== 'inactive')
-      .sort((a, b) => String(a['name']).localeCompare(String(b['name'])))
-      .map((r) => ({ value: String(r['alpha2']), label: String(r['name']), hint: String(r['alpha2']) }))
-  );
-
-  private readonly stateOptions = computed<(Option & { parent: string })[]>(() =>
-    this.data.state()
-      .filter((r) => r['status'] !== 'inactive')
-      .sort((a, b) => String(a['name']).localeCompare(String(b['name'])))
-      .map((r) => ({ value: String(r['code']), label: String(r['name']), hint: String(r['code']), parent: String(r['country']) }))
+    [...(this.reference()?.countries ?? [])]
+      .filter((r) => r.status !== 'inactive')
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((r) => ({ value: r.code, label: r.name, hint: r.code }))
   );
 
   private readonly currencyOptions = computed<Option[]>(() =>
-    this.data.currency()
-      .filter((r) => r['status'] === 'active')
-      .sort((a, b) => String(a['code']).localeCompare(String(b['code'])))
-      .map((r) => ({ value: String(r['code']), label: `${r['code']} · ${r['name']}`, hint: String(r['symbol'] ?? '') }))
+    [...(this.reference()?.currencies ?? [])]
+      .filter((r) => r.status === 'active')
+      .sort((a, b) => a.code.localeCompare(b.code))
+      .map((r) => ({ value: r.code, label: `${r.code} · ${r.name}`, hint: '' }))
   );
 
   private readonly timezoneOptions = computed<Option[]>(() =>
-    this.data.timezone()
-      .filter((r) => r['status'] === 'active')
-      .sort((a, b) => Number(b['recommended']) - Number(a['recommended']) || Number(a['offset']) - Number(b['offset']))
-      .map((r) => ({ value: String(r['zone']), label: String(r['zone']), hint: 'UTC' + fmtOffset(Number(r['offset'])) }))
+    [...(this.reference()?.timeZones ?? [])]
+      .filter((r) => r.status === 'active')
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.code.localeCompare(b.code))
+      .map((r) => ({ value: r.code, label: r.code, hint: r.name }))
   );
 
   /** The server's option list, labelled as the pages show it; the built-in list until it arrives. */
@@ -538,7 +683,13 @@ export class MastersStore {
       case 'countries': return this.countryOptions();
       case 'currencies': return this.currencyOptions();
       case 'timezones': return this.timezoneOptions();
-      case 'states': return this.stateOptions().filter((o) => !parent || o.parent === parent);
+      case 'states':
+        return parent
+          ? (this.statesByCountry()[parent] ?? [])
+              .filter((r) => r.status !== 'inactive')
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((r) => ({ value: r.code, label: r.name, hint: r.code }))
+          : [];
       case 'regions': return this.serverOptions('regions', REGIONS);
       case 'jurisdictions': return this.serverOptions('jurisdictionTypes', JURISDICTIONS);
       case 'currencyTypes': return this.serverOptions('currencyTypes', CURRENCY_TYPES);
@@ -549,11 +700,12 @@ export class MastersStore {
   /* ---- names for codes ---- */
 
   readonly lookup: Lookup = {
-    countryName: (code: string) => String(this.data.country().find((r) => r['alpha2'] === code)?.['name'] ?? (code || '—')),
+    countryName: (code: string) =>
+      this.reference()?.countries.find((r) => r.code === code)?.name ?? this.countryNames.get(code) ?? (code || '—'),
     /** "IN|TN" -> "Tamil Nadu" */
     stateName: (key: string) => {
       const [country, code] = key.split('|');
-      return String(this.data.state().find((r) => r['country'] === country && r['code'] === code)?.['name'] ?? (code || '—'));
+      return (this.statesByCountry()[country] ?? []).find((r) => r.code === code)?.name ?? this.stateNames.get(key) ?? (code || '—');
     }
   };
 

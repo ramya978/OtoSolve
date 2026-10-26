@@ -35,10 +35,10 @@ export const STATE: MasterConfig = {
     statusColumn
   ],
   defaultSort: { key: 'country', dir: 'asc' },
-  metrics: (rows) => [
-    { label: 'Regions', value: String(rows.length), note: `Across ${new Set(rows.map((r) => r['country'])).size} countries` },
-    ...statusMetrics(rows, 'regions'),
-    { label: 'With GST code', value: String(rows.filter((r) => s(r, 'gst')).length), note: 'Indian states and territories' }
+  metrics: (c) => [
+    { label: 'Regions', value: String(c.total), note: 'Across all countries' },
+    ...statusMetrics(c, 'regions'),
+    { label: 'Federal', value: String(c.extra), note: 'Federal jurisdictions' }
   ],
   formTitle: 'New state',
   formSubtitle: 'Add a state, province or territory under its country, with tax and postal rules.',

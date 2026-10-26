@@ -1,5 +1,6 @@
-import { ActivatedRoute } from '@angular/router';
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
@@ -35,11 +36,26 @@ export class ReadinessChecklist {
   protected readonly initials = initials;
 
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   constructor() {
     // The register passes the campaign on the link, so a refresh or a shared link still opens it.
+    // A code that matches no campaign is reported and sent back to the register: checks are never
+    // added to (or shown for) the first campaign in its place.
     const code = this.route.snapshot.queryParamMap.get('code');
-    this.store.select(code || this.store.selectedCode());
+    if (code) this.store.select(code);
+    effect(() => {
+      // No campaign on the link: there is nothing to check, so the person is sent to pick one.
+      if (!code) {
+        this.store.showToast('Open the checklist from a campaign in the register.', 'warn');
+        this.router.navigate([CW_PATHS.register]);
+        return;
+      }
+      if (code && this.store.notFound()) {
+        this.store.showToast(`Campaign ${code} was not found.`, 'warn');
+        this.router.navigate([CW_PATHS.register]);
+      }
+    });
   }
 
   // ---- data ----
@@ -64,6 +80,7 @@ export class ReadinessChecklist {
   protected readonly blocking = computed(() => this.checks().filter((c) => c.required && c.status !== 'passed'));
 
   protected readonly groups = computed(() => {
+    void this.store.reference();   // the categories arrive with the reference data
     const f = this.filter();
     const shown = this.checks().filter((c) => f === 'all' || c.status === f);
     return CATEGORIES.map((cat) => {
@@ -111,8 +128,8 @@ export class ReadinessChecklist {
     { key: 'passed', label: 'Passed', tone: 'tone-success' }
   ];
 
-  protected readonly categoryOptions: CwOption[] = CATEGORIES.map((c) => ({ value: c, label: c }));
-  protected readonly ownerOptions: CwOption[] = PEOPLE.map((p) => ({ value: p, label: p }));
+  protected get categoryOptions(): CwOption[] { return CATEGORIES.map((c) => ({ value: c, label: c })); }
+  protected get ownerOptions(): CwOption[] { return PEOPLE.map((p) => ({ value: p, label: p })); }
 
   // ---- check drawer ----
   protected readonly openId = signal<string | null>(null);

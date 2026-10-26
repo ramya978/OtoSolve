@@ -1,11 +1,12 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
-import { Activity, Donation, daysBetween, fmtDate, fmtTime, inr, todayIso } from '../../../Shared/Campaign/cw.data';
+import { Activity, Donation, daysBetween, fmtDate, fmtTime, todayIso } from '../../../Shared/Campaign/cw.data';
+import { formatMoney } from '../../../Shared/services/money-format';
 
 interface CalDay {
   iso: string;
@@ -59,12 +60,23 @@ export class CampaignDetail {
   protected readonly today = todayIso();
   protected readonly fmtDate = fmtDate;
   protected readonly fmtTime = fmtTime;
-  protected readonly inr = inr;
+  protected readonly inr = (n: number): string => formatMoney(n, this.c().currency, { style: 'whole' });
   protected readonly weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   constructor() {
+    // The campaign is the one in the address. With no code, or a code that matches nothing, the page
+    // says so and returns to the register - it never shows the first campaign in its place.
     const code = this.route.snapshot.paramMap.get('code');
     if (code) this.store.select(code);
+    else this.leave('Choose a campaign from the register to see its details.');
+    effect(() => {
+      if (code && this.store.notFound()) this.leave(`Campaign ${code} was not found.`);
+    });
+  }
+
+  private leave(message: string): void {
+    this.store.showToast(message, 'warn');
+    this.router.navigate([CW_PATHS.register]);
   }
 
   // ---- KPIs ----
