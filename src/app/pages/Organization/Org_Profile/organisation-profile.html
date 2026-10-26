@@ -1,56 +1,77 @@
 <!-- =====================================================================================
      ORGANISATION — Workspace Kit
-     heading · summary strip card · one card: tabs (Profile · Documents · Review & submit ·
-     Web addresses · History) + panel
+     heading with facts · one card: tabs (Profile · Documents · Review & submit · Web addresses ·
+     History) + people / administrator / last updated on the right + panel.
+     Review & submit is hidden when the organisation is active.
      ===================================================================================== -->
 <div class="og-page">
-  <header class="i-head">
-    <div>
+  <header class="i-head og-head">
+    <div class="og-head-main">
       <span class="i-eyebrow">Administration / Organisation</span>
-      <h1>
-        {{ org.name }}
-        @if (org.verified) {
-          <span class="og-verified" title="Verified organisation">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('verified')" /></svg>
+      <div class="og-title-row">
+        <h1>
+          {{ org.name }}
+          <span class="og-state" [class.is-ok]="org.verified" [attr.title]="org.verified ? 'Verified organisation' : statusLabel()">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(org.verified ? 'verified' : 'info')" /></svg>
           </span>
-        }
-      </h1>
-      <p>{{ org.code }} · {{ org.host }} · {{ org.type }} · Since {{ org.since }}</p>
+        </h1>
+        <p class="og-lead">
+          @if (org.verified) {
+            Manage this organisation's profile, documents, web addresses and history.
+          } @else {
+            Complete the profile, upload the supporting documents and send the organisation for approval.
+          }
+        </p>
+        <!-- <ul class="og-meta" aria-label="Organisation facts">
+          @if (org.code) {
+            <li><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('hash')" /></svg>{{ org.code }}</li>
+          }
+          @if (org.host) {
+            <li><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg>{{ org.host }}</li>
+          }
+          @if (org.type) {
+            <li><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>{{ org.type }}</li>
+          }
+          @if (sinceMonth) {
+            <li><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>Since {{ sinceMonth }}</li>
+          }
+        </ul> -->
+      </div>
     </div>
-    @if (tab() === 'profile') {
+    @if (current() === 'profile') {
       <div class="i-head-actions">
         <button type="button" class="i-btn i-btn--primary" (click)="edit()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
       </div>
     }
   </header>
 
-  <section class="i-card og-sumcard" aria-label="Organisation summary">
-    <div class="i-sum og-sum">
-      <div><span>People</span><strong>{{ org.people }} / {{ org.seats }}</strong><small>{{ org.seats - org.people }} seats free</small></div>
-      <div><span>Administrator</span><strong class="is-text">{{ org.administrator }}</strong><small>Primary contact</small></div>
-      <div><span>Status</span><strong class="is-text" [class.og-ok]="statusTone() === 'success'">{{ statusLabel() }}</strong><small>Registration</small></div>
-      <div class="og-sum-web"><span>Web address</span><strong class="is-text">{{ org.host }}</strong><small>{{ verifiedAddresses }} verified</small></div>
-      <div class="og-sum-upd"><span>Last updated</span><strong class="is-text">{{ org.lastUpdated }}</strong><small>Profile record</small></div>
-    </div>
-  </section>
-
   <section class="i-card og-main" aria-label="Organisation details">
-    <nav class="og-tabs" role="tablist" aria-label="Organisation sections">
-      @for (t of tabs; track t.key) {
-        <button type="button" role="tab" class="og-tab" [class.is-on]="tab() === t.key" [attr.aria-selected]="tab() === t.key"
-                (click)="select(t.key)">
-          {{ t.label }}
-          @if (tabCount(t.key) !== null) { <span class="og-tab-n">{{ tabCount(t.key) }}</span> }
-        </button>
-      }
-    </nav>
+    <div class="og-tabbar">
+      <nav class="og-tabs" role="tablist" aria-label="Organisation sections">
+        @for (t of tabs(); track t.key) {
+          <button type="button" role="tab" class="og-tab" [class.is-on]="current() === t.key" [attr.aria-selected]="current() === t.key"
+                  (click)="select(t.key)">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(t.icon)" /></svg>
+            {{ t.label }}
+            @if (tabCount(t.key); as n) { <span class="og-tab-n">{{ n }}</span> }
+          </button>
+        }
+      </nav>
+      <dl class="og-facts">
+        <div><dt>People</dt><dd>{{ org.people }} <span>/ {{ org.seats }}</span></dd></div>
+        <div><dt>Administrator</dt><dd>{{ org.administrator || '—' }}</dd></div>
+        <div><dt>Last updated</dt><dd>{{ org.lastUpdated || '—' }}</dd></div>
+      </dl>
+    </div>
 
     <!-- ============ PROFILE ============ -->
-    @if (tab() === 'profile') {
+    @if (current() === 'profile') {
       <div class="og-grid">
         <section class="og-sec">
-          <h3 class="og-h3">Registration</h3>
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('profile')" /></svg>Registration</h3>
+          </div>
           <dl class="i-kv">
             @for (r of registration; track r.label) {
               <div><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
@@ -59,7 +80,9 @@
         </section>
 
         <section class="og-sec">
-          <h3 class="og-h3">Contact &amp; region</h3>
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>Contact &amp; region</h3>
+          </div>
           <dl class="i-kv">
             @for (r of contact; track r.label) {
               <div [class.is-wide]="r.label === 'E-mail' || r.label === 'Website'"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
@@ -68,160 +91,302 @@
         </section>
 
         <section class="og-sec">
-          <h3 class="og-h3">Registered address</h3>
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>Registered address</h3>
+          </div>
           <address class="og-addr">
-            <strong>{{ address.line1 }}</strong>
-            <span>{{ address.line2 }}</span>
+            <strong>{{ address.line1 || '—' }}</strong>
+            @if (address.line2) { <span>{{ address.line2 }}</span> }
             <span>{{ address.city }} {{ address.postcode }}</span>
             <small>{{ address.country }}</small>
           </address>
         </section>
 
         <section class="og-sec">
-          <h3 class="og-h3">About</h3>
-          <p class="og-about">{{ about }}</p>
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('info')" /></svg>About</h3>
+          </div>
+          <p class="og-about">{{ about || '—' }}</p>
         </section>
       </div>
     }
 
     <!-- ============ DOCUMENTS ============ -->
-    @if (tab() === 'documents') {
+    @if (current() === 'documents') {
       <div class="og-pad">
-        <h3 class="og-h3">Document submissions</h3>
+        <div class="og-sechead">
+          <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('paperclip')" /></svg>Document submissions</h3>
+          <!-- @if (submissions().length) {
+            <span class="og-sechead-mid">
+              {{ submissions().length }} {{ submissions().length === 1 ? 'set' : 'sets' }}
+              @if (awaiting()) { · <b class="og-warn-text">{{ awaiting() }} awaiting review</b> }
+            </span>
+          } -->
+          @if (canUpload() && !composeOpen()) {
+            <button type="button" class="i-btn i-btn--primary og-push" (click)="openCompose()">
+              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg>Upload</button>
+          }
+        </div>
 
-        @if (documents.length) {
-          <div class="og-tablewrap">
-            <table class="og-table">
-              <thead><tr><th>Document</th><th>Kind</th><th>Uploaded</th><th>Size</th></tr></thead>
-              <tbody>
-                @for (d of documents; track d.name) {
-                  <tr><td><strong>{{ d.name }}</strong></td><td>{{ d.kind }}</td><td>{{ d.uploaded }}</td><td>{{ d.size }}</td></tr>
+        <!-- upload panel: type → files → send, all in one place -->
+        @if (canUpload() && composeOpen()) {
+          <section class="og-compose" aria-label="Upload documents">
+            <div class="og-c-block">
+              <span class="og-c-label" id="og-type-label">What are you uploading?</span>
+              <div class="og-chips" role="radiogroup" aria-labelledby="og-type-label">
+                @for (o of docTypes; track o) {
+                  <button type="button" role="radio" class="og-chip" [class.is-on]="o === cType()" [attr.aria-checked]="o === cType()" (click)="cType.set(o)">
+                    @if (o === cType()) { <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    {{ o }}
+                  </button>
                 }
-              </tbody>
-            </table>
+              </div>
+              @if (cTouched() && !cType()) { <small class="og-err">Pick what you are uploading.</small> }
+            </div>
+
+            <div class="og-c-block">
+              <span class="og-c-label">Files</span>
+              <div class="og-drop" [class.is-over]="dragOver()" [class.is-invalid]="cTouched() && !cFiles().length"
+                   (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)" (click)="picker.click()">
+                <span class="og-drop-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('cloud')" /></svg></span>
+                <span class="og-drop-text">
+                  <strong>Drop files here or <u>browse</u></strong>
+                  <small>{{ acceptLabel }} · up to 5 MB each</small>
+                </span>
+                <input #picker type="file" multiple hidden [attr.accept]="acceptAttr" (click)="$event.stopPropagation()" (change)="onPick(picker)" />
+              </div>
+              @if (cFiles().length) {
+                <ul class="og-files og-files--compose">
+                  @for (f of cFiles(); track f.id) {
+                    <li class="og-file">
+                      <span class="og-file-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.isImage ? 'image' : 'file')" /></svg></span>
+                      <span class="og-file-text">
+                        <strong [attr.title]="f.name">{{ f.name }}</strong>
+                        <small>{{ fmtSize(f.size) }}</small>
+                      </span>
+                      <span class="og-file-acts">
+                        <button type="button" class="og-icon-btn" aria-label="View" title="View" (click)="viewFile(f)">
+                          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></button>
+                        <button type="button" class="og-icon-btn is-danger" aria-label="Remove file" title="Remove" (click)="removeFile(f)">
+                          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+                      </span>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+
+            <div class="og-c-grid">
+              <label class="og-nf">
+                <span class="og-c-label">Title <span class="og-opt">optional</span></span>
+                <input class="og-input" type="text" maxlength="120" [placeholder]="cType() || 'e.g. Certificate of incorporation'"
+                       [value]="cTitle()" (input)="cTitle.set($any($event.target).value)" />
+              </label>
+              <label class="og-nf">
+                <span class="og-c-label">Note for the reviewer <span class="og-opt">optional</span></span>
+                <input class="og-input" type="text" maxlength="500" placeholder="e.g. The amendment page is the second file."
+                       [value]="cNote()" (input)="cNote.set($any($event.target).value)" />
+              </label>
+            </div>
+
+            <footer class="og-c-foot">
+              <span class="og-c-hint" [class.is-ready]="composeReady()">
+                <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(composeReady() ? 'check' : 'info')" /></svg>{{ composeHint() }}
+              </span>
+              <div class="og-c-actions">
+                <button type="button" class="i-btn" (click)="cancelCompose()">  <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
+                <button type="button" class="i-btn i-btn--primary" [disabled]="!composeReady()" (click)="submitCompose()">
+                  <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>Send for review</button>
+              </div>
+            </footer>
+          </section>
+        }
+
+        @if (submissions().length) {
+          <div class="og-subs">
+            @for (s of submissions(); track s.id) {
+              <article class="og-sub">
+                <header class="og-sub-head">
+                  <span [class]="'og-sub-st og-sub-st--' + s.status">{{ subStatusLabel(s.status) }}</span>
+                  <h4>{{ s.title }}</h4>
+                  @if (s.title !== s.type) { <span class="og-sub-type">{{ s.type }}</span> }
+                  <dl class="og-sub-meta">
+                    <div><dt>Files</dt><dd>{{ s.files.length }} @if (exts(s)) { <span>{{ exts(s) }}</span> }</dd></div>
+                    <div><dt>Size</dt><dd>{{ fmtSize(totalSize(s)) }}</dd></div>
+                    @if (s.by) { <div><dt>Uploaded by</dt><dd>{{ s.by }}</dd></div> }
+                    <div><dt>Submitted</dt><dd>{{ s.submittedAt ? fmtWhen(s.submittedAt) : '—' }}</dd></div>
+                  </dl>
+                </header>
+
+                @if (s.note) { <p class="og-sub-note">{{ s.note }}</p> }
+
+                @if (s.files.length) {
+                  <ul class="og-files">
+                    @for (f of s.files; track f.id) {
+                      <li class="og-file">
+                        <span class="og-file-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.isImage ? 'image' : 'file')" /></svg></span>
+                        <span class="og-file-text">
+                          <strong [attr.title]="f.name">{{ f.name }}</strong>
+                          <small>{{ fmtSize(f.size) }}@if (f.by) { · {{ f.by }} }@if (f.checksum) { · checksum {{ f.checksum }} }</small>
+                        </span>
+                        @if (f.url) {
+                          <span class="og-file-acts">
+                            <button type="button" class="og-icon-btn" aria-label="View" title="View" (click)="viewFile(f)">
+                              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></button>
+                            <button type="button" class="og-icon-btn" aria-label="Download" title="Download" (click)="downloadFile(f)">
+                              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg></button>
+                          </span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                }
+              </article>
+            }
           </div>
-        } @else {
-          <div class="i-empty og-empty">
-            <span class="i-ibox"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
-            <strong>No documents were submitted</strong>
-            <p>This organisation's registration has already been decided, so its document set is closed.</p>
+        } @else if (!composeOpen()) {
+          <div class="og-empty">
+            <span class="og-empty-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
+            <strong>No documents yet</strong>
+            @if (canUpload()) {
+              <span>Upload your registration certificate and other proofs so a reviewer can check them.</span>
+              <!-- <button type="button" class="i-btn i-btn--primary" (click)="openCompose()">
+                <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg>Upload documents</button> -->
+            } @else {
+              <span>This organisation is active, so no documents are needed.</span>
+            }
           </div>
         }
       </div>
     }
 
-    <!-- ============ REVIEW & SUBMIT ============ -->
-    @if (tab() === 'review') {
+    <!-- ============ REVIEW & SUBMIT (hidden when active) ============ -->
+    @if (current() === 'review') {
       <div class="og-split">
         <!-- left: checklist -->
         <section class="og-sec">
-          <h3 class="og-h3">Checklist <span class="og-count">{{ readyDone() }} of {{ readyTotal() }} ready</span></h3>
-          <ul class="og-checks">
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>Before you send</h3>
+            @if (pending()) { <span class="og-sechead-mid og-push og-warn-text">{{ pending() }} to fix</span> }
+          </div>
+          <ol class="og-checks">
             @for (c of checks(); track c.no) {
               <li class="og-check">
+                <span class="og-check-no">{{ c.no }}</span>
                 <span [class]="'og-check-ico og-check-ico--' + c.state">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.state === 'ok' ? 'check' : 'docAlert')" /></svg>
+                  <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.state === 'ok' ? 'check' : c.state === 'warn' ? 'docAlert' : 'info')" /></svg>
                 </span>
                 <span class="og-check-text">
                   <strong>{{ c.title }}</strong>
-                  <small [class.og-warn]="c.state === 'warn'">{{ c.detail }}</small>
+                  <small [class]="'is-' + c.state">{{ c.detail }}</small>
                 </span>
-                @if (c.state === 'ok') {
-                  <span class="i-st i-st--success">Ready</span>
-                } @else {
-                  <button type="button" class="i-btn" (click)="select(c.tab!)">{{ c.action }}</button>
+                @if (c.action) {
+                  <button type="button" class="i-btn og-btn-sm" (click)="runCheck(c)">
+                    <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.actionIcon ?? 'plus')" /></svg>{{ c.action }}</button>
                 }
               </li>
             }
-          </ul>
+          </ol>
         </section>
 
-        <!-- right: readiness + submit -->
+        <!-- right: send for approval -->
         <section class="og-sec og-sec--form">
-          <h3 class="og-h3">Readiness</h3>
-          <div class="og-ring-row">
-            <div class="og-ring" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="readyPct()">
-              <svg viewBox="0 0 80 80" aria-hidden="true">
-                <circle class="og-ring-bg" cx="40" cy="40" r="34" pathLength="100" />
-                <circle class="og-ring-fg" cx="40" cy="40" r="34" pathLength="100" [attr.stroke-dasharray]="readyPct() + ' 100'" />
-              </svg>
-              <strong>{{ readyPct() }}<small>%</small></strong>
-            </div>
-            <div class="og-ring-text">
-              <strong>{{ readyDone() }} of {{ readyTotal() }} items ready</strong>
-              <small>to send for approval</small>
-              <span [class]="'i-st i-st--' + statusTone()">{{ statusLabel() }}</span>
-            </div>
+          <div class="og-sechead">
+            <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>Send for approval</h3>
           </div>
-          <div class="og-divider"></div>
 
           @if (sent()) {
-            <div class="og-note is-ok">
-              <strong>Sent for approval</strong>
-              <p>A reviewer will look at it shortly. You will see the decision in History.</p>
+            <div class="og-banner og-banner--ok">
+              <div><strong>Sent for approval.</strong> A reviewer will look at it shortly. You will see the decision in History.</div>
             </div>
-          } @else if (canSend()) {
-            <label class="i-field">
-              <span class="i-field-label">Note for the reviewer <span class="og-opt">optional</span>
-                <span class="og-count">{{ note().length }} / {{ maxNote }}</span></span>
-              <textarea class="i-textarea" placeholder="Anything the reviewer should know." [value]="note()"
-                        [attr.maxlength]="maxNote" (input)="setNote($any($event.target).value)"></textarea>
-            </label>
-            <div class="og-actions">
-              <button type="button" class="i-btn i-btn--primary" (click)="send()">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>Send for approval</button>
+          } @else if (!canSend()) {
+            <div class="og-banner og-banner--info">
+              <div>Nothing to send right now - this organisation is {{ statusLabel() }}.</div>
+            </div>
+          } @else if (pending()) {
+            <div class="og-banner og-banner--warn">
+              <div>{{ pending() }} {{ pending() === 1 ? 'item still needs' : 'items still need' }} attention. You can still send, but the reviewer may return it.</div>
             </div>
           } @else {
-            <div class="og-note">
-              <strong>Nothing to send right now</strong>
-              <p>This organisation is {{ statusLabel() }}, so no registration is waiting for review. The form opens again if it is rejected or returned to draft.</p>
+            <div class="og-banner og-banner--ok">
+              <div>Everything is ready to send.</div>
             </div>
           }
+
+          <label class="og-field">
+            <span class="og-field-label">
+              <span>Note for the reviewer <span class="og-opt">optional</span></span>
+              <span class="og-muted">{{ note().length }} / {{ maxNote }}</span>
+            </span>
+            <textarea class="og-input og-input--area og-input--note" placeholder="Anything the reviewer should know." [value]="note()"
+                      [attr.maxlength]="maxNote" [disabled]="!canSend()" (input)="setNote($any($event.target).value)"></textarea>
+          </label>
+          <button type="button" class="i-btn i-btn--primary og-send" [disabled]="!canSend() || sending()" (click)="send()">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>{{ sending() ? 'Sending…' : 'Send for approval' }}</button>
         </section>
       </div>
     }
 
     <!-- ============ WEB ADDRESSES ============ -->
-    @if (tab() === 'web') {
+    @if (current() === 'web') {
       <div class="og-pad">
-        <h3 class="og-h3">Web addresses</h3>
-        <div class="og-tablewrap">
-          <table class="og-table">
-            <thead><tr><th>Address</th><th>Kind</th><th>Primary</th><th>Verification</th></tr></thead>
-            <tbody>
-              @for (w of webAddresses; track w.address) {
-                <tr>
-                  <td><strong>{{ w.address }}</strong></td>
-                  <td>{{ w.kind }}</td>
-                  <td>@if (w.primary) { <span class="i-chip">Primary</span> } @else { — }</td>
-                  <td>
-                    @if (w.verifiedOn) { <span class="i-st i-st--success">Verified {{ w.verifiedOn }}</span> }
-                    @else { <span class="i-st i-st--warning">Not verified</span> }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+        <div class="og-sechead">
+          <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg>Web addresses</h3>
+          <span class="og-sechead-mid og-push">{{ verifiedAddresses }} of {{ webAddresses.length }} verified</span>
         </div>
+        @if (webAddresses.length) {
+          <div class="og-tablewrap">
+            <table class="og-table">
+              <thead><tr><th>Address</th><th>Kind</th><th>Primary</th><th>Verification</th></tr></thead>
+              <tbody>
+                @for (w of webAddresses; track w.address) {
+                  <tr>
+                    <td><strong>{{ w.address }}</strong></td>
+                    <td>{{ w.kind }}</td>
+                    <td>@if (w.primary) { <span class="i-chip">Primary</span> } @else { — }</td>
+                    <td>
+                      @if (w.verifiedOn) { <span class="i-st i-st--success">Verified {{ w.verifiedOn }}</span> }
+                      @else { <span class="i-st i-st--warning">Not verified</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <div class="og-empty-row">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg>
+            No web addresses yet.
+          </div>
+        }
       </div>
     }
 
     <!-- ============ HISTORY ============ -->
-    @if (tab() === 'history') {
+    @if (current() === 'history') {
       <div class="og-pad">
-        <h3 class="og-h3">History</h3>
-        <ol class="i-journey og-history">
-          @for (h of history; track $index) {
-            <li class="is-done">
-              <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(h.tone === 'success' ? 'check' : h.tone === 'warning' ? 'clock' : 'plus')" /></svg></span>
-              <span class="i-journey-text">
-                <strong>{{ h.label }}</strong>
-                <small>{{ h.day }} {{ h.time }} · {{ h.by }}@if (h.from) { · from {{ h.from }} }</small>
-              </span>
-              <span [class]="'i-st i-st--' + h.tone + ' og-hist-st'">{{ h.label }}</span>
-            </li>
-          }
-        </ol>
+        <div class="og-sechead">
+          <h3 class="og-title"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg>History</h3>
+        </div>
+        @if (history.length) {
+          <ol class="i-journey og-history">
+            @for (h of history; track $index) {
+              <li class="is-done">
+                <span class="i-journey-dot"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(h.tone === 'success' ? 'check' : h.tone === 'warning' ? 'clock' : 'plus')" /></svg></span>
+                <span class="i-journey-text">
+                  <strong>{{ h.label }}</strong>
+                  <small>{{ h.day }} {{ h.time }} · {{ h.by }}@if (h.from) { · from {{ h.from }} }</small>
+                </span>
+                <span [class]="'i-st i-st--' + h.tone + ' og-hist-st'">{{ h.label }}</span>
+              </li>
+            }
+          </ol>
+        } @else {
+          <div class="og-empty-row">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg>
+            No history yet.
+          </div>
+        }
       </div>
     }
   </section>

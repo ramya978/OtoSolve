@@ -1,0 +1,411 @@
+
+<div class="dc">
+
+ 
+
+  <!-- ===== KPI cards: icon + value, label, side figure, note; tone line on the bottom ===== -->
+  <section class="dc-kpis" aria-label="Campaign figures">
+    @for (k of kpis(); track k.key; let i = $index) {
+      <div class="dc-kpi" [attr.data-tone]="k.tone" [style.animation-delay.ms]="i * 50" [attr.title]="k.note">
+        <div class="dc-kpi-row">
+          <span class="dc-chip"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(k.icon)" /></svg></span>
+          <strong>{{ k.value }}</strong>
+        </div>
+        <span class="dc-kpi-label">{{ k.label }}</span>
+        <p class="dc-kpi-foot"><b>{{ k.side.value }}</b><span>{{ k.side.label }}</span></p>
+        <small class="dc-kpi-note">{{ k.note }}</small>
+      </div>
+    }
+  </section>
+
+  <!-- ===== donation statistics + channels ===== -->
+  <section class="dc-row dc-r2">
+    <article class="dc-card dc-don">
+      <header class="dc-card-head">
+        <div><h3>Donation statistics</h3><p>Amount received and gifts per month · hover a month for details</p></div>
+        <div class="dc-seg" role="group" aria-label="Period">
+          @for (r of ranges; track r) {
+            <button type="button" [class.is-on]="range() === r" [attr.aria-pressed]="range() === r" (click)="setRange(r)">{{ r }} months</button>
+          }
+        </div>
+      </header>
+
+      <div class="dc-don-top">
+        <div class="dc-don-big">
+          <span class="dc-don-label">Received in the last {{ range() }} months</span>
+          <div class="dc-don-value">
+            <strong>{{ inr(monthsTotal()) }}</strong>
+            <span class="dc-delta" [attr.data-tone]="monthDelta().dir === 'down' ? 'danger' : monthDelta().dir === 'up' ? 'success' : 'neutral'">
+              {{ monthDelta().dir === 'down' ? '↓' : monthDelta().dir === 'up' ? '↑' : '–' }} {{ monthDelta().pct }}%
+            </span>
+          </div>
+          <small>{{ inr(monthDelta().now) }} this month, compared with last month</small>
+        </div>
+        <ul class="dc-legend">
+          <li data-tone="primary"><i class="is-bar"></i>Amount received</li>
+          <li data-tone="warning"><i class="is-line"></i>Number of gifts</li>
+        </ul>
+      </div>
+
+      <div class="dc-chart">
+        <div class="dc-axis" aria-hidden="true">
+          @for (t of chart().amtTicks; track $index) { <span [style.top.%]="t.y">{{ t.label }}</span> }
+        </div>
+
+        <div class="dc-plot" (mouseleave)="hoverMonth.set(null)">
+          @for (t of chart().amtTicks; track $index) { <i class="dc-grid" [class.is-base]="t.y === 100" [style.top.%]="t.y"></i> }
+
+          <div class="dc-cols">
+            @for (c of chart().cols; track c.key) {
+              <button type="button" class="dc-col" [class.is-now]="c.now" [class.is-on]="hoverMonth() === c.i"
+                      [attr.aria-label]="c.label + ' ' + c.year + ': ' + inr(c.amount) + ', ' + c.gifts + ' gifts, ' + c.donors + ' donors'"
+                      (mouseenter)="hoverMonth.set(c.i)" (focus)="hoverMonth.set(c.i)" (blur)="hoverMonth.set(null)">
+                <i class="dc-bar" [style.height.%]="c.h" [style.animation-delay.ms]="c.i * 60"></i>
+              </button>
+            }
+          </div>
+
+          <svg class="dc-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="dcGiftsArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" style="stop-color: #c27c12; stop-opacity: .16" />
+                <stop offset="100%" style="stop-color: #c27c12; stop-opacity: 0" />
+              </linearGradient>
+            </defs>
+            <path class="dc-line-area" [attr.d]="chart().area" />
+            <path class="dc-line-path" [attr.d]="chart().line" />
+          </svg>
+
+          @for (c of chart().cols; track c.key) {
+            <span class="dc-pt" [class.is-on]="hoverMonth() === c.i" [style.left.%]="c.x" [style.top.%]="c.y"
+                  [style.animation-delay.ms]="900 + c.i * 60"></span>
+          }
+
+          @if (hovered(); as h) {
+            <div class="dc-tip" [class.is-left]="h.x > 58" [style.left.%]="h.x" role="status">
+              <small>{{ h.label }} {{ h.year }}</small>
+              <strong>{{ inr(h.amount) }}</strong>
+              <span data-tone="warning"><i></i>Gifts<b>{{ h.gifts }}</b></span>
+              <span data-tone="info"><i></i>Donors<b>{{ h.donors }}</b></span>
+            </div>
+          }
+        </div>
+
+        <div class="dc-axis is-right" aria-hidden="true">
+          @for (t of chart().giftTicks; track $index) { <span [style.top.%]="t.y">{{ t.label }}</span> }
+        </div>
+
+        <div class="dc-chart-x" aria-hidden="true">
+          @for (c of chart().cols; track c.key) {
+            <span [class.is-now]="c.now" [class.is-on]="hoverMonth() === c.i">{{ c.label }}</span>
+          }
+        </div>
+      </div>
+
+      <div class="dc-don-foot">
+        @for (st of donationStats(); track st.label) {
+          <div class="dc-fstat" [attr.data-tone]="st.tone">
+            <div class="dc-fstat-top">
+              <span class="dc-chip xs"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(st.icon)" /></svg></span>
+              {{ st.label }}
+            </div>
+            <strong>{{ st.value }}</strong>
+            <span class="dc-meter thin"><i [style.width.%]="st.pct"></i></span>
+            <small>{{ st.note }}</small>
+          </div>
+        }
+      </div>
+    </article>
+
+    <article class="dc-card">
+      <header class="dc-card-head">
+        <div><h3>Donations by channel</h3><p>{{ channels().total }} gifts · {{ inr(channels().amount) }}</p></div>
+      </header>
+      @if (channels().total) {
+        <div class="dc-ch">
+          <div class="dc-donut" role="img" [attr.aria-label]="channels().total + ' donations by channel'">
+            <svg viewBox="0 0 42 42" aria-hidden="true">
+              <circle class="dc-donut-bg" cx="21" cy="21" r="15.9155" />
+              @for (r of channels().rows; track r.name; let i = $index) {
+                <circle class="dc-donut-seg" [attr.data-tone]="r.tone" cx="21" cy="21" r="15.9155"
+                        [style.stroke-dasharray]="r.dash" [style.stroke-dashoffset]="r.offset"
+                        [style.animation-delay.ms]="150 + i * 200" />
+              }
+            </svg>
+            <span class="dc-donut-center"><strong>{{ channels().total }}</strong><small>gifts</small></span>
+          </div>
+          <ul class="dc-ch-list">
+            @for (r of channels().rows; track r.name) {
+              <li [attr.data-tone]="r.tone">
+                <i></i>
+                <span>{{ r.name }}</span>
+                <small>{{ inrShort(r.amount) }}</small>
+                <b>{{ r.count }}</b>
+              </li>
+            }
+          </ul>
+        </div>
+      } @else {
+        <div class="dc-empty" data-tone="primary">
+          <span class="dc-chip"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('heart')" /></svg></span>
+          <strong>No donations yet</strong>
+          <p>Gifts show here by channel once they arrive.</p>
+        </div>
+      }
+    </article>
+  </section>
+
+  <!-- ===== top campaigns · lifecycle · recent activity ===== -->
+  <section class="dc-row dc-r3">
+    <!-- top campaigns -->
+    <article class="dc-card">
+      <header class="dc-card-head">
+        <div><h3>Top campaigns</h3><p>Furthest along their target</p></div>
+      </header>
+      <ul class="dc-list dc-body">
+        @for (t of topCampaigns(); track t.code; let i = $index) {
+          <li class="dc-top-row">
+            <span class="dc-rank" [attr.data-tone]="i === 0 ? 'warning' : meta(t.lifecycle).tone">{{ initials(t.name) }}</span>
+            <span class="dc-top-text">
+              <button type="button" class="dc-name" (click)="openCampaign(t.code)">{{ t.name }}</button>
+              <small>{{ inrShort(t.raised) }} of {{ inrShort(t.target) }}</small>
+              <span class="dc-meter thin" [attr.data-tone]="t.pct >= 100 ? 'success' : 'primary'"><i [style.width.%]="t.pct"></i></span>
+            </span>
+            <b class="dc-top-pct">{{ t.pct }}%</b>
+          </li>
+        } @empty {
+          <li class="dc-muted">No campaigns yet.</li>
+        }
+      </ul>
+      <footer class="dc-card-foot">
+        <a class="dc-link" [routerLink]="paths.register">Open all campaigns</a>
+        <svg class="dc-ico dc-ico-sm dc-foot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+      </footer>
+    </article>
+
+    <!-- lifecycle -->
+    <article class="dc-card">
+      <header class="dc-card-head">
+        <div><h3>Lifecycle</h3><p>{{ campaigns().length }} campaigns by status</p></div>
+      </header>
+      <div class="dc-body">
+        <div class="dc-stack" role="img" aria-label="Campaigns by status">
+          @for (s of lifecycle(); track s.key) {
+            @if (s.value) { <i [attr.data-tone]="s.tone" [style.width.%]="s.pct" [attr.title]="s.label + ' ' + s.value"></i> }
+          }
+        </div>
+        <ul class="dc-share">
+          @for (s of lifecycle(); track s.key) {
+            <li [attr.data-tone]="s.tone" [class.is-zero]="!s.value">
+              <span class="dc-chip xs"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg></span>
+              <span class="dc-share-label">{{ s.label }}</span>
+              <b>{{ s.value }}</b>
+              <small>{{ s.pct }}%</small>
+            </li>
+          }
+        </ul>
+      </div>
+    </article>
+
+    <!-- recent activity -->
+    <article class="dc-card">
+      <header class="dc-card-head">
+        <div><h3>Recent campaign activity</h3><p>Latest changes across campaigns</p></div>
+      </header>
+      <ol class="dc-timeline dc-body">
+        @for (a of recent(); track a.at + a.title + a.code) {
+          <li [attr.data-tone]="a.meta.tone">
+            <span class="dc-tl-ico"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.meta.icon)" /></svg></span>
+            <div class="dc-tl-body">
+              <div class="dc-tl-top"><strong>{{ a.title }}</strong><span class="dc-tag">{{ a.meta.label }}</span></div>
+              <button type="button" class="dc-tl-camp" (click)="openCampaign(a.code)">{{ a.campaign }}</button>
+              <small>{{ when(a.at) }} · by {{ a.by }}</small>
+            </div>
+          </li>
+        } @empty {
+          <li class="dc-muted">No campaign activity yet.</li>
+        }
+      </ol>
+    </article>
+  </section>
+
+  <!-- ===== active campaigns + ending soon / top tracking assets ===== -->
+  <section class="dc-row dc-r4">
+    <article class="dc-card dc-active">
+      <header class="dc-card-head">
+        <div>
+          <h3>Active campaigns <span class="dc-count">{{ activeCount() }}</span></h3>
+          <p>Taking donations now · open one for its full detail</p>
+        </div>
+        <div class="dc-head-tools">
+          <label class="dc-search">
+            <svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+            <input #cq type="search" placeholder="Search name or code" aria-label="Search active campaigns"
+                   [value]="query()" (input)="setQuery(cq.value)" />
+          </label>
+          <a class="dc-btn dc-btn-outline dc-btn-sm" [routerLink]="paths.register">All campaigns</a>
+        </div>
+      </header>
+
+      <div class="dc-tabs" role="tablist" aria-label="Filter active campaigns">
+        @for (t of activeTabs; track t.key) {
+          <button type="button" role="tab" class="dc-tab" [class.is-on]="activeTab() === t.key"
+                  [attr.aria-selected]="activeTab() === t.key" (click)="setTab(t.key)">
+            <svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(t.icon)" /></svg>
+            {{ t.label }} <span>{{ tabCounts()[t.key] }}</span>
+          </button>
+        }
+      </div>
+
+      <div class="dc-table-wrap">
+        <table class="dc-table">
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Time left</th>
+              <th>Progress</th>
+              <th>Supporters</th>
+              <th class="dc-th-go"><span class="dc-sr">Open</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of pageRows(); track r.code) {
+              <tr (click)="openCampaign(r.code)">
+                <td>
+                  <div class="dc-camp">
+                    <span class="dc-camp-logo" [attr.data-tone]="r.tone">{{ initials(r.name) }}</span>
+                    <span class="dc-camp-text">
+                      <strong>{{ r.name }}</strong>
+                      <small>
+                        <span class="dc-avatar-xs">{{ initials(r.owner) }}</span>
+                        {{ r.owner }}@if (r.coOwners) { <em>+{{ r.coOwners }}</em> } · {{ r.code }}
+                      </small>
+                    </span>
+                  </div>
+                </td>
+                <td>
+                  <div class="dc-left">
+                    <span class="dc-left-chip" [attr.data-tone]="leftTone(r.left)">
+                      <svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+                      {{ leftLabel(r.left) }}
+                    </span>
+                    <small>{{ r.end ? 'Ends ' + fmtDate(r.end) : '—' }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="dc-prog" [attr.data-tone]="r.ahead ? 'success' : 'warning'">
+                    <div class="dc-prog-top">
+                      <b>{{ r.pct }}%</b>
+                      <small>{{ inrShort(r.raised) }} / {{ inrShort(r.target) }}</small>
+                    </div>
+                    <span class="dc-prog-bar">
+                      <i [style.width.%]="r.pct"></i>
+                      <em [style.left.%]="r.elapsed" [attr.title]="r.elapsed + '% of the time used'"></em>
+                    </span>
+                    <small class="dc-prog-note">{{ r.ahead ? 'On track' : 'Behind' }} · {{ r.elapsed }}% of time used</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="dc-sup">
+                    <span data-tone="info"><svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg>{{ r.donors }}</span>
+                    <span data-tone="danger"><svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('heart')" /></svg>{{ r.gifts }}</span>
+                  </div>
+                </td>
+                <td class="dc-th-go">
+                  <span class="dc-go"><svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevR')" /></svg></span>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="dc-empty" data-tone="success">
+                    <span class="dc-chip"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg></span>
+                    <strong>{{ activeCount() ? 'No active campaign matches' : 'No active campaigns' }}</strong>
+                    <p>{{ activeCount() ? 'Try another name, code or tab.' : 'Campaigns show here once they go live.' }}</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="dc-table-foot">
+        <span>Showing {{ rangeFrom() }} to {{ rangeTo() }} of {{ filtered().length }} active campaigns</span>
+        <nav class="dc-pager" aria-label="Pagination">
+          <button type="button" class="dc-page" [disabled]="page() === 1" (click)="goPage(page() - 1)" aria-label="Previous page">
+            <svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevL')" /></svg>
+          </button>
+          @for (p of pages(); track p) {
+            <button type="button" class="dc-page" [class.is-on]="p === page()" [attr.aria-current]="p === page() ? 'page' : null"
+                    (click)="goPage(p)">{{ p }}</button>
+          }
+          <button type="button" class="dc-page" [disabled]="page() === pageCount()" (click)="goPage(page() + 1)" aria-label="Next page">
+            <svg class="dc-ico dc-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevR')" /></svg>
+          </button>
+        </nav>
+      </footer>
+    </article>
+
+    <div class="dc-stack-col">
+      <!-- ending soon -->
+      <article class="dc-card">
+        <header class="dc-card-head">
+          <div><h3>Ending soon</h3><p>Active campaigns closing in 30 days</p></div>
+        </header>
+        @if (endingSoon().length) {
+          <ul class="dc-list dc-body">
+            @for (e of endingSoon(); track e.code) {
+              <li class="dc-end-row">
+                <span class="dc-days" [attr.data-tone]="e.left <= 7 ? 'danger' : 'warning'"><b>{{ e.left }}</b><small>days</small></span>
+                <span class="dc-top-text">
+                  <button type="button" class="dc-name" (click)="openCampaign(e.code)">{{ e.name }}</button>
+                  <small>Ends {{ fmtDate(e.end) }} · {{ e.pct }}% raised</small>
+                  <span class="dc-meter thin" data-tone="primary"><i [style.width.%]="e.pct"></i></span>
+                </span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="dc-empty" data-tone="success">
+            <span class="dc-chip"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
+            <strong>Nothing ending soon</strong>
+            <p>No active campaign closes in the next 30 days.</p>
+          </div>
+        }
+      </article>
+
+      <!-- top tracking assets -->
+      <article class="dc-card">
+        <header class="dc-card-head">
+          <div><h3>Top tracking assets</h3><p>By donations traced</p></div>
+        </header>
+        @if (topAssets().length) {
+          <ul class="dc-list dc-body">
+            @for (a of topAssets(); track a.ref) {
+              <li class="dc-asset-row" [attr.data-tone]="a.type === 'qr' ? 'primary' : 'warning'">
+                <span class="dc-chip sm"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.type === 'qr' ? 'qr' : 'page')" /></svg></span>
+                <span class="dc-top-text">
+                  <strong><i class="dc-live" [class.is-live]="a.live"></i>{{ a.ref }}</strong>
+                  <small>{{ a.campaign }}</small>
+                  <span class="dc-meter thin"><i [style.width.%]="a.pct"></i></span>
+                </span>
+                <b class="dc-top-pct">{{ inrShort(a.received) }}</b>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="dc-empty" data-tone="warning">
+            <span class="dc-chip"><svg class="dc-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
+            <strong>No tracking assets</strong>
+            <p>QR codes and landing pages appear here once created.</p>
+          </div>
+        }
+        <footer class="dc-card-foot">
+          <a class="dc-link" [routerLink]="paths.assets">Manage tracking assets</a>
+          <svg class="dc-ico dc-ico-sm dc-foot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+        </footer>
+      </article>
+    </div>
+  </section>
+</div>

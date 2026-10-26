@@ -10,10 +10,11 @@ import { CheckoutSession, PublicCampaignSummary, PublicDonationFormSettings } fr
 import { CountryLookup } from '../../../Shared/models/geo-lookup.model';
 import { MasterLookup } from '../../../Shared/models/global-master.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
-type NdMenu = 'cause' | 'currency' | 'country' | 'state' | 'city' | null;
+type NdMenu = 'cause' | 'country' | 'state' | 'city' | null;
 type NdErr = 'cause' | 'currency' | 'amount' | 'mobile' | 'pan' | 'line1' | 'country' | 'state' | 'city' | 'pin' | 'privacy';
 
-interface NdCause { code: string; name: string; org: string; id: string; }
+/** amount + currency are the campaign's defaults (null when the campaign has none) */
+interface NdCause { code: string; name: string; org: string; id: string; amount: number | null; currency: string | null; }
 interface NdCurrency { code: string; symbol: string; label: string; }
 interface NdCountry { name: string; dial: string; id: string; }
 
@@ -26,6 +27,62 @@ function symbolOf(code: string): string {
   } catch {
     return code;
   }
+}
+
+/* ---------- campaign defaults (amount + currency) ----------
+   The campaign list is read by field name. Known names are tried first; after that any field whose
+   name says "amount" / "currency" is used, also one level down (e.g. settings.defaultAmount).
+   Totals such as raised / target / goal are never taken as the gift amount. */
+const AMOUNT_KEYS = [
+  'defaultAmount', 'defaultDonationAmount', 'suggestedAmount', 'suggestedDonationAmount', 'donationAmount',
+  'fixedAmount', 'presetAmount', 'unitAmount', 'minimumAmount', 'minimumDonationAmount', 'minAmount', 'amount'
+];
+const CURRENCY_KEYS = ['currencyCode', 'defaultCurrencyCode', 'defaultCurrency', 'currency', 'currencyReference', 'currencyIsoCode'];
+const NOT_GIFT = /raised|collected|target|goal|total|received|paid|balance/i;
+
+type Bag = Record<string, unknown>;
+
+const isBag = (v: unknown): v is Bag => !!v && typeof v === 'object' && !Array.isArray(v);
+
+/** the row itself plus its nested objects (one level), so settings.defaultAmount is found too */
+function layers(row: object): Bag[] {
+  const top = row as Bag;
+  return [top, ...Object.values(top).filter(isBag)];
+}
+
+function toAmount(v: unknown): number | null {
+  if (isBag(v)) v = v['amount'] ?? v['value'];
+  const n = typeof v === 'string' ? Number(v.replace(/[^\d.]/g, '')) : Number(v);
+  return v !== null && v !== '' && isFinite(n) && n > 0 ? n : null;
+}
+
+function toCurrency(v: unknown): string | null {
+  if (isBag(v)) v = v['code'] ?? v['reference'] ?? v['currencyCode'] ?? v['isoCode'];
+  return typeof v === 'string' && /^[A-Za-z]{3}$/.test(v.trim()) ? v.trim().toUpperCase() : null;
+}
+
+function campaignAmount(row: object): number | null {
+  for (const bag of layers(row)) {
+    for (const k of AMOUNT_KEYS) { const n = toAmount(bag[k]); if (n) return n; }
+  }
+  for (const bag of layers(row)) {
+    for (const [k, v] of Object.entries(bag)) {
+      if (/amount/i.test(k) && !NOT_GIFT.test(k)) { const n = toAmount(v); if (n) return n; }
+    }
+  }
+  return null;
+}
+
+function campaignCurrency(row: object): string | null {
+  for (const bag of layers(row)) {
+    for (const k of CURRENCY_KEYS) { const c = toCurrency(bag[k]); if (c) return c; }
+  }
+  for (const bag of layers(row)) {
+    for (const [k, v] of Object.entries(bag)) {
+      if (/curr/i.test(k)) { const c = toCurrency(v); if (c) return c; }
+    }
+  }
+  return null;
 }
 
 const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
@@ -90,6 +147,13 @@ export class NewDonation implements OnInit {
     return q ? this.causeRows().filter((c) => `${c.name} ${c.code} ${c.org}`.toLowerCase().includes(q)) : this.causeRows();
   });
   protected readonly currencyInfo = computed(() => this.currencyRows().find((c) => c.code === this.currency()) ?? null);
+  /** symbol shown inside the amount box - follows the currency of the chosen campaign */
+  protected readonly currencySymbol = computed(() => this.currencyInfo()?.symbol ?? (this.currency() ? symbolOf(this.currency()!) : ''));
+  /** true while the amount is still the campaign's default */
+  protected readonly amountFromCause = computed(() => {
+    const a = this.causeInfo()?.amount;
+    return a != null && this.amountValue() === a;
+  });
   protected readonly countryInfo = computed(() => this.countryRows().find((c) => c.name === this.country()) ?? null);
   protected readonly stateList = computed(() => this.stateRows().filter((r) => r.status === 'active').map((r) => ({ name: r.name })));
   protected readonly cityList = computed(() => this.cityRows().filter((r) => r.status === 'active').map((r) => r.name));
@@ -100,10 +164,10 @@ export class NewDonation implements OnInit {
     return this.amount().trim() && isFinite(n) ? n : 0;
   });
   protected readonly amountLabel = computed(() => {
-    const c = this.currencyInfo();
+    const sym = this.currencySymbol();
     const n = this.amountValue();
-    const txt = n.toLocaleString(c?.code === 'INR' ? 'en-IN' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return c ? (c.symbol.length > 1 ? `${c.symbol} ${txt}` : `${c.symbol}${txt}`) : txt;
+    const txt = n.toLocaleString(this.currency() === 'INR' ? 'en-IN' : 'en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return sym ? (sym.length > 1 ? `${sym} ${txt}` : `${sym}${txt}`) : txt;
   });
 
   protected readonly errors = computed<Record<NdErr, string>>(() => {
@@ -112,7 +176,7 @@ export class NewDonation implements OnInit {
     const pin = this.pin().trim();
     return {
       cause: !this.cause() ? 'Choose a campaign or appeal.' : '',
-      currency: !this.currency() ? 'Choose a currency.' : '',
+      currency: !this.currency() ? 'This campaign has no currency set. Choose another campaign.' : '',
       amount: !amt ? 'Enter an amount.'
         : !/^\d+(\.\d{1,2})?$/.test(amt) || Number(amt) <= 0 ? 'Enter an amount above zero, up to two decimals.' : '',
       mobile: !mob ? 'Enter a mobile number.'
@@ -135,7 +199,7 @@ export class NewDonation implements OnInit {
     const e = this.errors();
     const count = (keys: NdErr[]) => keys.filter((k) => !e[k]).length;
     return {
-      gift: { done: count(['cause', 'currency', 'amount']), total: 3 },
+      gift: { done: count(['cause', 'amount']), total: 2 },
       you: { done: count(['mobile']) + 2, total: 3 },
       address: { done: count(['line1', 'country', 'state', 'city', 'pin']), total: 5 },
       confirm: { done: count(['privacy']), total: 1 }
@@ -147,7 +211,9 @@ export class NewDonation implements OnInit {
       next: (list) => {
         this.campaigns = list;
         const org = this.tokens.tenant()?.tenantName ?? '';
-        this.causeRows.set(list.map((c) => ({ id: c.id, code: c.code, name: c.name, org })));
+        this.causeRows.set(list.map((c) => ({ id: c.id, code: c.code, name: c.name, org, amount: campaignAmount(c), currency: campaignCurrency(c) })));
+        // shows the campaign fields once, so a missing amount / currency is easy to trace
+        if (list.length) console.info('[new-donation] campaign fields:', Object.keys(list[0]), list[0]);
       },
       error: (e: unknown) => this.toasts.show('Campaigns unavailable', apiErrorMessage(e), 'error')
     });
@@ -190,8 +256,18 @@ export class NewDonation implements OnInit {
     if (m === 'cause' && this.menu() !== 'cause') this.causeQuery.set('');
     this.menu.set(this.menu() === m ? null : m);
   }
-  pickCause(c: NdCause): void { this.cause.set(c.code); this.menu.set(null); }
-  pickCurrency(c: NdCurrency): void { this.currency.set(c.code); this.menu.set(null); }
+  /** choosing a campaign fills in its default amount and currency (the amount stays editable) */
+  pickCause(c: NdCause): void {
+    const prev = this.causeInfo();
+    this.cause.set(c.code);
+    if (c.currency) this.currency.set(c.currency);
+    if (c.amount != null) {
+      this.amount.set(String(c.amount));
+    } else if (prev?.amount != null && this.amountValue() === prev.amount) {
+      this.amount.set(''); // don't keep the previous campaign's default
+    }
+    this.menu.set(null);
+  }
   pickCountry(c: NdCountry): void {
     if (this.country() !== c.name) { this.state.set(null); this.city.set(null); }
     this.country.set(c.name);

@@ -75,43 +75,34 @@
             @if (bad('cause')) { <p class="nd-err">{{ bad('cause') }}</p> }
           </div>
 
-          <div class="nd-field">
-            <span class="nd-lbl">Paid in <em>*</em></span>
-            <div class="nd-dd" [class.is-open]="menu() === 'currency'">
-              <button type="button" class="nd-input nd-dd-btn" [class.has-err]="!!bad('currency')" (click)="toggleMenu('currency', $event)">
-                <span [class.nd-ph]="!currencyInfo()">@if (currencyInfo(); as c) { {{ c.code }} · {{ c.label }} } @else { Select currency }</span>
-                <svg class="nd-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-              </button>
-              @if (menu() === 'currency') {
-                <div class="nd-menu" (click)="$event.stopPropagation()">
-                  <ul role="listbox">
-                    @for (c of currencies; track c.code) {
-                      <li><button type="button" [class.is-on]="currency() === c.code" (click)="pickCurrency(c)"><span class="nd-sym">{{ c.symbol }}</span>{{ c.code }}<small>{{ c.label }}</small></button></li>
-                    }
-                  </ul>
-                </div>
-              }
-            </div>
-            @if (bad('currency')) { <p class="nd-err">{{ bad('currency') }}</p> }
-          </div>
-
-          <div class="nd-field">
-            <span class="nd-lbl">Your gift <em>*</em></span>
-            <label class="nd-input nd-amount" [class.has-err]="!!bad('amount')">
-              <span class="nd-cur">{{ currencyInfo()?.symbol ?? '' }}</span>
-              <input type="text" inputmode="decimal" placeholder="0.00" [value]="amount()" (input)="setText('amount', $event)" />
+          <!-- amount: filled from the chosen campaign; the symbol follows the campaign's currency -->
+          <div class="nd-field nd-span">
+            <span class="nd-lbl">Your gift <em>*</em>@if (currency()) { <small>{{ currencyInfo()?.label ?? currency() }}</small> }</span>
+            <label class="nd-input nd-amount" [class.has-err]="!!bad('amount') || !!bad('currency')">
+              <span class="nd-cur">{{ currencySymbol() || '¤' }}</span>
+              <input type="text"  inputmode="decimal" placeholder="0.00" [value]="amount()" (input)="setText('amount', $event)"  readonly/>
             </label>
-            @if (bad('amount')) { <p class="nd-err">{{ bad('amount') }}</p> } @else { <span class="nd-hint">Greater than zero; up to two decimal places.</span> }
+            @if (bad('currency')) {
+              <p class="nd-err">{{ bad('currency') }}</p>
+            } @else if (bad('amount')) {
+              <p class="nd-err">{{ bad('amount') }}</p>
+            } @else if (amountFromCause()) {
+              <span class="nd-hint">Suggested by this campaign - you can change it.</span>
+            } @else if (causeInfo() && causeInfo()!.amount == null) {
+              <span class="nd-hint">This campaign has no set amount - enter what you would like to give.</span>
+            } @else {
+              <span class="nd-hint">Greater than zero; up to two decimal places.</span>
+            }
           </div>
 
-          <div class="nd-quick nd-span">
+          <!-- <div class="nd-quick nd-span">
             <span class="nd-lbl">Quick amounts</span>
             <div>
               @for (q of quickAmounts; track q) {
                 <button type="button" [class.is-on]="amountValue() === q" (click)="setQuick(q)">{{ quickLabel(q) }}</button>
               }
             </div>
-          </div>
+          </div> -->
         </div>
       </section>
 
@@ -237,7 +228,7 @@
           <label class="nd-check" [class.has-err]="!!bad('privacy')">
             <input type="checkbox" [checked]="privacy()" (change)="privacy.set($any($event.target).checked)" />
             <span class="nd-box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5" /></svg></span>
-            <span>I acknowledge the <a href="#" (click)="$event.preventDefault()">Privacy Notice</a> <em>*</em></span>
+            <span>I acknowledge the Privacy Notice <em>*</em></span>
           </label>
           <button type="button" class="nd-donate" [class.is-off]="missingCount() > 0" [disabled]="saving()" (click)="submit()">
             <span>{{ saving() ? 'Recording pledge…' : 'Donate now' }}</span>
@@ -269,7 +260,7 @@
           <div><dt>Donor</dt><dd>{{ donorName }}</dd></div>
           <div><dt>Receipt to</dt><dd>{{ donorEmail }}</dd></div>
           <div><dt>Cause</dt><dd [class.is-empty]="!causeInfo()">{{ causeInfo()?.name ?? 'Not selected' }}</dd></div>
-          <div><dt>Paid in</dt><dd [class.is-empty]="!currency()">{{ currency() ?? 'Not selected' }}</dd></div>
+          <div><dt>Currency</dt><dd [class.is-empty]="!currency()">{{ currency() ?? 'Not selected' }}</dd></div>
           <div><dt>City</dt><dd [class.is-empty]="!city()">{{ city() ? city() + ', ' + state() : 'Not selected' }}</dd></div>
         </dl>
         <div class="nd-next">

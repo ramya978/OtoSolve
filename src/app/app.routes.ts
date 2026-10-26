@@ -38,7 +38,7 @@ import { FollowUpExecution } from './pages/Donor & Leads/FollowUp_Execution/foll
 import { FollowUpPlanner } from './pages/Donor & Leads/Follow_Planner/follow-up-planner';
 import { FollowUps } from './pages/Donor & Leads/Follow_Ups/follow-ups';
 import { NewFollowUp } from './pages/Donor & Leads/New_FollowUp/new-follow-up';
-import { NewDonation } from './pages/Donations/New Campaign/new-donation';
+import { NewDonation } from './pages/Donations/New Donation/new-donation';
 import { Users } from './pages/User_Access/Users/users';
 import { RolesPermissions } from './pages/User_Access/Roles_Permissions/roles-permissions';
 import { MenuConfiguration } from './pages/User_Access/Menu_Configuration/menu-configuration';
@@ -66,6 +66,7 @@ import { OrgBranches } from './pages/Organization/Branch/branches';
 import { OrgDepartments } from './pages/Organization/Department/departments';
 import { OrgSettings } from './pages/Organization/Settings/settings';
 import { ActivateAccount } from './pages/Auth/Account_Activate/activate-account';
+import { Dashboard } from './pages/Dashboard/dashboard';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -114,7 +115,7 @@ const menuRoutes: Routes = flatten(MENU_DATA)
 
 const APP_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
-
+{path:'app/dashboard',component:Dashboard},
   // Campaign Routes
   {
     path: 'app/fundraising/campaigns/campaign-detail/:code',

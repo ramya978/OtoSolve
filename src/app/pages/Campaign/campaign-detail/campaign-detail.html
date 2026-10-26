@@ -270,8 +270,10 @@
       <div class="cd-desc">
         <p>{{ c().description }}</p>
         <div class="cd-desc-links">
-          <a class="w-link" href="#" (click)="$event.preventDefault()">Public description →</a>
-          <a class="w-link" href="#" (click)="$event.preventDefault()">Terms &amp; notice →</a>
+          <a class="w-link" href="#" role="button" aria-haspopup="dialog"
+             (click)="$event.preventDefault(); openDoc('public')">Public description →</a>
+          <a class="w-link" href="#" role="button" aria-haspopup="dialog"
+             (click)="$event.preventDefault(); openDoc('terms')">Terms &amp; notice →</a>
         </div>
       </div>
     </section>
@@ -349,6 +351,53 @@
     </section>
   </div>
 </div>
+
+<!-- public description / terms & notice dialog -->
+@if (doc(); as d) {
+  <div class="cd-doc-backdrop" (click)="closeDoc()"></div>
+  <div class="cd-doc" role="dialog" aria-modal="true" aria-labelledby="cd-doc-title">
+    <header class="cd-doc-head">
+      <div class="cd-doc-titles">
+        <span class="cd-doc-eyebrow">{{ c().code }} · {{ c().name }}</span>
+        <h2 id="cd-doc-title">{{ d.title }}</h2>
+      </div>
+      <button type="button" id="cd-doc-close" class="cd-doc-close" aria-label="Close" (click)="closeDoc()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18" /></svg>
+      </button>
+    </header>
+
+
+    <div class="cd-doc-body">
+      @for (p of d.paragraphs; track $index) {
+        <p>{{ p }}</p>
+      } @empty {
+        <p class="cd-doc-none">Nothing has been written here yet.</p>
+      }
+    </div>
+
+    <footer class="cd-doc-foot">
+      <span class="cd-doc-meta">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+        {{ d.words }} words · {{ d.minutes }} min read
+      </span>
+      <div class="cd-doc-actions">
+        <button type="button" class="w-btn" [disabled]="!d.words" (click)="copyDoc()">
+          @if (copied()) {
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+            Copied
+          } @else {
+            <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9z M5 15V5h10" /></svg>
+            Copy text
+          }
+        </button>
+        <button type="button" class="w-btn cd-doc-done" (click)="closeDoc()">
+          <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.7 2.7L16 9.8" /></svg>
+          Done
+        </button>
+      </div>
+    </footer>
+  </div>
+}
 
 <!-- reject close dialog -->
 @if (rejecting()) {

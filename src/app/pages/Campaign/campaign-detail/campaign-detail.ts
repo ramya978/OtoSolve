@@ -23,7 +23,26 @@ interface CalDay {
 
 type Range = '12m' | '90d' | 'all';
 
+/** Which text the description dialog shows. */
+type DocKind = 'public' | 'terms';
+
+/** Optional text fields a campaign may carry; the dialog falls back when they are missing. */
+interface CampaignTexts {
+  name: string;
+  description: string;
+  fund?: string;
+  publicDescription?: string;
+  terms?: string;
+}
+
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** Used when a campaign has no terms text of its own. */
+const DEFAULT_TERMS =
+  'Donations are eligible for deduction under Section 80G of the Income Tax Act, 1961. A receipt is e-mailed as soon as your payment is confirmed; please give your PAN to claim the deduction. ' +
+  'Your gift is applied to the programme named on this page, and where a campaign is over-subscribed the balance supports the same cause in the next programme cycle. ' +
+  'Donations are not ordinarily refunded; write to donor care within seven days of a duplicate or mistaken payment. ' +
+  'Your contact details are used only to service your donation and to send the updates you have agreed to receive.';
 
 @Component({
   selector: 'app-campaign-detail',
@@ -182,6 +201,54 @@ export class CampaignDetail {
   // ---- activity ----
   protected readonly activity = computed<Activity[]>(() => this.store.activityFor(this.c().code));
 
+  // ---- public description / terms & notice dialog ----
+  protected readonly docOpen = signal<DocKind | null>(null);
+
+  /** Content of the open dialog: title, paragraphs, word count and reading time. */
+  protected readonly doc = computed(() => {
+    const kind = this.docOpen();
+    if (!kind) return null;
+    const c = this.c() as CampaignTexts;
+    const text = (kind === 'public'
+      ? c.publicDescription || c.description
+      : c.terms || DEFAULT_TERMS) ?? '';
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    return {
+      kind,
+      title: kind === 'public' ? 'Public description' : 'Terms and notice',
+      paragraphs: text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+      words,
+      minutes: Math.max(1, Math.ceil(words / 200))
+    };
+  });
+
+  /** True for a moment after "Copy text" is pressed. */
+  protected readonly copied = signal(false);
+  private copiedTimer?: ReturnType<typeof setTimeout>;
+
+  protected openDoc(kind: DocKind): void {
+    this.copied.set(false);
+    this.docOpen.set(kind);
+    // move focus into the dialog once it has rendered
+    setTimeout(() => document.getElementById('cd-doc-close')?.focus());
+  }
+
+  protected closeDoc(): void {
+    this.docOpen.set(null);
+    this.copied.set(false);
+  }
+
+  /** Copy the text of the open tab to the clipboard. */
+  protected copyDoc(): void {
+    const d = this.doc();
+    if (!d || !navigator.clipboard) return;
+    navigator.clipboard.writeText(d.paragraphs.join('\n\n')).then(() => {
+      this.copied.set(true);
+      clearTimeout(this.copiedTimer);
+      this.copiedTimer = setTimeout(() => this.copied.set(false), 1600);
+    });
+  }
+
   // ---- close decision ----
   protected readonly rejecting = signal(false);
   protected readonly reason = signal('');
@@ -260,6 +327,7 @@ export class CampaignDetail {
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     this.rejecting.set(false);
+    this.docOpen.set(null);
   }
 
   private change(now: number, prev: number): { pct: number; dir: 'up' | 'down' | 'flat' } {

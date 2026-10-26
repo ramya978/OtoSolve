@@ -946,6 +946,10 @@
   margin-top: 10px;
 }
 
+.cd-desc-links a {
+  cursor: pointer;
+}
+
 /* ---------- donations by channel ---------- */
 .cd-range {
   width: 160px;
@@ -1175,6 +1179,199 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
+}
+
+/* ---------- public description / terms & notice dialog ----------
+   Flat and minimal: sized to its content, hairlines, theme colour for accents. */
+.cd-doc-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: color-mix(in srgb, var(--w-heading, #1f1d24) 28%, transparent);
+  animation: cd-doc-fade .15s ease both;
+}
+
+.cd-doc {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--w-line);
+  border-top: 3px solid var(--w-primary);
+  border-radius: 6px;
+  background: var(--w-card, #fff);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--w-heading, #1f1d24) 12%, transparent);
+  transform: translate(-50%, -50%);
+  animation: cd-doc-in .18s ease both;
+}
+
+.cd-doc-head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 16px 14px 20px;
+  border-bottom: 1px solid var(--w-line);
+}
+
+.cd-doc-titles {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cd-doc-eyebrow {
+  overflow: hidden;
+  color: var(--w-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-doc-titles h2 {
+  margin: 0;
+  color: var(--w-heading);
+  font-size: calc(17px * var(--font-scale, 1));
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.cd-doc svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.cd-doc-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--w-muted);
+  cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+
+.cd-doc-close:hover {
+  border-color: var(--w-line);
+  color: var(--w-heading);
+}
+
+.cd-doc-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.cd-doc-close:focus-visible {
+  outline: 2px solid var(--w-primary);
+  outline-offset: 2px;
+}
+
+.cd-doc-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 18px 20px 20px;
+  overflow-y: auto;
+  color: var(--w-ink);
+  font-size: calc(14px * var(--font-scale, 1));
+  line-height: 1.7;
+}
+
+.cd-doc-body p {
+  margin: 0 0 12px;
+}
+
+.cd-doc-body p:last-child {
+  margin-bottom: 0;
+}
+
+.cd-doc-none {
+  color: var(--w-muted);
+}
+
+.cd-doc-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--w-line);
+}
+
+.cd-doc-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--w-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.cd-doc-meta svg {
+  width: 15px;
+  height: 15px;
+}
+
+.cd-doc-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* main action in the theme colour */
+.cd-doc-done {
+  border-color: var(--w-primary) !important;
+  background: var(--w-primary) !important;
+  color: var(--w-primary-on, #fff) !important;
+}
+
+.cd-doc-done:hover {
+  background: color-mix(in srgb, var(--w-primary) 88%, #000) !important;
+}
+
+@keyframes cd-doc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cd-doc-in {
+  from { opacity: 0; transform: translate(-50%, -48%); }
+  to { opacity: 1; transform: translate(-50%, -50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-doc,
+  .cd-doc-backdrop { animation: none; }
+}
+
+/* phones: sheet from the bottom */
+@media (max-width: 640px) {
+  .cd-doc {
+    top: auto;
+    bottom: 0;
+    width: 100vw;
+    max-height: 85vh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 6px 6px 0 0;
+    transform: translateX(-50%);
+    animation-name: cd-doc-up;
+  }
+}
+
+@keyframes cd-doc-up {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* ---------- widths ---------- */

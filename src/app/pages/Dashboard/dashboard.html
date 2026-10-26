@@ -1,0 +1,524 @@
+
+
+<div class="pd">
+
+  <!-- ===== ROW 1: welcome + statistics ===== -->
+  <section class="pd-row pd-r1">
+    <article class="pd-card pd-welcome">
+      <div class="pd-welcome-top">
+        <span class="pd-eyebrow">
+          <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>
+          {{ dateLabel() }}
+        </span>
+        <span class="pd-badge" data-tone="success"><i class="pd-pulse"></i>Live · {{ timeLabel() }}</span>
+      </div>
+
+      <!-- who: avatar, greeting, scope -->
+      <div class="pd-wl-id">
+        <span class="pd-wl-avatar" aria-hidden="true">{{ userInitial() }}</span>
+        <div class="pd-wl-id-text">
+          <h1 class="pd-welcome-title">{{ greeting() }}, <span>{{ userFirstName() }}</span></h1>
+          <p class="pd-welcome-sub">
+            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>All organisations</span>
+            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Platform Admin</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- four figures, split by hairlines -->
+      <ul class="pd-wl-metrics">
+        @for (f of welcomeFacts(); track f.label; let i = $index) {
+          <li [attr.data-tone]="f.tone" [style.animation-delay.ms]="i * 60">
+            <span class="pd-wl-metric-top">
+              <span class="pd-chip xs"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg></span>
+              <strong>{{ f.value }}</strong>
+            </span>
+            <small>{{ f.label }}</small>
+          </li>
+        }
+      </ul>
+
+      <!-- organisations live: one block per organisation -->
+    
+
+    </article>
+
+    <article class="pd-card pd-stats">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Statistics</h2><p>Across every organisation on the platform</p></div>
+        <span class="pd-updated">Updated {{ updatedLabel() }}</span>
+      </header>
+      <div class="pd-stats-row">
+        @for (k of kpis(); track k.label) {
+          <div class="pd-stat" [attr.data-tone]="k.tone">
+            <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(k.icon)" /></svg></span>
+            <div class="pd-stat-value">
+              <strong>{{ k.value }}</strong>
+              <span class="pd-trend">{{ k.pct }}%</span>
+            </div>
+            <span class="pd-stat-label">{{ k.label }}</span>
+            <small class="pd-stat-sub">{{ k.sub }}</small>
+          </div>
+        }
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== ROW 2: organisations by status ===== -->
+  <section class="pd-card pd-strip" aria-label="Organisations by status">
+    @for (s of statusTiles(); track s.label) {
+      <div class="pd-strip-cell" [attr.data-tone]="s.tone">
+        <span class="pd-chip sm"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(s.icon)" /></svg></span>
+        <div class="pd-strip-text">
+          <strong>{{ s.value }}</strong>
+          <span>{{ s.label }}</span>
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- ===== ROW 3: sign-ins chart + organisation health ===== -->
+  <section class="pd-row pd-r3">
+    <article class="pd-card pd-signins">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Sign-ins</h2><p>Daily sign-in attempts · last {{ points().length }} days · hover a day for details</p></div>
+        <span class="pd-badge" data-tone="success"><i></i>{{ successPct() }}% succeeded</span>
+      </header>
+
+      <div class="pd-signins-body">
+        <aside class="pd-signins-side">
+          <div class="pd-signins-big">
+            <strong>{{ signinTotal() }}</strong>
+            <span class="pd-trend" data-tone="success">{{ successPct() }}%</span>
+          </div>
+          <p>Sign-in attempts in the last {{ points().length }} days</p>
+
+          <ul class="pd-side-stats">
+            @for (m of signinSummary(); track m.label) {
+              <li [attr.data-tone]="m.tone">
+                <span class="pd-chip xs"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(m.icon)" /></svg></span>
+                <span class="pd-side-label">{{ m.label }}</span>
+                <b>{{ m.value }}</b>
+                <span class="pd-meter thin"><i [style.width.%]="m.pct"></i></span>
+              </li>
+            }
+          </ul>
+        </aside>
+
+        <div class="pd-chart">
+          <div class="pd-chart-y" aria-hidden="true">
+            @for (t of yTicks(); track $index) {
+              <span [style.top.%]="t.y">{{ t.label }}</span>
+            }
+          </div>
+
+          <div class="pd-chart-main">
+            <div class="pd-chart-plot" (mouseleave)="hoverIndex.set(null)">
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="pdArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color: var(--db-primary); stop-opacity: .24" />
+                    <stop offset="100%" style="stop-color: var(--db-primary); stop-opacity: 0" />
+                  </linearGradient>
+                </defs>
+                @for (t of yTicks(); track $index) {
+                  <line class="pd-grid-line" x1="0" x2="100" [attr.y1]="t.y" [attr.y2]="t.y" />
+                }
+                <path class="pd-area" [attr.d]="chartPaths().area" />
+                <path class="pd-line-path" [attr.d]="chartPaths().line" />
+              </svg>
+
+              @if (hovered(); as h) {
+                <span class="pd-guide" [style.left.%]="h.x"></span>
+              }
+
+              @for (p of points(); track p.i) {
+                @if (p.total || p.today) {
+                  <span class="pd-point" [class.is-today]="p.today" [style.left.%]="p.x" [style.top.%]="p.y"></span>
+                }
+              }
+
+              @if (hovered(); as h) {
+                <span class="pd-point is-hover" [style.left.%]="h.x" [style.top.%]="h.y"></span>
+                <div class="pd-tip" [class.is-left]="h.x > 70" [style.left.%]="h.x" [style.top.%]="h.tipTop" role="status">
+                  <span class="pd-tip-date">{{ h.dateLabel }}</span>
+                  <strong>{{ h.total }} sign-in{{ h.total === 1 ? '' : 's' }}</strong>
+                  <span class="pd-tip-row" data-tone="success"><i></i>Succeeded<b>{{ h.ok }}</b></span>
+                  <span class="pd-tip-row" data-tone="danger"><i></i>Failed<b>{{ h.failed }}</b></span>
+                </div>
+              }
+
+              <div class="pd-hit">
+                @for (p of points(); track p.i) {
+                  <button type="button" class="pd-hit-col" [class.is-on]="hoverIndex() === p.i"
+                          [attr.aria-label]="p.aria"
+                          (mouseenter)="hoverIndex.set(p.i)" (focus)="hoverIndex.set(p.i)" (blur)="hoverIndex.set(null)"></button>
+                }
+              </div>
+            </div>
+
+            <div class="pd-chart-x" aria-hidden="true">
+              @for (p of points(); track p.i) {
+                <span [class.is-today]="p.today" [class.is-on]="hoverIndex() === p.i"><small>{{ p.week }}</small>{{ p.day }}</span>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="pd-card pd-health">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Organisation health</h2><p>{{ totalOrgs() }} organisations registered</p></div>
+        <a class="pd-link" [routerLink]="routes.directory">Directory <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></a>
+      </header>
+
+      <div class="pd-health-body">
+        <div class="pd-donut">
+          <svg viewBox="0 0 42 42" aria-hidden="true">
+            <circle class="pd-donut-bg" cx="21" cy="21" r="15.9155" />
+            @for (seg of donut(); track seg.label; let i = $index) {
+              <circle class="pd-donut-seg" [attr.data-tone]="seg.tone" cx="21" cy="21" r="15.9155"
+                      [style.stroke-dasharray]="seg.dash" [style.stroke-dashoffset]="seg.offset"
+                      [style.animation-delay.ms]="200 + i * 250" />
+            }
+          </svg>
+          <div class="pd-donut-center"><strong>{{ livePct() }}%</strong><span>live</span></div>
+        </div>
+
+        <ul class="pd-legend">
+          @for (h of health(); track h.label) {
+            <li [attr.data-tone]="h.tone" [class.is-zero]="!h.value">
+              <i></i>
+              <span>{{ h.label }}</span>
+              <b>{{ h.value }}</b>
+              <small>{{ share(h.value, totalOrgs()) }}%</small>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <div class="pd-minis">
+        @for (r of rings(); track r.label) {
+          <div class="pd-mini" [attr.data-tone]="r.tone">
+            <div class="pd-mini-top"><span>{{ r.label }}</span><b>{{ r.pct }}%</b></div>
+            <div class="pd-meter thin"><i [style.width.%]="r.pct"></i></div>
+            <small>{{ r.sub }}</small>
+          </div>
+        }
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== FUNDRAISING: campaign workspace content ===== -->
+  <app-dashboard-campaigns />
+
+  <!-- ===== ROW 4: needs attention · platform activity · registrations to review ===== -->
+  <section class="pd-row pd-r4">
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Needs attention</h2><p>Things waiting on you</p></div>
+        @if (attention().length) { <span class="pd-badge" data-tone="danger"><i></i>{{ attention().length }}</span> }
+      </header>
+      @if (attention().length) {
+        <ul class="pd-list pd-card-body">
+          @for (a of attention(); track a.title) {
+            <li class="pd-list-row" [attr.data-tone]="a.tone">
+              <span class="pd-chip sm"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg></span>
+              <span class="pd-list-text"><strong>{{ a.title }}</strong><small>{{ a.detail }}</small></span>
+              <a class="pd-link" [routerLink]="a.route">Open <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <div class="pd-empty" data-tone="success">
+          <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg></span>
+          <strong>All clear</strong>
+          <p>Nothing is waiting on you right now.</p>
+          <a class="pd-btn pd-btn-outline" [routerLink]="routes.create">
+            <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+            Create organisation
+          </a>
+        </div>
+      }
+    </article>
+
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Platform activity</h2><p>Sign-ins and changes across the platform</p></div>
+        <span class="pd-badge" data-tone="success"><i></i>Live</span>
+      </header>
+      <div class="pd-card-body">
+        <div class="pd-act-summary">
+          @for (s of activitySummary(); track s.label) {
+            <div class="pd-act-cell" [attr.data-tone]="s.tone">
+              <strong>{{ s.value }}</strong>
+              <span>{{ s.label }}</span>
+            </div>
+          }
+        </div>
+
+        <p class="pd-day">Today</p>
+        <ul class="pd-feed">
+          @for (a of activity(); track $index) {
+            <li class="pd-feed-item" [attr.data-tone]="a.tone">
+              <span class="pd-chip sm"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(a.icon)" /></svg></span>
+              <div class="pd-feed-body">
+                <strong>{{ a.title }}</strong>
+                <span class="pd-feed-meta">
+                  <span class="pd-tag">{{ a.area }}</span>
+                  {{ a.source }} · {{ a.actor }}
+                </span>
+              </div>
+              <span class="pd-feed-time">{{ a.time }}</span>
+            </li>
+          } @empty {
+            <li class="pd-muted">No activity yet today.</li>
+          }
+        </ul>
+      </div>
+      <footer class="pd-card-foot">
+        <a class="pd-link" [routerLink]="routes.audit">Open the platform audit</a>
+        <svg class="pd-ico pd-ico-sm pd-foot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+      </footer>
+    </article>
+
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Registrations to review</h2><p>Organisations asking to join</p></div>
+      </header>
+      <div class="pd-card-body pd-reg">
+        <div class="pd-counters">
+          <div class="pd-counter" data-tone="warning">
+            <span class="pd-chip sm"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('review')" /></svg></span>
+            <span><strong>{{ awaitingReview() }}</strong><small>awaiting review</small></span>
+          </div>
+          <div class="pd-counter" data-tone="primary">
+            <span class="pd-chip sm"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg></span>
+            <span><strong>{{ counts().onboarding }}</strong><small>onboarding</small></span>
+          </div>
+        </div>
+
+        @if (!awaitingReview()) {
+          <div class="pd-empty pd-empty-tight" data-tone="info">
+            <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
+            <strong>Nothing to review</strong>
+            <p>Registrations appear here as organisations submit them.</p>
+          </div>
+        }
+      </div>
+      <!-- <footer class="pd-card-foot">
+        <a class="pd-link" [routerLink]="routes.approvals">Open the approval queue</a>
+        <svg class="pd-ico pd-ico-sm pd-foot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+      </footer> -->
+    </article>
+  </section>
+
+  <!-- ===== ROW 5: organisations overview · largest organisations · onboarding ===== -->
+  <section class="pd-row pd-r5">
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title">
+          <h2>Organisations</h2>
+          <p><span class="pd-dot" data-tone="success"></span>{{ counts().active }} live now · {{ totalOrgs() }} in total</p>
+        </div>
+        <a class="pd-link" [routerLink]="routes.create">
+          <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Create
+        </a>
+      </header>
+      <div class="pd-card-body">
+        <div class="pd-stack-bar" role="img" aria-label="Organisations by status">
+          @for (seg of overviewBar(); track seg.label) {
+            <i [attr.data-tone]="seg.tone" [style.width.%]="seg.pct" [attr.title]="seg.label + ' ' + seg.pct + '%'"></i>
+          }
+        </div>
+        <ul class="pd-share-list">
+          @for (o of overview(); track o.label) {
+            <li class="pd-share-row" [attr.data-tone]="o.tone" [class.is-zero]="!o.value">
+              <span class="pd-chip xs"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(o.icon)" /></svg></span>
+              <span class="pd-share-label">{{ o.label }}</span>
+              <b>{{ o.value }}</b>
+              <small>{{ share(o.value, totalOrgs()) }}%</small>
+            </li>
+          }
+        </ul>
+      </div>
+      
+    </article>
+
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Largest organisations</h2><p>By people on the platform</p></div>
+      </header>
+      <div class="pd-card-body">
+        <ul class="pd-list">
+          @for (o of largest(); track o.code; let i = $index) {
+            <li class="pd-rank-row">
+              <span class="pd-rank" [attr.data-tone]="i === 0 ? 'warning' : 'primary'">
+                @if (i === 0) {
+                  <svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trophy')" /></svg>
+                } @else { {{ i + 1 }} }
+              </span>
+              <span class="pd-rank-text">
+                <strong>{{ o.name }}</strong>
+                <small>{{ o.code }} · {{ o.subdomain }}</small>
+                <span class="pd-meter thin" data-tone="success"><i [style.width.%]="o.share"></i></span>
+              </span>
+              <span class="pd-rank-side">
+                <span class="pd-pill">{{ o.people }} people</span>
+                <small>{{ o.share }}% share</small>
+              </span>
+            </li>
+          } @empty {
+            <li class="pd-muted">No organisations yet.</li>
+          }
+        </ul>
+      </div>
+      
+    </article>
+
+    <article class="pd-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title"><h2>Onboarding</h2><p>From registration to live</p></div>
+        <a class="pd-link" [routerLink]="routes.directory">Directory <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></a>
+      </header>
+      <div class="pd-card-body">
+        <div class="pd-funnel-top">
+          <span class="pd-funnel-big">{{ livePct() }}<sup>%</sup></span>
+          <span class="pd-funnel-text">
+            <strong>Organisations live</strong>
+            <small>{{ counts().active }} of {{ totalOrgs() }} registered organisations are live</small>
+          </span>
+        </div>
+        @for (f of funnel(); track f.label) {
+          <div class="pd-funnel-step" [attr.data-tone]="f.tone">
+            <span class="pd-funnel-label">{{ f.label }}<small>{{ share(f.value, totalOrgs()) }}%</small></span>
+            <b>{{ f.value }}</b>
+            <div class="pd-meter"><i [style.width.%]="share(f.value, totalOrgs())"></i></div>
+          </div>
+        }
+        <div class="pd-note" [attr.data-tone]="awaitingReview() ? 'warning' : 'success'">
+          <span><i class="pd-dot"></i>{{ awaitingReview() ? awaitingReview() + ' waiting for review' : 'Nothing waiting for review' }}</span>
+          <a class="pd-link" [routerLink]="routes.approvals">Open</a>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- ===== ROW 6: newest organisations table + most active / sign-in protection ===== -->
+  <section class="pd-row pd-r6">
+    <article class="pd-card pd-table-card">
+      <header class="pd-card-head">
+        <div class="pd-card-title">
+          <h2>Newest organisations</h2>
+          <p>Joined in the last 30 days · {{ newest().length }} new · {{ newestLive() }} live</p>
+        </div>
+        <label class="pd-search">
+          <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input #orgQ type="search" placeholder="Search organisation" aria-label="Search organisation"
+                 [value]="query()" (input)="setQuery(orgQ.value)" />
+        </label>
+      </header>
+
+      <div class="pd-table-wrap">
+        <table class="pd-table">
+          <thead>
+            <tr>
+              <th>Organisation</th>
+              <th>Subdomain</th>
+              <th>Status</th>
+              <th class="pd-num">People</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of pageRows(); track r.code) {
+              <tr>
+                <td>
+                  <div class="pd-org">
+                    <span class="pd-org-glyph">{{ r.name.charAt(0) }}</span>
+                    <span class="pd-org-text">
+                      <strong>{{ r.name }} @if (r.latest) { <em class="pd-latest">Latest</em> }</strong>
+                      <small>{{ r.code }}</small>
+                    </span>
+                  </div>
+                </td>
+                <td><span class="pd-pill">{{ r.subdomain }}</span></td>
+                <td><span class="pd-badge" [attr.data-tone]="statusTone(r.status)"><i></i>{{ r.status }}</span></td>
+                <td class="pd-num">{{ r.people }} {{ r.people === 1 ? 'person' : 'people' }}</td>
+                <td class="pd-muted-cell">{{ r.joined }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="pd-empty pd-empty-tight" data-tone="neutral">
+                    <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg></span>
+                    <strong>No organisation matches</strong>
+                    <p>Try another name, code or subdomain.</p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="pd-table-foot">
+        <span>Showing {{ rangeFrom() }} to {{ rangeTo() }} of {{ filtered().length }} entries</span>
+        <nav class="pd-pager" aria-label="Pagination">
+          <button type="button" class="pd-page" [disabled]="page() === 1" (click)="goPage(page() - 1)" aria-label="Previous page">
+            <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevL')" /></svg>
+          </button>
+          @for (p of pages(); track p) {
+            <button type="button" class="pd-page" [class.is-on]="p === page()" [attr.aria-current]="p === page() ? 'page' : null"
+                    (click)="goPage(p)">{{ p }}</button>
+          }
+          <button type="button" class="pd-page" [disabled]="page() === pageCount()" (click)="goPage(page() + 1)" aria-label="Next page">
+            <svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevR')" /></svg>
+          </button>
+        </nav>
+      </footer>
+    </article>
+
+    <div class="pd-stack">
+      <article class="pd-card">
+        <header class="pd-card-head">
+          <div class="pd-card-title"><h2>Most active organisations</h2><p>By sign-ins</p></div>
+          <span class="pd-pill">14 days</span>
+        </header>
+        @if (mostActive().length) {
+          <ul class="pd-list pd-card-body">
+            @for (m of mostActive(); track m.name) {
+              <li class="pd-list-row" data-tone="primary">
+                <span class="pd-org-glyph">{{ m.name.charAt(0) }}</span>
+                <span class="pd-list-text"><strong>{{ m.name }}</strong><small>{{ m.signIns }} sign-ins</small></span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <div class="pd-empty pd-empty-tight" data-tone="danger">
+            <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('heart')" /></svg></span>
+            <strong>No sign-ins yet</strong>
+            <p>Organisations appear here as their people sign in.</p>
+          </div>
+        }
+        <footer class="pd-card-foot">
+          <a class="pd-link" [routerLink]="routes.audit">Open the platform audit</a>
+          <svg class="pd-ico pd-ico-sm pd-foot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+        </footer>
+      </article>
+
+      <article class="pd-card">
+        <header class="pd-card-head">
+          <div class="pd-card-title"><h2>Sign-in protection</h2><p>Two-step sign-in across people</p></div>
+          <span class="pd-badge" [attr.data-tone]="people().twoStepPct ? 'success' : 'warning'"><i></i>{{ people().twoStepPct }}%</span>
+        </header>
+        <div class="pd-empty pd-empty-tight" data-tone="info">
+          <span class="pd-chip"><svg class="pd-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg></span>
+          <strong>Nobody uses a second step yet</strong>
+          <p>Two-step sign-in methods appear here as people enrol.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+</div>
