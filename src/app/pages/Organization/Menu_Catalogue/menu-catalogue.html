@@ -1,16 +1,7 @@
 <div class="mc-page">
 
-  <!-- PAGE HEADER -->
-  <header class="mc-head">
-    <div>
-      <p class="mc-eyebrow">Administration / Platform</p>
-      <h1>Menu catalogue</h1>
-      <p class="mc-sub">
-        <b>{{ total() }}</b> items <i>·</i> <b>{{ modules().length }}</b> modules <i>·</i> <b>{{ live() }}</b> live
-        @if (total() - live()) { <i>·</i> <b>{{ total() - live() }}</b> retired }
-      </p>
-    </div>
-    <div class="mc-head-acts">
+  <app-page-header breadcrumb="Administration / Platform" heading="Menu catalogue" [description]="headerText()">
+    <ng-container actions>
       <button type="button" role="switch" class="mc-switch" [class.is-on]="showRetired()" [attr.aria-checked]="showRetired()" (click)="toggleRetired()">
         <span class="mc-switch-track"><span class="mc-switch-knob"></span></span>
         Show retired
@@ -18,8 +9,8 @@
       <button type="button" class="mc-btn mc-btn--primary" (click)="create()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create
       </button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
 
 

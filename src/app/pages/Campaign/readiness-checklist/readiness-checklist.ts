@@ -1,11 +1,12 @@
 import { ActivatedRoute, Router } from '@angular/router';
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
-import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CATEGORIES, CheckCategory, CheckStatus, PEOPLE, ReadinessCheck, fmtDate, fmtTime, initials } from '../../../Shared/Campaign/cw.data';
+import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 
 type Filter = 'all' | CheckStatus;
 
@@ -24,9 +25,9 @@ const EMPTY_DRAFT: CheckDraft = { name: '', category: '', description: '', crite
 
 @Component({
   selector: 'app-readiness-checklist',
-  imports: [CwPageHead, CwSelect],
+  imports: [CwSelect, PageHeader],
   templateUrl: './readiness-checklist.html',
-  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './readiness-checklist.css']
+  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './readiness-checklist.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class ReadinessChecklist {
   protected readonly store = inject(CampaignWorkspaceStore);

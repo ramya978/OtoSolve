@@ -3,16 +3,8 @@
      Breadcrumb · title + refresh/export · KPI strip · needs-attention bar · donors card
      (tabs, search, sort, Table ⇄ Cards) · table with per-row actions · pager · toast.
      ===================================================================================================== -->
-<nav class="ad-crumbs" aria-label="Breadcrumb">
-  <a routerLink="/app/dashboard">Home</a>
-  <span aria-hidden="true">/</span>
-  <b>{{ heading }}</b>
-</nav>
-
-<header class="ad-head">
-  <h1>{{ heading }}</h1>
-  <p>View, search and manage all donor records across your organisation.</p>
-  <div class="ad-head-actions">
+<app-page-header [breadcrumb]="heading" heading="{{ heading }}" description="View, search and manage all donor records across your organisation.">
+  <ng-container actions>
     <button type="button" class="ad-btn" (click)="refresh()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>
       Refresh
@@ -21,8 +13,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('export')" /></svg>
       Export
     </button>
-  </div>
-</header>
+  </ng-container>
+</app-page-header>
 
 <!-- ===== KPI strip ===== -->
 <section class="ad-kpis" aria-label="Donor summary">

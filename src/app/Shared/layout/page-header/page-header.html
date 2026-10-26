@@ -1,0 +1,23 @@
+<header class="ph-head">
+  <div class="ph-main">
+    <!-- breadcrumb -->
+    <span class="ph-eyebrow" [class.ph-eyebrow--link]="hasBreadcrumbRoute()">
+      @if (hasBreadcrumbRoute()) {
+        <a class="ph-crumb-link" [routerLink]="breadcrumbRoute()">{{ breadcrumb() }}</a>
+      } @else { {{ breadcrumb() }} }
+    </span>
+
+    <!-- main heading -->
+    @if (heading()) {
+      <h1 class="ph-heading">{{ heading() }}</h1>
+    }
+
+    <!-- description -->
+    @if (description()) {
+      <p class="ph-description">{{ description() }}</p>
+    }
+  </div>
+
+  <!-- action buttons projected by the page -->
+  <ng-content select="[actions]"></ng-content>
+</header>

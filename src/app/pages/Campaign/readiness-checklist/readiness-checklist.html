@@ -1,5 +1,5 @@
 <!-- READINESS CHECKLIST - TABLE design -->
-<cw-page-head section="Readiness checklist">
+<app-page-header breadcrumb="Fundraising / Campaigns / Readiness" heading="Readiness checklist" description="Pre-launch checks that must pass before a campaign can go live.">
   @if (preLaunch()) {
     <span meta class="rc-meta-chip" [class.is-ready]="ready()">
       <i aria-hidden="true"></i>{{ ready() ? 'Ready to launch' : 'Readiness pending' }}
@@ -36,7 +36,7 @@
     }
   </ng-container>
 
-</cw-page-head>
+</app-page-header>
 
   <!-- ===== readiness summary: coloured banner ===== -->
   <section [class]="'rc-banner ' + (!preLaunch() || ready() ? 'is-good' : 'is-open')" aria-label="Launch readiness">

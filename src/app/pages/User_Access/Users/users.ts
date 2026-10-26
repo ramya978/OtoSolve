@@ -11,6 +11,7 @@ import { ToastService } from '../../../Shared/services/toast.service';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { UserStatisticsResponse } from '../../../Shared/models/iam-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 type View = 'cards' | 'list';
 
@@ -48,7 +49,7 @@ const REASON_MIN = 10;
  *  record detail drawer and an invite / edit drawer. */
 @Component({
   selector: 'app-iam-users',
-  imports: [IamSelect],
+  imports: [IamSelect,PageHeader],
   templateUrl: './users.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './users.css']
 })

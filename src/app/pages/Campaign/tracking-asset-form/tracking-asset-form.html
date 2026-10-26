@@ -6,11 +6,10 @@
 <form class="af-split" novalidate (submit)="$event.preventDefault(); save('submitted')">
   <!-- ===== left: the form ===== -->
   <div class="af-main">
-    <header class="af-title">
-      <span class="af-crumb">Tracking asset manager</span>
-      <h1>{{ editingRef ? 'Edit draft ' + editingRef : 'Create tracking asset' }}</h1>
-      <p>Fill in the details - the preview on the right updates as you type.</p>
-    </header>
+<app-page-header [breadcrumb]="'Tracking asset manager'" [heading]="editingRef ? 'Edit draft ' + editingRef : 'Create tracking asset'" description="Fill in the details - the preview on the right updates as you type.">
+  <ng-container actions>
+  </ng-container>
+</app-page-header>
 
     <div class="af-grid">
       <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg>Asset</h3>

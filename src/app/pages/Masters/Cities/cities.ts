@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { MasterListBase } from '../../../Shared/Masters/master-list.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { CITY } from './cities.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /**
  * Cities - list page (/app/masters/city).
@@ -11,7 +12,7 @@ import { CITY } from './cities.config';
  */
 @Component({
   selector: 'app-cities',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './cities.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-list.css', './cities.css'],
   host: { '[style.--ml-metric-count]': 'metrics().length' }

@@ -2,6 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, compu
 import { NgTemplateOutlet } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Footer } from '../../../Shared/layout/Footer/footer';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CampaignApiService } from '../../../Service/campaign-api.service';
@@ -166,9 +167,9 @@ const fromIso = (iso: string): Date => {
 
 @Component({
   selector: 'app-new-campaign',
-  imports: [NgTemplateOutlet, RouterLink],
+  imports: [NgTemplateOutlet, RouterLink, PageHeader],
   templateUrl: './new-campaign.html',
-  styleUrl: './new-campaign.css'
+  styleUrls: ['./new-campaign.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class NewCampaign {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

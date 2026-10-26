@@ -6,6 +6,7 @@ import { qrPattern } from '../../../Shared/Campaign/cw-qr';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
 import { AssetType, todayIso, destinationFor, MEDIUMS, LIFECYCLE_LABEL, daysBetween, TrackingAsset, Medium, fmtDate } from '../../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 interface AssetDraft {
@@ -21,9 +22,9 @@ interface AssetDraft {
 
 @Component({
   selector: 'app-tracking-asset-form',
-  imports: [CwSelect],
+  imports: [CwSelect, PageHeader],
   templateUrl: './tracking-asset-form.html',
-  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-asset-form.css']
+  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-asset-form.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class TrackingAssetForm {
   protected readonly store = inject(CampaignWorkspaceStore);

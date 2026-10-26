@@ -2,6 +2,7 @@ import { Component, HostListener, OnInit, computed, inject, signal } from '@angu
 import { Observable, forkJoin, of } from 'rxjs';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import {
   IamOption, IamRole, PERMISSIONS, PERM_ACTIONS, PERM_ACTION_LABEL, PERM_AREAS, PermAction, PermArea, Permission,
   ROLE_STATUS_LABEL, RoleStatus, initialsOf, slugCode
@@ -33,9 +34,9 @@ interface RoleDraft {
  *  (Allow / Not given / Block); create / clone / edit in an offcanvas; compare two roles in a popup. */
 @Component({
   selector: 'app-iam-roles-permissions',
-  imports: [IamSelect],
+  imports: [IamSelect,PageHeader],
   templateUrl: './roles-permissions.html',
-  styleUrls: ['../../../Shared/IAM/iam-shared.css', './roles-permissions.css']
+  styleUrls: ['../../../Shared/IAM/iam-shared.css', './roles-permissions.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class RolesPermissions implements OnInit {
   private readonly store = inject(IamRolesStore);

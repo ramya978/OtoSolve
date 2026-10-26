@@ -4,6 +4,7 @@ import { IamAdminApiService } from '../../../Service/iam-admin-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
 import { MenuDefinitionResponse, MenuLevel } from '../../../Shared/models/iam-contract.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 type Level = 'menu' | 'submenu' | 'item';
 const LEVEL_LABEL: Record<Level, string> = { menu: 'Menu', submenu: 'Sub-menu', item: 'Item' };
@@ -88,8 +89,9 @@ const ICONS: Record<string, string> = {
 /** Menu catalogue: the product's own menu, shared by every organisation. */
 @Component({
   selector: 'app-menu-catalogue',
+  imports: [PageHeader],
   templateUrl: './menu-catalogue.html',
-  styleUrls: ['../../../Shared/IAM/iam-shared.css', './menu-catalogue.css']
+  styleUrls: ['../../../Shared/IAM/iam-shared.css', './menu-catalogue.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class MenuCatalogue implements OnInit {
   private readonly api = inject(IamAdminApiService);
@@ -138,6 +140,11 @@ export class MenuCatalogue implements OnInit {
   readonly total = computed(() => this.items().length);
   readonly live = computed(() => this.items().filter((i) => !i.retired).length);
   readonly modules = computed(() => [...new Set(this.items().map((i) => i.module))].sort());
+  /** sub-heading under the page title: "12 items · 3 modules · 10 live · 2 retired" */
+  readonly headerText = computed(() => {
+    const retired = this.total() - this.live();
+    return `${this.total()} items · ${this.modules().length} modules · ${this.live()} live` + (retired ? ` · ${retired} retired` : '');
+  });
   readonly moduleCounts = computed(() =>
     this.modules().map((code) => ({ code, count: this.items().filter((i) => i.module === code).length })));
 

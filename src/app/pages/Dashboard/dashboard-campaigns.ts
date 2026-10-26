@@ -3,6 +3,7 @@ import { Router, RouterLink } from '@angular/router';
 import { CW_PATHS } from '../../Shared/Campaign/cw-paths';
 import { Activity, Donation, daysBetween, fmtDate, inr, todayIso } from '../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../Shared/Campaign/cw.store';
+import { PageHeader } from '../../Shared/layout/page-header/page-header';
 
 type Tone = 'primary' | 'success' | 'info' | 'warning' | 'danger' | 'neutral' | 'purple';
 type Lifecycle = 'draft' | 'submitted' | 'scheduled' | 'active' | 'paused' | 'closing' | 'closed';
@@ -103,7 +104,7 @@ const inrShort = (v: number): string => {
   standalone: true,
   imports: [RouterLink],
   templateUrl: './dashboard-campaigns.html',
-  styleUrl: './dashboard-campaigns.css'
+  styleUrls: ['./dashboard-campaigns.css']
 })
 export class DashboardCampaigns {
   private readonly store = inject(CampaignWorkspaceStore);
