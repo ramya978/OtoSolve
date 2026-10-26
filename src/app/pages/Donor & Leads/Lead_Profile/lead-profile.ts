@@ -2,10 +2,10 @@ import { Component, DestroyRef, HostListener, OnInit, computed, inject, input, o
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, of, catchError } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
-import { CommunicationTimelineResponse, LeadDetail } from '../../../Shared/models/donor-contract.model';
+import { CommunicationTimelineResponse, DonLookupItem, LeadDetail } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
-export type LeadStatus = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost' | 'Dormant';
+export type LeadStatus = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Nurture' | 'Suppressed' | 'Closed';
 
 export type StatusTone = 'new' | 'assigned' | 'contacted' | 'qualified' | 'converted' | 'closed';
 
@@ -105,8 +105,8 @@ const ICONS: Record<IconName, string> = {
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3'
 };
 
-/** Lifecycle track shown in the summary card - the open statuses in order. Lost / Dormant close the lead. */
-const STAGES: LeadStatus[] = ['New', 'Assigned', 'Contacted', 'Qualified', 'Converted'];
+/** Lifecycle track shown in the summary card: the pipeline in order, then where a lead can be parked or closed. */
+const STAGES: LeadStatus[] = ['New', 'Assigned', 'Contacted', 'Qualified', 'Converted', 'Nurture', 'Suppressed', 'Closed'];
 
 const STATUS_TONES: Record<LeadStatus, StatusTone> = {
   New: 'new',
@@ -114,8 +114,9 @@ const STATUS_TONES: Record<LeadStatus, StatusTone> = {
   Contacted: 'contacted',
   Qualified: 'qualified',
   Converted: 'converted',
-  Lost: 'closed',
-  Dormant: 'closed'
+  Nurture: 'qualified',
+  Suppressed: 'closed',
+  Closed: 'closed'
 };
 
 const EMPTY_LEAD: LeadProfileData = {
@@ -134,8 +135,9 @@ function statusOf(v: string, converted: boolean): LeadStatus {
   if (k.startsWith('qualif')) return 'Qualified';
   if (k.startsWith('contact')) return 'Contacted';
   if (k.startsWith('assign') || k.startsWith('accept')) return 'Assigned';
-  if (k.startsWith('dormant') || k.startsWith('nurture')) return 'Dormant';
-  if (k.startsWith('lost') || k.startsWith('closed') || k.startsWith('disqual')) return 'Lost';
+  if (k.startsWith('nurture')) return 'Nurture';
+  if (k.startsWith('suppress')) return 'Suppressed';
+  if (k.startsWith('dormant') || k.startsWith('lost') || k.startsWith('closed') || k.startsWith('disqual')) return 'Closed';
   return 'New';
 }
 
@@ -199,6 +201,7 @@ export class LeadProfile implements OnInit {
   private readonly router = inject(Router);
   private readonly ownerIds = new Map<string, string>();
   private version = 0;
+  private timeline: CommunicationTimelineResponse | null = null;
 
   /** A lead handed in by a parent screen. When opened by route, the lead is loaded from the API. */
   readonly leadInput = input<LeadProfileData | null>(null);
@@ -224,7 +227,45 @@ export class LeadProfile implements OnInit {
     () => OWNERS.find((o) => o.name === this.owner())?.team ?? this.lead().team
   );
   protected readonly status = computed<LeadStatus>(() => this.statusOverride() ?? this.lead().status);
-  protected readonly isClosed = computed(() => this.status() === 'Lost' || this.status() === 'Dormant');
+  protected readonly isClosed = computed(() => this.status() === 'Suppressed' || this.status() === 'Closed');
+
+  /** Done segments on the track. A lead parked in Nurture has been through everything up to Qualified. */
+  protected isDone(i: number): boolean {
+    if (this.isClosed()) return false;
+    return this.status() === 'Nurture' ? i <= 3 : i < this.stageIndex();
+  }
+
+  // ---- lifecycle actions the server lets the caller take on this lead ----
+  private readonly permitted = signal<string[]>([]);
+  protected readonly canAccept = computed(() => this.permitted().includes('Accept') && this.status() === 'New');
+  protected readonly canContact = computed(() => this.permitted().includes('Contact') && !this.isClosed() && this.status() !== 'Converted');
+  protected readonly canQualify = computed(() => this.permitted().includes('Qualify') && ['New', 'Assigned', 'Contacted', 'Nurture'].includes(this.status()));
+  protected readonly canConvert = computed(() => (this.permitted().includes('Convert') || this.permitted().includes('Qualify')) && this.status() === 'Qualified');
+  protected readonly anyAction = computed(() => this.canAccept() || this.canContact() || this.canQualify() || this.canConvert());
+
+  protected readonly action = signal<'accept' | 'contact' | 'qualify' | 'nurture' | 'convert' | null>(null);
+  protected readonly actionNote = signal('');
+  protected readonly actionChannel = signal('');
+  protected readonly actionOutcome = signal('');
+  protected readonly actionBusy = signal(false);
+  protected readonly channelOptions = signal<DonLookupItem[]>([]);
+  protected readonly outcomeOptions = signal<DonLookupItem[]>([]);
+  protected readonly actionTitle = computed(() => ({
+    accept: 'Accept lead', contact: 'Log a contact', qualify: 'Qualify lead', nurture: 'Move to nurture', convert: 'Convert to donor'
+  }[this.action() ?? 'accept']));
+  protected readonly actionHint = computed(() => ({
+    accept: 'You become the owner of this lead.', contact: 'Which channel you used and how it went.',
+    qualify: 'Say why this lead is worth pursuing (10+ characters).', nurture: 'Park it for later, with a reason (10+ characters).',
+    convert: 'Creates the donor and keeps the lead history (10+ characters).'
+  }[this.action() ?? 'accept']));
+  protected readonly actionReady = computed(() => {
+    switch (this.action()) {
+      case 'accept': return true;
+      case 'contact': return !!this.actionChannel() && !!this.actionOutcome();
+      case 'qualify': case 'nurture': case 'convert': return this.actionNote().trim().length >= 10;
+      default: return false;
+    }
+  });
 
   // ---- reassign dropdown ----
   protected readonly reassignOpen = signal(false);
@@ -277,25 +318,49 @@ export class LeadProfile implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
-    const ref = this.route.snapshot.queryParamMap.get('ref');
-    if (!ref) return;
-    forkJoin([this.api.searchLeads(ref, 5), this.api.getAssignableOwners()]).subscribe({
-      next: ([list, owners]) => {
-        OWNERS.length = 0;
-        this.ownerIds.clear();
-        for (const o of owners) { OWNERS.push({ name: o.label, team: o.description ?? '' }); this.ownerIds.set(o.label, o.value); }
+    // The lead is named by ?ref= (its reference) or by ?leadId= / ?id= (its id). With neither there is
+    // nothing to load, so say so and go back to the queue rather than leave a blank page.
+    const q = this.route.snapshot.queryParamMap;
+    const ref = q.get('ref');
+    const id = q.get('leadId') ?? q.get('id');
+    if (!ref && !id) {
+      this.showToast('Choose a lead from the work queue to open its profile.');
+      this.router.navigate(['/app/fundraising/relationships/lead-work-queue']);
+      return;
+    }
+    this.api.getAssignableOwners().pipe(catchError(() => of([] as DonLookupItem[]))).subscribe((owners) => {
+      OWNERS.length = 0;
+      this.ownerIds.clear();
+      for (const o of owners) { OWNERS.push({ name: o.label, team: o.description ?? '' }); this.ownerIds.set(o.label, o.value); }
+    });
+    if (id) { this.openLead(id); return; }
+    this.api.searchLeads(ref!, 5).subscribe({
+      next: (list) => {
         const hit = list.find((x) => x.leadReference === ref) ?? list[0];
         if (!hit) { this.showToast('That lead could not be found.'); return; }
-        forkJoin([
-          this.api.getLead(hit.id),
-          this.api.getCommunicationTimeline(hit.id, null).pipe(catchError(() => of(null)))
-        ]).subscribe({
-          next: ([l, t]) => { this.version = l.version; this.loaded.set(toLeadProfile(l, t)); },
-          error: (e: unknown) => this.showToast(apiErrorMessage(e))
-        });
+        this.openLead(hit.id);
       },
       error: (e: unknown) => this.showToast(apiErrorMessage(e))
     });
+  }
+
+  private openLead(id: string): void {
+    forkJoin([
+      this.api.getLead(id),
+      this.api.getCommunicationTimeline(id, null).pipe(catchError(() => of(null)))
+    ]).subscribe({
+      next: ([l, t]) => { this.timeline = t; this.applyLead(l); },
+      error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
+  }
+
+  /** Shows the lead as the server now has it - status, owner, version and what may be done next. */
+  private applyLead(l: LeadDetail): void {
+    this.version = l.version;
+    this.permitted.set(l.permittedActions ?? []);
+    this.ownerOverride.set(null);
+    this.statusOverride.set(null);
+    this.loaded.set(toLeadProfile(l, this.timeline));
   }
 
   constructor() {
@@ -383,6 +448,7 @@ export class LeadProfile implements OnInit {
     }
     this.ownerQuery.set('');
     this.activeIndex.set(0);
+    this.action.set(null);
     this.reassignOpen.set(true);
     setTimeout(() => document.querySelector<HTMLInputElement>('.lp-owner-search input')?.focus());
   }
@@ -425,8 +491,7 @@ export class LeadProfile implements OnInit {
       expectedVersion: this.version
     }).subscribe({
       next: (l) => {
-        this.version = l.version;
-        this.ownerOverride.set(o.name);
+        this.applyLead(l);
         this.reassigned.emit({ lead: this.lead(), owner: o.name });
         this.showToast(`Lead reassigned to ${o.name}.`);
       },
@@ -459,12 +524,59 @@ export class LeadProfile implements OnInit {
       expectedVersion: this.version
     }).subscribe({
       next: (l) => {
-        this.version = l.version;
-        this.statusOverride.set(as);
+        this.applyLead(l);
         this.closed.emit({ lead: this.lead(), as });
         this.showToast(as === 'Lost' ? 'Lead marked as lost.' : 'Lead marked as dormant.');
       },
       error: (e: unknown) => this.showToast(apiErrorMessage(e))
+    });
+  }
+
+  // =================================================================================================
+  // lifecycle: accept / contact / qualify / nurture / convert
+  // =================================================================================================
+  protected openAction(kind: 'accept' | 'contact' | 'qualify' | 'nurture' | 'convert', event: Event): void {
+    event.stopPropagation();
+    this.closeReassign();
+    if (this.action() === kind) { this.action.set(null); return; }
+    this.actionNote.set('');
+    this.actionChannel.set('');
+    this.actionOutcome.set('');
+    this.action.set(kind);
+    if (kind === 'contact' && !this.channelOptions().length) {
+      // The server's own channel and outcome words, loaded the first time they are needed.
+      this.api.getLeadCaptureForm().pipe(catchError(() => of(null))).subscribe((r) => this.channelOptions.set(r?.consentChannelOptions ?? []));
+      this.api.getLeadWorkQueue({ pageSize: 1 }).pipe(catchError(() => of(null))).subscribe((r) => this.outcomeOptions.set(r?.contactOutcomeOptions ?? []));
+    }
+  }
+
+  protected closeAction(): void { this.action.set(null); }
+  protected setActionNote(event: Event): void { this.actionNote.set((event.target as HTMLInputElement).value); }
+
+  protected submitAction(): void {
+    const kind = this.action();
+    if (!kind || !this.actionReady() || this.actionBusy()) return;
+    const id = this.lead().id;
+    const note = this.actionNote().trim();
+    const expectedVersion = this.version;
+    const call = {
+      accept: () => this.api.acceptLead(id, { comment: note || null, expectedVersion }),
+      contact: () => this.api.contactLead(id, {
+        channel: this.actionChannel(), outcome: this.actionOutcome(), notes: note || null,
+        occurredAtUtc: new Date().toISOString(), expectedVersion
+      }),
+      qualify: () => this.api.qualifyLead(id, { qualificationNotes: note, moveToNurture: false, expectedVersion }),
+      nurture: () => this.api.qualifyLead(id, { qualificationNotes: note, moveToNurture: true, expectedVersion }),
+      convert: () => this.api.convertLead(id, { conversionReason: note, expectedVersion })
+    }[kind];
+    const done = {
+      accept: 'Lead accepted - you are now its owner.', contact: 'Contact logged.', qualify: 'Lead qualified.',
+      nurture: 'Lead moved to nurture.', convert: 'Lead converted to a donor.'
+    }[kind];
+    this.actionBusy.set(true);
+    call().subscribe({
+      next: (l) => { this.actionBusy.set(false); this.action.set(null); this.applyLead(l); this.showToast(done); },
+      error: (e: unknown) => { this.actionBusy.set(false); this.showToast(apiErrorMessage(e)); }
     });
   }
 
@@ -481,11 +593,14 @@ export class LeadProfile implements OnInit {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (this.reassignOpen() && !(event.target as HTMLElement | null)?.closest('.lp-reassign')) this.closeReassign();
+    const inside = (event.target as HTMLElement | null)?.closest('.lp-reassign');
+    if (this.reassignOpen() && !inside) this.closeReassign();
+    if (this.action() && !inside) this.closeAction();
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.reassignOpen()) this.closeReassign();
+    if (this.action()) this.closeAction();
   }
 }

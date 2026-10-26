@@ -1,7 +1,7 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
-import { Donor360Response } from '../../../Shared/models/donor-contract.model';
+import { DonLookupItem, Donor360Response } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 export type FollowFilter = 'all' | 'open' | 'overdue' | 'closed';
@@ -12,7 +12,11 @@ export interface D360Gift { ref: string; date: string; campaign: string; amount:
 export interface D360Campaign { name: string; code: string; via: string; converted: string; given: number; gifts: number; status: 'Converted' | 'Open' | 'Lost'; }
 export interface D360Promise { due: string; amount: number; status: 'Pending' | 'Fulfilled'; }
 export interface D360FollowUp { due: string; title: string; owner: string; priority: 'Urgent' | 'High' | 'Normal'; status: 'Open' | 'Completed'; }
-export interface D360Channel { channel: string; state: 'Granted' | 'Withdrawn' | 'Pending'; since: string; publicThanks: boolean; }
+export interface D360Channel {
+  channel: string; state: 'Granted' | 'Withdrawn' | 'Pending'; since: string; publicThanks: boolean;
+  /** The API's channel code, the consent record in force and its version, and what this caller may do ("Grant" / "Withdraw"). */
+  value: string; consentId: string | null; version: number | null; actions: string[]; stateLabel: string;
+}
 export interface D360Activity { date: string; title: string; text: string; by: string; kind: 'view' | 'gift' | 'note' | 'consent'; }
 
 export interface D360Donor {
@@ -121,7 +125,9 @@ function toD360(r: Donor360Response): D360Donor {
       notice: r.consentStatus?.noticeVersion ?? ''
     },
     channels: prefs.map((p) => ({
-      channel: p.channelLabel ?? p.channel, state: chState(p.consentState), since: fmt(p.effectiveAtUtc), publicThanks: p.publicRecognitionPreference
+      channel: p.channelLabel ?? p.channel, state: chState(p.consentState), since: fmt(p.effectiveAtUtc), publicThanks: p.publicRecognitionPreference,
+      value: p.channel, consentId: p.consentId ?? null, version: p.version ?? null, actions: p.permittedActions ?? [],
+      stateLabel: p.consentStateLabel ?? p.consentState
     })),
     activity: (r.activityHistory ?? []).map((a) => {
       const k = n(a.actionCode);
@@ -180,13 +186,6 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Create donation intent: currencies and the "expected by" shortcuts. */
 export type IntentWhen = '2w' | 'eom' | '3m' | 'none' | 'custom';
-export const INTENT_CURRENCIES = [
-  { code: 'INR', symbol: '₹', label: 'Indian rupee' },
-  { code: 'USD', symbol: '$', label: 'US dollar' },
-  { code: 'EUR', symbol: '€', label: 'Euro' },
-  { code: 'GBP', symbol: '£', label: 'Pound sterling' }
-] as const;
-export type IntentCurrency = (typeof INTENT_CURRENCIES)[number]['code'];
 export const INTENT_QUICK = [5000, 10000, 25000, 50000, 100000];
 export const INTENT_WHEN: { key: IntentWhen; label: string }[] = [
   { key: '2w', label: 'In 2 weeks' },
@@ -243,7 +242,14 @@ export class Donor360 implements OnInit {
   /** Donor on screen - loaded from the API for the reference in the URL. */
   protected readonly d = signal<D360Donor>({ ...EMPTY, code: this.route.snapshot.queryParamMap.get('ref') ?? '' });
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    // The pledge form's currencies: the active ones in the currency master, from /donors/reference-data.
+    this.api.getReferenceData().subscribe({
+      next: (r) => this.currencyCatalogue.set(r.currencies ?? []),
+      error: () => this.currencyCatalogue.set([])
+    });
+  }
 
   /** Resolves the reference to the donor's id, then loads the one Donor 360 payload. */
   private load(done?: () => void): void {
@@ -251,8 +257,6 @@ export class Donor360 implements OnInit {
     this.loading.set(true);
     const fetch = (id: string) => this.api.getDonor360(id).subscribe({
       next: (r) => {
-        // DEBUG: remove once the mapping is confirmed
-        console.log('D360 raw payload', r);
         this.donorId = r.donor.id; this.d.set(toD360(r)); this.loading.set(false); done?.();
       },
       error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e)); }
@@ -277,12 +281,22 @@ export class Donor360 implements OnInit {
   private toastTimer = 0;
 
   // ---------- create donation intent (popup) ----------
-  protected readonly currencies = INTENT_CURRENCIES;
+  private readonly currencyCatalogue = signal<DonLookupItem[]>([]);
+  protected get currencies(): { code: string; symbol: string; label: string }[] {
+    return this.currencyCatalogue().map((c) => ({ code: c.value, symbol: c.description || this.symbolOf(c.value), label: c.label }));
+  }
+  /** The currency's own glyph, from the platform's locale data rather than a list of ours. */
+  private symbolOf(code: string): string {
+    try {
+      return new Intl.NumberFormat('en', { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })
+        .formatToParts(0).find((p) => p.type === 'currency')?.value ?? code;
+    } catch { return code; }
+  }
   protected readonly quickAmounts = INTENT_QUICK;
   protected readonly whenOptions = INTENT_WHEN;
   protected readonly notesMin = NOTES_MIN;
   protected readonly intentOpen = signal(false);
-  protected readonly iCurrency = signal<IntentCurrency>('INR');
+  protected readonly iCurrency = signal<string>('INR');
   protected readonly iAmount = signal('');
   protected readonly iWhen = signal<IntentWhen>('none');
   protected readonly iDate = signal('');
@@ -511,13 +525,57 @@ export class Donor360 implements OnInit {
     return { title: 'Stay on track with the plan.', text: `A follow-up with ${first} is already scheduled. Add notes as you go.`, reason: fc.open + (fc.open === 1 ? ' open follow-up' : ' open follow-ups') };
   });
 
+  // ---------- consent: grant / withdraw one channel (POST consent-and-preference-centre/grant | {id}/withdraw) ----------
+  protected readonly consentEdit = signal<{ action: 'Grant' | 'Withdraw'; ch: D360Channel } | null>(null);
+  protected readonly consentReason = signal('');
+  protected readonly consentTried = signal(false);
+  protected readonly consentBusy = signal(false);
+  protected readonly consentMin = 10;
+
+  protected openConsent(ch: D360Channel, action: string): void {
+    if (!ch.actions.includes(action)) return;
+    this.consentReason.set('');
+    this.consentTried.set(false);
+    this.consentEdit.set({ action: action as 'Grant' | 'Withdraw', ch });
+  }
+  protected closeConsent(): void { if (!this.consentBusy()) this.consentEdit.set(null); }
+
+  protected confirmConsent(): void {
+    const e = this.consentEdit();
+    if (!e || this.consentBusy()) return;
+    this.consentTried.set(true);
+    const reason = this.consentReason().trim();
+    if (reason.length < this.consentMin) return;
+    const grant = e.action === 'Grant';
+    if (!grant && !e.ch.consentId) return;
+    this.consentBusy.set(true);
+    const call = grant
+      ? this.api.grantConsent({
+          donorId: this.donorId, purpose: reason, channel: e.ch.value, evidenceSource: 'Donor 360',
+          effectiveAtUtc: new Date().toISOString(), publicRecognitionPreference: e.ch.publicThanks
+        })
+      : this.api.withdrawConsent(e.ch.consentId!, { reason, expectedVersion: e.ch.version });
+    call.subscribe({
+      next: () => {
+        this.consentBusy.set(false);
+        this.consentEdit.set(null);
+        this.load(() => this.flash(grant ? `${e.ch.channel} consent recorded.` : `${e.ch.channel} consent withdrawn. No further contact is permitted on this channel.`));
+      },
+      error: (err: unknown) => { this.consentBusy.set(false); this.flash(apiErrorMessage(err)); }
+    });
+  }
+
   protected consentTitle(): string {
     const s = this.d().consent.state;
     return s === 'Granted' ? 'Contact permitted' : s === 'Withdrawn' ? 'Contact withdrawn' : 'Consent not recorded';
   }
 
   // ---------- intent: derived values ----------
-  protected readonly iSymbol = computed(() => INTENT_CURRENCIES.find((c) => c.code === this.iCurrency())?.symbol ?? '₹');
+  protected readonly iSymbol = computed(() => {
+    const code = this.iCurrency();
+    const hit = this.currencyCatalogue().find((c) => c.value === code);
+    return hit?.description || this.symbolOf(code);
+  });
   protected readonly iAmountNum = computed(() => Number(this.iAmount().replace(/\D/g, '')) || 0);
   protected readonly iAmountText = computed(() => {
     const n = this.iAmountNum();
@@ -527,7 +585,10 @@ export class Donor360 implements OnInit {
   protected readonly iWords = computed(() => {
     const n = this.iAmountNum();
     if (!n) return '';
-    const unit = { INR: 'rupees', USD: 'dollars', EUR: 'euros', GBP: 'pounds' }[this.iCurrency()];
+    // "Indian Rupee" -> "rupees": the unit comes from the currency's own name
+    let name: string = this.iCurrency();
+    try { name = new Intl.DisplayNames(['en'], { type: 'currency' }).of(this.iCurrency()) ?? name; } catch { /* keep the code */ }
+    const unit = (name.split(/\s+/).pop() ?? name).toLowerCase() + 's';
     const w = inWords(n);
     return w.charAt(0).toUpperCase() + w.slice(1) + ' ' + unit + ' only';
   });
@@ -562,7 +623,8 @@ export class Donor360 implements OnInit {
 
   // ---------- intent: actions ----------
   createIntent(): void {
-    this.iCurrency.set('INR');
+    const known = this.currencyCatalogue().map((c) => c.value);
+    this.iCurrency.set(known.includes('INR') || !known.length ? 'INR' : known[0]);
     this.iAmount.set('');
     this.iWhen.set('none');
     this.iDate.set('');
@@ -580,7 +642,7 @@ export class Donor360 implements OnInit {
   }
 
   setAmount(v: string): void { this.iAmount.set(v.replace(/\D/g, '').slice(0, 12)); }
-  pickCurrency(code: IntentCurrency): void { this.iCurrency.set(code); this.curOpen.set(false); }
+  pickCurrency(code: string): void { this.iCurrency.set(code); this.curOpen.set(false); }
 
   setWhen(k: IntentWhen): void {
     const d = new Date(this.today + 'T00:00:00');

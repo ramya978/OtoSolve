@@ -175,13 +175,13 @@
               </td>
               <td class="num">
                 <div class="ad-stack num">
-                  <span class="ad-amount">{{ d.lastGift ? rupees(d.lastGift) : '—' }}</span>
+                  <span class="ad-amount">{{ d.lastGift ? money(d.lastGift, d.currency) : '—' }}</span>
                   <span class="ad-sub">{{ d.lastGiftAgo }}</span>
                 </div>
               </td>
               <td class="num c-life">
                 <div class="ad-stack num">
-                  <span class="ad-amount">{{ rupees(d.lifetime) }}</span>
+                  <span class="ad-amount">{{ money(d.lifetime, d.currency) }}</span>
                   <span class="ad-bar"><i [style.width.%]="d.lifetimePct"></i></span>
                 </div>
               </td>
@@ -264,11 +264,11 @@
           <div class="ad-tile-metrics">
             <div class="ad-metric">
               <span class="ad-metric-label">Lifetime</span>
-              <span class="ad-metric-value">{{ rupees(d.lifetime) }}</span>
+              <span class="ad-metric-value">{{ money(d.lifetime, d.currency) }}</span>
             </div>
             <div class="ad-metric">
               <span class="ad-metric-label">Last gift</span>
-              <span class="ad-metric-value">{{ d.lastGift ? rupees(d.lastGift) : '—' }}</span>
+              <span class="ad-metric-value">{{ d.lastGift ? money(d.lastGift, d.currency) : '—' }}</span>
               @if (d.lastGift) { <span class="ad-metric-sub">{{ d.lastGiftAgo }}</span> }
               @else { <span class="ad-metric-sub">No gift yet</span> }
             </div>

@@ -116,9 +116,9 @@
         <span class="lp-progress-state">{{ status() }}</span>
       }
     </div>
-    <ol [class]="'lp-steps tone-' + statusTone()" [class.is-closed]="isClosed()" aria-label="Lead lifecycle">
+    <ol [class]="'lp-steps tone-' + statusTone()" [class.is-closed]="isClosed()" [style.grid-template-columns]="'repeat(' + stages.length + ', minmax(0, 1fr))'" aria-label="Lead lifecycle">
       @for (s of stages; track s; let i = $index) {
-        <li [class.is-done]="!isClosed() && i < stageIndex()" [class.is-current]="!isClosed() && i === stageIndex()"
+        <li [class.is-done]="isDone(i)" [class.is-current]="!isClosed() && i === stageIndex()"
             [attr.aria-current]="!isClosed() && i === stageIndex() ? 'step' : null">
           <span class="lp-step-bar" aria-hidden="true"></span>
           <span class="lp-step-label">{{ s }}</span>
@@ -405,6 +405,84 @@
       </dl>
 
       <div class="lp-card-actions">
+        @if (canAccept()) {
+          <div class="lp-reassign">
+            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'accept'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'accept'" (click)="openAction('accept', $event)">
+              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+              Accept
+            </button>
+          </div>
+        }
+        @if (canContact()) {
+          <div class="lp-reassign">
+            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'contact'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'contact'" (click)="openAction('contact', $event)">
+              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>
+              Log contact
+            </button>
+          </div>
+        }
+        @if (canQualify()) {
+          <div class="lp-reassign">
+            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'qualify'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'qualify'" (click)="openAction('qualify', $event)">
+              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg>
+              Qualify
+            </button>
+          </div>
+        }
+        @if (canQualify()) {
+          <div class="lp-reassign">
+            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'nurture'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'nurture'" (click)="openAction('nurture', $event)">
+              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+              Move to nurture
+            </button>
+          </div>
+        }
+        @if (canConvert()) {
+          <div class="lp-reassign">
+            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'convert'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'convert'" (click)="openAction('convert', $event)">
+              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+              Convert to donor
+            </button>
+          </div>
+        }
+        @if (action(); as a) {
+          <div class="lp-reassign">
+            <div class="lp-pop" role="dialog" aria-labelledby="lp-action-title" (click)="$event.stopPropagation()">
+              <div class="lp-pop-head">
+                <h3 id="lp-action-title">{{ actionTitle() }}</h3>
+                <p>{{ actionHint() }}</p>
+              </div>
+              @if (a === 'contact') {
+                <ul class="lp-pop-list" role="listbox" aria-label="Channel">
+                  @for (c of channelOptions(); track c.value) {
+                    <li role="option" [attr.aria-selected]="actionChannel() === c.value" [class.is-current]="actionChannel() === c.value" (click)="actionChannel.set(c.value)">
+                      <span class="lp-pop-copy"><b>{{ c.label }}</b></span>
+                      @if (actionChannel() === c.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </li>
+                  }
+                </ul>
+                <ul class="lp-pop-list" role="listbox" aria-label="Outcome">
+                  @for (o of outcomeOptions(); track o.value) {
+                    <li role="option" [attr.aria-selected]="actionOutcome() === o.value" [class.is-current]="actionOutcome() === o.value" (click)="actionOutcome.set(o.value)">
+                      <span class="lp-pop-copy"><b>{{ o.label }}</b></span>
+                      @if (actionOutcome() === o.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                    </li>
+                  }
+                </ul>
+              }
+              <label class="lp-owner-search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('note')" /></svg>
+                <input type="text" [placeholder]="a === 'accept' || a === 'contact' ? 'Note (optional)' : 'Reason'" aria-label="Note" autocomplete="off"
+                       [value]="actionNote()" (input)="setActionNote($event)" />
+              </label>
+              <div class="lp-pop-head" style="padding-bottom: 12px;">
+                <button type="button" class="lp-btn lp-btn-sm lp-btn-primary" [disabled]="!actionReady() || actionBusy()" (click)="submitAction()">
+                  {{ actionTitle() }}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
         @if (isClosed()) {
           <button type="button" class="lp-btn lp-btn-sm" (click)="reopen()">Reopen lead</button>
         } @else {

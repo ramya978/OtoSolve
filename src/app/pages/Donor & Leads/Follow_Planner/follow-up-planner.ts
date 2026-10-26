@@ -1,7 +1,7 @@
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-  FU_CHANNELS, FU_ICONS, FU_PRIORITIES, FollowUpStore, FuChannel, FuPriority, MONTHS, MONTHS_LONG, WEEKDAYS, addDays,
+  FU_CHANNELS, FU_ICONS, FU_PRIORITIES, FollowUpStore, FuChannel, FuPerson, FuPriority, MONTHS, MONTHS_LONG, WEEKDAYS, addDays,
   fmtTime, initials, isoDay, monthWeeks, pad2, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -41,8 +41,14 @@ export class FollowUpPlanner {
   protected readonly todayIso = isoDay(new Date());
 
   /* ---------- who ---------- */
-  private readonly ref = signal<string | null>(this.route.snapshot.queryParamMap.get('ref'));
-  protected readonly person = computed(() => this.store.person(this.ref()) ?? this.store.people()[0] ?? null);
+  /**
+   * The person comes from the address and from the API, never from "whoever is first in the list":
+   * ?leadId= / ?donorId= load that record (get-lead / get-donor), ?ref= alone is looked up by its code,
+   * and an address naming nobody goes back to the picker.
+   */
+  private readonly ref = this.route.snapshot.queryParamMap.get('ref');
+  protected readonly person = signal<FuPerson | null>(null);
+  protected readonly personLoading = signal(true);
 
   /* ---------- form ---------- */
   protected readonly owner = signal<string | null>(null);
@@ -63,11 +69,30 @@ export class FollowUpPlanner {
   private readonly consentMap = signal<Partial<Record<FuChannel, 'ok' | 'caution' | 'blocked'>>>({});
 
   constructor() {
-    // People and owners arrive from the API after the page opens.
+    const q = this.route.snapshot.queryParamMap;
+    const leadId = q.get('leadId');
+    const donorId = q.get('donorId');
+    const found = (p: FuPerson | null) => {
+      this.personLoading.set(false);
+      if (!p) { this.toast.set('That lead or donor could not be found. Choose who the follow-up is for.'); this.router.navigate([this.newPath]); return; }
+      this.person.set(p);
+    };
+    const failed = (e: unknown) => { this.personLoading.set(false); this.toast.set(apiErrorMessage(e)); this.router.navigate([this.newPath]); };
+    if (leadId || donorId) {
+      this.store.loadPerson(leadId ? 'lead' : 'donor', (leadId ?? donorId)!).subscribe({ next: found, error: failed });
+    } else if (this.ref) {
+      this.store.findPersonByCode(this.ref).subscribe({ next: found, error: failed });
+    } else {
+      this.personLoading.set(false);
+      this.router.navigate([this.newPath]);
+    }
+
+    // The owners arrive from the API after the page opens.
     effect(() => {
       const p = this.person();
       if (p?.owner && this.owner() === null) this.owner.set(p.owner);
     });
+    // Asked once per person: the signal is set once, so the five channel checks are not repeated.
     effect(() => {
       const p = this.person();
       this.consentMap.set({});
