@@ -102,7 +102,7 @@ const inrShort = (v: number): string => {
 @Component({
   selector: 'app-dashboard-campaigns',
   standalone: true,
-  imports: [RouterLink,PageHeader],
+  imports: [RouterLink],
   templateUrl: './dashboard-campaigns.html',
   styleUrls: ['./dashboard-campaigns.css']
 })
