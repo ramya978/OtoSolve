@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { OrganisationListItemResponse, OrganisationStatisticsResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { AuthTokenService } from '../../../Shared/services/auth-token.service';
@@ -88,7 +89,8 @@ const PAGE_SIZE = 12;
 @Component({
   selector: 'app-organisations',
   templateUrl: './organisations.html',
-  styleUrls: ['../../../Shared/IAM/iam-shared.css', './organisations.css']
+   imports: [PageHeader],
+  styleUrls: ['../../../Shared/IAM/iam-shared.css', './organisations.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class Organisations {
   private readonly router = inject(Router);

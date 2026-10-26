@@ -8,25 +8,22 @@
      view/duplicate/readiness · scheduled: view/edit/duplicate/launch · active: view/edit/duplicate ·
      closing/closed: view/duplicate), each with its own hover animation · bulk bar · pager.
      ===================================================================================================== -->
-<div class="pagehead">
-  <div>
-    <span class="cr-eyebrow">Fundraising</span>
-    <h1>All campaigns</h1>
-    <p>Fundraising campaigns across the workspace, with their status, progress and dates.</p>
-  </div>
-  <div class="cr-headactions">
-    <button type="button" class="btn-secondary pf-hbtn">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
-      Export
-    </button>
-    <button type="button" class="btn-primary pf-hbtn" (click)="goCreate()">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
-      Create
-    </button>
-  </div>
-</div>
+<app-page-header breadcrumb="Fundraising / Campaigns" heading="All campaigns" description="Fundraising campaigns across the workspace, with their status, progress and dates.">
+  <ng-container actions>
+    <div class="cr-headactions">
+      <button type="button" class="btn-secondary pf-hbtn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
+        Export
+      </button>
+      <button type="button" class="btn-primary pf-hbtn" (click)="goCreate()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
+        Create
+      </button>
+    </div>
+  </ng-container>
+</app-page-header>
 
 <!-- KPI strip: 7 widgets in ONE row (never wraps). As the screen narrows the
      lower-priority widgets hide: Closing & closed → Draft & submitted → Scheduled → Campaigns. -->

@@ -5,21 +5,14 @@
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-city">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-      <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="ml-title-city">Cities</h1>
-      <p class="m-subtitle">Cities mapped to their state and country, used for addresses, reporting and analytics.</p>
-    </div>
-    <div class="m-actions">
-    
-      <button type="button" class="m-btn m-btn-primary" (click)="create()">
-        <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        Create
+  <app-page-header breadcrumb="Master data / Geography" heading="Cities" description="Cities mapped to their state and country, used for addresses, reporting and analytics.">
+  <ng-container actions>
+    <button type="button" class="m-btn m-btn-primary" (click)="create()">
+      <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+      Create
       </button>
-    </div>
-  </div>
+  </ng-container>
+</app-page-header>
 
   <!-- overview -->
   <div class="ml-metrics" aria-label="Overview of cities">

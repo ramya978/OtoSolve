@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DashboardCampaigns } from './dashboard-campaigns';
+import { PageHeader } from '../../Shared/layout/page-header/page-header';
 
 type Tone = 'primary' | 'success' | 'info' | 'warning' | 'danger' | 'neutral';
 
@@ -80,7 +81,7 @@ const PLOT_SPAN = 78;
   standalone: true,
   imports: [RouterLink, DashboardCampaigns],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css'
+  styleUrls: ['./dashboard.css']
 })
 export class Dashboard {
   /** Where the dashboard links go - adjust to your routes. */

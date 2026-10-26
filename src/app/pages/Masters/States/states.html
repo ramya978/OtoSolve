@@ -5,21 +5,14 @@
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-state">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-      <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="ml-title-state">States</h1>
-      <p class="m-subtitle">States, provinces and territories grouped by country, with their tax and postal rules.</p>
-    </div>
-    <div class="m-actions">
-    
-      <button type="button" class="m-btn m-btn-primary" (click)="create()">
-        <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        Create
+  <app-page-header breadcrumb="Master data / Geography" heading="States" description="States, provinces and territories grouped by country, with their tax and postal rules.">
+  <ng-container actions>
+    <button type="button" class="m-btn m-btn-primary" (click)="create()">
+      <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+      Create
       </button>
-    </div>
-  </div>
+  </ng-container>
+</app-page-header>
 
   <!-- overview -->
   <div class="ml-metrics" aria-label="Overview of states">

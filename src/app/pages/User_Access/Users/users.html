@@ -4,27 +4,22 @@
      compact list · pager · record detail drawer · invite / edit drawer
      ===================================================================================== -->
 <div class="us-page">
-  <header class="i-head">
-    <div>
-      <span class="i-eyebrow">Users &amp; Access / People</span>
-      <h1>Everyone who can sign in</h1>
-      <p>People in this organisation with their role, unit and access — as cards or a compact list.</p>
-    </div>
-    <div class="i-head-actions">
-      @if (checkedCount()) {
-        <button type="button" class="i-btn" (click)="openBulkActions()"
-                [attr.aria-label]="'Open bulk actions for ' + checkedCount() + ' people'">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg>
-          Bulk actions
-          <span class="i-count i-count--on-primary">{{ checkedCount() }}</span>
-        </button>
-      }
-      <button type="button" class="i-btn">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
-      <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
-    </div>
-  </header>
+  <app-page-header breadcrumb="Users &amp; Access / People" heading="Everyone who can sign in" description="People in this organisation with their role, unit and access — as cards or a compact list.">
+  <ng-container actions>
+    @if (checkedCount()) {
+      <button type="button" class="i-btn" (click)="openBulkActions()"
+              [attr.aria-label]="'Open bulk actions for ' + checkedCount() + ' people'">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg>
+        Bulk actions
+        <span class="i-count i-count--on-primary">{{ checkedCount() }}</span>
+      </button>
+    }
+    <button type="button" class="i-btn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+    <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
+  </ng-container>
+</app-page-header>
 
   <section class="i-card us-card" aria-label="People directory">
     <!-- summary -->

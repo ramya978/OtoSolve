@@ -4,17 +4,12 @@
      card grid or list · pagination
      ===================================================================================== -->
 <div class="ol-page">
-  <header class="i-head">
-    <div>
-      <span class="i-eyebrow">Administration / Platform</span>
-      <h1>Organisations</h1>
-      <p>Every organisation on the platform, from invitation to day-to-day work.</p>
-    </div>
-    <div class="i-head-actions">
-      <button type="button" class="i-btn i-btn--primary" (click)="create()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
-    </div>
-  </header>
+  <app-page-header breadcrumb="Administration / Platform" heading="Organisations" description="Every organisation on the platform, from invitation to day-to-day work.">
+  <ng-container actions>
+    <button type="button" class="i-btn i-btn--primary" (click)="create()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
+  </ng-container>
+</app-page-header>
 
 
 

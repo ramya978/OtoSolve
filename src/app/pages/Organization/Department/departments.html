@@ -1,10 +1,5 @@
-<header class="og-page-head">
-  <div class="og-page-text">
-    <p class="og-crumb">Administration / Organisation</p>
-    <h1 class="og-page-title">Departments</h1>
-    <p class="og-page-sub">Departments across the organisation, with their heads, people and status.</p>
-  </div>
-  <div class="og-page-actions">
+<app-page-header breadcrumb="Administration / Organisation" heading="Departments" description="Departments across the organisation, with their heads, people and status.">
+  <ng-container actions>
     <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>
       Export
@@ -13,8 +8,8 @@
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
       Create
     </button>
-  </div>
-</header>
+  </ng-container>
+</app-page-header>
 
 <section class="og-kpis" aria-label="Department summary">
   <article class="og-kpi">

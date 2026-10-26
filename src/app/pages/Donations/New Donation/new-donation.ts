@@ -1,6 +1,7 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { PaymentApiService } from '../../../Service/payment-api.service';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { GatewayCheckoutService } from '../../../Shared/services/gateway-checkout.service';
 import { ToastService } from '../../../Shared/services/toast.service';
@@ -90,8 +91,9 @@ const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
 @Component({
   selector: 'app-new-donation',
   standalone: true,
+   imports: [PageHeader],
   templateUrl: './new-donation.html',
-  styleUrls: ['./new-donation.css']
+  styleUrls: ['./new-donation.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class NewDonation implements OnInit {
   private readonly api = inject(PaymentApiService);

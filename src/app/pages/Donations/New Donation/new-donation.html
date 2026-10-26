@@ -5,19 +5,14 @@
      ===================================================================================================== -->
 <div class="nd">
   <!-- ===== page header ===== -->
-  <header class="nd-page">
-    <div>
-      <span class="nd-eyebrow">Donations / New donation</span>
-      <h1>New donation</h1>
-      <p>Choose a cause, enter your gift and receipt details. The summary updates while you fill in the form.</p>
-    </div>
-    <div class="nd-page-actions">
-      <span class="nd-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg>Secure checkout</span>
-      <button type="button" class="nd-btn" (click)="reset()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5" /></svg> Clear form
-      </button>
-    </div>
-  </header>
+  <app-page-header breadcrumb="Donations / New donation" heading="New donation" description="Choose a cause, enter your gift and receipt details. The summary updates while you fill in the form.">
+  <ng-container actions>
+    <span class="nd-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4" /></svg>Secure checkout</span>
+    <button type="button" class="nd-btn" (click)="reset()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5" /></svg> Clear form
+    </button>
+  </ng-container>
+</app-page-header>
 
   <!-- ===== intro banner ===== -->
   <section class="nd-card nd-intro">

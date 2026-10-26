@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
   DATA_SCOPES, IAM_NOW, IAM_PATHS, IamOption,
@@ -66,9 +67,9 @@ const JUSTIFY_MAX = 1000;
  *  right, review + invite at the end. No password is set here; the person sets it from the e-mail. */
 @Component({
   selector: 'app-iam-create-user',
-  imports: [IamSelect, IamDateRange],
+  imports: [IamSelect, IamDateRange,PageHeader],
   templateUrl: './create-user.html',
-  styleUrls: ['../../../Shared/IAM/iam-shared.css', './create-user.css']
+  styleUrls: ['../../../Shared/IAM/iam-shared.css', './create-user.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class CreateUser implements OnInit {
   private readonly router = inject(Router);

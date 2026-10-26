@@ -2,6 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
@@ -46,9 +47,9 @@ const DEFAULT_TERMS =
 
 @Component({
   selector: 'app-campaign-detail',
-  imports: [CwPageHead, CwSelect, RouterLink],
+  imports: [CwSelect, RouterLink, PageHeader],
   templateUrl: './campaign-detail.html',
-  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './campaign-detail.css']
+  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './campaign-detail.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class CampaignDetail {
   protected readonly store = inject(CampaignWorkspaceStore);

@@ -3,6 +3,7 @@ import { OrgStore, Security, ICONS } from '../../../Shared/Organization/org.stor
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 type NumKey = 'maxFailed' | 'lockoutMin' | 'idleMin' | 'minLength' | 'expireDays';
 
@@ -31,7 +32,7 @@ const GROUPS: Group[] = [
 
 @Component({
   selector: 'app-org-settings',
-  imports: [],
+  imports: [PageHeader],
   templateUrl: './settings.html',
   styleUrls: ['../../../Shared/Organization/org-shared.css', './settings.css']
 })

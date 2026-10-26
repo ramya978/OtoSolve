@@ -1,6 +1,7 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
@@ -33,9 +34,9 @@ const STEPS: Lifecycle[] = ['draft', 'submitted', 'scheduled', 'active', 'closin
 
 @Component({
   selector: 'app-campaign-lifecycle',
-  imports: [CwPageHead, RouterLink],
+  imports: [RouterLink, PageHeader],
   templateUrl: './campaign-lifecycle.html',
-  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './campaign-lifecycle.css']
+  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './campaign-lifecycle.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class CampaignLifecycle {
   protected readonly store = inject(CampaignWorkspaceStore);

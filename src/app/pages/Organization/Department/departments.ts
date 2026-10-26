@@ -3,10 +3,11 @@ import { initialsOf } from '../../../Shared/IAM/iam-data';
 import { OrgStore, Department, ICONS, focusDialog } from '../../../Shared/Organization/org.store';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 @Component({
   selector: 'app-org-departments',
-  imports: [],
+  imports: [PageHeader],
   templateUrl: './departments.html',
   styleUrls: ['./departments.css']
 })

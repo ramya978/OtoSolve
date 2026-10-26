@@ -4,6 +4,7 @@ import { CwIcon, CW_ICONS } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { qrPattern } from '../../../Shared/Campaign/cw-qr';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { ASSET_STATUS_LABEL, ASSET_STATUS_TONE, AssetStatus, TrackingAsset, todayIso, daysBetween, fmtDate, inr } from '../../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 
@@ -15,9 +16,9 @@ type PageItem = number | null;
 
 @Component({
   selector: 'app-tracking-assets',
-  imports: [CwSelect, RouterLink],
+  imports: [CwSelect, RouterLink,PageHeader],
   templateUrl: './tracking-assets.html',
-  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-assets.css']
+  styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-assets.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class TrackingAssets {
   protected readonly store = inject(CampaignWorkspaceStore);

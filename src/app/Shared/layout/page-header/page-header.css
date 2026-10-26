@@ -1,0 +1,65 @@
+/* ==========================================================================
+   PageHeader — consistent top heading block for every workspace page
+   Structure: breadcrumb (eyebrow) → main heading (h1) → description (p) → actions
+   ========================================================================== */
+
+.ph-root {
+  display: block;
+}
+
+.ph-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0 24px 0;
+}
+
+.ph-main {
+  display: flex;
+  flex-direction: column;
+  /* gap: 6px; */
+  min-width: 0;
+}
+
+.ph-eyebrow {
+    display: block;
+    /* margin-bottom: 8px; */
+    color:color-mix(in srgb, #7c3348 74%, #000);
+    font-size: calc(10.5px * var(--font-scale, 1));
+    font-weight: 650;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.ph-eyebrow--link {
+  cursor: pointer;
+}
+
+.ph-eyebrow--link .ph-crumb-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ph-eyebrow--link .ph-crumb-link:hover {
+  text-decoration: underline;
+}
+
+.ph-heading {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  /* margin: 0 0 8px 0; */
+  letter-spacing: -0.01em;
+}
+
+.ph-description {
+  font-size: 0.9375rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Actions area: buttons projected by the consuming page */
+.ph-head ng-content {
+  display: contents;
+}

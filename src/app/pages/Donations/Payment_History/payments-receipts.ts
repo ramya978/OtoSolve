@@ -1,6 +1,7 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { PaymentApiService } from '../../../Service/payment-api.service';
 import { PaymentActivityRow, PaymentActivitySummary } from '../../../Shared/models/payment.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
@@ -90,8 +91,9 @@ const TONE_COLORS: Record<string, string> = {
 
 @Component({
   selector: 'app-payments-receipts',
+  imports:[PageHeader],
   templateUrl: './payments-receipts.html',
-  styleUrl: './payments-receipts.css'
+  styleUrls: ['./payments-receipts.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class PaymentsReceipts implements OnInit {
   private readonly api = inject(PaymentApiService);

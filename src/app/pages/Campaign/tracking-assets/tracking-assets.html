@@ -3,20 +3,19 @@
      Page head · KPI strip · search / type / status · table · pager (rows per page + page buttons) · asset drawer.
      ===================================================================================================== -->
 
-<!-- ===== page head: eyebrow · main heading · description · actions ===== -->
-<header class="ta-pagehead">
-  <div class="ta-pagehead-text">
-    <span class="ta-eyebrow">Fundraising</span>
-    <h1>Tracking asset manager</h1>
-    <p>QR codes and landing pages across your campaigns, with their status, usage and approvals.</p>
-  </div>
-  <div class="ta-pagehead-actions">
+<app-page-header breadcrumb="Fundraising / Tracking assets" heading="Tracking asset manager" description="QR codes and landing pages across your campaigns, with their status, usage and approvals.">
+  <ng-container actions>
+
+
+
+
+
     <a class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
       <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
       Create
     </a>
-  </div>
-</header>
+  </ng-container>
+</app-page-header>
 
 <!-- ===== KPI strip: one joined card, cells split by hairlines ===== -->
 <section class="ta-kpis" aria-label="Tracking asset figures">

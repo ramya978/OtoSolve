@@ -2,6 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { ToastService } from '../../../Shared/services/toast.service';
 import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignInfo, inr, PEOPLE } from '../../../Shared/Campaign/cw.data';
 
@@ -128,8 +129,9 @@ const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
 
 @Component({
   selector: 'app-campaign-register',
+  imports:[PageHeader],
   templateUrl: './campaign-register.html',
-  styleUrl: './campaign-register.css'
+  styleUrls: ['./campaign-register.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class CampaignRegister {
   private readonly router = inject(Router);
