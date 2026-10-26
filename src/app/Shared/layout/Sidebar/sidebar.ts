@@ -211,8 +211,14 @@ export class Sidebar implements AfterViewInit {
     return 'tone-' + tone;
   }
 
+  /**
+   * Whether a row opens a list of sub-pages. Same rule as the reference sidebar: only a folder
+   * (group-only, or one with no page of its own) does. A menu that is a page (has a route) is a plain
+   * link even when the API lists children under it, e.g. Organisations stays a link, with no
+   * Create Organisation / Approval Queue underneath.
+   */
   protected hasChildren(item: MenuItem): boolean {
-    return item.children.length > 0;
+    return item.children.length > 0 && (item.isGroupOnly || !item.route);
   }
 
   protected childrenOf(item: MenuItem): MenuItem[] {
