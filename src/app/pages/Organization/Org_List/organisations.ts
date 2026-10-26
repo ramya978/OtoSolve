@@ -190,6 +190,15 @@ goPage(page: number): void {
   );
 }
 
+// Change page size
+setPageSize(value: string): void {
+  const size = Number(value);
+
+  if (PAGE_SIZES.some((allowed) => allowed === size)) {
+    this.pageSize.set(size);
+    this.page.set(1);
+  }
+}
 
 
 
