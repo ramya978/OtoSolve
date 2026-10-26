@@ -223,8 +223,9 @@
         <div class="mc-grid3">
           <div class="mc-field mc-span2">
             <label for="mc-perm">Required permission</label>
-            <input id="mc-perm" class="mc-input" type="text" placeholder="Leave empty for no permission check"
+            <input id="mc-perm" class="mc-input" type="text" list="mc-perm-codes" placeholder="Leave empty for no permission check"
                    [value]="f.permission" (input)="set('permission', $any($event.target).value)" />
+            <datalist id="mc-perm-codes">@for (p of permissions(); track p.code) { <option [value]="p.code">{{ p.name }}</option> }</datalist>
             <small class="mc-fh">Checked against the permission catalogue when you save. Hiding the item is tidiness — the endpoint behind it enforces this regardless.</small>
           </div>
           <div class="mc-field">

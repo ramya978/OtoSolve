@@ -99,12 +99,22 @@ export class MenuCatalogue implements OnInit {
   readonly saving = signal(false);
   private readonly serverErrors = signal<Record<string, string>>({});
 
-  ngOnInit(): void { this.reload(); }
+  /** GET /menus/definitions/permission-codes: the codes the "Required permission" box suggests. */
+  readonly permissions = signal<{ code: string; name: string; moduleCode: string }[]>([]);
 
-  /** Reads the whole catalogue (retired entries included, the page filters them). */
+  ngOnInit(): void {
+    this.reload();
+    // A failure costs the suggestions and nothing else: the code can still be typed, and the server validates it either way.
+    this.api.getMenuPermissionCodes().subscribe({
+      next: (options) => this.permissions.set(options),
+      error: () => this.permissions.set([])
+    });
+  }
+
+  /** Reads the catalogue from the server; retired entries are fetched only while "Show retired" is on. */
   reload(done?: () => void): void {
     this.loading.set(true);
-    this.api.getMenuDefinitions(true).subscribe({
+    this.api.getMenuDefinitions(this.showRetired()).subscribe({
       next: (tree) => { this.items.set(flatten(tree)); this.loading.set(false); done?.(); },
       error: (e: unknown) => {
         this.loading.set(false);
@@ -208,8 +218,13 @@ export class MenuCatalogue implements OnInit {
 
   onSearch(e: Event): void { this.query.set((e.target as HTMLInputElement).value); }
   onModule(e: Event): void { this.module.set((e.target as HTMLSelectElement).value); }
-  toggleRetired(): void { this.showRetired.update((v) => !v); }
-  clearFilters(): void { this.query.set(''); this.module.set(''); this.showRetired.set(false); }
+  /** Flipping the switch asks the server again: /menus/definitions?includeRetired=true|false. */
+  toggleRetired(): void { this.showRetired.update((v) => !v); this.reload(); }
+  clearFilters(): void {
+    const hadRetired = this.showRetired();
+    this.query.set(''); this.module.set(''); this.showRetired.set(false);
+    if (hadRetired) this.reload();
+  }
 
   /** click an item: open its details, click again to close */
   toggle(id: string): void { this.selectedId.update((cur) => (cur === id ? null : id)); }

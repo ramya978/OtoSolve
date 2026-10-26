@@ -4,19 +4,16 @@ import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  COUNTRY_CODES, DATA_SCOPES, IAM_NOW, IAM_PATHS, IamOption, LANGUAGES, TIME_ZONES, TITLES,
+  DATA_SCOPES, IAM_NOW, IAM_PATHS, IamOption,
   fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
+import { EnumOptionsService } from '../../../Shared/services/enum-options.service';
 import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
 import { UserAdminApiService } from '../../../Service/user-admin-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
 import { CreateUserRequest } from '../../../Shared/models/iam-contract.model';
-
-const CULTURE: Record<string, string> = {
-  'English (India)': 'en-IN', Hindi: 'hi-IN', Tamil: 'ta-IN', Telugu: 'te-IN',
-  Kannada: 'kn-IN', Malayalam: 'ml-IN', Marathi: 'mr-IN', Bengali: 'bn-IN'
-};
 
 type SectionKey = 'identity' | 'organisation' | 'access' | 'review';
 
@@ -50,8 +47,8 @@ const today = IAM_NOW.toISOString().slice(0, 10);
 
 const EMPTY: UserForm = {
   title: '', firstName: '', lastName: '', displayName: '', preferredName: '', email: '', username: '',
-  countryCode: '+91', mobile: '', employeeNo: '', unit: '', department: '', designation: '', workLocation: '',
-  language: 'English (India)', timeZone: 'Asia/Kolkata (IST, UTC+05:30)', role: '', dataScope: '',
+  countryCode: '', mobile: '', employeeNo: '', unit: '', department: '', designation: '', workLocation: '',
+  language: '', timeZone: '', role: '', dataScope: '',
   accessFrom: today, accessUntil: '', mfa: '', justification: '', message: ''
 };
 
@@ -78,11 +75,51 @@ export class CreateUser implements OnInit {
   private readonly store = inject(IamDirectoryStore);
   private readonly api = inject(UserAdminApiService);
   private readonly toast = inject(ToastService);
+  private readonly geo = inject(GeoMasterService);
+  private readonly enums = inject(EnumOptionsService);
   readonly submitting = signal(false);
   readonly serverError = signal('');
 
   ngOnInit(): void {
     this.store.load();
+    // Titles, dialling prefixes, languages and time zones come from the server catalogues, not from lists in this file.
+    this.enums.getAll().subscribe({
+      next: (e) => this.titleList.set((e.personTitles ?? []).map((o) => String(o.value ?? '')).filter(Boolean)),
+      error: () => undefined
+    });
+    this.geo.getCountries().subscribe({
+      next: (list) => {
+        const seen = new Set<string>();
+        const out: IamOption[] = [];
+        for (const c of list) {
+          const raw = c.phoneCountryCode ?? '';
+          if (!raw) continue;
+          const code = raw.startsWith('+') ? raw : '+' + raw;
+          if (seen.has(code)) continue;
+          seen.add(code);
+          out.push({ value: code, label: code, hint: c.name ?? '' });
+        }
+        this.codeList.set(out);
+        // the form used to open on +91; keep that default only when the catalogue offers it
+        if (!this.form().countryCode && seen.has('+91')) this.form.update((f) => ({ ...f, countryCode: f.countryCode || '+91' }));
+      },
+      error: () => undefined
+    });
+    this.geo.getLanguageOptions().subscribe({
+      next: (list) => {
+        this.langList.set(list.map((l) => ({ value: l.cultureCode ?? '', label: l.displayLabel ?? l.cultureCode ?? '' })).filter((o) => o.value));
+        if (!this.form().language && list.some((l) => l.cultureCode === 'en-IN')) this.form.update((f) => ({ ...f, language: f.language || 'en-IN' }));
+      },
+      error: () => undefined
+    });
+    this.geo.getTimeZoneOptions().subscribe({
+      next: (list) => {
+        this.zoneList.set(list.map((z) => ({ value: z.ianaKey ?? '', label: z.name ?? z.ianaKey ?? '' })).filter((o) => o.value));
+        const home = list.find((z) => z.ianaKey === 'Asia/Kolkata') ?? list.find((z) => z.ianaKey === 'Asia/Calcutta');
+        if (home && !this.form().timeZone) this.form.update((f) => ({ ...f, timeZone: f.timeZone || (home.ianaKey ?? '') }));
+      },
+      error: () => undefined
+    });
   }
 
   readonly form = signal<UserForm>({ ...EMPTY });
@@ -107,12 +144,16 @@ export class CreateUser implements OnInit {
   ];
 
   // ---------------------------------------------------------------- options
-  readonly titleOptions: IamOption[] = TITLES.map((t) => ({ value: t, label: t }));
-  readonly codeOptions: IamOption[] = COUNTRY_CODES.map((c) => ({ value: c.code, label: c.code, hint: c.country }));
+  private readonly titleList = signal<string[]>([]);
+  private readonly codeList = signal<IamOption[]>([]);
+  private readonly langList = signal<IamOption[]>([]);
+  private readonly zoneList = signal<IamOption[]>([]);
+  get titleOptions(): IamOption[] { return this.titleList().map((t) => ({ value: t, label: t })); }
+  get codeOptions(): IamOption[] { return this.codeList(); }
   private readonly unitOptionsC = computed<IamOption[]>(() => this.store.units().map((u) => ({ value: u.id ?? '', label: u.name ?? '', icon: 'unit' })));
   private readonly deptOptionsC = computed<IamOption[]>(() => this.store.departments().map((d) => ({ value: d.id ?? '', label: d.name ?? '', icon: 'building' })));
-  readonly languageOptions: IamOption[] = LANGUAGES.map((l) => ({ value: l, label: l }));
-  readonly zoneOptions: IamOption[] = TIME_ZONES.map((z) => ({ value: z, label: z }));
+  get languageOptions(): IamOption[] { return this.langList(); }
+  get zoneOptions(): IamOption[] { return this.zoneList(); }
   private readonly roleOptionsC = computed<IamOption[]>(() => this.store.roles().filter((r) => r.isActive !== false).map((r) => ({
     value: r.id ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '')
   })));
@@ -254,8 +295,8 @@ export class CreateUser implements OnInit {
       departmentId: f.department || null,
       designation: f.designation.trim() || null,
       workLocation: f.workLocation.trim() || null,
-      preferredCulture: CULTURE[f.language] ?? null,
-      timeZone: f.timeZone.split(' (')[0] || null,
+      preferredCulture: f.language || null,
+      timeZone: f.timeZone || null,
       accessStartsAtUtc: f.accessFrom ? new Date(f.accessFrom).toISOString() : null,
       accessEndsAtUtc: f.accessUntil ? new Date(f.accessUntil).toISOString() : null,
       mfaRequirement: f.mfa === 'required' ? 'required' : 'inherited',
@@ -291,8 +332,19 @@ export class CreateUser implements OnInit {
     });
   }
 
+  /** The opening choices, once the catalogues are in. */
+  private defaults(): Pick<UserForm, 'countryCode' | 'language' | 'timeZone'> {
+    const has = (list: IamOption[], v: string) => list.some((o) => o.value === v);
+    const zone = ['Asia/Kolkata', 'Asia/Calcutta'].find((z) => has(this.zoneList(), z)) ?? '';
+    return {
+      countryCode: has(this.codeList(), '+91') ? '+91' : '',
+      language: has(this.langList(), 'en-IN') ? 'en-IN' : '',
+      timeZone: zone
+    };
+  }
+
   startAnother(): void {
-    this.form.set({ ...EMPTY });
+    this.form.set({ ...EMPTY, ...this.defaults() });
     this.touched.set(new Set());
     this.tried.set(false);
     this.displayEdited = false;

@@ -122,7 +122,7 @@
                     <span>{{ suffix }}</span>
                   </div>
                   @if (bad('domain')) { <small class="oc-err">{{ errors()['domain'] }}</small> }
-                  @else { <small class="oc-hint">Lower case letters, digits and hyphens. Suggested from the name. Cannot be changed later.</small> }
+                  @else { <small class="oc-hint">{{ domainHint() }}</small> }
                 </div>
               </div>
 

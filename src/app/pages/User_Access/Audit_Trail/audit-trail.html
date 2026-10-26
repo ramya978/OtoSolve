@@ -11,7 +11,7 @@
       <p>Every sign-in, view and change in time order — who did it, on which record and how it ended.</p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn">
+      <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportCsv()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export to CSV</button>
     </div>
   </header>
@@ -22,7 +22,7 @@
         <div><span>Total events</span><strong>{{ total }}</strong><small>All-time activities</small></div>
         <div><span>Succeeded</span><strong>{{ succeeded }}</strong><small><b class="at-ok">{{ pct(succeeded) }}%</b> of all events</small></div>
         <div><span>Denied or failed</span><strong [class.at-bad]="deniedFailed > 0">{{ deniedFailed }}</strong><small><b>{{ pct(deniedFailed) }}%</b> of all events</small></div>
-        <div class="at-sum-top"><span>Most active</span><strong class="is-text">{{ top.name }}</strong><small>{{ top.count }} events · {{ actors.length }} {{ actors.length === 1 ? 'person' : 'people' }} involved</small></div>
+        <div class="at-sum-top"><span>Most active</span><strong class="is-text">{{ top.name }}</strong><small>{{ top.count }} events · {{ actorCount }} {{ actorCount === 1 ? 'person' : 'people' }} involved</small></div>
       </div>
 
       <div class="i-toolbar at-tools">
@@ -68,7 +68,7 @@
                   <div><dt>By</dt><dd>{{ e.by }} · {{ e.byRole }}</dd></div>
                   <div><dt>On</dt><dd>{{ e.on }} · {{ e.onType }}</dd></div>
                   <div><dt>Outcome</dt><dd>{{ outcomeLabel(e.outcome) }}</dd></div>
-                  <div><dt>Reference</dt><dd class="i-mono">EVT-{{ e.id.slice(1).padStart(5, '0') }}</dd></div>
+                  <div><dt>Reference</dt><dd class="i-mono">EVT-{{ e.id.slice(0, 8).toUpperCase() }}</dd></div>
                 </dl>
               }
             </li>
@@ -83,8 +83,8 @@
       }
 
       <footer class="i-foot">
-        <span>Showing <strong>{{ visible().length }}</strong> of {{ filtered().length }} events</span>
-        @if (visible().length < filtered().length) {
+        <span>Showing <strong>{{ visible().length }}</strong> of {{ totalCount() }} events</span>
+        @if (canLoadMore()) {
           <button type="button" class="i-btn i-btn--sm" (click)="loadMore()">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronDown')" /></svg>Load more events</button>
         }
@@ -96,7 +96,7 @@
       <section class="i-card" aria-labelledby="at-overview">
         <header class="i-card-head"><div><h2 id="at-overview">Outcome overview</h2><p>For the current filter</p></div></header>
         <div class="i-card-body at-ov">
-          <div class="at-ov-total"><strong>{{ filtered().length }}</strong><small>events</small></div>
+          <div class="at-ov-total"><strong>{{ total }}</strong><small>events</small></div>
           <ul class="at-legend">
             @for (o of outcomes(); track o.key) {
               <li><span [class]="'i-st i-st--' + (o.key === 'succeeded' ? 'success' : o.key === 'denied' ? 'warning' : 'danger')">{{ o.label }}</span>

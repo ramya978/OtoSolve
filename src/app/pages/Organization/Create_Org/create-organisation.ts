@@ -1,14 +1,15 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
 import { Router } from '@angular/router';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
-import { CreateOrganisationResponse } from '../../../Shared/models/iam-contract.model';
+import { CheckSubdomainResponse, CreateOrganisationResponse } from '../../../Shared/models/iam-contract.model';
 import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
 import { EnumOptionsService } from '../../../Shared/services/enum-options.service';
+import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 
 /** change these to your real routes */
 const ORGS_PATH = '/app/administration/organisation/directory';
-const DOMAIN_SUFFIX = '.localhost';
 
 interface OrgForm {
   /* step 1 */
@@ -31,29 +32,6 @@ const TYPES: Opt[] = [
   { value: 'corporate', label: 'Corporate / CSR' },
   { value: 'other', label: 'Other' }
 ];
-const PHONE_CODES = ['+91', '+971', '+1', '+44', '+65'];
-const TIMEZONES: Opt[] = [
-  { value: 'Asia/Kolkata', label: '(+05:30) (UTC+05:30) India Standard Time' },
-  { value: 'Asia/Dubai', label: '(+04:00) (UTC+04:00) Gulf Standard Time' },
-  { value: 'Asia/Singapore', label: '(+08:00) (UTC+08:00) Singapore Time' },
-  { value: 'Asia/Shanghai', label: '(+08:00) (UTC+08:00) China Standard Time' },
-  { value: 'Europe/London', label: '(+00:00) (UTC+00:00) Greenwich Mean Time' },
-  { value: 'America/New_York', label: '(-05:00) (UTC-05:00) Eastern Time' }
-];
-const CURRENCIES: Opt[] = [
-  { value: 'INR', label: 'INR — Indian Rupee' },
-  { value: 'AED', label: 'AED — United Arab Emirates Dirham' },
-  { value: 'USD', label: 'USD — US Dollar' },
-  { value: 'GBP', label: 'GBP — Pound Sterling' },
-  { value: 'SGD', label: 'SGD — Singapore Dollar' }
-];
-const LANGUAGES: Opt[] = [
-  { value: 'en-IN', label: 'English (India) — English' },
-  { value: 'en-US', label: 'English (US) — English' },
-  { value: 'hi-IN', label: 'Hindi — हिन्दी' },
-  { value: 'ta-IN', label: 'Tamil — தமிழ்' }
-];
-
 const STEPS = [
   { key: 'organisation', label: 'Organisation', title: 'Organisation details', sub: 'Enter the core information about the organisation.' },
   { key: 'contact', label: 'Contact', title: 'Contact and defaults', sub: 'All optional. The administrator completes the full profile once they activate their account, and the organisation cannot be approved until they have.' },
@@ -68,7 +46,7 @@ const slug = (s: string): string => s.toLowerCase().replace(/&/g, 'and').replace
 
 const blank = (): OrgForm => ({
   name: '', legalName: '', type: '', code: '', domain: '', description: '',
-  phoneCode: '+91', phone: '', maxPeople: '', timezone: 'Asia/Kolkata', currency: 'INR', language: 'en-IN', twoStep: 'optional',
+  phoneCode: '', phone: '', maxPeople: '', timezone: '', currency: '', language: '', twoStep: 'optional',
   firstName: '', lastName: '', email: '', username: '', message: '', sendNow: true
 });
 
@@ -98,28 +76,101 @@ const ICONS: Record<string, string> = {
   templateUrl: './create-organisation.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './create-organisation.css']
 })
-export class CreateOrganisation {
+export class CreateOrganisation implements OnDestroy {
   private readonly router = inject(Router);
   private readonly api = inject(OrganisationApiService);
   private readonly toast = inject(ToastService);
   private readonly enums = inject(EnumOptionsService);
+  private readonly geo = inject(GeoMasterService);
+  private readonly destroy$ = new Subject<void>();
+  private readonly subdomainInput$ = new Subject<string>();
   /** The server's own words for organisation types (the form's labels are matched to them). */
   private serverTypes: string[] = [];
   private readonly serverErrors = signal<Record<string, string>>({});
   readonly saving = signal(false);
   readonly result = signal<CreateOrganisationResponse | null>(null);
 
+  /** GET /business-units/current: the root domain new organisations hang off (deployment configuration, not a constant). */
+  private readonly rootDomain = signal('');
+  private readonly phoneCodeList = signal<string[]>([]);
+  private readonly timezoneList = signal<Opt[]>([]);
+  private readonly currencyList = signal<Opt[]>([]);
+  private readonly languageList = signal<Opt[]>([]);
+  /** POST /organisations/check-subdomain, run as the address is typed. */
+  readonly checkingDomain = signal(false);
+  readonly domainCheck = signal<CheckSubdomainResponse | null>(null);
+
   constructor() {
     this.enums.organisationTypes().subscribe({ next: (t) => (this.serverTypes = t), error: () => undefined });
+
+    this.api.getBusinessUnit().subscribe({
+      next: (unit) => this.rootDomain.set(unit.rootDomain ?? ''),
+      error: () => this.rootDomain.set('')
+    });
+
+    this.geo.getCountries().subscribe({
+      next: (list) => {
+        const codes = [...new Set(list.map((c) => c.phoneCountryCode ?? '').filter(Boolean).map((c) => (c.startsWith('+') ? c : '+' + c)))];
+        this.phoneCodeList.set(codes);
+        if (!this.f().phoneCode && codes.includes('+91')) this.set('phoneCode', '+91');
+      },
+      error: () => undefined
+    });
+    this.geo.getTimeZoneOptions().subscribe({
+      next: (list) => {
+        this.timezoneList.set(list.map((z) => ({ value: z.ianaKey, label: z.name })));
+        const home = list.find((z) => z.ianaKey === 'Asia/Kolkata') ?? list.find((z) => z.ianaKey === 'Asia/Calcutta');
+        if (!this.f().timezone && home) this.set('timezone', home.ianaKey);
+      },
+      error: () => undefined
+    });
+    this.geo.getCurrencies().subscribe({
+      next: (list) => {
+        this.currencyList.set(list.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` })));
+        if (!this.f().currency && list.some((c) => c.code === 'INR')) this.set('currency', 'INR');
+      },
+      error: () => undefined
+    });
+    this.geo.getLanguageOptions().subscribe({
+      next: (list) => {
+        this.languageList.set(list.map((l) => ({ value: l.cultureCode, label: l.displayLabel })));
+        if (!this.f().language && list.some((l) => l.cultureCode === 'en-IN')) this.set('language', 'en-IN');
+      },
+      error: () => undefined
+    });
+
+    // The availability check runs while the address is typed, so a taken name is known before the last step.
+    this.subdomainInput$.pipe(
+      debounceTime(400),
+      distinctUntilChanged(),
+      switchMap((value) => { this.checkingDomain.set(true); return this.api.checkSubdomain(value); }),
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: (r) => { this.checkingDomain.set(false); this.domainCheck.set(r); },
+      error: () => { this.checkingDomain.set(false); this.domainCheck.set(null); }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   readonly steps = STEPS;
   readonly types = TYPES;
-  readonly phoneCodes = PHONE_CODES;
-  readonly timezones = TIMEZONES;
-  readonly currencies = CURRENCIES;
-  readonly languages = LANGUAGES;
-  readonly suffix = DOMAIN_SUFFIX;
+  get phoneCodes(): string[] { return this.phoneCodeList(); }
+  get timezones(): Opt[] { return this.timezoneList(); }
+  get currencies(): Opt[] { return this.currencyList(); }
+  get languages(): Opt[] { return this.languageList(); }
+  /** ".root.domain" from the business unit, or nothing until it has loaded. */
+  get suffix(): string { return this.rootDomain() ? '.' + this.rootDomain() : ''; }
+  /** The line under the web-address box once the live check has answered. */
+  readonly domainHint = computed(() => {
+    if (this.checkingDomain()) return 'Checking availability…';
+    const r = this.domainCheck();
+    if (r?.isAvailable) return `${r.hostName || this.f().domain + this.suffix} is available.`;
+    return 'Lower case letters, digits and hyphens. Suggested from the name. Cannot be changed later.';
+  });
 
   readonly f = signal<OrgForm>(blank());
   readonly step = signal(0);
@@ -138,6 +189,10 @@ export class CreateOrganisation {
     if (f.code.trim() && !/^[A-Za-z0-9_-]+$/.test(f.code.trim())) e['code'] = 'Use letters, digits, underscores or hyphens.';
     if (!f.domain.trim()) e['domain'] = 'Choose a web address.';
     else if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(f.domain.trim())) e['domain'] = 'Use lower case letters, digits and hyphens only.';
+    else if (this.domainCheck() && this.domainCheck()!.subdomain === f.domain.trim() && this.domainCheck()!.isAvailable === false) {
+      const c = this.domainCheck()!;
+      e['domain'] = c.message || (c.isReserved ? 'This address is reserved.' : 'This address is already taken.');
+    }
     if (!f.firstName.trim()) e['firstName'] = 'Add a first name.';
     if (!f.lastName.trim()) e['lastName'] = 'Add a last name.';
     if (!f.email.trim()) e['email'] = 'Add an e-mail address.';
@@ -149,16 +204,17 @@ export class CreateOrganisation {
   readonly review = computed(() => {
     const f = this.f();
     const label = (list: Opt[], v: string) => list.find((o) => o.value === v)?.label ?? v;
+    const tzList = this.timezoneList(), curList = this.currencyList(), langList = this.languageList();
     const dash = (v: string) => v.trim() || '—';
     return [
       { step: 0, icon: 'org', title: 'Organisation', note: 'The details from the first step.', rows: [
         ['Name', dash(f.name)], ['Registered legal name', dash(f.legalName)], ['Type', label(TYPES, f.type)],
-        ['Reference code', f.code.trim() || 'Auto-generated'], ['Web address', f.domain.trim() ? f.domain.trim() + DOMAIN_SUFFIX : '—'],
+        ['Reference code', f.code.trim() || 'Auto-generated'], ['Web address', f.domain.trim() ? (this.domainCheck()?.hostName || f.domain.trim() + this.suffix) : '—'],
         ['Description', dash(f.description)]
       ] },
       { step: 1, icon: 'globe', title: 'Contact and regional defaults', note: 'The details from the Contact step.', rows: [
         ['Contact telephone', f.phone.trim() ? `${f.phoneCode} ${f.phone.trim()}` : '—'], ['Maximum people', f.maxPeople.trim() || 'No limit'],
-        ['Time zone', label(TIMEZONES, f.timezone)], ['Currency', label(CURRENCIES, f.currency)], ['Language', label(LANGUAGES, f.language)],
+        ['Time zone', label(tzList, f.timezone)], ['Currency', label(curList, f.currency)], ['Language', label(langList, f.language)],
         ['Two-step verification', f.twoStep === 'required' ? 'Required' : 'Optional']
       ] },
       { step: 2, icon: 'user', title: 'First administrator', note: 'The details from the Administrator step.', rows: [
@@ -176,11 +232,21 @@ export class CreateOrganisation {
   /** typing a name suggests the web address, until the person edits the address themselves */
   onName(value: string): void {
     this.set('name', value);
-    if (!this.domainTouched) this.set('domain', slug(value).slice(0, 40));
+    if (!this.domainTouched) {
+      const s = slug(value).slice(0, 40);
+      this.set('domain', s);
+      this.queueCheck(s);
+    }
   }
   onDomain(value: string): void {
     this.domainTouched = true;
-    this.set('domain', value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+    const clean = value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    this.set('domain', clean);
+    this.queueCheck(clean);
+  }
+  private queueCheck(value: string): void {
+    this.domainCheck.set(null);
+    if (value.length >= 3) this.subdomainInput$.next(value);
   }
 
   bad(key: string): boolean { return this.attempted() && !!this.errors()[key]; }
@@ -280,6 +346,7 @@ export class CreateOrganisation {
     this.serverErrors.set({});
     this.result.set(null);
     this.f.set(blank());
+    this.domainCheck.set(null);
     this.domainTouched = false;
     this.created.set(false);
     this.step.set(0);

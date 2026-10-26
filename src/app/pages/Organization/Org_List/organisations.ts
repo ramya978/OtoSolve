@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
-import { OrganisationListItemResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
+import { OrganisationListItemResponse, OrganisationStatisticsResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { AuthTokenService } from '../../../Shared/services/auth-token.service';
 import { NavigationService } from '../../../Shared/services/navigation.service';
@@ -98,6 +98,8 @@ export class Organisations {
   private readonly navigation = inject(NavigationService);
 
   readonly orgs = signal<Org[]>([]);
+  /** GET /organisations/statistics: the counters across the top come from the server, not from the loaded rows. */
+  readonly stats = signal<OrganisationStatisticsResponse | null>(null);
   readonly loading = signal(false);
   readonly query = signal('');
   readonly status = signal<Status | ''>('');
@@ -205,33 +207,38 @@ setPageSize(value: string): void {
   /** KPI widgets: big number, one side figure and a short footnote */
   readonly kpis = computed(() => {
     const all = this.orgs();
-    const total = all.length;
-    const by = (st: Status) => all.filter((o) => o.status === st);
+    const s = this.stats();
+    // Server counters when they have arrived; the loaded rows only fill in while that call is on its way or failed.
+    const by = (st: Status) => all.filter((o) => o.status === st).length;
+    const total = s?.total ?? all.length;
+    const active = s?.active ?? by('active');
+    const review = s?.awaitingReview ?? by('review');
+    const onboarding = s?.onboarding ?? by('invited');
+    const suspended = s?.suspended ?? by('suspended');
     const share = (n: number) => (total ? Math.round((n / total) * 100) : 0) + '%';
-    const active = by('active');
-    const largest = [...active].sort((x, y) => y.people - x.people)[0];
+    const largest = [...all.filter((o) => o.status === 'active')].sort((x, y) => y.people - x.people)[0];
     return [
       {
         label: 'Organisations', icon: 'building', tone: 'plain', value: total,
         sideValue: String(all.reduce((n, o) => n + o.people, 0)), sideLabel: 'People',
-        note: `${active.length} active · ${by('invited').length} onboarding`
+        note: `${active} active · ${onboarding} onboarding`
       },
       {
-        label: 'Active', icon: 'check', tone: 'ok', value: active.length,
-        sideValue: share(active.length), sideLabel: 'Of all',
+        label: 'Active', icon: 'check', tone: 'ok', value: active,
+        sideValue: share(active), sideLabel: 'Of all',
         note: largest ? `Largest: ${largest.name} (${largest.people} people)` : 'No active organisations yet'
       },
       {
-        label: 'Awaiting review', icon: 'clock', tone: 'warn', value: by('review').length,
-        sideValue: share(by('review').length), sideLabel: 'Of all', note: 'Waiting for approval'
+        label: 'Awaiting review', icon: 'clock', tone: 'warn', value: review,
+        sideValue: share(review), sideLabel: 'Of all', note: 'Waiting for approval'
       },
       {
-        label: 'Onboarding', icon: 'pencil', tone: 'info', value: by('invited').length,
-        sideValue: share(by('invited').length), sideLabel: 'Of all', note: 'Invitation sent, not yet activated'
+        label: 'Onboarding', icon: 'pencil', tone: 'info', value: onboarding,
+        sideValue: share(onboarding), sideLabel: 'Of all', note: 'Invitation sent, not yet activated'
       },
       {
-        label: 'Suspended', icon: 'ban', tone: 'bad', value: by('suspended').length,
-        sideValue: share(by('suspended').length), sideLabel: 'Of all', note: 'Temporarily suspended'
+        label: 'Suspended', icon: 'ban', tone: 'bad', value: suspended,
+        sideValue: share(suspended), sideLabel: 'Of all', note: 'Temporarily suspended'
       }
     ];
   });
@@ -281,6 +288,7 @@ setPageSize(value: string): void {
   /** Every organisation the caller may see (all pages), filtered and paged on this screen. */
   load(): void {
     this.loading.set(true);
+    this.api.getStatistics().subscribe({ next: (s) => this.stats.set(s), error: () => this.stats.set(null) });
     fetchPages((page, size) => this.api.search({ page, pageSize: size })).subscribe({
       next: ({ items }) => { this.orgs.set(items.map(toOrg)); this.loading.set(false); },
       error: (e: unknown) => { this.loading.set(false); this.flash(apiErrorMessage(e, 'The organisations could not be loaded.')); }

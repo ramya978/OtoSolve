@@ -9,6 +9,7 @@ import { IamDirectoryStore, mergeDetail } from '../../../Shared/IAM/iam-director
 import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
+import { UserStatisticsResponse } from '../../../Shared/models/iam-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 
 type View = 'cards' | 'list';
@@ -65,6 +66,7 @@ export class Users implements OnInit {
 
   ngOnInit(): void {
     this.store.load();
+    this.loadStats();
     this.geo.getTimeZoneOptions().subscribe({ next: (z) => this.tzList.set(z.map((t) => t.ianaKey)), error: () => undefined });
     this.geo.getLanguageOptions().subscribe({ next: (l) => this.langList.set(l.map((x) => x.cultureCode)), error: () => undefined });
   }
@@ -157,14 +159,27 @@ export class Users implements OnInit {
   readonly deptChoice = computed<IamOption[]>(() => this.store.departments().map((d) => ({ value: d.name ?? '', label: d.name ?? '', icon: 'building' })));
 
   // ---- counts + facts ----
+  /** GET /users/statistics: the counters come from the server, not from counting the rows that were loaded. */
+  private readonly stats = signal<UserStatisticsResponse | null>(null);
+  private loadStats(): void {
+    this.api.getStatistics().subscribe({ next: (s) => this.stats.set(s), error: () => this.stats.set(null) });
+  }
   readonly counts = computed(() => {
-    const out: Record<string, number> = { all: this.users().length };
-    for (const s of Object.keys(USER_STATUS_LABEL)) out[s] = this.users().filter((u) => u.status === s).length;
+    const s = this.stats();
+    const rows = this.users();
+    const by = new Map(Object.entries(s?.byStatus ?? {}).map(([k, v]) => [k.toLowerCase(), v]));
+    const out: Record<string, number> = { all: s?.total ?? rows.length };
+    for (const k of Object.keys(USER_STATUS_LABEL)) out[k] = by.get(k) ?? rows.filter((u) => u.status === k).length;
+    if (s) {
+      if (s.active !== undefined) out['active'] = s.active;
+      if (s.invited !== undefined) out['invited'] = s.invited;
+      if (s.suspended !== undefined) out['suspended'] = s.suspended;
+    }
     return out;
   });
   readonly staffCount = computed(() => this.users().length);
-  readonly enrolled = computed(() => this.users().filter((u) => u.mfaEnrolled).length);
-  readonly neverSigned = computed(() => this.users().filter((u) => !u.lastSignIn).length);
+  readonly enrolled = computed(() => this.stats()?.mfaEnabled ?? this.users().filter((u) => u.mfaEnrolled).length);
+  readonly neverSigned = computed(() => this.stats()?.neverSignedIn ?? this.users().filter((u) => !u.lastSignIn).length);
   readonly unitCount = computed(() => this.distinct((u) => u.unit).length);
 
   // ---- list ----
@@ -311,6 +326,7 @@ export class Users implements OnInit {
       next: () => {
         this.toast.show(reactivate ? 'Reactivated' : 'Deactivated', u.name, 'success');
         this.store.load();
+        this.loadStats();
       },
       error: (e) => this.toast.show('Could not update', apiErrorMessage(e, 'The change was not saved.'), 'error'),
     });
@@ -321,6 +337,7 @@ export class Users implements OnInit {
         this.toast.show('Withdrawn', u.name, 'success');
         this.selectedId.set('');
         this.store.load();
+        this.loadStats();
       },
       error: (e) => this.toast.show('Could not withdraw', apiErrorMessage(e, 'The change was not saved.'), 'error'),
     });
@@ -418,6 +435,7 @@ export class Users implements OnInit {
             this.toast.show('Saved', d.name.trim(), 'success');
             this.drawer.set(null);
             this.store.load();
+            this.loadStats();
           },
           error: (e) => {
             this.saving.set(false);
