@@ -2,20 +2,17 @@
      FOLLOW-UP PLANNER  (account-workspace look)
      Page header → profile card → facts strip → "Plan details" rows + "Brief" card | side checklist card.
      ===================================================================================================== -->
+<app-page-header breadcrumb="Follow-ups / New follow-up" [breadcrumbRoute]="'/app/donor-leads/follow-up-planner'" heading="Plan follow-up" description="Choose who does it, how and when - then write what they need to know.">
+  <ng-container actions>
+ <div style="gap: 10px;display: flex;flex-wrap: wrap;">
+     <button type="button" class="fu-btn" (click)="changePerson()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg> Change person</button>
+    <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back</button>
+ </div>
+  </ng-container>
+</app-page-header>
+
 <div class="fp">
   @if (person(); as p) {
-    <!-- ===== page header ===== -->
-    <header class="fu-page">
-      <div class="fu-page-txt">
-        <span class="fu-eyebrow">Follow-ups</span>
-        <h1>Plan follow-up</h1>
-        <p>Choose who does it, how and when - then write what they need to know.</p>
-      </div>
-      <div class="fu-page-actions">
-        <button type="button" class="fu-btn" (click)="changePerson()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('users')" /></svg> Change person</button>
-        <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back</button>
-      </div>
-    </header>
 
     <!-- ===== profile card ===== -->
     <section class="fu-card fp-hero">

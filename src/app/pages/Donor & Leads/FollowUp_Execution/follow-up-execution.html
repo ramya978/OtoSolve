@@ -5,18 +5,14 @@
      → side (Ready to complete? · Relationship readiness · Next follow-up · Supporting files · Earlier conversations)
      → escalate popup.
      ===================================================================================================== -->
+<app-page-header breadcrumb="Donor &amp; Leads / Follow-up execution"  heading="Follow-up execution" description="Record what happened on this contact. Completing it adds the conversation to the timeline.">
+  <ng-container actions>
+    <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back</button>
+  </ng-container>
+</app-page-header>
+
 <div class="fe">
   @if (fu(); as f) {
-    <header class="fu-page">
-      <div class="fu-page-txt">
-        <span class="fu-eyebrow">Follow-ups</span>
-        <h1>Follow-up execution</h1>
-        <p>Record what happened on this contact. Completing it adds the conversation to the timeline.</p>
-      </div>
-      <div class="fu-page-actions">
-        <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back</button>
-      </div>
-    </header>
 
     <!-- ===== profile card ===== -->
     <section class="fu-card fe-hero">
@@ -398,3 +394,4 @@
 
   @if (toast()) { <div class="fu-toast" role="status">{{ toast() }}</div> }
 </div>
+

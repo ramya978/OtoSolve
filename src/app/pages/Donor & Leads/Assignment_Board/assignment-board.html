@@ -3,25 +3,23 @@
      Page header → "On the board" widgets (click to filter) → records card (tools · filters · tabs · chips · table · pager)
      + Owners side card → assign / history popups.
      ===================================================================================================== -->
+<app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="Assignment board" description="Give every lead and donor an owner, and see who is carrying how much.">
+  <ng-container actions>
+   <div style="gap: 10px;display: flex;flex-wrap: wrap;">
+     <div class="fu-seg ab-types" role="tablist">
+      <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
+      </button>
+      <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+      </button>
+    </div>
+    <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
+   </div>
+  </ng-container>
+</app-page-header>
+
 <div class="ab">
-  <header class="fu-page">
-    <div class="fu-page-txt">
-      <span class="fu-eyebrow">Relationship workspace</span>
-      <h1>Assignment board</h1>
-      <p>Give every lead and donor an owner, and see who is carrying how much.</p>
-    </div>
-    <div class="fu-page-actions">
-      <div class="fu-seg ab-types" role="tablist">
-        <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
-        </button>
-        <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
-        </button>
-      </div>
-      <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
-    </div>
-  </header>
 
   <!-- ===== on the board ===== -->
   <section class="ab-figs" aria-label="On the board">

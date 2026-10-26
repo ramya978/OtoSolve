@@ -1,6 +1,7 @@
 <app-page-header breadcrumb="Administration / Organisation" heading="Departments" description="Departments across the organisation, with their heads, people and status.">
   <ng-container actions>
-    <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
+     <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
+ <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>
       Export
     </button>
@@ -8,6 +9,8 @@
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
       Create
     </button>
+     </div>
+   
   </ng-container>
 </app-page-header>
 

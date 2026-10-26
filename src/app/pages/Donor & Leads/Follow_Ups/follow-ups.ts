@@ -6,6 +6,7 @@ import {
   priorityOf, statusOf, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 export type FuTab = 'all' | 'mine' | 'today' | 'overdue' | 'upcoming' | 'done-today' | 'high' | 'attention' | 'escalated' | 'calls';
@@ -25,6 +26,7 @@ const PRIORITY_RANK: Record<FuPriority, number> = { urgent: 0, high: 1, normal: 
 @Component({
   selector: 'app-follow-ups',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './follow-ups.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './follow-ups.css']
 })

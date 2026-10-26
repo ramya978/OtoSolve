@@ -6,7 +6,8 @@
 <div class="us-page">
   <app-page-header breadcrumb="Users &amp; Access / People" heading="Everyone who can sign in" description="People in this organisation with their role, unit and access — as cards or a compact list.">
   <ng-container actions>
-    @if (checkedCount()) {
+     <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
+   @if (checkedCount()) {
       <button type="button" class="i-btn" (click)="openBulkActions()"
               [attr.aria-label]="'Open bulk actions for ' + checkedCount() + ' people'">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg>
@@ -18,6 +19,8 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
     <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
+     </div>
+ 
   </ng-container>
 </app-page-header>
 

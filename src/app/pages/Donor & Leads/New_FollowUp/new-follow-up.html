@@ -3,18 +3,13 @@
      Account-workspace look: page header (Back) → "Who is it for?" card
      (Leads / Donors tabs · search · table · Plan →) → "Already scheduled" side card (paged).
      ===================================================================================================== -->
-<div class="nf">
-  <header class="fu-page">
-    <div class="fu-page-txt">
-      <span class="fu-eyebrow">Follow-ups</span>
-      <h1>New follow-up</h1>
-      <p>Pick the lead or donor first. The plan - owner, channel, time and brief - comes next.</p>
-    </div>
-    <div class="fu-page-actions">
-      <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back to follow-ups</button>
-    </div>
-  </header>
+<app-page-header breadcrumb="Donor &amp; Leads / Follow-ups"  heading="New follow-up" description="Pick the lead or donor first. The plan - owner, channel, time and brief - comes next.">
+  <ng-container actions>
+    <button type="button" class="fu-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back to follow-ups</button>
+  </ng-container>
+</app-page-header>
 
+<div class="nf">
   <div class="nf-grid">
     <!-- ===== who is it for ===== -->
     <section class="fu-card nf-main">

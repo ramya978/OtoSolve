@@ -5,18 +5,18 @@
      → [ section cards: channel & timing · outcome · conversation · summary & note | side cards:
        preview · recent entries ] → leave confirm.
      ===================================================================================================== -->
-<div class="lc">
-  <!-- ===== page header ===== -->
-  <header class="lc-page">
-    <div class="lc-page-txt">
-      <span class="lc-eyebrow">Lead workspace</span>
-      <h1>Log communication</h1>
-      <p>Record a call, e-mail, meeting or note so the whole team sees it on the timeline.</p>
-    </div>
+
+<!-- ===== page header ===== -->
+<app-page-header breadcrumb="Donor &amp; Leads / Communication timeline" [breadcrumbRoute]="'/app/donor-leads/log-communication'" heading="Log communication" description="Record a call, e-mail, meeting or note so the whole team sees it on the timeline.">
+  <ng-container actions>
     <div class="lc-page-actions">
       <button type="button" class="lc-btn" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
     </div>
-  </header>
+  </ng-container>
+</app-page-header>
+
+<div class="lc">
+  
 
   <!-- ===== identity card ===== -->
   <section class="lc-card lc-id">

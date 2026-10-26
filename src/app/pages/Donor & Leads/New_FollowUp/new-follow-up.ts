@@ -4,6 +4,7 @@ import {
   FU_ICONS, FollowUp, FollowUpStore, FuPerson, FuRecordType, MONTHS, WEEKDAYS, channelOf, fmtTime, initials, isOpen,
   priorityOf, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /* =====================================================================================================
    NEW FOLLOW-UP  (route /app/fundraising/relationships/follow-up-queue/new)
@@ -15,6 +16,7 @@ import {
 @Component({
   selector: 'app-new-follow-up',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './new-follow-up.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './new-follow-up.css']
 })

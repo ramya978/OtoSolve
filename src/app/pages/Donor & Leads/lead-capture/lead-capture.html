@@ -2,14 +2,9 @@
      LEAD CAPTURE - shell (lead-capture.ts · lead-capture.css)
      Heading · Single lead / Bulk upload switch (child routes /single and /bulk) · <router-outlet>.
      ===================================================================================================== -->
-<header class="lc-head">
-  <div class="lc-title">
-    <span class="lc-eyebrow">Donors &amp; Leads</span>
-    <h1>Lead capture</h1>
-    <p>Add one person by hand, or bring many in from a spreadsheet.</p>
-  </div>
-
-  <nav class="lc-modes" aria-label="Capture mode">
+<app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="Lead capture" description="Add one person by hand, or bring many in from a spreadsheet.">
+  <ng-container actions>
+    <nav class="lc-modes" aria-label="Capture mode">
     @for (m of modes; track m.path) {
       <a class="lc-mode" [routerLink]="m.path" routerLinkActive="is-on" #rla="routerLinkActive"
          [attr.aria-current]="rla.isActive ? 'page' : null">
@@ -18,6 +13,8 @@
       </a>
     }
   </nav>
-</header>
+  </ng-container>
+</app-page-header>
 
 <router-outlet />
+

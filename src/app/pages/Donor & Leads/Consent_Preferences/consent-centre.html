@@ -3,13 +3,10 @@
      Page header (title · reference · actions) → summary card (state panel | facts · purpose · permission) → record card with two halves
      (Consent details | Evidence and restrictions) → Actions (two tiles) → History table → popups.
      ===================================================================================================== -->
-<div class="cc">
+
   <!-- ===== page header ===== -->
-  <header class="cc-top">
-    <div class="cc-top-txt">
-      <h1>Consent and preference centre</h1>
-      <p>{{ reference() }}<span class="cc-sep"></span>Updated {{ stamp(updatedAt()) }}</p>
-    </div>
+  <app-page-header breadcrumb="Donor &amp; Leads / Consent centre" [breadcrumbRoute]="'/app/donor-leads/consent-centre'" heading="Consent and preference centre" description="Manage consent records and preferences.">
+    <ng-container actions>
     <div class="cc-top-actions">
       <button type="button" class="cc-btn" (click)="evidenceOpen.set(true)">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Review evidence
@@ -28,7 +25,10 @@
         }
       </div>
     </div>
-  </header>
+  </ng-container>
+</app-page-header>
+
+<div class="cc">
 
   <!-- ===== summary ===== -->
   <section class="cc-summary">

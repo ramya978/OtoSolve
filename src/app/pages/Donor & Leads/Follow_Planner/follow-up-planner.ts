@@ -5,6 +5,7 @@ import {
   fmtTime, initials, isoDay, monthWeeks, pad2, toDate
 } from '../../../Shared/layout/Donors_Leads/fu-store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 type PlMenu = 'owner' | 'date' | 'time' | null;
@@ -14,6 +15,7 @@ const MAX_TEXT = 500;
 @Component({
   selector: 'app-follow-up-planner',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './follow-up-planner.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './follow-up-planner.css']
 })

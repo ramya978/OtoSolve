@@ -1,8 +1,9 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { DonLookupItem, Donor360Response } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type FollowFilter = 'all' | 'open' | 'overdue' | 'closed';
 export type D360Tab = 'overview' | 'giving' | 'activity' | 'profile' | 'documents';
@@ -222,7 +223,7 @@ const parse = (iso: string): Date => new Date(iso + 'T00:00:00');
 
 @Component({
   selector: 'app-donor-360',
-  imports: [RouterLink],
+  imports: [PageHeader],
   templateUrl: './donor-360.html',
   styleUrl: './donor-360.css'
 })

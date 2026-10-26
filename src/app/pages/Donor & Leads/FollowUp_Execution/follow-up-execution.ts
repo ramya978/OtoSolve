@@ -7,6 +7,7 @@ import {
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { CommunicationTimelineResponse, DonLookupItem, FollowUpPlannerResponse } from '../../../Shared/models/donor-contract.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 type FeMenu = 'date' | 'time' | 'status' | 'reason' | 'outcome' | 'temperature' | 'disposition' | 'manager' | null;
@@ -22,6 +23,7 @@ const FILE_TYPES = ['pdf', 'docx', 'png', 'jpg', 'jpeg'];
 @Component({
   selector: 'app-follow-up-execution',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './follow-up-execution.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './follow-up-execution.css']
 })

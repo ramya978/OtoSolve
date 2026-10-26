@@ -1087,12 +1087,12 @@
 /* the vertical line through the circles */
 .cd-timeline li::before {
   content: "";
-  position: absolute;
-  top: 34px;
-  bottom: 0;
-  left: 16.5px;
-  width: 1px;
-  background: var(--w-line);
+    position: absolute;
+    top: 27px;
+    bottom: 0;
+    left: 13.5px;
+    width: 1px;
+    background: var(--w-line);
 }
 
 .cd-timeline li:last-child {

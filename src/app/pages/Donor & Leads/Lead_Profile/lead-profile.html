@@ -1,22 +1,6 @@
-<!-- ============================== PAGE HEAD ============================== -->
-<header class="lp-head">
-  <div class="lp-head-copy">
-    <span class="lp-eyebrow">Lead work queue · Lead profile</span>
-    <h1>{{ lead().fullName }}</h1>
-    <p class="lp-head-sub">
-      <span class="lp-ref">
-        {{ lead().reference }}
-        <button type="button" class="lp-copy" [attr.aria-label]="'Copy ' + lead().reference" title="Copy reference"
-                (click)="copy('ref', lead().reference)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(copied() === 'ref' ? 'check' : 'copy')" /></svg>
-        </button>
-      </span>
-      <span>· {{ lead().campaign }}</span>
-      <span>· {{ orDash(lead().city) }}</span>
-    </p>
-  </div>
-
-  <div class="lp-head-actions">
+<app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="{{ lead().fullName }}" description="View and manage lead details.">
+  <ng-container actions>
+    <div class="lp-head-actions">
     <button type="button" class="lp-text-link" (click)="back.emit()">
       All leads
       <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
@@ -29,8 +13,9 @@
       <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
       Communicate
     </button>
-  </div>
-</header>
+    </div>
+  </ng-container>
+</app-page-header>
 
 <!-- ============================== SUMMARY CARD ============================== -->
 <!-- identity row · lifecycle progress · key figures strip - one flat card, no empty areas -->

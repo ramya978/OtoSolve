@@ -2,6 +2,7 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { ActivatedRoute, Router } from '@angular/router';
 import { Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 type LcMenu = 'hh' | 'mm' | 'cal' | null;
@@ -26,8 +27,9 @@ export const QUALITIES: { key: Quality; label: string; bars: number }[] = [
 @Component({
   selector: 'app-log-communication',
   standalone: true,
-  templateUrl: './log-communication.html',
-  styleUrl: './log-communication.css'
+  imports:[PageHeader],
+  templateUrl:'./log-communication.html',
+  styleUrls: ['./log-communication.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class LogCommunication {
   private readonly route = inject(ActivatedRoute);

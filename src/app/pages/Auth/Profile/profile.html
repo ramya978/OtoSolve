@@ -75,12 +75,12 @@
 </ng-template>
 
 <!-- ============================ page header ============================ -->
+
+
+<app-page-header breadcrumb="Account workspace"  heading="My profile" description="Your identity, organisation context and account access in one place.">
+  <ng-container actions>
 <header class="pf-pagehead">
-  <div class="pf-pagehead-text">
-    <span class="pf-kicker">Account workspace</span>
-    <h1>My profile</h1>
-    <p class="pf-sub">Your identity, organisation context and account access in one place.</p>
-  </div>
+ 
   <div class="pf-head-actions">
     @if (canEdit) {
       @if (editingCard() === 'all') {
@@ -97,6 +97,8 @@
     }
   </div>
 </header>
+</ng-container>
+</app-page-header>
 
 <!-- ============================ identity hero ============================ -->
 <section class="pf-hero">

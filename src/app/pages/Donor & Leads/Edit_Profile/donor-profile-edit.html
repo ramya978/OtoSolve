@@ -2,23 +2,14 @@
      DONOR · EDIT PROFILE - simple single card.
      Header (avatar · title · donor · last updated) → three plain field sections → reason → footer (Cancel / Save).
      ===================================================================================================== -->
+<app-page-header breadcrumb="Donor &amp; Leads / Edit profile"  heading="Edit profile" description="Update donor profile details.">
+  <ng-container actions>
+  </ng-container>
+</app-page-header>
+
 <div class="pe">
   <div class="pe-card">
-    <!-- ===== header ===== -->
-    <header class="pe-head">
-      <span class="pe-avatar" aria-hidden="true">{{ initials() }}</span>
-      <div class="pe-head-txt">
-        <h1>Edit profile</h1>
-        <p>
-          <b>{{ fullName() }}</b>
-          <span class="pe-sep"></span>
-          <span class="pe-code">{{ code }}</span>
-          <span class="pe-sep"></span>
-          <span class="pe-status"><i></i>{{ status }}</span>
-        </p>
-      </div>
-      <span class="pe-updated">Last updated<b>{{ updated }}</b></span>
-    </header>
+    <!-- ===== identity ===== -->
 
     <!-- ===== identity ===== -->
     <section class="pe-sec">

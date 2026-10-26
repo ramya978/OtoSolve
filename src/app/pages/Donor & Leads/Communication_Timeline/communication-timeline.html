@@ -5,21 +5,16 @@
      → [ timeline card: tabs + search + filters in the head · month groups · dated rail entries · pager
        | side cards: standing · record · activity ] → entry popup.
      ===================================================================================================== -->
-<div class="ct">
-  <!-- ===== page header ===== -->
-  <header class="ct-page">
-    <div class="ct-page-txt">
-      <span class="ct-eyebrow">Lead workspace</span>
-      <h1>Communication timeline</h1>
-      <p>Every call, e-mail, meeting and note with this lead in one place.</p>
-    </div>
-    <div class="ct-page-actions">
-      <button type="button" class="ct-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
+<app-page-header breadcrumb="Donor & Leads / Lead Work Queue"  heading="Communication timeline" description="Every call, e-mail, meeting and note with this lead in one place.">
+  <ng-container actions>
+    <div style="gap: 10px; display: flex;flex-wrap: wrap;">
+        <button type="button" class="ct-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
       <button type="button" class="ct-btn" (click)="scheduleFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Schedule follow-up</button>
       <button type="button" class="ct-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
       <button type="button" class="ct-btn is-primary" (click)="logCommunication()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Log communication</button>
     </div>
-  </header>
+  </ng-container>
+</app-page-header>
 
   <!-- ===== profile card: identity + figures ===== -->
   <section class="ct-card ct-profile">
@@ -285,4 +280,3 @@
   }
 
   @if (toast()) { <div class="ct-toast" role="status">{{ toast() }}</div> }
-</div>

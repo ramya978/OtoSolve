@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { DonorListItem, DonorListSummary } from '../../../Shared/models/donor-contract.model';
@@ -154,7 +154,7 @@ export type CardMenuKey = (typeof CARD_MENU)[number]['key'];
 
 @Component({
   selector: 'app-all-donors',
-  imports: [RouterLink,PageHeader],
+  imports: [PageHeader],
   templateUrl: './all-donors.html',
   styleUrl: './all-donors.css'
 })

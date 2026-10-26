@@ -1,6 +1,7 @@
-<app-page-header breadcrumb="Fundraising / Campaigns / Campaign detail" heading="Campaign detail" description="Review the campaign's raised amount, revenue trend, donors and tracking assets.">
+<app-page-header breadcrumb="Campaigns / Campaign detail" heading="Campaign detail" description="Review the campaign's raised amount, revenue trend, donors and tracking assets.">
   <ng-container actions>
-    <button type="button" class="w-btn" (click)="goBack()">
+  <div style="gap: 10px;display: flex;flex-wrap: wrap;">
+      <button type="button" class="w-btn" (click)="goBack()">
       <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M11 18l-6-6 6-6" /></svg>
       All campaigns
     </button>
@@ -19,6 +20,7 @@
         Pause, resume or close
       </a>
     }
+  </div>
   </ng-container>
 </app-page-header>
 

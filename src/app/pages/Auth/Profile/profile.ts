@@ -11,6 +11,7 @@ import { ToastService } from '../../../Shared/services/toast.service';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-response.model';
 import { UserDetailResponse, UserSecurityResponse } from '../../../Shared/models/iam-contract.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type ProfileTab = 'overview' | 'access' | 'security';
 
@@ -117,7 +118,7 @@ const dateOrNull = (iso?: string | null): string | null => (iso ? fmtDate(iso) :
 
 @Component({
   selector: 'app-profile',
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet,PageHeader],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })

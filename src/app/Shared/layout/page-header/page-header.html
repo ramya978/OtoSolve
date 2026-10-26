@@ -1,6 +1,6 @@
 <header class="ph-head">
   <div class="ph-main">
-    <!-- breadcrumb -->
+    <!-- breadcrumb (clickable when route is provided) -->
     <span class="ph-eyebrow" [class.ph-eyebrow--link]="hasBreadcrumbRoute()">
       @if (hasBreadcrumbRoute()) {
         <a class="ph-crumb-link" [routerLink]="breadcrumbRoute()">{{ breadcrumb() }}</a>

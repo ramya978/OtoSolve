@@ -4,6 +4,7 @@ import { forkJoin } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { DonorDetail } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type DonorType = 'Individual' | 'Organisation' | 'Anonymous';
 export type PeField = 'type' | 'firstName' | 'lastName' | 'phone' | 'language' | 'mayContact' | 'owner';
@@ -84,6 +85,7 @@ const ICONS: Record<string, string> = {
 @Component({
   selector: 'app-donor-profile-edit',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './donor-profile-edit.html',
   styleUrl: './donor-profile-edit.css'
 })

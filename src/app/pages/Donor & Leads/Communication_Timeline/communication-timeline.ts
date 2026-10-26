@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CommunicationStore, OUTCOME_GROUPS, OutcomeGroup, CommEntry, healthLabel, CommChannel, channelOf, isoDay, MONTHS, outcomeOf, COMM_ICONS, entryTitle, outcomeTone, pad2, Temperature, Level3, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type CtTab = 'all' | 'call' | 'email' | 'meeting' | 'important';
 type CtMenu = 'filters' | 'rows' | null;
@@ -10,8 +11,9 @@ type CtMenu = 'filters' | 'rows' | null;
 @Component({
   selector: 'app-communication-timeline',
   standalone: true,
+  imports: [PageHeader],
   templateUrl: './communication-timeline.html',
-  styleUrl: './communication-timeline.css'
+  styleUrls: ['./communication-timeline.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class CommunicationTimeline {
   private readonly route = inject(ActivatedRoute);

@@ -3,21 +3,57 @@
      Header card (title, search, filters toggle, sort, export, capture) · filter row with custom dropdowns ·
      summary tabs · lead table with animated row actions · pager · floating bulk-action bar · toast.
      ===================================================================================================== -->
-<section class="lwq-panel" aria-label="Lead work queue">
-  <!-- ===== header ===== -->
-  <header class="lwq-head">
-    <div class="lwq-title">
-      <span class="lwq-eyebrow">Donors &amp; Leads</span>
-      <h1>{{ heading }}</h1>
-    </div>
+<app-page-header breadcrumb="Donor &amp; Leads" [breadcrumbRoute]="'/app/donor-leads/lead-work-queue'" heading="{{ heading }}" description="Manage leads assigned to you.">
+  <ng-container actions>
+   <div style="display: flex;flex-wrap:wrap ;gap: 10px;">
+    
+       <!-- sort (custom dropdown) -->
+      <div class="lwq-dd lwq-sort" [class.is-open]="openDd() === 'sort'">
+        <button type="button" class="lwq-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'sort'" (click)="toggleDd('sort', $event)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
+          {{ labelOf(sortOpts, sort()) }}
+          <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+        </button>
+        @if (openDd() === 'sort') {
+          <ul class="lwq-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+            @for (o of sortOpts; track o.value) {
+              <li role="option" [attr.aria-selected]="o.value === sort()" [class.is-on]="o.value === sort()" (click)="pick('sort', o.value)">
+                {{ o.label }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+              </li>
+            }
+          </ul>
+        }
+      </div>
 
-    <!-- filters sit on the same line as the title and tools -->
-    <div class="lwq-fbar" role="group" aria-label="Queue filters">
-      <span class="lwq-fbar-lead">
+      <button type="button" class="lwq-btn" (click)="doExport()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+        Export
+      </button>
+      <button type="button" class="lwq-btn is-primary" (click)="goCapture()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+        Capture lead
+      </button>
+   </div>
+  </ng-container>
+</app-page-header>
+
+<section class="lwq-panel" aria-label="Lead work queue">
+  <!-- ===== search · sort · export · capture ===== -->
+  <header class="lwq-head">
+    <div class="lwq-tools">
+      <label class="lwq-search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+        <input type="search" placeholder="Search name, lead ID, phone, e-mail" aria-label="Search leads" [value]="query()" (input)="setQuery($any($event.target).value)" />
+      </label>
+
+   <span class="lwq-fbar-lead">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>
         Filter by
       </span>
 
+  
+
+      
       @for (f of filterDefs(); track f.key) {
         <div class="lwq-dd lwq-pill" [class.is-open]="openDd() === f.key" [class.is-set]="f.value !== 'all'">
           <button type="button" class="lwq-pill-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === f.key" (click)="toggleDd(f.key, $event)">
@@ -54,41 +90,7 @@
           Clear all <b>{{ activeFilters() }}</b>
         </button>
       }
-    </div>
-
-    <div class="lwq-tools">
-      <label class="lwq-search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
-        <input type="search" placeholder="Search name, lead ID, phone, e-mail" aria-label="Search leads" [value]="query()" (input)="setQuery($any($event.target).value)" />
-      </label>
-
-
-      <!-- sort (custom dropdown) -->
-      <div class="lwq-dd lwq-sort" [class.is-open]="openDd() === 'sort'">
-        <button type="button" class="lwq-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'sort'" (click)="toggleDd('sort', $event)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
-          {{ labelOf(sortOpts, sort()) }}
-          <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
-        </button>
-        @if (openDd() === 'sort') {
-          <ul class="lwq-menu is-right" role="listbox" (click)="$event.stopPropagation()">
-            @for (o of sortOpts; track o.value) {
-              <li role="option" [attr.aria-selected]="o.value === sort()" [class.is-on]="o.value === sort()" (click)="pick('sort', o.value)">
-                {{ o.label }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-              </li>
-            }
-          </ul>
-        }
-      </div>
-
-      <button type="button" class="lwq-btn" (click)="doExport()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
-        Export
-      </button>
-      <button type="button" class="lwq-btn is-primary" (click)="goCapture()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        Capture lead
-      </button>
+   
     </div>
   </header>
 

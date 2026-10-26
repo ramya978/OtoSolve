@@ -9,10 +9,13 @@
 <div class="rp-page">
   <app-page-header breadcrumb="Users &amp; Access / Roles" heading="Roles &amp; permissions" description="Pick a permission area to see what every role can do in it. Open a role to read or change its permissions.">
   <ng-container actions>
-    <button type="button" class="i-btn">
+      <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
+  <button type="button" class="i-btn">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
     <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create role</button>
+      </div>
+  
   </ng-container>
 </app-page-header>
 

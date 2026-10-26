@@ -1,13 +1,14 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LC_ICONS, LC_PATHS } from './lc-shared';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /** Lead capture shell: page heading + Single / Bulk switch (child routes) + router outlet. */
 @Component({
   selector: 'app-lead-capture',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, PageHeader],
   templateUrl: './lead-capture.html',
-  styleUrl: './lead-capture.css',
+  styleUrls: ['./lead-capture.css', '../../../Shared/layout/page-header/page-header.css'],
 })
 export class LeadCapture {
   protected readonly paths = LC_PATHS;

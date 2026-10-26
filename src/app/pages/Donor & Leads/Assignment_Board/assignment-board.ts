@@ -9,6 +9,7 @@ import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import {
   AssignmentBoardResponse, AssignmentBoardRow, AssignmentRequest, DonLookupItem, OwnerWorkload, QueueView
 } from '../../../Shared/models/donor-contract.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 type AbTab = 'all' | 'unassigned' | 'assigned';
 type AbSla = 'breached' | 'today' | 'track' | 'none';
@@ -18,6 +19,7 @@ type AbDialog = 'assign' | 'history' | null;
 @Component({
   selector: 'app-assignment-board',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './assignment-board.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './assignment-board.css']
 })

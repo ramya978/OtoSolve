@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { ConsentListItem } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 export type ConsentState = 'Granted' | 'Withdrawn' | 'Pending';
@@ -113,8 +114,9 @@ const ICONS: Record<string, string> = {
 @Component({
   selector: 'app-consent-centre',
   standalone: true,
+  imports:[PageHeader],
   templateUrl: './consent-centre.html',
-  styleUrl: './consent-centre.css'
+  styleUrls: ['./consent-centre.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class ConsentCentre implements OnInit {
   private readonly api = inject(DonorApiService);

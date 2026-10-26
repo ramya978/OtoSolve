@@ -6,11 +6,10 @@
        SIDE column : Profile · Consent · Activity                              (Activity grows to fill the gap)
      Follow-ups runs full width underneath.
      ===================================================================================================== -->
-<nav class="dx-crumbs" aria-label="Breadcrumb">
-  <a [routerLink]="listPath">All Donors</a>
-  <span aria-hidden="true">/</span>
-  <b>Donor 360</b>
-</nav>
+<app-page-header breadcrumb="Donor &amp; Leads / Donor 360"  heading="Donor 360" description="Complete donor profile with gifts, campaigns and activity.">
+  <ng-container actions>
+  </ng-container>
+</app-page-header>
 
 <!-- ================= identity bar (flat, no card) ================= -->
 <header class="dx-idbar">

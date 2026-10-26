@@ -4,6 +4,7 @@ import { forkJoin, of, catchError } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { CommunicationTimelineResponse, DonLookupItem, LeadDetail } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type LeadStatus = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Nurture' | 'Suppressed' | 'Closed';
 
@@ -191,9 +192,9 @@ const OWNERS: Owner[] = [];
 
 @Component({
   selector: 'app-lead-profile',
-  imports: [],
+  imports: [PageHeader],
   templateUrl: './lead-profile.html',
-  styleUrl: './lead-profile.css'
+  styleUrls: ['./lead-profile.css', '../../../Shared/layout/page-header/page-header.css']
 })
 export class LeadProfile implements OnInit {
   private readonly api = inject(DonorApiService);

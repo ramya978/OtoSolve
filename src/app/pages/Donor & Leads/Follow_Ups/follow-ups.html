@@ -5,20 +5,17 @@
        + side cards (queue health · SLA monitor · pending by age)
      → details drawer · reassign / escalate / history / day popups.
      ===================================================================================================== -->
+<app-page-header breadcrumb="Donor &amp; Leads"  heading="Follow-ups" description="Every call, e-mail and visit the team owes a lead or donor - and whether it is on time.">
+  <ng-container actions>
+   <div style="gap: 10px;display: flex;flex-wrap:wrap ;">
+     <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
+    <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New follow-up</button>
+   </div>
+  </ng-container>
+</app-page-header>
+
 <div class="fq">
-  <!-- ===== page header ===== -->
-  <header class="fu-page">
-    <div class="fu-page-txt">
-      <span class="fu-eyebrow">Relationship workspace</span>
-      <h1>Follow-ups</h1>
-      <p>Every call, e-mail and visit the team owes a lead or donor - and whether it is on time.</p>
-    </div>
-    <div class="fu-page-actions">
-      <button type="button" class="fu-btn" (click)="refresh()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg> Refresh</button>
-      <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
-      <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New follow-up</button>
-    </div>
-  </header>
+
 
   <!-- ===== my queue ===== -->
   <section class="fu-card fq-hero">

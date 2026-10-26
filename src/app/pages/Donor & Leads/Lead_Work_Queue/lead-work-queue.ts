@@ -5,6 +5,7 @@ import { LeadListItem } from '../../../Shared/models/donor-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 export type LeadStage = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost';
 export type LeadTemp = 'Cold' | 'Warm' | 'Hot';
 export type LeadPotential = 'Low' | 'Medium' | 'High';
@@ -103,7 +104,7 @@ interface Opt { value: string; label: string; }
 
 @Component({
   selector: 'app-lead-work-queue',
-  imports: [],
+  imports: [PageHeader],
   templateUrl: './lead-work-queue.html',
   styleUrl: './lead-work-queue.css',
 })
