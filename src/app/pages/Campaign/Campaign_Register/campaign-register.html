@@ -218,32 +218,17 @@
               </div>
             </td>
             <td class="cr-h-owner">
-              <div class="cr-owner">
-                <!-- owner photos: overlapping, up to 3 + "+n" -->
-                <span class="cr-avatars">
-                  @for (o of ownersOf(r); track o; let i = $index) {
-                    @if (i < 3) {
-                      <span class="cr-photo" [style.background]="avatarStyle(o)" [attr.title]="o">
-                        {{ initials(o) }}
-                        @if (ownerPhoto(o)) {
-                          <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
-                        }
-                      </span>
-                    }
-                  }
-                  @if (ownersOf(r).length > 3) {
-                    <span class="cr-photo cr-photo-more">+{{ ownersOf(r).length - 3 }}</span>
-                  }
-                </span>
-                <span class="cr-owner-text">
-                  <span class="cr-owner-name">{{ ownerName(r.owner) }}</span>
-                  @if (ownersOf(r).length > 1) {
-                    <small class="cr-owner-sub">+ {{ ownersOf(r).length - 1 }} co-owner{{ ownersOf(r).length > 2 ? 's' : '' }}</small>
-                  } @else {
-                    <small class="cr-owner-sub">Owner</small>
-                  }
-                </span>
-              </div>
+              <!-- more than one owner: the cell is a button that opens the owners popup -->
+              @if (ownersOf(r).length > 1) {
+                <button type="button" class="cr-owner is-click" [attr.aria-label]="'Show all ' + ownersOf(r).length + ' owners of ' + r.name"
+                        (click)="openOwners(r, $event)">
+                  <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
+                </button>
+              } @else {
+                <div class="cr-owner">
+                  <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
+                </div>
+              }
             </td>
             <td class="cr-h-when">
               <div class="cr-when">
@@ -397,6 +382,79 @@
     </nav>
   </div>
 </section>
+
+<!-- owner cell content: overlapping photos (up to 3 + "+n") + name / co-owners -->
+<ng-template #ownerCell let-r>
+  <span class="cr-avatars">
+    @for (o of ownersOf(r); track o; let i = $index) {
+      @if (i < 3) {
+        <span class="cr-photo" [style.background]="avatarStyle(o)" [attr.title]="o">
+          {{ initials(o) }}
+          @if (ownerPhoto(o)) {
+            <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
+          }
+        </span>
+      }
+    }
+    @if (ownersOf(r).length > 3) {
+      <span class="cr-photo cr-photo-more">+{{ ownersOf(r).length - 3 }}</span>
+    }
+  </span>
+  <span class="cr-owner-text">
+    <span class="cr-owner-name">{{ ownerName(r.owner) }}</span>
+    @if (ownersOf(r).length > 1) {
+      <small class="cr-owner-sub cr-owner-more">+ {{ ownersOf(r).length - 1 }} co-owner{{ ownersOf(r).length > 2 ? 's' : '' }}</small>
+    } @else {
+      <small class="cr-owner-sub">Owner</small>
+    }
+  </span>
+</ng-template>
+
+<!-- owners popup: every owner of one campaign -->
+@if (ownersFor(); as row) {
+  <div class="cr-overlay" (click)="closeOwners()">
+    <div class="cr-dialog cr-owners-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-owners-title"
+         (click)="$event.stopPropagation()">
+      <header class="cr-owners-head">
+        <div>
+          <span class="cr-dialog-eyebrow">{{ row.code }} · {{ row.name }}</span>
+          <h2 id="cr-owners-title">Owners <span class="cr-count">{{ ownersOf(row).length }}</span></h2>
+        </div>
+        <button type="button" class="cr-dialog-x" (click)="closeOwners()" aria-label="Close owners">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
+        </button>
+      </header>
+
+      <ul class="cr-owners-list">
+        @for (o of ownersOf(row); track o; let i = $index) {
+          <li>
+            <span class="cr-photo cr-photo-lg" [style.background]="avatarStyle(o)">
+              {{ initials(o) }}
+              @if (ownerPhoto(o)) {
+                <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
+              }
+            </span>
+            <span class="cr-owners-name">
+              <strong>{{ o }}</strong>
+              <small>{{ i === 0 ? 'Owner' : 'Co-owner' }}</small>
+            </span>
+            @if (i === 0) { <span class="cr-owners-tag">Main</span> }
+          
+          </li>
+        }
+      </ul>
+
+      <footer class="cr-owners-foot">
+        <button type="button" class="btn-primary pf-hbtn" (click)="closeOwners()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+          Done
+        </button>
+      </footer>
+    </div>
+  </div>
+}
 
 <!-- full-page preview: row click goes straight to the detail page, so keep only
      an explicit "open detail" footer inside the fallback dialog -->

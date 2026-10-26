@@ -293,7 +293,7 @@
   height: 36px;
   padding: 0 12px 0 33px;
   border: 1px solid var(--cr-line);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--cr-field-bg);
   color: var(--cr-ink);
   font-size: calc(13px * var(--font-scale, 1));
@@ -326,7 +326,7 @@
   height: 36px;
   padding: 0 11px;
   border: 1px solid var(--cr-line);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--cr-surface);
   color: var(--cr-ink);
   font-size: calc(13px * var(--font-scale, 1));
@@ -986,6 +986,154 @@
   font-size: calc(11.5px * var(--font-scale, 1));
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* more than one owner: the whole cell is a button that opens the owners popup */
+button.cr-owner {
+  box-sizing: border-box;
+  width: calc(100% + 16px);
+  margin: -6px -8px;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius, 8px);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+
+
+button.cr-owner:focus-visible {
+  outline: 2px solid var(--cr-primary-ink);
+  outline-offset: 1px;
+}
+
+.cr-owner-more {
+  color: var(--cr-primary-ink);
+  font-weight: 600;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+button.cr-owner:hover .cr-owner-more {
+  text-decoration-style: solid;
+}
+
+/* ---------- owners popup ---------- */
+.cr-owners-dialog {
+  max-width: 440px;
+}
+
+.cr-owners-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--cr-line);
+}
+
+.cr-owners-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cr-heading);
+  font-family: var(--cr-heading-font);
+  font-size: calc(18px * var(--font-scale, 1));
+  font-weight: 650;
+  letter-spacing: -.2px;
+}
+
+.cr-owners-list {
+  max-height: min(60vh, 420px);
+  margin: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.cr-owners-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 22px;
+}
+
+.cr-owners-list li + li {
+  border-top: 1px solid var(--cr-row-line);
+}
+
+.cr-photo-lg {
+  width: 38px;
+  height: 38px;
+  margin-left: 0;
+  font-size: calc(12.5px * var(--font-scale, 1));
+}
+
+.cr-owners-name {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.cr-owners-name strong {
+  overflow: hidden;
+  color: var(--cr-heading);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-owners-name small {
+  color: var(--cr-muted);
+  font-size: calc(12px * var(--font-scale, 1));
+}
+
+.cr-owners-tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--cr-primary-soft);
+  color: var(--cr-primary-ink);
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 650;
+}
+
+.cr-owners-filter {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--cr-line);
+  border-radius: var(--btn-radius, 8px);
+  background: var(--cr-surface);
+  color: var(--cr-ink);
+  font-size: calc(12px * var(--font-scale, 1));
+  cursor: pointer;
+  transition: border-color .15s, background-color .15s, color .15s;
+}
+
+.cr-owners-filter:hover {
+  border-color: var(--cr-primary);
+  background: var(--cr-hover);
+  color: var(--cr-hover-ink);
+}
+
+.cr-owners-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 22px 16px;
+  border-top: 1px solid var(--cr-line);
+}
+
+@media (max-width: 480px) {
+  .cr-owners-filter { width: 28px; padding: 0; justify-content: center; font-size: 0; }
+  .cr-owners-filter svg { margin: 0; }
 }
 
 /* timeline: launch → ends, duration under it */

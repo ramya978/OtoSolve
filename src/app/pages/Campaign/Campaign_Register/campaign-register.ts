@@ -1,4 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { CampaignApiService } from '../../../Service/campaign-api.service';
 import { CampaignStatistics } from '../../../Shared/models/campaign-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -19,6 +20,8 @@ export interface CampaignRow {
   status: CampaignStatus;
   progress: number;
   owner: string;
+  /** Every owner of the campaign, main owner first (the "owner" field above is "Name +n"). */
+  owners?: string[];
   launch: string;
   ends: string;
   /** List-view engagement metrics that back the KPI strip (single source of truth). */
@@ -134,7 +137,7 @@ const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
 
 @Component({
   selector: 'app-campaign-register',
-  imports:[PageHeader],
+  imports: [PageHeader, NgTemplateOutlet],
   templateUrl: './campaign-register.html',
   styleUrls: ['./campaign-register.css', '../../../Shared/layout/page-header/page-header.css']
 })
@@ -161,6 +164,7 @@ export class CampaignRegister {
         id: c.id ?? c.code, name: c.name, code: c.code, status: c.lifecycle,
         progress: c.target ? Math.min(100, Math.round((c.raised / c.target) * 100)) : 0,
         owner: owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : (owners[0] ?? '—'),
+        owners: owners.filter(Boolean),
         launch: startDate ? fmtDate(startDate) : '—', ends: endDate ? fmtDate(endDate) : '—',
         received: c.raised, target: c.target, currency: c.currency ?? '', delivered: 0, replies: 0, overdue: 0
       };
@@ -178,6 +182,8 @@ export class CampaignRegister {
   readonly selected = signal<CampaignRow | null>(null);
   /** ids of rows ticked with the row checkbox. */
   readonly checked = signal<Set<string>>(new Set());
+  /** Campaign whose owners are shown in the owners popup (null = closed). */
+  readonly ownersFor = signal<CampaignRow | null>(null);
   /** Which custom dropdown is open ('owner' | 'rows' | null). */
   readonly openMenu = signal<'owner' | 'rows' | null>(null);
 
@@ -355,13 +361,28 @@ export class CampaignRegister {
   }
 
 
+  /** The campaign's real owners, main owner first. */
   ownersOf(r: CampaignRow): string[] {
-    const extra = Number(r.owner.match(/\+(\d+)/)?.[1] ?? 0);
+    if (r.owners?.length) return r.owners;
     const base = ownerBase(r.owner);
-    const pool = PEOPLE.filter((p) => p !== base);
-    const out = [base];
-    for (let i = 0; i < extra; i++) out.push(pool[(this.seedOf(r.code) + i) % pool.length]);
-    return out;
+    return base && base !== '—' ? [base] : [];
+  }
+
+  /** Owner cell click (only when there is more than one owner) → popup with every owner. */
+  openOwners(r: CampaignRow, event?: Event): void {
+    event?.stopPropagation();
+    this.openMenu.set(null);
+    this.ownersFor.set(r);
+  }
+
+  closeOwners(): void {
+    this.ownersFor.set(null);
+  }
+
+  /** Filter the register by one owner from the popup. */
+  filterByOwner(name: string): void {
+    this.closeOwners();
+    this.setOwner(name);
   }
 
   /** Deterministic brand-style photo/gradient background for an owner's avatar. */
@@ -613,7 +634,7 @@ export class CampaignRegister {
       code: r.code,
       name: r.name,
       lifecycle: r.status,
-      owners: [r.owner.replace(/\s\+\d+$/, '')],
+      owners: this.ownersOf(r),
       fund: 'General Fund',
       start: this.toIso(r.launch),
       end: this.toIso(r.ends),
@@ -650,6 +671,7 @@ export class CampaignRegister {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.openMenu()) this.openMenu.set(null);
+    else if (this.ownersFor()) this.closeOwners();
     else this.close();
   }
 }
