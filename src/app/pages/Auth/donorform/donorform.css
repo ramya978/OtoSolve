@@ -16,6 +16,10 @@
   --df-radius: 16px;
   --df-btn-radius: 10px;
 
+  /* read-only (fixed by the campaign): flat neutral surface */
+  --df-ro-bg: #f6f7f9;
+  --df-ro-line: #e4e7ed;
+
   container: df / inline-size;
   display: block;
   min-width: 0;
@@ -25,7 +29,7 @@
   font: calc(14px * var(--font-scale, 1)) / 1.5 var(--font-body, Inter, "Segoe UI", Arial, sans-serif);
 }
 
-:host :where(button, input) {
+:host :where(button, input, textarea) {
   font: inherit;
   color: inherit;
 }
@@ -44,7 +48,7 @@
   stroke-linejoin: round;
 }
 
-:host :where(button, input, a):focus-visible {
+:host :where(button, input, textarea, a):focus-visible {
   outline: 2px solid var(--df-primary);
   outline-offset: 2px;
 }
@@ -288,17 +292,17 @@
 }
 
 .df-input {
-    width: 100%;
-    min-width: 0;
-    height: 44px;
-    padding: 0 14px;
-    border: 1.5px solid #0000000f;
-    border-radius: var(--df-btn-radius);
-    /* background: var(--df-field); */
-    color: var(--df-ink);
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  padding: 0 14px;
+  border: 1.5px solid #0000000f;
+  border-radius: var(--df-btn-radius);
+  background: #fff;
+  color: var(--df-ink);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 .df-input::placeholder {
@@ -310,6 +314,55 @@
   border-color: var(--df-primary);
   background: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--df-primary) 13%, transparent);
+}
+
+/* address: multi-line */
+.df-textarea {
+  height: auto;
+  min-height: 88px;
+  padding: 11px 14px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* ---------- read-only (fixed by the campaign): flat neutral, a small "Fixed" pill ---------- */
+.df-readonly {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--df-ro-line);
+  background: var(--df-ro-bg);
+  cursor: default;
+}
+
+.df-readonly-text {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--df-ink);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.df-fixed {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--df-ro-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--df-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.df-hint {
+  margin: 0;
+  color: var(--df-muted);
+  font-size: 12.5px;
 }
 
 /* dropdowns */
@@ -324,6 +377,22 @@
   gap: 8px;
   text-align: left;
   cursor: pointer;
+}
+
+.df-dd-btn > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.df-dd-btn:disabled {
+  background: var(--df-ro-bg);
+  cursor: not-allowed;
+}
+
+.df-dd-btn:disabled .df-chev {
+  opacity: 0.5;
 }
 
 .df-ph {
@@ -357,7 +426,7 @@
   display: flex;
   flex-direction: column;
   min-width: 220px;
-  max-height: 260px;
+  max-height: 280px;
   padding: 6px;
   overflow-y: auto;
   border: 1px solid var(--df-line);
@@ -366,7 +435,28 @@
   box-shadow: 0 14px 36px rgba(40, 20, 30, 0.16);
 }
 
+.df-menu-search {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  flex: none;
+  width: 100%;
+  height: 36px;
+  margin-bottom: 4px;
+  padding: 0 10px;
+  border: 1px solid var(--df-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+  outline: none;
+}
+
+.df-menu-search:focus {
+  border-color: var(--df-primary);
+}
+
 .df-menu-item {
+  flex: none;
   width: 100%;
   padding: 9px 12px;
   border: 0;
@@ -388,22 +478,28 @@
   font-weight: 650;
 }
 
+.df-menu-empty {
+  margin: 0;
+  padding: 9px 12px;
+  color: var(--df-muted);
+  font-size: 13px;
+}
+
 /* amount */
 .df-amount {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   height: 62px;
   padding: 0 18px;
-    border: 1.5px solid #0000000f;
+  border: 1.5px solid #0000000f;
   border-radius: 12px;
-  /* background: var(--df-field); */
+  background: #fff;
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
 .df-amount:focus-within {
   border-color: var(--df-primary);
-  background: #fff;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--df-primary) 13%, transparent);
 }
 
@@ -411,10 +507,29 @@
   opacity: 0.65;
 }
 
+/* amount fixed by the campaign: same flat neutral surface as the campaign field */
+.df-amount.is-locked {
+  border: 1px solid var(--df-ro-line);
+  background: var(--df-ro-bg);
+}
+
+.df-amount.is-locked:focus-within {
+  border-color: var(--df-ro-line);
+  box-shadow: none;
+}
+
+.df-amount.is-locked .df-cur {
+  color: var(--df-muted);
+}
+
+.df-amount.is-locked input {
+  cursor: default;
+}
+
 .df-cur {
   color: var(--df-primary);
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
 }
 
 .df-amount input {
@@ -423,9 +538,11 @@
   height: 100%;
   border: 0;
   background: transparent;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
+  color: var(--df-ink);
+  font-size: 24px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
   outline: none;
 }
 
@@ -435,71 +552,6 @@
   font-weight: 500;
   letter-spacing: 0;
   opacity: 0.75;
-}
-
-.df-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.df-qbtn {
-  height: 36px;
-  padding: 0 16px;
-  border: 1.5px solid var(--df-line);
-  border-radius: 8px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-}
-
-.df-qbtn:hover:not(:disabled) {
-  border-color: var(--df-primary);
-  color: var(--df-primary);
-}
-
-.df-qbtn.is-on {
-  border-color: var(--df-primary);
-  background: var(--df-primary);
-  color: #fff;
-}
-
-.df-qbtn:disabled {
-  background: #f4f5f8;
-  color: #a3a9b8;
-  cursor: not-allowed;
-}
-
-/* segmented receipt chooser */
-.df-seg {
-  display: inline-flex;
-    width: fit-content;
-    max-width: 100%;
-    padding: 4px;
-    border-radius: 12px;
-    /* background: var(--df-field); */
-    border: 1px dashed #80808063;
-}
-
-.df-segbtn {
-  min-width: 84px;
-  height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--df-muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.df-segbtn.is-on {
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(40, 20, 30, 0.14);
-  color: var(--df-primary);
 }
 
 /* consent */
@@ -548,12 +600,6 @@
 
 .df-check input:checked+.df-box svg {
   color: #fff;
-}
-
-.df-check a {
-  color: var(--df-primary);
-  font-weight: 600;
-  text-decoration: underline;
 }
 
 .df-err {
@@ -771,6 +817,10 @@
   .df-two,
   .df-three {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .df-narrow {
+    max-width: none;
   }
 
   .df-head {

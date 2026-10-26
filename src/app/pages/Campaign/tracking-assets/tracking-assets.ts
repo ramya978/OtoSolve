@@ -1,7 +1,6 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CwIcon, CW_ICONS } from '../../../Shared/Campaign/cw-icons';
-import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { qrPattern } from '../../../Shared/Campaign/cw-qr';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
@@ -16,7 +15,7 @@ type PageItem = number | null;
 
 @Component({
   selector: 'app-tracking-assets',
-  imports: [CwPageHead, CwSelect, RouterLink],
+  imports: [CwSelect, RouterLink],
   templateUrl: './tracking-assets.html',
   styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-assets.css']
 })

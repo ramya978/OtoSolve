@@ -14,7 +14,7 @@ import {
 
 interface CurrencyRow { code: string; symbol: string; label: string; }
 
-/** Shown until the organisation's currency list arrives (and kept if it cannot be read). */
+/** Used to label a currency until the organisation's currency list arrives (and kept if it cannot be read). */
 const FALLBACK_CURRENCIES: CurrencyRow[] = [
   { code: 'INR', symbol: '₹', label: 'Indian Rupee (INR)' },
   { code: 'USD', symbol: '$', label: 'US Dollar (USD)' },
@@ -31,9 +31,8 @@ const symbolOf = (code: string): string => {
 
 const isGuid = (v: string): boolean => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
-const QUICK_AMOUNTS = [500, 1000, 2500, 5000, 10000];
-type ReceiptMode = 'e-mail' | 'sms' | 'print';
-const RECEIPT_MODES: ReceiptMode[] = ['e-mail', 'sms', 'print'];
+/** The custom drop-downs on the page; only one is open at a time. */
+type MenuName = 'campaign' | 'country' | 'state' | 'city';
 
 @Component({
   selector: 'app-donorform',
@@ -50,11 +49,14 @@ export class DonorForm implements OnInit, OnDestroy {
   private readonly payments = inject(PaymentApiService);
   private readonly checkout = inject(GatewayCheckoutService);
 
+  /** Padlock shown on fields the campaign fills in. */
+  protected readonly lockIcon = 'M6 11h12v10H6z M8 11V7a4 4 0 0 1 8 0v4';
+
   private readonly currencyRows = signal<CurrencyRow[]>(FALLBACK_CURRENCIES);
-  protected get currencies(): CurrencyRow[] { return this.currencyRows(); }
-  protected readonly quickAmounts = QUICK_AMOUNTS;
+
+  /** Active campaigns open for public donations (the public endpoint lists only those). */
   private readonly publicCampaigns = signal<readonly PublicCampaignSummary[]>([]);
-  protected get campaigns(): string[] { return this.publicCampaigns().map((c) => c.name); }
+  protected readonly campaigns = computed(() => this.publicCampaigns().map((c) => c.name));
 
   /* the link's context: tracking code, lead, an existing donation, a named campaign */
   private trackingReference = '';
@@ -65,16 +67,21 @@ export class DonorForm implements OnInit, OnDestroy {
   private maxAmount = 0;
   private canSubmitDonation = true;
   private blockedReason = '';
-  private readonly countryRows = signal<MasterLookup[]>([]);
-  private stateRows: MasterLookup[] = [];
-  private cityRows: MasterLookup[] = [];
-  protected readonly receiptModes = RECEIPT_MODES;
 
-  /* ---------- top summary ---------- */
+  /* ---------- address masters (drive the country / state / city drop-downs) ---------- */
+  protected readonly countryRows = signal<MasterLookup[]>([]);
+  protected readonly stateRows = signal<MasterLookup[]>([]);
+  protected readonly cityRows = signal<MasterLookup[]>([]);
+
+  /* ---------- campaign & amount ---------- */
   protected readonly campaign = signal<string>('Not selected');
   protected readonly amount = signal('');
   protected readonly currency = signal<CurrencyRow>(FALLBACK_CURRENCIES[0]);
-  protected readonly receipt = signal<ReceiptMode>('e-mail');
+
+  /** True when the link (campaignCode / QR / a reopened donation) fixes the campaign: shown read-only. */
+  protected readonly campaignLocked = signal(false);
+  /** True when the chosen campaign states its own amount: the amount is then read-only. */
+  private readonly amountFixed = signal(false);
 
   /* ---------- donor details ---------- */
   protected readonly fullName = signal(this.auth.user()?.name ?? '');
@@ -96,11 +103,17 @@ export class DonorForm implements OnInit, OnDestroy {
   protected readonly saving = signal(false);
   protected readonly submitError = signal('');
 
-  /* ---------- dropdown menus ---------- */
-  protected readonly campaignMenu = signal(false);
-  protected readonly currencyMenu = signal(false);
-  protected readonly countryMenu = signal(false);
+  /* ---------- drop-down menus ---------- */
+  protected readonly openMenu = signal<MenuName | null>(null);
+  protected readonly menuQuery = signal('');
 
+  protected readonly filteredCampaigns = computed(() => this.filterNames(this.campaigns()));
+  protected readonly filteredCountries = computed(() => this.filterNames(this.countryRows().map((r) => r.name)));
+  protected readonly filteredStates = computed(() => this.filterNames(this.stateRows().map((r) => r.name)));
+  protected readonly filteredCities = computed(() => this.filterNames(this.cityRows().map((r) => r.name)));
+
+  /* ---------- summary ---------- */
+  protected readonly amountValue = computed(() => this.amount().replace(/[^0-9.]/g, ''));
   protected readonly donorLabel = computed(() => this.fullName() || 'Not entered');
   protected readonly currencyLabel = computed(() => this.currency().label);
   protected readonly totalLabel = computed(() => {
@@ -108,17 +121,16 @@ export class DonorForm implements OnInit, OnDestroy {
     return a ? `${this.currency().symbol}${a}` : '—';
   });
 
-  protected readonly amountValue = computed(() => this.amount().replace(/[^0-9.]/g, ''));
-
   /* ---------- section progress (drives the numbered badges) ---------- */
   protected readonly campaignChosen = computed(() => this.campaign() !== 'Not selected');
+  protected readonly amountLocked = computed(() => this.campaignChosen() && this.amountFixed());
   protected readonly doneCampaign = computed(() => this.campaignChosen() && !!this.amountValue());
   protected readonly doneDonor = computed(() => !!this.fullName().trim() && this.email().includes('@'));
   protected readonly doneAddress = computed(() => !!(this.street().trim() || this.city().trim() || this.pin().trim()));
-  protected readonly stepsDone = computed(() => [this.doneCampaign(), this.doneDonor(), this.privacy()].filter(Boolean).length);
 
   protected readonly canSubmit = computed(
     () =>
+      this.campaignChosen() &&
       !!this.fullName().trim() &&
       !!this.email().trim() &&
       !!this.amountValue() &&
@@ -134,51 +146,85 @@ export class DonorForm implements OnInit, OnDestroy {
     this.toastTimer = setTimeout(() => this.submitError.set(''), 4000);
   }
 
-  protected selectCampaign(name: string): void {
+  private filterNames(names: string[]): string[] {
+    const q = this.menuQuery().trim().toLowerCase();
+    return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
+  }
+
+  /** The currency a campaign asks in: labelled from the organisation's list, else built from the code. */
+  private useCurrency(code: string): void {
+    const row = this.currencyRows().find((c) => c.code === code)
+      ?? { code, symbol: symbolOf(code), label: code };
+    this.currency.set(row);
+  }
+
+  /**
+   * Selects a campaign. The campaign states what it asks for: its amount and currency are bound
+   * here, and the amount is read-only while the campaign fixes it.
+   */
+  private selectCampaign(name: string): void {
     this.campaign.set(name);
-    // The campaign states what it asks for; it fills the amount and currency (still editable).
     const picked = this.publicCampaigns().find((c) => c.name === name);
-    if (picked && !this.intentReference) {
-      if (picked.campaignAmount > 0) this.amount.set(String(picked.campaignAmount));
-      const row = this.currencyRows().find((c) => c.code === picked.currencyCode);
-      if (row) this.currency.set(row);
+    if (!picked || this.intentReference) return;
+
+    if (picked.campaignAmount > 0) {
+      this.amount.set(String(picked.campaignAmount));
+      this.amountFixed.set(true);
+    } else {
+      // No amount on the campaign: the donor types one in.
+      this.amount.set('');
+      this.amountFixed.set(false);
     }
+    if (picked.currencyCode) this.useCurrency(picked.currencyCode);
   }
 
-  protected setReceipt(mode: ReceiptMode): void { this.receipt.set(mode); }
+  /* ---------- drop-downs ---------- */
 
-  /** A click anywhere else on the page closes every open drop-down. */
+  protected toggleMenu(name: MenuName, event: Event): void {
+    event.stopPropagation();
+    const open = this.openMenu() === name ? null : name;
+    this.openMenu.set(open);
+    this.menuQuery.set('');
+    if (open) setTimeout(() => document.querySelector<HTMLInputElement>('.df-menu .df-menu-search')?.focus());
+  }
+
+  /** A click anywhere else on the page (or Esc) closes the open drop-down. */
   @HostListener('document:click')
-  protected closeAllMenus(): void {
-    this.campaignMenu.set(false); this.currencyMenu.set(false); this.countryMenu.set(false);
+  @HostListener('document:keydown.escape')
+  protected closeMenus(): void {
+    this.openMenu.set(null);
+    this.menuQuery.set('');
   }
 
-  protected setAmount(value: number): void {
-    this.amount.set(String(value));
+  protected pickCampaign(name: string): void {
+    if (this.campaignLocked()) return;
+    this.selectCampaign(name);
+    this.closeMenus();
   }
 
-  protected toggleCampaign(event: Event): void {
-    event.stopPropagation();
-    this.campaignMenu.set(!this.campaignMenu());
-    if (this.campaignMenu()) { this.currencyMenu.set(false); this.countryMenu.set(false); }
+  protected pickCountry(name: string): void {
+    if (name !== this.country()) {
+      this.country.set(name);
+      this.state.set('');
+      this.city.set('');
+      this.loadStates();
+    }
+    this.closeMenus();
   }
-  protected closeMenu(): void { this.campaignMenu.set(false); }
 
-  protected toggleCurrency(event: Event): void {
-    event.stopPropagation();
-    this.currencyMenu.set(!this.currencyMenu());
-    if (this.currencyMenu()) { this.campaignMenu.set(false); this.countryMenu.set(false); }
+  protected pickState(name: string): void {
+    if (name !== this.state()) {
+      this.state.set(name);
+      this.city.set('');
+      this.loadCities();
+    }
+    this.closeMenus();
   }
-  protected closeCurrencyMenu(): void { this.currencyMenu.set(false); }
-  protected pickCurrency(c: CurrencyRow): void { this.currency.set(c); this.closeCurrencyMenu(); }
 
-  protected toggleCountry(event: Event): void {
-    event.stopPropagation();
-    this.countryMenu.set(!this.countryMenu());
-    if (this.countryMenu()) { this.campaignMenu.set(false); this.currencyMenu.set(false); }
+  protected pickCity(name: string): void {
+    this.city.set(name);
+    this.closeMenus();
   }
-  protected closeCountryMenu(): void { this.countryMenu.set(false); }
-  protected pickCountry(c: string): void { this.country.set(c); this.closeCountryMenu(); this.loadStates(); }
 
   ngOnInit(): void {
     const q = this.route.snapshot.queryParamMap;
@@ -211,8 +257,8 @@ export class DonorForm implements OnInit, OnDestroy {
         this.currencyRows.set(rows.map((r) => ({
           code: r.reference, symbol: symbolOf(r.reference), label: `${r.label.split(' - ')[1] ?? r.reference} (${r.reference})`
         })));
-        const keep = this.currencyRows().find((c) => c.code === this.currency().code);
-        if (keep) this.currency.set(keep);
+        // re-label the currency already in use with the organisation's own wording
+        this.useCurrency(this.currency().code);
       },
       error: () => undefined
     });
@@ -222,29 +268,38 @@ export class DonorForm implements OnInit, OnDestroy {
     });
   }
 
-  /** A link that names a campaign (by code, name or id) selects it once the list is here. */
+  /**
+   * ?campaignCode=SF-DIWALI-2026 → that campaign is bound and locked (read-only), its amount and
+   * currency bound with it. ?campaignCode= (empty) or no code → the donor picks an active campaign.
+   */
   private bindCampaignFromLink(): void {
     const want = this.campaignFromLink.toLowerCase();
     if (!want || this.campaignChosen()) return;
     const hit = this.publicCampaigns().find((c) =>
       c.code.toLowerCase() === want || c.name.toLowerCase() === want || c.id.toLowerCase() === want);
-    if (hit) this.selectCampaign(hit.name);
+    if (hit) {
+      this.selectCampaign(hit.name);
+      this.campaignLocked.set(true);
+    } else {
+      this.flash('The campaign in this link is not open for donations. Choose an active campaign below.');
+    }
   }
 
-  /** A QR code names no campaign on its URL; the server says which one it gives to. */
+  /** A QR code names no campaign on its URL; the server says which one it gives to - and that one is fixed. */
   private loadTrackingCampaign(): void {
     this.payments.getPublicTrackingContext(this.trackingReference).subscribe({
       next: (ctx) => {
         if (ctx.campaign && !this.campaignChosen()) {
           const hit = this.publicCampaigns().find((c) => c.id === ctx.campaign!.id);
           this.selectCampaign(hit?.name ?? ctx.campaign.name);
+          this.campaignLocked.set(true);
         }
       },
       error: () => undefined
     });
   }
 
-  /** A donation being continued (from the payments queue or a failed result page). */
+  /** A donation being continued (from the payments queue or a failed result page): its figures are fixed. */
   private reopenIntent(): void {
     this.payments.getPublicIntent(this.intentReference).subscribe({
       next: (intent) => {
@@ -252,9 +307,12 @@ export class DonorForm implements OnInit, OnDestroy {
         this.email.set(intent.email ?? '');
         this.mobile.set(intent.mobile ?? '');
         this.amount.set(String(intent.amount.amount));
-        const row = this.currencyRows().find((c) => c.code === intent.amount.currencyCode);
-        if (row) this.currency.set(row);
-        if (intent.campaignName) this.campaign.set(intent.campaignName);
+        this.amountFixed.set(true);
+        this.useCurrency(intent.amount.currencyCode);
+        if (intent.campaignName) {
+          this.campaign.set(intent.campaignName);
+          this.campaignLocked.set(true);
+        }
         this.privacy.set(true);
         this.blockedReason = unpayableReason(intent.status) ?? '';
         this.flash(this.blockedReason || `Donation ${intent.intentReference} is ready to be paid.`);
@@ -263,7 +321,7 @@ export class DonorForm implements OnInit, OnDestroy {
     });
   }
 
-  /* ---------- address masters: names typed or picked are matched to master ids ---------- */
+  /* ---------- address masters: names picked are matched to master ids ---------- */
   private match(rows: MasterLookup[], name: string): MasterLookup | undefined {
     const n = name.trim().toLowerCase();
     return n ? rows.find((r) => r.name.toLowerCase() === n || r.code.toLowerCase() === n) : undefined;
@@ -271,24 +329,24 @@ export class DonorForm implements OnInit, OnDestroy {
 
   private loadStates(): void {
     const country = this.match(this.countryRows(), this.country());
-    this.stateRows = []; this.cityRows = [];
+    this.stateRows.set([]);
+    this.cityRows.set([]);
     if (!country) return;
     this.payments.getPublicStates(country.id).subscribe({
-      next: (rows) => { this.stateRows = rows; this.loadCities(); },
+      next: (rows) => { this.stateRows.set(rows); this.loadCities(); },
       error: () => undefined
     });
   }
 
   private loadCities(): void {
-    const st = this.match(this.stateRows, this.state());
-    this.cityRows = [];
+    const st = this.match(this.stateRows(), this.state());
+    this.cityRows.set([]);
     if (!st) return;
-    this.payments.getPublicCities(st.id).subscribe({ next: (rows) => { this.cityRows = rows; }, error: () => undefined });
+    this.payments.getPublicCities(st.id).subscribe({
+      next: (rows) => this.cityRows.set(rows),
+      error: () => undefined
+    });
   }
-
-  /** Called when the State box loses focus, so the city list follows what was typed. */
-  protected onStateEntered(): void { this.loadCities(); }
-  protected onCountryEntered(): void { this.loadStates(); }
 
   protected submit(): void {
     if (!this.canSubmit()) return;
@@ -305,11 +363,11 @@ export class DonorForm implements OnInit, OnDestroy {
     this.submitError.set('');
     const picked = this.publicCampaigns().find((c) => c.name === this.campaign());
     const country = this.match(this.countryRows(), this.country());
-    const st = this.match(this.stateRows, this.state());
-    const city = this.match(this.cityRows, this.city());
+    const st = this.match(this.stateRows(), this.state());
+    const city = this.match(this.cityRows(), this.city());
 
     this.payments.initiateDonation({
-      donorName: this.fullName().trim() || 'Donor',
+      donorName: this.fullName().trim(),
       email: this.email().trim(),
       mobile: this.mobile().trim() || null,
       amount,

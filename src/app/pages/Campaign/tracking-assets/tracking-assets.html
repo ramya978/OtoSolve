@@ -1,69 +1,87 @@
 <!-- =====================================================================================================
      TRACKING ASSET MANAGER (tracking-assets.ts · tracking-assets.css)
-     Header · KPI strip · search / type / status · table · pager (rows per page + page buttons) · asset drawer.
+     Page head · KPI strip · search / type / status · table · pager (rows per page + page buttons) · asset drawer.
      ===================================================================================================== -->
-<cw-page-head section="Tracking asset manager">
-  <a actions class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
-    <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-    Create asset
-  </a>
-</cw-page-head>
 
-<!-- ===== KPI cards ===== -->
+<!-- ===== page head: eyebrow · main heading · description · actions ===== -->
+<header class="ta-pagehead">
+  <div class="ta-pagehead-text">
+    <span class="ta-eyebrow">Fundraising</span>
+    <h1>Tracking asset manager</h1>
+    <p>QR codes and landing pages across your campaigns, with their status, usage and approvals.</p>
+  </div>
+  <div class="ta-pagehead-actions">
+    <a class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
+      <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+      Create
+    </a>
+  </div>
+</header>
+
+<!-- ===== KPI strip: one joined card, cells split by hairlines ===== -->
 <section class="ta-kpis" aria-label="Tracking asset figures">
+  <!-- total -->
   <div class="ta-kpi">
-    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg></span>
-    <div>
+    <div class="ta-kpi-top">
       <span class="ta-kpi-label">Total assets</span>
-      <strong>{{ kpis().total }}</strong>
-      <small>{{ kpis().types }} types · <b class="ta-good">+{{ kpis().drafts }} draft</b></small>
+      <svg class="w-ico ta-kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('qr')" /></svg>
     </div>
-    <dl class="ta-kpi-side">
-      <div><dt>QR Code</dt><dd>{{ kpis().qr }}</dd></div>
-      <div><dt>Landing Page</dt><dd>{{ kpis().landing }}</dd></div>
-    </dl>
+    <div class="ta-kpi-mid">
+      <strong class="ta-kpi-value">{{ kpis().total }}</strong>
+      <span class="ta-kpi-side">
+        <b>{{ kpis().types }}</b>
+        <small>Types</small>
+      </span>
+    </div>
+    <p class="ta-kpi-foot">{{ kpis().qr }} QR code · {{ kpis().landing }} landing page · {{ kpis().drafts }} draft</p>
   </div>
+
+  <!-- active -->
   <div class="ta-kpi tone-success">
-    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pulse')" /></svg></span>
-    <div>
+    <div class="ta-kpi-top">
       <span class="ta-kpi-label">Active</span>
-      <strong>{{ kpis().active }}</strong>
-      <small>{{ kpis().activePct }}% online</small>
+      <svg class="w-ico ta-kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pulse')" /></svg>
     </div>
-    <span class="ta-kpi-ring" role="img" [attr.aria-label]="kpis().activePct + '%'">
-      <svg viewBox="0 0 36 36" aria-hidden="true">
-        <circle class="ta-ring-bg" cx="18" cy="18" r="15.5" pathLength="100" />
-        <circle class="ta-ring-fg" cx="18" cy="18" r="15.5" pathLength="100" [attr.stroke-dasharray]="kpis().activePct + ' 100'" />
-      </svg>
-      <span>{{ kpis().activePct }}%</span>
-    </span>
+    <div class="ta-kpi-mid">
+      <strong class="ta-kpi-value">{{ kpis().active }}</strong>
+      <span class="ta-kpi-side">
+        <b>{{ kpis().activePct }}%</b>
+        <small>Online</small>
+      </span>
+    </div>
+    <p class="ta-kpi-foot">{{ kpis().active }} of {{ kpis().total }} assets taking scans and clicks</p>
   </div>
+
+  <!-- usage -->
   <div class="ta-kpi tone-info">
-    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chart')" /></svg></span>
-    <div>
+    <div class="ta-kpi-top">
       <span class="ta-kpi-label">Total usage</span>
-      <strong>{{ kpis().usage.toLocaleString('en-IN') }}</strong>
-      <small>{{ kpis().livePct }}% from live assets</small>
+      <svg class="w-ico ta-kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chart')" /></svg>
     </div>
-    <span class="ta-kpi-ring" role="img" [attr.aria-label]="kpis().livePct + '%'">
-      <svg viewBox="0 0 36 36" aria-hidden="true">
-        <circle class="ta-ring-bg" cx="18" cy="18" r="15.5" pathLength="100" />
-        <circle class="ta-ring-fg" cx="18" cy="18" r="15.5" pathLength="100" [attr.stroke-dasharray]="kpis().livePct + ' 100'" />
-      </svg>
-      <span>{{ kpis().livePct }}%</span>
-    </span>
+    <div class="ta-kpi-mid">
+      <strong class="ta-kpi-value">{{ kpis().usage.toLocaleString('en-IN') }}</strong>
+      <span class="ta-kpi-side">
+        <b>{{ kpis().livePct }}%</b>
+        <small>From live</small>
+      </span>
+    </div>
+    <p class="ta-kpi-foot">Scans and clicks across all tracking assets</p>
   </div>
+
+  <!-- pending -->
   <div class="ta-kpi tone-warning">
-    <span class="ta-kpi-ico"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
-    <div>
+    <div class="ta-kpi-top">
       <span class="ta-kpi-label">Pending approval</span>
-      <strong>{{ kpis().pending }}</strong>
-      <small>Awaiting verification</small>
+      <svg class="w-ico ta-kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
     </div>
-    <dl class="ta-kpi-side">
-      <div><dt>To go live</dt><dd>{{ kpis().approvals }}</dd></div>
-      <div><dt>To disable</dt><dd>{{ kpis().disables }}</dd></div>
-    </dl>
+    <div class="ta-kpi-mid">
+      <strong class="ta-kpi-value">{{ kpis().pending }}</strong>
+      <span class="ta-kpi-side">
+        <b>{{ kpis().approvals }}</b>
+        <small>To go live</small>
+      </span>
+    </div>
+    <p class="ta-kpi-foot">{{ kpis().disables }} disable request{{ kpis().disables === 1 ? '' : 's' }} awaiting approval</p>
   </div>
 </section>
 
@@ -157,55 +175,53 @@
   </table>
 
   <!-- ===== pager: showing range · rows per page · page buttons ===== -->
-<div class="card-foot ta-foot">
-  <div class="ta-foot-left">
-    <span class="ta-showing">
-      Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
-    </span>
+  <div class="card-foot ta-foot">
+    <div class="ta-foot-left">
+      <span class="ta-showing">
+        Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
+      </span>
 
-    <div class="ta-dd" [class.is-open]="rowsOpen()">
-      <button type="button" class="ta-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
-              [attr.aria-expanded]="rowsOpen()" (click)="toggleRows($event)">
-        <span class="ta-dd-key">Rows</span>
-        <span class="ta-dd-val">{{ pageSize() }}</span>
-        <svg class="ta-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
-             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
-      </button>
-      @if (rowsOpen()) {
-        <ul class="ta-dd-menu" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
-          @for (n of pageSizes; track n) {
-            <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
-                (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
-          }
-        </ul>
-      }
+      <div class="ta-dd" [class.is-open]="rowsOpen()">
+        <button type="button" class="ta-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
+                [attr.aria-expanded]="rowsOpen()" (click)="toggleRows($event)">
+          <span class="ta-dd-key">Rows</span>
+          <span class="ta-dd-val">{{ pageSize() }}</span>
+          <svg class="ta-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
+        @if (rowsOpen()) {
+          <ul class="ta-dd-menu" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
+            @for (n of pageSizes; track n) {
+              <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
+                  (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
+            }
+          </ul>
+        }
+      </div>
     </div>
-  </div>
 
-  <nav class="ta-pager" aria-label="Pagination">
-    <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === 1" (click)="prevPage()" aria-label="Previous page">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    </button>
+    <nav class="ta-pager" aria-label="Pagination">
+      <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === 1" (click)="prevPage()" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      </button>
 
-    @for (p of pages(); track $index) {
-      @if (p === null) {
-        <span class="ta-page-gap" aria-hidden="true">...</span>
-      } @else {
-        <button type="button" class="ta-page" [class.active]="p === safePage()"
-                [attr.aria-current]="p === safePage() ? 'page' : null"
-                [attr.aria-label]="'Page ' + p" (click)="goPage(p)">{{ p }}</button>
+      @for (p of pages(); track $index) {
+        @if (p === null) {
+          <span class="ta-page-gap" aria-hidden="true">...</span>
+        } @else {
+          <button type="button" class="ta-page" [class.active]="p === safePage()"
+                  [attr.aria-current]="p === safePage() ? 'page' : null"
+                  [attr.aria-label]="'Page ' + p" (click)="goPage(p)">{{ p }}</button>
+        }
       }
-    }
 
-    <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === totalPages()" (click)="nextPage()" aria-label="Next page">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-    </button>
-  </nav>
-</div>
-
-
+      <button type="button" class="ta-page ta-page-nav" [disabled]="safePage() === totalPages()" (click)="nextPage()" aria-label="Next page">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+    </nav>
+  </div>
 </section>
 
 <!-- ===== asset drawer ===== -->

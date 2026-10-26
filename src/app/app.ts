@@ -26,7 +26,7 @@ export interface Organisation {
 
 type HeaderIcon =
   | 'building' | 'search' | 'clock' | 'bell' | 'user' | 'shield' | 'sliders'
-  | 'logout' | 'devices' | 'doc' | 'users' | 'check';
+  | 'logout' | 'devices' | 'doc' | 'users' | 'check' | 'leave';
 
 interface Note {
   id: string;
@@ -55,7 +55,9 @@ const ICONS: Record<HeaderIcon, string> = {
   devices: 'M3 4h13a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M6 18h7 M9.5 14v4 M18 9h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1z',
   doc: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h5',
   users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
-  check: 'M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3'
+  check: 'M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3',
+  /** door with an arrow going out - "Leave organisation" */
+  leave: 'M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4 M10 12H3 M6 8l-4 4 4 4'
 };
 
 const SIDEBAR_KEY = 'ydot-sidebar-collapsed';
@@ -126,10 +128,19 @@ export class App {
   protected readonly userMenuOpen = signal(false);
   protected readonly orgListOpen = signal(false);
   protected readonly orgQuery = signal('');
+  /** True while the "Leave organisation" request is running. */
+  protected readonly leavingOrg = signal(false);
   private readonly tokens = inject(AuthTokenService);
   private readonly orgContext = inject(OrganisationContextService);
   private readonly navigation = inject(NavigationService);
   private readonly toast = inject(ToastService);
+
+  /**
+   * The organisation switcher is shown ONLY to a super admin (global scope, isSuperAdmin).
+   * Tenant admins and ordinary users work inside the one Organisation their session belongs to,
+   * so the "Choose an organisation" button is not drawn for them at all.
+   */
+  protected readonly canSwitchOrg = computed(() => this.orgContext.canSwitch());
 
   /**
    * The Organisations in the switcher. Only a root (global-scope) user has more than one to pick
@@ -153,6 +164,16 @@ export class App {
     if (!current?.tenantId || !current.tenantName) return null;
     return this.fromContext(current.tenantId, current.tenantName, current.subdomain, current.status === 'active', current.tenantCode);
   });
+
+  /**
+   * "Leave <organisation>" is shown only while a global caller has actually stepped into an
+   * Organisation (isActingInOrganisation). Someone bound to one Organisation has nowhere to go
+   * back to, and at platform scope there is nothing to leave.
+   */
+  protected readonly canLeaveOrg = computed(
+    () => !!this.selectedOrg() && this.canSwitchOrg() && this.orgContext.isActingInOrganisation()
+  );
+
   protected readonly filteredOrgs = computed(() => {
     const q = this.orgQuery().trim().toLowerCase();
     const list = this.organisations();
@@ -238,6 +259,12 @@ export class App {
       if (!last) { el.hidden = true; return; }
       el.textContent = last.message ? `${last.title} - ${last.message}` : last.title;
       el.hidden = false;
+    });
+
+    // If the session stops being a super admin (sign-out, a different user), make sure the
+    // switcher popup is not left open with nothing to anchor it.
+    effect(() => {
+      if (!this.canSwitchOrg()) this.orgListOpen.set(false);
     });
 
     const timer = setInterval(() => {
@@ -351,7 +378,7 @@ export class App {
 
   /**
    * Account menu → Sign out (and Sign out everywhere): ends the session on this device
-   * and returns to the sign-in screen. Wire "everywhere" to a session-revoke API later.
+   * and returns to the sign-in screen.
    */
   protected signOut(everywhere = false): void {
     this.closeAll();
@@ -372,9 +399,13 @@ export class App {
     this.theme.studioOpen.set(true);
   }
 
-  /** The organisation button in the top bar: opens a floating list under it (search on top), or closes it. */
+  /**
+   * The organisation button in the top bar: opens a floating list under it (search on top), or
+   * closes it. Super admin only - nobody else has the button.
+   */
   protected toggleOrgList(event: Event): void {
     event.stopPropagation();
+    if (!this.canSwitchOrg()) return;
     const open = !this.orgListOpen();
     this.closeAll();
     this.orgListOpen.set(open);
@@ -384,6 +415,7 @@ export class App {
   /** Account menu → Current organisation: closes the menu and opens the organisation list. */
   protected openOrgFromMenu(event: Event): void {
     event.stopPropagation();
+    if (!this.canSwitchOrg()) return;
     this.closeAll();
     this.orgListOpen.set(true);
     this.openedOrgList();
@@ -401,7 +433,7 @@ export class App {
    */
   protected chooseOrg(org: Organisation): void {
     this.closeOrgList();
-    if (!this.orgContext.canSwitch() || org.id === this.selectedOrg()?.id) return;
+    if (!this.canSwitchOrg() || org.id === this.selectedOrg()?.id) return;
 
     this.orgContext.select(org.id).subscribe({
       next: () => void this.router.navigateByUrl(this.navigation.landingRoute()),
@@ -410,9 +442,33 @@ export class App {
     });
   }
 
+  /**
+   * "Leave <organisation>": steps back out to platform scope. The server re-issues the token
+   * without an Organisation (exitToPlatform), the platform menu is fetched before that completes,
+   * then the person lands on the platform landing route.
+   */
+  protected leaveOrg(): void {
+    const org = this.selectedOrg();
+    if (!org || !this.canLeaveOrg() || this.leavingOrg()) return;
+
+    this.leavingOrg.set(true);
+    this.orgContext.exitToPlatform().subscribe({
+      next: () => {
+        this.leavingOrg.set(false);
+        this.closeOrgList();
+        this.toast.show('Organisation left', `You are no longer working inside ${org.name}.`, 'success');
+        void this.router.navigateByUrl(this.navigation.landingRoute());
+      },
+      error: (error: unknown) => {
+        this.leavingOrg.set(false);
+        this.toast.show('Could not leave', apiErrorMessage(error, `${org.name} could not be left.`), 'error');
+      }
+    });
+  }
+
   /** The switcher is filled only when it is opened: most people can switch nowhere. */
   private openedOrgList(): void {
-    if (this.orgContext.canSwitch() && this.orgContext.selectable().length === 0) {
+    if (this.canSwitchOrg() && this.orgContext.selectable().length === 0) {
       this.orgContext.loadSelectable().subscribe({ error: () => undefined });
     }
     this.focusOrgSearch();

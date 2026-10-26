@@ -35,7 +35,8 @@
         </div>
       </div>
 
-      <!-- organisation switcher -->
+      <!-- organisation switcher: only a super admin (global scope) can choose an organisation -->
+      @if (canSwitchOrg()) {
       <div class="hd-org-wrap">
         <button type="button" class="hd-org" [class.is-open]="orgListOpen()" aria-haspopup="listbox"
                 [attr.aria-expanded]="orgListOpen()" (click)="toggleOrgList($event)">
@@ -88,10 +89,22 @@
                 <p class="hd-empty">No organisation matches “{{ orgQuery() }}”.</p>
               }
             </div>
-            <div class="hd-pop-foot">{{ filteredOrgs().length }} of {{ organisations().length }} organisations</div>
+
+            <!-- leave the organisation the session is working in (hairline above, full-width button) -->
+            @if (canLeaveOrg()) {
+              <div class="hd-org-leave">
+                <button type="button" class="hd-org-leave-btn" [disabled]="leavingOrg()" (click)="leaveOrg()">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('leave')" /></svg>
+                  <span>{{ leavingOrg() ? 'Leaving…' : 'Leave ' + selectedOrg()!.name }}</span>
+                </button>
+              </div>
+            } @else {
+              <div class="hd-pop-foot">{{ filteredOrgs().length }} of {{ organisations().length }} organisations</div>
+            }
           </div>
         }
       </div>
+      }
 
       <div class="spacer"></div>
 
@@ -273,18 +286,6 @@
                 <em class="hd-role">{{ userRole() }}</em>
               </div>
             </div>
-
-            <!-- current organisation -->
-            <!-- <button type="button" class="hd-menu-org" role="menuitem" (click)="openOrgFromMenu($event)">
-              <span class="hd-menu-org-ico">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>
-              </span>
-              <span class="hd-menu-org-meta">
-                <small>Current organisation</small>
-                <strong>{{ selectedOrg()?.name ?? 'Choose an organisation' }}</strong>
-              </span>
-              <svg class="hd-row-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-            </button> -->
 
             <div class="hd-menu-sep"></div>
 

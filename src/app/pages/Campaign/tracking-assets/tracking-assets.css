@@ -18,144 +18,158 @@
   clip: rect(0 0 0 0);
 }
 
-/* ---------- KPI cards ---------- */
+/* ---------- page head: eyebrow · main heading · description · actions ---------- */
+.ta-pagehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.ta-pagehead-text {
+  display: grid;
+  min-width: 0;
+}
+
+.ta-eyebrow {
+display: block;
+    margin-bottom: 6px;
+    color: var(--accent-ink, var(--cr-primary-ink));
+    font-size: calc(10px * var(--font-scale, 1));
+    font-weight: 650;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+}
+
+.ta-pagehead h1 {
+    color: var(--cr-heading);
+    font-family: var(--cr-heading-font);
+    font-size: calc(30px * var(--font-scale, 1));
+    font-weight: 650;
+    letter-spacing: -.8px;
+    line-height: 1.25;
+}
+
+.ta-pagehead p {
+  margin: 10px 0 0;
+  color: var(--w-muted);
+  font-size: calc(15px * var(--font-scale, 1));
+  line-height: 1.55;
+}
+
+.ta-pagehead-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- KPI strip: one joined card, cells split by hairlines ---------- */
 .ta-kpis {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  overflow: hidden;
   margin-bottom: 18px;
-}
-
-.ta-kpi {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
-  padding: 16px;
   border: 1px solid var(--w-line);
   border-radius: var(--w-radius);
   background: var(--w-card);
-  transition: border-color .15s, box-shadow .15s;
+}
+
+.ta-kpi {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px 22px;
+  border-left: 1px solid var(--w-line);
+  transition: background-color .15s;
+}
+
+.ta-kpi:first-child {
+  border-left: 0;
 }
 
 .ta-kpi:hover {
-  border-color: color-mix(in srgb, var(--w-primary) 30%, var(--white, #fff));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--w-heading) 7%, transparent);
+  background: color-mix(in srgb, var(--w-primary) 3%, var(--w-card));
 }
 
-.ta-kpi-ico {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  background: var(--t-bg, var(--w-primary-soft));
-  color: var(--t-ink, var(--w-primary-ink));
-}
-
-.ta-kpi-ico .w-ico {
-  width: 20px;
-  height: 20px;
-}
-
-.ta-kpi > div {
-  display: grid;
-  gap: 2px;
+/* top row: label left, small line icon right */
+.ta-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   min-width: 0;
 }
 
 .ta-kpi-label {
-  color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  overflow: hidden;
+  color: var(--w-ink);
+  font-size: calc(14px * var(--font-scale, 1));
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ta-kpi strong {
+.ta-kpi-ico {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--t-ink, var(--w-muted));
+}
+
+/* middle row: big value left, side figure right behind a short divider */
+.ta-kpi-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ta-kpi-value {
+  overflow: hidden;
   color: var(--w-heading);
-  font-size: calc(20px * var(--font-scale, 1));
+  font-size: calc(28px * var(--font-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.25;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.ta-kpi > div:not(.ta-kpi-side) {
-  flex: 1;
-}
-
-/* right side of a KPI card: small breakdown or ring */
 .ta-kpi-side {
   display: grid;
   flex: none;
-  gap: 6px;
-  margin: 0;
-  padding-left: 16px;
-  border-left: 1px solid var(--w-row);
+  justify-items: end;
+  gap: 2px;
+  padding-left: 14px;
+  border-left: 1px solid var(--w-line);
+  text-align: right;
 }
 
-.ta-kpi-side > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.ta-kpi-side dt {
-  color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
-  white-space: nowrap;
-}
-
-.ta-kpi-side dd {
-  margin: 0;
+.ta-kpi-side b {
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(15px * var(--font-scale, 1));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.ta-kpi-ring {
-  position: relative;
-  flex: none;
-  width: 52px;
-  height: 52px;
-}
-
-.ta-kpi-ring svg {
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-
-.ta-kpi-ring circle {
-  fill: none;
-  stroke-width: 3.5;
-}
-
-.ta-ring-bg { stroke: var(--w-soft); }
-
-.ta-ring-fg {
-  stroke: var(--t, var(--w-primary));
-  stroke-linecap: round;
-  transition: stroke-dasharray .5s ease;
-}
-
-.ta-kpi-ring > span {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--w-heading);
-  font-size: calc(11px * var(--font-scale, 1));
-  font-weight: 600;
-}
-
-.ta-kpi small {
-  overflow: hidden;
+.ta-kpi-side small {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
-  text-overflow: ellipsis;
+  font-size: calc(12.5px * var(--font-scale, 1));
   white-space: nowrap;
+}
+
+/* bottom row: muted summary, allowed to wrap */
+.ta-kpi-foot {
+  margin: 0;
+  color: var(--w-muted);
+  font-size: calc(13px * var(--font-scale, 1));
+  line-height: 1.55;
 }
 
 /* ---------- list card + toolbar ---------- */
@@ -536,7 +550,6 @@
 }
 
 /* ---------- footer / pager ---------- */
-/* tracking-assets.css: replace the existing "footer / pager" block (.ta-foot, .ta-foot strong, .ta-pager, .ta-page ...) with this. */
 .ta-foot {
   display: flex; align-items: center; justify-content: space-between;
   flex-wrap: wrap; gap: 12px; padding: 14px 22px;
@@ -603,6 +616,7 @@
   .ta-pager { justify-content: center; gap: 6px; }
   .ta-page { min-width: 32px; height: 32px; padding: 0 8px; }
 }
+
 /* rows-per-page select: menu opens upwards */
 .ta-rows { position: relative; }
 
@@ -698,6 +712,7 @@
 @media (prefers-reduced-motion: reduce) {
   .ta-rows-menu { animation: none; }
 }
+
 /* ---------- drawer ---------- */
 .ta-drawer {
   width: min(520px, 100vw);
@@ -899,8 +914,12 @@
   .ta-c-asset { width: 34%; }
 }
 
+/* KPI strip: two cells per row, hairlines between rows too */
 @container ta-page (max-width: 1050px) {
   .ta-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .ta-kpi:nth-child(odd) { border-left: 0; }
+  .ta-kpi:nth-child(n + 3) { border-top: 1px solid var(--w-line); }
 
   .ta-tools { width: 100%; }
 
@@ -925,16 +944,16 @@
   .ta-dd { width: calc(50% - 5px); }
 }
 
-@container ta-page (max-width: 1300px) {
-  .ta-kpi-side { display: none; }
-}
-
-@container ta-page (max-width: 1050px) {
-  .ta-kpi-side { display: grid; }
-}
-
+/* page head + KPI strip on a phone */
 @container ta-page (max-width: 520px) {
+  .ta-pagehead h1 { font-size: calc(28px * var(--font-scale, 1)); }
+  .ta-pagehead p { font-size: calc(14px * var(--font-scale, 1)); }
+  .ta-pagehead-actions { width: 100%; }
+
   .ta-kpis { grid-template-columns: minmax(0, 1fr); }
+
+  .ta-kpi { border-left: 0; }
+  .ta-kpi:nth-child(n + 2) { border-top: 1px solid var(--w-line); }
 
   .ta-code {
     grid-template-columns: minmax(0, 1fr);
