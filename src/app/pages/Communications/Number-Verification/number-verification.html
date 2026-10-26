@@ -1,0 +1,445 @@
+<!-- =====================================================================================================
+     NUMBER VERIFICATION
+     Header figures → tabs (New check | Jobs) + step line
+     New check : 01 Upload · 02 Review · 03 Check · 04 Report  (one flat panel per step)
+     Jobs      : status tabs + search + table
+     ===================================================================================================== -->
+<app-page-header breadcrumb="Communications / Number verification" heading="Number Verification"
+                 description="Upload a list, see which numbers are usable, and check which ones are on WhatsApp.">
+  <ng-container actions>
+    <dl class="wa-stats">
+      <div><dt>Numbers verified</dt><dd>{{ stats()?.numbersVerified ?? 0 }}</dd></div>
+      <div><dt>On WhatsApp</dt><dd>{{ stats()?.onWhatsApp ?? 0 }}<small>ready in Wati</small></dd></div>
+      <div><dt>Jobs run</dt><dd>{{ stats()?.jobsRun ?? 0 }}@if (stats()?.jobsRunning) {<small>{{ stats()?.jobsRunning }} running</small>}</dd></div>
+    </dl>
+  </ng-container>
+</app-page-header>
+
+<!-- ===== tabs + step line ===== -->
+<div class="nv-tabbar">
+  <nav class="nv-tabs" role="tablist" aria-label="View">
+    <button type="button" role="tab" [class.is-on]="view() === 'new'" [attr.aria-selected]="view() === 'new'" (click)="setView('new')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg> New check
+    </button>
+    <button type="button" role="tab" [class.is-on]="view() === 'jobs'" [attr.aria-selected]="view() === 'jobs'" (click)="setView('jobs')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg> Jobs <em>{{ jobs().length }}</em>
+    </button>
+  </nav>
+
+  @if (view() === 'new') {
+    <ol class="nv-steps" aria-label="Progress">
+      @for (s of steps; track s.n) {
+        <li [class.is-on]="step() === s.n" [class.is-done]="step() > s.n">
+          <button type="button" [disabled]="!canGo(s.n)" [attr.aria-current]="step() === s.n ? 'step' : null" [title]="s.hint" (click)="goStep(s.n)">
+            <span class="nv-step-no">
+              @if (step() > s.n) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> } @else { {{ s.no }} }
+            </span>
+            {{ s.label }}
+          </button>
+        </li>
+      }
+    </ol>
+  }
+</div>
+
+@if (error()) {
+  <div class="nv-alert" role="alert">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+    <span>{{ error() }}</span>
+    <button type="button" class="nv-x" aria-label="Dismiss" (click)="error.set('')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+  </div>
+}
+
+<!-- ===================================== NEW CHECK ===================================== -->
+@if (view() === 'new') {
+
+  <!-- ---------- 01 upload ---------- -->
+  @if (step() === 1) {
+    <section class="nv-panel nv-split">
+      <div class="nv-pane">
+        <header class="nv-head">
+          <div class="nv-head-txt"><h2>Upload a list</h2><p>One file at a time · {{ acceptList.join(', ') }} · up to {{ maxMb() }} MB</p></div>
+        </header>
+
+        @if (file(); as f) {
+          <div class="nv-pane-body">
+            <div class="nv-file">
+              <span class="nv-file-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg></span>
+              <div class="nv-file-txt">
+                <b>{{ f.name }}</b>
+                <small>{{ size(f.size) }} · .{{ ext() }} · ready to read</small>
+              </div>
+              <button type="button" class="nv-link is-muted" (click)="changeFile()">Change file</button>
+            </div>
+          </div>
+          <footer class="nv-actbar">
+            <button type="button" class="nv-btn" (click)="changeFile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg> Change file</button>
+            <button type="button" class="nv-btn is-primary" [disabled]="busy()" (click)="next()">
+              {{ busy() ? 'Reading the file…' : 'Next: review numbers' }} <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+            </button>
+          </footer>
+        } @else {
+          <div class="nv-pane-body">
+            <label class="nv-drop" [class.is-over]="dragOver()" (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)" (drop)="onDrop($event)">
+              <input #picker type="file" hidden [attr.accept]="accept" (change)="onPick(picker)" />
+              <span class="nv-drop-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg></span>
+              <strong>Drop your list here</strong>
+              <span>or <u>browse your files</u></span>
+              <span class="nv-types">@for (t of acceptList; track t) { <i>{{ t }}</i> }</span>
+            </label>
+          </div>
+        }
+      </div>
+
+      <aside class="nv-pane nv-side">
+        <header class="nv-head"><div class="nv-head-txt"><h2>What happens next</h2></div></header>
+        <ol class="nv-flow">
+          <li><span>1</span><div><b>Numbers are extracted</b><small>Names, dates and other text are ignored. Every number gets a leading +, and Indian numbers become +91.</small></div></li>
+          <li><span>2</span><div><b>Every sheet is counted</b><small>Excel files are read sheet by sheet, so you see the total for each.</small></div></li>
+          <li><span>3</span><div><b>Repeats are caught</b><small>Duplicates, and numbers you already checked, are never charged twice.</small></div></li>
+          <li><span>4</span><div><b>Valid numbers go to Wati</b><small>Once the check finishes, everyone on WhatsApp is ready to message.</small></div></li>
+        </ol>
+        <div class="nv-side-sub">How a number is rewritten</div>
+        <table class="nv-table nv-rewrites">
+          <tbody>
+            @for (r of rewrites; track r.from) { <tr><td class="nv-muted">{{ r.from }}</td><td class="nv-mono">{{ r.to }}</td></tr> }
+          </tbody>
+        </table>
+      </aside>
+    </section>
+  }
+
+  <!-- ---------- 02 review ---------- -->
+  @if (step() === 2 && parsed(); as p) {
+    <section class="nv-panel">
+      <header class="nv-head">
+        <div class="nv-head-file">
+          <span class="nv-file-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('file')" /></svg></span>
+          <div class="nv-head-txt">
+            <h2>{{ file()?.name }}</h2>
+            <p>{{ size(file()?.size ?? 0) }} · .{{ ext() }} · {{ p.sheets }} sheet{{ p.sheets === 1 ? '' : 's' }} · {{ p.rows }} rows read</p>
+          </div>
+        </div>
+        <div class="nv-head-acts">
+          <div class="nv-dd" [class.is-open]="menu() === 'campaign'">
+            <button type="button" class="nv-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'campaign'" (click)="toggle('campaign', $event)">
+              <span [class.nv-ph]="!campaignId()">{{ campaignId() ? campaignName() : 'Campaign (optional)' }}</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            </button>
+            @if (menu() === 'campaign') {
+              <ul class="nv-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+                <li><button type="button" [class.is-on]="!campaignId()" (click)="pickCampaign(null)">No campaign</button></li>
+                @for (c of campaigns(); track c.id) {
+                  <li><button type="button" [class.is-on]="campaignId() === c.id" (click)="pickCampaign(c.id)">{{ c.name }}</button></li>
+                }
+              </ul>
+            }
+          </div>
+          <button type="button" class="nv-btn" (click)="changeFile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg> Change file</button>
+        </div>
+      </header>
+
+      <!-- figures double as tabs -->
+      <div class="nv-figs is-five" role="tablist">
+        <button type="button" role="tab" class="tone-primary" [class.is-on]="reviewTab() === 'check'" (click)="setReviewTab('check')">
+          <span>Ready to check</span><b>{{ toCheck().length }}</b><small>new numbers</small></button>
+        <button type="button" role="tab" class="tone-blue" [class.is-on]="reviewTab() === 'saved'" (click)="setReviewTab('saved')">
+          <span>From saved results</span><b>{{ saved().length }}</b><small>no charge</small></button>
+        <button type="button" role="tab" class="tone-amber" [class.is-on]="reviewTab() === 'dupes'" (click)="setReviewTab('dupes')">
+          <span>Duplicates skipped</span><b>{{ dupeExtra() }}</b><small>repeated in this file</small></button>
+        <button type="button" role="tab" class="tone-red" [class.is-on]="reviewTab() === 'invalid'" (click)="setReviewTab('invalid')">
+          <span>Invalid lines</span><b>{{ invalid().length }}</b><small>no usable number</small></button>
+        <div class="nv-fig-static">
+          <span>Estimated cost</span><b>{{ money(cost()) }}</b><small>{{ toCheck().length }} × live lookup</small></div>
+      </div>
+
+      @if (!unique().length) {
+        <div class="nv-note is-err"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+          <span>No valid numbers were found. Look at “Invalid lines”, or upload another file.</span></div>
+      } @else if (toCheck().length && !workerOk()) {
+        <div class="nv-note is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ workerNote() }}</span></div>
+      } @else if (belowMinimum()) {
+        <div class="nv-note is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+          <span>A check needs at least {{ minNumbers() }} new numbers - this file has {{ toCheck().length }}. Add more numbers and upload again.</span></div>
+      } @else if (savedFailed()) {
+        <div class="nv-note is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+          <span>Saved results could not be looked up, so every number will be checked.</span></div>
+      }
+
+      @switch (reviewTab()) {
+        @case ('check') {
+          @if (toCheck().length) {
+            <div class="nv-table-wrap"><table class="nv-table">
+              <thead><tr><th>Number</th><th>Sheet</th><th class="nv-num">Line</th><th>Value in file</th></tr></thead>
+              <tbody>
+                @for (r of checkRows(); track r.number) {
+                  <tr><td class="nv-mono">{{ r.number }}</td><td>{{ r.sheet }}</td><td class="nv-num">{{ r.line }}</td><td class="nv-wrap">{{ r.raw }}</td></tr>
+                }
+              </tbody>
+            </table></div>
+          } @else {
+            <p class="nv-none">{{ unique().length ? 'Every number in this file has been checked before.' : 'No usable numbers in this file.' }}</p>
+          }
+        }
+        @case ('saved') {
+          @if (saved().length) {
+            <div class="nv-table-wrap"><table class="nv-table">
+              <thead><tr><th>Number</th><th>Saved result</th><th>Checked</th><th>In Wati</th></tr></thead>
+              <tbody>
+                @for (r of savedRows(); track r.number) {
+                  <tr><td class="nv-mono">{{ r.number }}</td>
+                    <td><span [class]="'nv-status tone-' + (r.whatsApp === 'yes' ? 'green' : 'red')">{{ r.whatsApp === 'yes' ? 'On WhatsApp' : 'Not on WhatsApp' }}</span></td>
+                    <td>{{ when(r.checkedAtUtc) }}</td>
+                    <td>{{ r.sharedToWati ? 'Yes' : '—' }}</td></tr>
+                }
+              </tbody>
+            </table></div>
+          } @else { <p class="nv-none">None of these numbers were checked before.</p> }
+        }
+        @case ('dupes') {
+          @if (dupes().length) {
+            <div class="nv-table-wrap"><table class="nv-table">
+              <thead><tr><th>Number</th><th class="nv-num">Times in file</th><th>Lines</th></tr></thead>
+              <tbody>
+                @for (r of dupeRows(); track r.number) {
+                  <tr><td class="nv-mono">{{ r.number }}</td><td class="nv-num">{{ r.count }}</td><td class="nv-wrap">{{ r.lines }}</td></tr>
+                }
+              </tbody>
+            </table></div>
+          } @else { <p class="nv-none">No number appears twice.</p> }
+        }
+        @default {
+          @if (invalid().length) {
+            <div class="nv-table-wrap"><table class="nv-table">
+              <thead><tr><th>Sheet</th><th class="nv-num">Line</th><th>Value in file</th><th>Why it was left out</th></tr></thead>
+              <tbody>
+                @for (r of invalidRows(); track r.sheet + r.line) {
+                  <tr><td>{{ r.sheet }}</td><td class="nv-num">{{ r.line }}</td><td class="nv-wrap">{{ r.value }}</td><td class="nv-reason">{{ r.reason }}</td></tr>
+                }
+              </tbody>
+            </table></div>
+          } @else { <p class="nv-none">Every line had a usable number.</p> }
+        }
+      }
+
+      @if (range().n > rowOptions[0]) {
+        <ng-container *ngTemplateOutlet="pager" />
+      }
+
+      <footer class="nv-actbar">
+        <span class="nv-actbar-txt">
+          @if (toCheck().length) { <b>{{ toCheck().length }}</b> numbers will be checked · {{ money(cost()) }} }
+          @else if (saved().length) { Every number has a saved answer - no charge. }
+          @else { Nothing to check. }
+        </span>
+        <button type="button" class="nv-btn" (click)="reset()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
+        <button type="button" class="nv-btn is-primary" [disabled]="!canBuild()" (click)="buildReport()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('bolt')" /></svg>
+          {{ busy() ? 'Starting…' : toCheck().length ? 'Check ' + toCheck().length + ' number' + (toCheck().length === 1 ? '' : 's') : 'Build report' }}
+        </button>
+      </footer>
+    </section>
+  }
+
+  <!-- ---------- 03 check ---------- -->
+  @if (step() === 3) {
+    <section class="nv-panel">
+      @if (job(); as j) {
+        <header class="nv-head">
+          <div class="nv-head-txt">
+            <h2>{{ isLive(j.displayStatus) ? 'Checking' : 'Check of' }} {{ j.total }} number{{ j.total === 1 ? '' : 's' }}</h2>
+            <p><span class="nv-mono">{{ j.jobNumber }}</span> · {{ j.fileName }}@if (j.campaignName) { · {{ j.campaignName }} }@if (j.currentStep) { · {{ j.currentStep }} }</p>
+          </div>
+          <span [class]="'nv-status tone-' + jobTone(j.displayStatus)">{{ jobLabel(j.displayStatus) }}</span>
+        </header>
+
+        <div class="nv-progress-wrap">
+          <div class="nv-progress-top"><span>{{ j.processed }} of {{ j.total }} checked</span><b>{{ jobProgress() }}%</b></div>
+          <div class="nv-progress" [class.is-live]="isLive(j.displayStatus)" role="progressbar" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="jobProgress()">
+            <i [style.width.%]="jobProgress()"></i>
+          </div>
+        </div>
+
+        <dl class="nv-figs is-four is-static">
+          <div><dt>Checked</dt><dd>{{ j.processed }}</dd></div>
+          <div class="tone-green"><dt>On WhatsApp</dt><dd>{{ j.yes }}</dd></div>
+          <div class="tone-red"><dt>Not on WhatsApp</dt><dd>{{ j.no }}</dd></div>
+          <div><dt>{{ j.actualCost != null ? 'Cost' : 'Estimated cost' }}</dt><dd>{{ money(j.actualCost ?? j.estimatedCost, j.currency) }}</dd></div>
+        </dl>
+
+        @if (j.saved || j.duplicates || j.invalid) {
+          <div class="nv-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+            <span>{{ j.saved }} answered from saved results · {{ j.duplicates }} duplicates skipped · {{ j.invalid }} invalid lines</span></div>
+        }
+        @if (isLive(j.displayStatus)) {
+          <div class="nv-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+            <span>You can leave this page - the check keeps running. Open it again from Jobs.</span></div>
+        }
+
+        <footer class="nv-actbar">
+          @if (j.taskId) { <span class="nv-actbar-txt">Task <span class="nv-mono">{{ j.taskId }}</span></span> }
+          @else { <span class="nv-actbar-txt"></span> }
+          @if (j.canCancel && isLive(j.displayStatus)) {
+            <button type="button" class="nv-btn is-danger" [disabled]="j.cancelRequested" (click)="cancelCheck()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> {{ j.cancelRequested ? 'Cancelling…' : 'Cancel check' }}</button>
+          }
+          @if (j.canRetry) {
+            <button type="button" class="nv-btn" (click)="retryCheck()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg> Retry</button>
+          }
+          @if (!isLive(j.displayStatus)) {
+            <button type="button" class="nv-btn is-primary" (click)="reset()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New check</button>
+          }
+        </footer>
+      } @else {
+        <div class="nv-empty">
+          <span class="nv-spin" aria-hidden="true"></span>
+          <strong>File received</strong>
+          <p>Waiting for the worker to pick it up - this usually takes a few seconds.</p>
+          @if (uploadRef()) { <span class="nv-mono nv-muted">{{ uploadRef() }}</span> }
+          <button type="button" class="nv-btn" (click)="setView('jobs')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg> Go to Jobs</button>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ---------- 04 report ---------- -->
+  @if (step() === 4) {
+    <section class="nv-panel">
+      <header class="nv-head">
+        <div class="nv-head-txt">
+          <h2>Report</h2>
+          <p>{{ results().length }} numbers · {{ file()?.name ?? job()?.fileName }}@if (job()?.jobNumber) { · <span class="nv-mono">{{ job()?.jobNumber }}</span> }@if (reportCounts().saved) { · {{ reportCounts().saved }} from saved results }</p>
+        </div>
+        <div class="nv-head-acts">
+          <button type="button" class="nv-btn" [disabled]="!results().length" (click)="exportReport()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export CSV</button>
+          <button type="button" class="nv-btn" (click)="reset()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New check</button>
+          <button type="button" class="nv-btn is-primary" [disabled]="!reportCounts().yes" (click)="messageNumbers()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg> Message these numbers</button>
+        </div>
+      </header>
+
+      <div class="nv-figs is-three" role="tablist">
+        <button type="button" role="tab" class="tone-green" [class.is-on]="reportTab() === 'yes'" (click)="setReportTab('yes')">
+          <span>On WhatsApp</span><b>{{ reportCounts().yes }}</b><small>ready to message</small></button>
+        <button type="button" role="tab" class="tone-red" [class.is-on]="reportTab() === 'no'" (click)="setReportTab('no')">
+          <span>Not on WhatsApp</span><b>{{ reportCounts().no }}</b><small>use another channel</small></button>
+        <button type="button" role="tab" class="tone-amber" [class.is-on]="reportTab() === 'unknown'" (click)="setReportTab('unknown')">
+          <span>Could not check</span><b>{{ reportCounts().unknown }}</b><small>try again later</small></button>
+      </div>
+
+      @if (reportList().length) {
+        <div class="nv-table-wrap"><table class="nv-table">
+          <thead><tr><th>Number</th><th>Name</th><th>Result</th><th>Note</th><th class="nv-num"><span class="nv-sr">Copy</span></th></tr></thead>
+          <tbody>
+            @for (r of reportRows(); track r.number) {
+              <tr>
+                <td class="nv-mono">{{ r.number }}</td>
+                <td>{{ r.contactName || '—' }}</td>
+                <td><span [class]="'nv-status tone-' + (r.whatsApp === 'unknown' ? 'amber' : r.whatsApp === 'yes' ? 'green' : 'red')">{{ r.whatsApp === 'unknown' ? 'Could not check' : r.whatsApp === 'yes' ? 'On WhatsApp' : 'Not on WhatsApp' }}</span>
+                  @if (r.fromSaved) {<small>Saved answer</small>}</td>
+                <td class="nv-muted">{{ r.note || '—' }}</td>
+                <td class="nv-num"><button type="button" class="nv-link" (click)="copy(r.number)">Copy</button></td>
+              </tr>
+            }
+          </tbody>
+        </table></div>
+      } @else {
+        <p class="nv-none">Nothing in this group.</p>
+      }
+      @if (range().n > rowOptions[0]) {
+        <ng-container *ngTemplateOutlet="pager" />
+      }
+    </section>
+  }
+}
+
+<!-- ===================================== JOBS ===================================== -->
+@if (view() === 'jobs') {
+  <section class="nv-panel">
+    <header class="nv-head">
+      <div class="nv-head-txt"><h2>Checks</h2><p>Every list uploaded for a WhatsApp check</p></div>
+      <div class="nv-head-acts">
+        <label class="nv-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Job, file or task ID" aria-label="Search jobs" [value]="jobQuery()" (input)="setJobQuery($event)" />
+        </label>
+        <button type="button" class="nv-btn is-icon" aria-label="Refresh" [disabled]="jobsLoading()" (click)="loadJobs()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg></button>
+        <button type="button" class="nv-btn is-primary" (click)="reset()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg> New check</button>
+      </div>
+    </header>
+
+    <nav class="nv-subtabs" aria-label="Job status">
+      <button type="button" [class.is-on]="jobFilter() === 'all'" (click)="setJobFilter('all')">All <em>{{ jobCounts().all }}</em></button>
+      <button type="button" [class.is-on]="jobFilter() === 'running'" (click)="setJobFilter('running')">Running <em>{{ jobCounts().running }}</em></button>
+      <button type="button" [class.is-on]="jobFilter() === 'completed'" (click)="setJobFilter('completed')">Completed <em>{{ jobCounts().completed }}</em></button>
+      <button type="button" [class.is-on]="jobFilter() === 'failed'" (click)="setJobFilter('failed')">Failed <em>{{ jobCounts().failed }}</em></button>
+      <button type="button" [class.is-on]="jobFilter() === 'cancelled'" (click)="setJobFilter('cancelled')">Cancelled <em>{{ jobCounts().cancelled }}</em></button>
+    </nav>
+
+    @if (jobList().length) {
+      <div class="nv-table-wrap"><table class="nv-table">
+        <thead><tr><th>File</th><th>Campaign</th><th>Status</th><th class="nv-num">Checked</th><th class="nv-num">On WhatsApp</th><th class="nv-num">Cost</th><th>Started</th><th><span class="nv-sr">Actions</span></th></tr></thead>
+        <tbody>
+          @for (j of jobList(); track j.id) {
+            <tr class="is-click" tabindex="0" (click)="openJob(j)" (keydown.enter)="openJob(j)">
+              <td><b>{{ j.fileName }}</b><small><span class="nv-mono">{{ j.jobNumber }}</span>@if (j.uploadedByName) { · {{ j.uploadedByName }} }</small></td>
+              <td>{{ j.campaignName || '—' }}</td>
+              <td><span [class]="'nv-status tone-' + jobTone(j.displayStatus)">{{ jobLabel(j.displayStatus) }}</span>
+                @if (j.reason && !isLive(j.displayStatus) && j.displayStatus !== 'completed') {<small class="nv-reason">{{ j.reason }}</small>}</td>
+              <td class="nv-num">{{ j.processed }} / {{ j.total }}</td>
+              <td class="nv-num">{{ j.yes }}</td>
+              <td class="nv-num">{{ money(j.actualCost ?? j.estimatedCost, j.currency) }}</td>
+              <td>{{ when(j.createdAtUtc) }}</td>
+              <td class="nv-num">
+                @if (j.canCancel && isLive(j.displayStatus)) {
+                  <button type="button" class="nv-link is-danger" [disabled]="j.cancelRequested" (click)="cancelJob(j, $event)">{{ j.cancelRequested ? 'Cancelling…' : 'Cancel' }}</button>
+                } @else {
+                  <button type="button" class="nv-link" (click)="openJob(j); $event.stopPropagation()">Open</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table></div>
+    } @else if (jobsLoading()) {
+      <div class="nv-empty"><span class="nv-spin" aria-hidden="true"></span><p>Loading jobs…</p></div>
+    } @else {
+      <div class="nv-empty">
+        <span class="nv-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg></span>
+        <strong>{{ jobs().length ? 'No jobs match' : 'No checks yet' }}</strong>
+        <p>{{ jobs().length ? 'Try another status or search.' : 'Upload a list to run your first WhatsApp check.' }}</p>
+        @if (!jobs().length) {
+          <button type="button" class="nv-btn is-primary" (click)="reset()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg> New check</button>
+        }
+      </div>
+    }
+  </section>
+
+}
+
+@if (toast()) { <div class="nv-toast" role="status">{{ toast() }}</div> }
+
+<!-- ===== pager (review + report tables) ===== -->
+<ng-template #pager>
+  <footer class="nv-foot">
+    <span><b>{{ range().from }}–{{ range().to }}</b> of {{ range().n }}</span>
+    <nav class="nv-pager" aria-label="Pages">
+      <button type="button" [disabled]="safePage() <= 1" aria-label="Previous page" (click)="goPage(safePage() - 1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+      @for (p of pageList(); track p) {
+        <button type="button" [class.is-on]="p === safePage()" [attr.aria-current]="p === safePage() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+      }
+      <button type="button" [disabled]="safePage() >= pages()" aria-label="Next page" (click)="goPage(safePage() + 1)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+    </nav>
+    <div class="nv-dd" [class.is-open]="menu() === 'rows'">
+      <button type="button" class="nv-dd-btn nv-rows" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'rows'" (click)="toggle('rows', $event)">
+        <span>{{ rows() }} rows</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+      </button>
+      @if (menu() === 'rows') {
+        <ul class="nv-menu is-up is-right" role="listbox" (click)="$event.stopPropagation()">
+          @for (n of rowOptions; track n) { <li><button type="button" [class.is-on]="rows() === n" (click)="setRows(n)">{{ n }} rows</button></li> }
+        </ul>
+      }
+    </div>
+  </footer>
+</ng-template>

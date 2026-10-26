@@ -67,6 +67,8 @@ import { OrgDepartments } from './pages/Organization/Department/departments';
 import { OrgSettings } from './pages/Organization/Settings/settings';
 import { ActivateAccount } from './pages/Auth/Account_Activate/activate-account';
 import { Dashboard } from './pages/Dashboard/dashboard';
+import { WhatsappMessages } from './pages/Communications/Whatsapp-Messages/whatsapp-messages';
+import { NumberVerification } from './pages/Communications/Number-Verification/number-verification';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -153,7 +155,18 @@ const APP_ROUTES: Routes = [
     title: 'Create tracking asset',
     data: { name: 'Tracking Asset Manager', route: '/app/fundraising/campaigns/tracking-asset-manager' }
   },
-
+  {
+    path: 'app/whatsapp/wati',
+    component: WhatsappMessages,
+    title: 'check number',
+    data: { name: 'check number', route: '/app/whatsapp/wati' }
+  },
+    {
+    path: 'app/whatsapp/check-number',
+    component: NumberVerification,
+    title: 'check number',
+    data: { name: 'check number', route: '/app/whatsapp/check-number' }
+  },
   // The menu the server sends names these routes. The donor list is the same screen under
   // two names; My Leads / My Donors are the queue / donor list told to show only what the
   // signed-in user owns.

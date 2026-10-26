@@ -1,0 +1,480 @@
+<!-- =====================================================================================================
+     WHATSAPP MESSAGES
+     Header figures → tabs (Send message | Delivered & read)
+     Send : one panel - recipients table (left) + message (right) → review → send
+     Log  : funnel strip + filters + table + detail drawer
+     ===================================================================================================== -->
+<app-page-header breadcrumb="Communications / WhatsApp messages" heading="WhatsApp Messages"
+                 description="Send an approved template to checked numbers, then follow delivery, reads and replies.">
+  <ng-container actions>
+    <dl class="wa-stats">
+      <div><dt>Numbers ready</dt><dd>{{ facets()?.poolSize ?? stats()?.onWhatsApp ?? 0 }}</dd></div>
+      <div><dt>Messages sent</dt><dd>{{ stats()?.messagesSent ?? 0 }}</dd></div>
+      <div><dt>Read rate</dt><dd>{{ pct(stats()?.readRatePercent) }}</dd></div>
+    </dl>
+  </ng-container>
+</app-page-header>
+
+<!-- ===== tabs ===== -->
+<div class="wm-tabbar">
+  <nav class="wm-tabs" role="tablist" aria-label="View">
+    <button type="button" role="tab" [class.is-on]="tab() === 'send'" [attr.aria-selected]="tab() === 'send'" (click)="setTab('send')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg> Send message
+    </button>
+    <button type="button" role="tab" [class.is-on]="tab() === 'log'" [attr.aria-selected]="tab() === 'log'" (click)="setTab('log')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checks')" /></svg> Delivered &amp; read <em>{{ messages().length }}</em>
+    </button>
+  </nav>
+  <span class="wm-tabnote">Numbers come from <a role="link" tabindex="0" (click)="goVerify()" (keydown.enter)="goVerify()">Number Verification</a></span>
+</div>
+
+@if (error()) {
+  <div class="wm-alert" role="alert">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+    <span>{{ error() }}</span>
+    <button type="button" class="wm-link" (click)="load()">Try again</button>
+    <button type="button" class="wm-x" aria-label="Dismiss" (click)="error.set('')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+  </div>
+}
+
+<!-- ===================================== SEND ===================================== -->
+@if (tab() === 'send') {
+  @if (sendBlocked()) {
+    <div class="wm-alert is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ sendBlocked() }}</span></div>
+  } @else if (workerOffline()) {
+    <div class="wm-alert is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+      <span>The integration worker is offline. You can still send - messages wait in the queue until it is back.</span></div>
+  }
+
+  @if (poolLoading() && !pool().length && !facets()) {
+    <section class="wm-panel"><div class="wm-empty"><span class="wm-spin" aria-hidden="true"></span><p>Loading numbers and templates…</p></div></section>
+
+  } @else if (!poolSize() && !recQuery() && !recJob()) {
+    <section class="wm-panel">
+      <div class="wm-empty">
+        <span class="wm-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg></span>
+        <strong>No numbers to message yet</strong>
+        <p>Upload a list in Number Verification. Every number found on WhatsApp shows up here, ready to message.</p>
+        <button type="button" class="wm-btn is-primary" (click)="goVerify()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg> Check numbers</button>
+      </div>
+    </section>
+
+  } @else if (review(); as r) {
+
+    <!-- ---------- review ---------- -->
+    <section class="wm-panel">
+      <header class="wm-head">
+        <div class="wm-head-txt">
+          <h2>Review this send</h2>
+          <p>{{ broadcastName() }} · {{ r.summary.templateLabel || template()?.label || templateName() }} · nothing goes out until you confirm</p>
+        </div>
+        <div class="wm-head-acts">
+          <button type="button" class="wm-btn" (click)="backToEdit()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg> Back to edit</button>
+          <button type="button" class="wm-btn is-primary" [disabled]="!r.summary.willSend || sending() || !!sendBlocked()" (click)="confirmSend()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>
+            {{ sending() ? 'Sending…' : 'Send to ' + r.summary.willSend + ' number' + (r.summary.willSend === 1 ? '' : 's') }}
+          </button>
+        </div>
+      </header>
+
+      <dl class="wm-strip is-four">
+        <div><dt>Selected</dt><dd>{{ r.summary.selected }}</dd></div>
+        <div class="tone-green"><dt>Will send</dt><dd>{{ r.summary.willSend }}</dd></div>
+        <div class="tone-amber"><dt>Will skip</dt><dd>{{ r.summary.willSkip }}</dd></div>
+        <div class="tone-red"><dt>Excluded</dt><dd>{{ r.summary.excluded }}</dd></div>
+      </dl>
+
+      @for (p of r.summary.problems; track p) {
+        <div class="wm-note is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg><span>{{ p }}</span></div>
+      }
+      @if (r.summary.allowListActive) {
+        <div class="wm-note is-warn"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
+          <span>Test mode - only the {{ r.summary.allowListSize }} numbers on the allow-list receive messages.</span></div>
+      }
+      @if (reasons(r.summary.byReason).length) {
+        <div class="wm-note">
+          <span class="wm-note-lbl">Skipped because</span>
+          @for (x of reasons(r.summary.byReason); track x.key) { <span class="wm-chip">{{ reasonText(x.key) }} <b>{{ x.n }}</b></span> }
+        </div>
+      }
+
+      <div class="wm-table-wrap">
+        <table class="wm-table">
+          <thead><tr><th>Recipient</th><th>Outcome</th><th>Message they get</th></tr></thead>
+          <tbody>
+            @for (x of r.recipients; track x.number) {
+              <tr>
+                <td><b>{{ x.contactName || x.number }}</b><small><span class="wm-mono">{{ x.number }}</span>@if (x.sourceJobNumber) { · {{ x.sourceJobNumber }} }@if (x.typedIn) { · typed in }</small></td>
+                <td><span [class]="'wm-status tone-' + (x.outcome === 'send' ? 'green' : x.outcome === 'skip' ? 'amber' : 'red')">{{ x.outcome === 'send' ? 'Send' : x.outcome === 'skip' ? 'Skip' : 'Exclude' }}</span>
+                  @if (x.reasonText || x.reason) {<small>{{ x.reasonText || reasonText(x.reason!) }}</small>}</td>
+                <td class="wm-rendered">{{ x.renderedText || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  } @else {
+
+    <!-- ---------- compose: one panel, two panes ---------- -->
+    <section class="wm-panel wm-compose">
+
+      <!-- left: recipients -->
+      <div class="wm-pane wm-rec">
+        <header class="wm-head">
+          <div class="wm-head-txt">
+            <h2>Recipients</h2>
+            <p>{{ poolSize() }} numbers on WhatsApp · tick the ones to message</p>
+          </div>
+          <div class="wm-head-acts">
+            <div class="wm-dd" [class.is-open]="menu() === 'source'">
+              <button type="button" class="wm-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'source'" (click)="toggle('source', $event)">
+                <span>{{ sourceLabel() }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+              </button>
+              @if (menu() === 'source') {
+                <ul class="wm-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+                  <li><button type="button" [class.is-on]="!recJob()" (click)="pickSource(null)"><span>All checks</span><small>{{ facets()?.poolSize ?? 0 }}</small></button></li>
+                  @for (j of facets()?.jobs ?? []; track j.id) {
+                    <li><button type="button" [class.is-on]="recJob() === j.id" (click)="pickSource(j.id)"><span>{{ j.jobNumber }} · {{ j.fileName }}</span><small>{{ j.count }}</small></button></li>
+                  }
+                </ul>
+              }
+            </div>
+            <label class="wm-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+              <input type="search" placeholder="Search number or name" aria-label="Search recipients" [value]="recQuery()" (input)="setRecQuery($event)" />
+            </label>
+          </div>
+        </header>
+
+        <div class="wm-selbar" [class.is-on]="selectedCount() > 0">
+          @if (selectedCount()) {
+            <b>{{ selectedCount() }} selected</b>
+            @if (recTotal() > pool().length) {
+              <button type="button" class="wm-link" [disabled]="matching()" (click)="selectAllMatching()">{{ matching() ? 'Selecting…' : 'Select all ' + recTotal() + ' matching' }}</button>
+            }
+            <button type="button" class="wm-link is-muted" (click)="clearPicks()">Clear</button>
+            <span class="wm-selbar-max">Max {{ maxPerSend() }} per send</span>
+          } @else {
+            <span>No numbers selected yet.</span>
+            @if (recTotal() > pool().length) {
+              <button type="button" class="wm-link" [disabled]="matching()" (click)="selectAllMatching()">{{ matching() ? 'Selecting…' : 'Select all ' + recTotal() }}</button>
+            }
+          }
+        </div>
+
+        <div class="wm-table-wrap wm-rec-scroll" [class.is-loading]="poolLoading()">
+          <table class="wm-table">
+            <thead>
+              <tr>
+                <th class="wm-cb"><input type="checkbox" aria-label="Select this page" [checked]="allShown()" [indeterminate]="someShown()" [disabled]="!pool().length" (change)="toggleShown()" /></th>
+                <th>Name</th><th>Number</th><th>Country</th><th>From check</th><th>Messaged</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (c of pool(); track c.number) {
+                <tr class="is-click" [class.is-on]="isPicked(c.number)" (click)="togglePick(c)">
+                  <td class="wm-cb"><input type="checkbox" [attr.aria-label]="'Select ' + c.number" [checked]="isPicked(c.number)" (click)="$event.stopPropagation()" (change)="togglePick(c)" /></td>
+                  <td><b>{{ c.contactName || '—' }}</b></td>
+                  <td class="wm-mono">{{ c.number }}</td>
+                  <td>{{ c.country || c.iso }}</td>
+                  <td class="wm-muted">{{ c.jobNumber }}</td>
+                  <td>
+                    @if (c.messagesSent) { <span class="wm-muted" [title]="(c.lastTemplateName || '') + ' · ' + when(c.lastMessagedAtUtc)">{{ c.messagesSent }}× · {{ when(c.lastMessagedAtUtc) }}</span> }
+                    @else { <span class="wm-new">Never</span> }
+                  </td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="wm-none">{{ poolLoading() ? 'Loading…' : 'No numbers match.' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        @if (recTotal() > pool().length || recPage() > 1) {
+          <footer class="wm-foot">
+            <span><b>{{ recRange().from }}–{{ recRange().to }}</b> of {{ recRange().n }}</span>
+            <nav class="wm-pager" aria-label="Recipient pages">
+              <button type="button" [disabled]="recPage() <= 1 || poolLoading()" aria-label="Previous page" (click)="goRecPage(recPage() - 1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+              <span>Page {{ recPage() }} of {{ recPages() }}</span>
+              <button type="button" [disabled]="recPage() >= recPages() || poolLoading()" aria-label="Next page" (click)="goRecPage(recPage() + 1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+            </nav>
+          </footer>
+        }
+      </div>
+
+      <!-- right: message -->
+      <div class="wm-pane wm-msg">
+        <header class="wm-head">
+          <div class="wm-head-txt">
+            <h2>Message</h2>
+            <p>The first message must be an approved template.</p>
+          </div>
+        </header>
+
+        <div class="wm-form">
+          <label class="wm-field">
+            <span class="wm-lbl">Send name <em>*</em></span>
+            <input class="wm-input" type="text" maxlength="100" placeholder="e.g. Diwali appeal - Mumbai donors"
+                   [class.has-err]="tried() && sendErrors().name" [value]="broadcastName()" (input)="setBroadcastName($event)" />
+            @if (tried() && sendErrors().name) { <span class="wm-err">{{ sendErrors().name }}</span> }
+          </label>
+
+          <div class="wm-field">
+            <span class="wm-lbl">Template <em>*</em>
+              <button type="button" class="wm-link wm-lbl-act" [disabled]="refreshing()" (click)="refreshTemplates()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>{{ refreshing() ? 'Refreshing…' : 'Refresh' }}</button>
+            </span>
+            <div class="wm-dd is-block" [class.is-open]="menu() === 'template'">
+              <button type="button" class="wm-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'template'"
+                      [class.has-err]="tried() && sendErrors().template" (click)="toggle('template', $event)">
+                <span [class.wm-ph]="!template()">{{ template() ? (template()!.label || template()!.name) : templatesLoading() ? 'Loading templates…' : templates().length ? 'Choose a template' : 'No approved templates' }}</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+              </button>
+              @if (menu() === 'template') {
+                <ul class="wm-menu" role="listbox" (click)="$event.stopPropagation()">
+                  @for (t of templates(); track t.name) {
+                    <li><button type="button" [class.is-on]="templateName() === t.name" (click)="pickTemplate(t)">
+                      <span>{{ t.label || t.name }}</span><small>{{ t.category }}@if (t.language) { · {{ t.language }} }</small></button></li>
+                  } @empty {
+                    <li class="wm-menu-empty">No approved templates yet - use Refresh.</li>
+                  }
+                </ul>
+              }
+            </div>
+            @if (tried() && sendErrors().template) { <span class="wm-err">{{ sendErrors().template }}</span> }
+          </div>
+
+          @if (template(); as t) {
+            @for (k of variables(); track k) {
+              <div class="wm-field">
+                <span class="wm-lbl"><span class="wm-mono wm-var">{{ paramKey(k) }}</span></span>
+                <div class="wm-var-row">
+                  @if (sourceOf(k) === 'typed') {
+                    <input class="wm-input" type="text" [placeholder]="k === t.mediaVariable ? 'Link to the picture or file' : 'Value for ' + k"
+                           [class.has-err]="tried() && !hasValue(k)" [value]="values()[k] ?? ''" (input)="setValue(k, $event)" />
+                  } @else {
+                    <span class="wm-input is-auto">{{ sourceOf(k) === 'contactName' ? "Each person's contact name" : "Each person's phone number" }}</span>
+                  }
+                  <div class="wm-dd" [class.is-open]="isVarOpen(k)">
+                    <button type="button" class="wm-dd-btn wm-var-src" aria-haspopup="listbox" [attr.aria-expanded]="isVarOpen(k)" [attr.aria-label]="'Where ' + k + ' comes from'" (click)="toggleVar(k, $event)">
+                      <span>{{ sourceText(k) }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+                    </button>
+                    @if (isVarOpen(k)) {
+                      <ul class="wm-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+                        @for (s of sources; track s.value) {
+                          <li><button type="button" [class.is-on]="sourceOf(k) === s.value" (click)="setSource(k, s.value)"><span>{{ s.label }}</span><small>{{ s.hint }}</small></button></li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+            @if (tried() && sendErrors().values) { <span class="wm-err">{{ sendErrors().values }}</span> }
+
+            <div class="wm-field">
+              <span class="wm-lbl">Preview</span>
+              <div class="wm-phone">
+                <div class="wm-bubble">
+                  @if (t.headerFormat && t.headerFormat !== 'TEXT') { <span class="wm-media">{{ t.headerFormat }}</span> }
+                  @if (t.headerText) { <b class="wm-bubble-head">{{ t.headerText }}</b> }
+                  <p>{{ preview() || 'This template has no text body.' }}</p>
+                  @if (t.footer) { <small class="wm-bubble-foot">{{ t.footer }}</small> }
+                  <small class="wm-bubble-meta">{{ t.category }}@if (t.language) { · {{ t.language }} } <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checks')" /></svg></small>
+                </div>
+                @for (b of t.buttons; track b) { <span class="wm-bubble-btn">{{ b }}</span> }
+              </div>
+            </div>
+          }
+        </div>
+
+        <footer class="wm-sendbar">
+          <div class="wm-sendbar-txt">
+            <b>{{ selectedCount() }}</b> number{{ selectedCount() === 1 ? '' : 's' }} selected
+            @if (tried() && (sendErrors().recipients || sendErrors().template || sendErrors().values || sendErrors().name)) {
+              <span class="wm-err">{{ sendErrors().recipients || sendErrors().template || sendErrors().values || sendErrors().name }}</span>
+            }
+          </div>
+          <button type="button" class="wm-btn is-primary is-block" [disabled]="reviewing() || !!sendBlocked()" (click)="reviewSend()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+            {{ reviewing() ? 'Checking…' : 'Review & send' }}
+          </button>
+        </footer>
+      </div>
+    </section>
+  }
+}
+
+<!-- ===================================== DELIVERED & READ ===================================== -->
+@if (tab() === 'log') {
+  <section class="wm-panel">
+    <!-- funnel -->
+    <header class="wm-head">
+      <div class="wm-head-txt">
+        <h2>Delivery funnel</h2>
+        <p>{{ funnel().total }} message{{ funnel().total === 1 ? '' : 's' }}@if (fBroadcast() || fTemplate()) { · filtered }</p>
+      </div>
+      <div class="wm-head-acts">
+        <div class="wm-dd" [class.is-open]="menu() === 'fBroadcast'">
+          <button type="button" class="wm-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'fBroadcast'" (click)="toggle('fBroadcast', $event)">
+            <span>{{ fBroadcast() ?? 'All broadcasts' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'fBroadcast') {
+            <ul class="wm-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+              <li><button type="button" [class.is-on]="!fBroadcast()" (click)="pickBroadcast(null)">All broadcasts</button></li>
+              @for (b of broadcasts(); track b) { <li><button type="button" [class.is-on]="fBroadcast() === b" (click)="pickBroadcast(b)">{{ b }}</button></li> }
+            </ul>
+          }
+        </div>
+        <div class="wm-dd" [class.is-open]="menu() === 'fTemplate'">
+          <button type="button" class="wm-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'fTemplate'" (click)="toggle('fTemplate', $event)">
+            <span>{{ fTemplate() ?? 'All templates' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'fTemplate') {
+            <ul class="wm-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+              <li><button type="button" [class.is-on]="!fTemplate()" (click)="pickTemplateFilter(null)">All templates</button></li>
+              @for (t of templateLabels(); track t) { <li><button type="button" [class.is-on]="fTemplate() === t" (click)="pickTemplateFilter(t)">{{ t }}</button></li> }
+            </ul>
+          }
+        </div>
+        <button type="button" class="wm-btn is-icon" aria-label="Refresh" [disabled]="messagesLoading()" (click)="loadMessages()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg></button>
+      </div>
+    </header>
+
+    <div class="wm-funnel">
+      @for (s of funnel().steps; track s.key) {
+        <div [class]="'wm-fstep is-' + s.key">
+          <span class="wm-fstep-lbl">{{ s.label }}</span>
+          <b>{{ s.pct }}%</b>
+          <div class="wm-meter" role="meter" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="s.pct" [attr.aria-label]="s.label"><i [style.width.%]="s.pct"></i></div>
+          <small>{{ s.n }} of {{ funnel().total }}</small>
+        </div>
+      }
+      <div class="wm-fside">
+        <div><span class="wm-status tone-amber">Pending</span><b>{{ funnel().pending }}</b></div>
+        <div><span class="wm-status tone-red">Failed</span><b>{{ funnel().failed }}</b></div>
+      </div>
+    </div>
+
+    <!-- filters -->
+    <div class="wm-logbar">
+      <nav class="wm-subtabs" aria-label="Message status">
+        @for (s of statusTabs(); track s) {
+          <button type="button" [class.is-on]="status() === s" (click)="setStatus(s)">{{ statusLabel(s) }} <em>{{ statusCounts()[s] }}</em></button>
+        }
+      </nav>
+      <div class="wm-logbar-acts">
+        <label class="wm-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Number, name or broadcast" aria-label="Search messages" [value]="query()" (input)="setQuery($event)" />
+        </label>
+        <button type="button" class="wm-btn" [disabled]="!list().length" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export CSV</button>
+      </div>
+    </div>
+
+    <!-- table -->
+    @if (pageRows().length) {
+      <div class="wm-table-wrap">
+        <table class="wm-table">
+          <thead><tr><th>Recipient</th><th>Broadcast</th><th>Template</th><th>Status</th><th>Sent</th><th>Last update</th></tr></thead>
+          <tbody>
+            @for (m of pageRows(); track m.id) {
+              <tr class="is-click" tabindex="0" (click)="openDetail(m)" (keydown.enter)="openDetail(m)">
+                <td><b>{{ m.contactName || m.number }}</b><small><span class="wm-mono">{{ m.number }}</span>@if (m.country) { · {{ m.country }} }</small></td>
+                <td>{{ m.broadcastName || '—' }}</td>
+                <td>{{ m.templateLabel || m.templateName || '—' }}</td>
+                <td><span [class]="'wm-status tone-' + statusTone(st(m))">{{ statusLabel(st(m)) }}</span>
+                  @if (m.failedReason || m.skipReason) { <small class="wm-err-line">{{ m.failedReason || reasonText(m.skipReason!) }}</small> }</td>
+                <td>{{ when(m.sentAtUtc || m.createdAtUtc) }}</td>
+                <td>{{ when(lastAt(m)) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <footer class="wm-foot">
+        <span><b>{{ range().from }}–{{ range().to }}</b> of {{ range().n }}</span>
+        <nav class="wm-pager" aria-label="Pages">
+          <button type="button" [disabled]="safePage() <= 1" aria-label="Previous page" (click)="goPage(safePage() - 1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
+          @for (p of pageList(); track p) {
+            <button type="button" [class.is-on]="p === safePage()" [attr.aria-current]="p === safePage() ? 'page' : null" (click)="goPage(p)">{{ p }}</button>
+          }
+          <button type="button" [disabled]="safePage() >= pages()" aria-label="Next page" (click)="goPage(safePage() + 1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
+        </nav>
+        <div class="wm-dd" [class.is-open]="menu() === 'rows'">
+          <button type="button" class="wm-dd-btn wm-rows" aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'rows'" (click)="toggle('rows', $event)">
+            <span>{{ rows() }} rows</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'rows') {
+            <ul class="wm-menu is-up is-right" role="listbox" (click)="$event.stopPropagation()">
+              @for (n of rowOptions; track n) { <li><button type="button" [class.is-on]="rows() === n" (click)="setRows(n)">{{ n }} rows</button></li> }
+            </ul>
+          }
+        </div>
+      </footer>
+    } @else if (messagesLoading()) {
+      <div class="wm-empty"><span class="wm-spin" aria-hidden="true"></span><p>Loading messages…</p></div>
+    } @else if (messages().length) {
+      <div class="wm-empty">
+        <span class="wm-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg></span>
+        <strong>No messages match</strong>
+        <p>Try another status, broadcast or search.</p>
+      </div>
+    } @else {
+      <div class="wm-empty">
+        <span class="wm-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
+        <strong>Send a message</strong>
+        <p>Once a send goes out, every message shows here with its delivery, read and reply status.</p>
+        <button type="button" class="wm-btn is-primary" (click)="setTab('send')"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg> Send message</button>
+      </div>
+    }
+  </section>
+  <p class="wm-hint">Times are in your local time zone ({{ timeZone }}). Statuses update as WhatsApp reports them back through Wati.</p>
+}
+
+<!-- ===== message detail drawer ===== -->
+@if (detail(); as m) {
+  <div class="wm-overlay" (click)="closeDetail()"></div>
+  <aside class="wm-drawer" role="dialog" aria-modal="true" aria-labelledby="wm-detail-title">
+    <header class="wm-drawer-head">
+      <div>
+        <small>{{ m.broadcastName || 'Message' }}</small>
+        <h2 id="wm-detail-title">{{ m.contactName || m.number }}</h2>
+      </div>
+      <button type="button" class="wm-x" aria-label="Close" (click)="closeDetail()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+    </header>
+    <div class="wm-drawer-body">
+      <ol class="wm-track">
+        <li [class.is-done]="reached(m, 1)"><span>Sent</span><small>{{ when(m.sentAtUtc) }}</small></li>
+        <li [class.is-done]="reached(m, 2)"><span>Delivered</span><small>{{ when(m.deliveredAtUtc) }}</small></li>
+        <li [class.is-done]="reached(m, 3)"><span>Read</span><small>{{ when(m.readAtUtc) }}</small></li>
+        <li [class.is-done]="reached(m, 4)"><span>Replied</span><small>{{ when(m.repliedAtUtc) }}</small></li>
+      </ol>
+      @if (!m.timesObserved) { <p class="wm-hint">WhatsApp did not report exact times for this message.</p> }
+      @if (m.failedReason || m.skipReason) {
+        <div class="wm-alert"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
+          <span>{{ m.failedReason || reasonText(m.skipReason!) }}@if (m.failedCode) { <span class="wm-mono"> ({{ m.failedCode }})</span> }</span></div>
+      }
+      @if (m.renderedText || m.replyText) {
+        <div class="wm-phone">
+          @if (m.renderedText) { <div class="wm-bubble"><p>{{ m.renderedText }}</p></div> }
+          @if (m.replyText) { <div class="wm-bubble is-reply"><small class="wm-bubble-meta">Reply</small><p>{{ m.replyText }}</p></div> }
+        </div>
+      }
+      <dl class="wm-kv">
+        <div><dt>Number</dt><dd><span class="wm-mono">{{ m.number }}</span>
+          <button type="button" class="wm-link" (click)="copy(m.number)">Copy</button></dd></div>
+        <div><dt>Status</dt><dd><span [class]="'wm-status tone-' + statusTone(st(m))">{{ statusLabel(st(m)) }}</span></dd></div>
+        <div><dt>Country</dt><dd>{{ m.country || m.iso || '—' }}</dd></div>
+        <div><dt>WhatsApp check</dt><dd>{{ m.typedIn ? 'Typed in (no check)' : m.whatsAppCheck === 'yes' ? 'On WhatsApp' : m.whatsAppCheck === 'no' ? 'Not on WhatsApp' : 'Unknown' }}@if (m.sourceJobNumber) { · {{ m.sourceJobNumber }} }</dd></div>
+        <div><dt>Template</dt><dd>{{ m.templateLabel || m.templateName || '—' }}</dd></div>
+        <div><dt>Queued</dt><dd>{{ when(m.createdAtUtc) }}</dd></div>
+        <div><dt>Message ID</dt><dd class="wm-mono">{{ m.localMessageId || m.id }}</dd></div>
+      </dl>
+    </div>
+  </aside>
+}
+
+@if (toast()) { <div class="wm-toast" role="status">{{ toast() }}</div> }
