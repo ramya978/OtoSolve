@@ -17,6 +17,8 @@ export interface CampaignInfo {
   location: string;
   target: number;
   raised: number;
+  /** ISO code of the campaign's currency (from the API). */
+  currency?: string;
   monthlyRevenue: number;
   monthlyRevenuePrev: number;
   donors: number;
@@ -33,7 +35,8 @@ export interface CampaignInfo {
 }
 
 export type CheckStatus = 'pending' | 'passed' | 'failed';
-export type CheckCategory = 'Budget' | 'Consent' | 'Content' | 'Payment' | 'Template' | 'Tracking';
+/** A readiness category's display word - the server's own list (reference data), so it is not fixed here. */
+export type CheckCategory = string;
 
 export interface ReadinessCheck {
   id: string;
@@ -128,7 +131,8 @@ export const ASSET_STATUS_TONE: Record<AssetStatus, Tone> = {
 export type Tone = 'neutral' | 'info' | 'purple' | 'success' | 'warning' | 'danger' | 'ink';
 
 export const MEDIUMS: Medium[] = ['Offline', 'Print', 'Social Media', 'Referral', 'Email', 'WhatsApp'];
-export const CATEGORIES: CheckCategory[] = ['Budget', 'Consent', 'Content', 'Payment', 'Template', 'Tracking'];
+/** The readiness categories, filled in place by the workspace store from the API's reference data. */
+export const CATEGORIES: CheckCategory[] = [];
 /** Names that can own a readiness check - filled in place by the workspace store from the API. */
 export const PEOPLE: string[] = [];
 /** The signed-in decision maker (approvals, rejections). */

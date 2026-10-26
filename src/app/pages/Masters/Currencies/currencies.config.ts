@@ -34,10 +34,10 @@ export const CURRENCY: MasterConfig = {
     statusColumn
   ],
   defaultSort: { key: 'name', dir: 'asc' },
-  metrics: (rows) => [
-    { label: 'Currencies', value: String(rows.length), note: 'In the register' },
-    ...statusMetrics(rows, 'currencies'),
-    { label: 'Zero-decimal', value: String(rows.filter((r) => Number(r['decimals']) === 0).length), note: 'Whole units only, e.g. JPY' }
+  metrics: (c) => [
+    { label: 'Currencies', value: String(c.total), note: 'In the register' },
+    ...statusMetrics(c, 'currencies'),
+    { label: 'Fiat', value: String(c.extra), note: 'Government currencies' }
   ],
   formTitle: 'New currency',
   formSubtitle: 'Add an ISO 4217 currency with its symbol, display format and rounding rule.',

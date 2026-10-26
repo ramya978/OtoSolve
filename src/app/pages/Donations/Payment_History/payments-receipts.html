@@ -92,7 +92,7 @@
 
             <!-- amount -->
             <td>
-              <span class="pr-amount">{{ inr(r.amount) }}</span>
+              <span class="pr-amount">{{ curreny(r.amount, r.currency) }}</span>
             </td>
 
             <!-- status pill + received date -->
@@ -200,7 +200,7 @@
         <dl class="pr-fields">
           <div class="pr-field">
             <dt>Amount</dt>
-            <dd class="num">{{ inr(row.amount) }}</dd>
+            <dd class="num">{{ curreny(row.amount, row.currency) }}</dd>
           </div>
           <div class="pr-field">
             <dt>Received at</dt>

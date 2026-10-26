@@ -1,8 +1,9 @@
 import { DestroyRef, Directive, HostListener, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
-import { ColumnDef, FilterDef, IconName, MasterConfig, MasterRow, MasterStatus, Option, STATUS_LABEL } from './masters.types';
+import { ColumnDef, FilterDef, IconName, MasterConfig, MasterCounts, MasterRow, MasterStatus, NO_COUNTS, Option, STATUS_LABEL } from './masters.types';
 import { MASTER_ICONS, TRASH_LID } from './masters-icons';
-import { MastersStore } from './masters.store';
+import { MasterQuery, MastersStore } from './masters.store';
 
 const PAGE_SIZES: Option[] = [
   { value: '10', label: '10' },
@@ -47,7 +48,25 @@ export abstract class MasterListBase implements OnInit {
   private readonly detailed = new Set<string>();
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => clearTimeout(this.toastTimer));
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.toastTimer);
+      clearTimeout(this.searchTimer);
+      this.listSub?.unsubscribe();
+    });
+
+    // Search, filters, sort and page all go to the server; a typed search waits a moment first.
+    effect(() => {
+      const q = this.request();
+      untracked(() => {
+        clearTimeout(this.searchTimer);
+        if (q.search !== this.lastSearch) {
+          this.lastSearch = q.search;
+          this.searchTimer = window.setTimeout(() => this.load(q), 300);
+        } else {
+          this.load(q);
+        }
+      });
+    });
 
     // A failed read of the masters is told once, as a toast.
     effect(() => {
@@ -73,6 +92,7 @@ export abstract class MasterListBase implements OnInit {
 
   ngOnInit(): void {
     this.store.ensureLoaded();
+    this.loadCounts();
 
     // a notice left by the form (created / saved) shows once as a toast
     const n = this.store.notice();
@@ -82,41 +102,56 @@ export abstract class MasterListBase implements OnInit {
     }
   }
 
-  // ---- data ----
-  protected readonly rows = computed(() => this.store.rows(this.cfg.key));
-  protected readonly metrics = computed(() => this.cfg.metrics(this.rows()));
+  // ---- data (one page at a time, from the server) ----
+  /** The rows of the page on screen. */
+  protected readonly pageRows = signal<MasterRow[]>([]);
+  /** How many rows match the search and filters (all pages). */
+  protected readonly total = signal(0);
+  /** Server totals for the overview cards. */
+  private readonly counts = signal<MasterCounts>(NO_COUNTS);
+  /** How many rows the master holds in all. */
+  protected readonly overall = computed(() => this.counts().total);
+  protected readonly metrics = computed(() => this.cfg.metrics(this.counts()));
   protected readonly sort = computed(() => (this.sortState().key ? this.sortState() : this.cfg.defaultSort));
 
-  protected readonly filtered = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    const f = this.filters();
-    return this.rows().filter(
-      (r) =>
-        (!q || this.cfg.searchKeys.some((k) => String(r[k] ?? '').toLowerCase().includes(q))) &&
-        this.cfg.filters.every((fd) => !f[fd.key] || fd.match(r, f[fd.key]))
-    );
-  });
+  private readonly request = computed<MasterQuery>(() => ({
+    search: this.query().trim(),
+    filters: this.filters(),
+    sort: this.sort(),
+    page: this.page(),
+    pageSize: this.pageSize()
+  }));
+  private listSub: Subscription | null = null;
+  private searchTimer = 0;
+  private lastSearch = '';
 
-  protected readonly sorted = computed(() => {
-    const { key, dir } = this.sort();
-    const col = this.col(key);
-    if (!col?.sort) return this.filtered();
-    const val = col.sort;
-    const sign = dir === 'asc' ? 1 : -1;
-    return [...this.filtered()].sort((a, b) => {
-      const x = val(a);
-      const y = val(b);
-      return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y))) * sign;
+  private load(q: MasterQuery): void {
+    this.listSub?.unsubscribe();
+    this.listSub = this.store.search(this.cfg.key, q).subscribe({
+      next: ({ rows, total }) => {
+        this.total.set(total);
+        const last = Math.max(1, Math.ceil(total / q.pageSize));
+        // e.g. the last row of the last page was deleted
+        if (!rows.length && total > 0 && q.page > last) {
+          this.page.set(last);
+          return;
+        }
+        this.pageRows.set(rows);
+      },
+      error: (error: unknown) => this.showToast(this.store.describeError(this.cfg.key, error).message)
     });
-  });
+  }
 
-protected readonly totalPages = computed(() =>
-  Math.max(1, Math.ceil(this.sorted().length / this.pageSize()))
-);
-  protected readonly pageRows = computed(() => {
-    const start = (this.page() - 1) * this.pageSize();
-    return this.sorted().slice(start, start + this.pageSize());
-  });
+  private reload(): void {
+    this.load(this.request());
+    this.loadCounts();
+  }
+
+  private loadCounts(): void {
+    this.store.counts(this.cfg.key).subscribe({ next: (c) => this.counts.set(c), error: () => undefined });
+  }
+
+  protected readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
   protected readonly pages = computed(() => {
     const total = this.totalPages();
     const current = this.page();
@@ -145,15 +180,9 @@ protected readonly totalPages = computed(() =>
 
     return result;
   });
- protected readonly from = computed(() =>
-  this.sorted().length
-    ? (this.page() - 1) * this.pageSize() + 1
-    : 0
-);
+  protected readonly from = computed(() => (this.total() ? (this.page() - 1) * this.pageSize() + 1 : 0));
 
-protected readonly to = computed(() =>
-  Math.min(this.page() * this.pageSize(), this.sorted().length)
-);
+  protected readonly to = computed(() => Math.min(this.page() * this.pageSize(), this.total()));
   protected readonly hasFilters = computed(() => !!this.query().trim() || Object.values(this.filters()).some((v) => !!v));
 
   // ---- template helpers ----
@@ -224,7 +253,12 @@ protected readonly to = computed(() =>
   protected setFilter(key: string, value: string): void {
     const next = { ...this.filters(), [key]: value };
     // a dependent filter (state) is cleared when its parent (country) changes
-    for (const f of this.cfg.filters) if (f.dependsOn === key) next[f.key] = '';
+    for (const f of this.cfg.filters) {
+      if (f.dependsOn === key) {
+        next[f.key] = '';
+        if (f.optionsFrom === 'states') this.store.loadStates(value);
+      }
+    }
     this.filters.set(next);
     this.page.set(1);
   }
@@ -266,6 +300,7 @@ protected readonly to = computed(() =>
         this.showToast(`${this.title(r)} is now ${STATUS_LABEL[next].toLowerCase()}.`);
         const v = this.viewing();
         if (v && v.id === r.id) this.viewing.set(this.store.find(this.cfg.key, r.id));
+        this.reload();
       },
       error: (error: unknown) => this.showToast(this.store.describeError(this.cfg.key, error).message)
     });
@@ -278,8 +313,8 @@ protected readonly to = computed(() =>
       next: () => {
         this.deleting.set(null);
         this.viewing.set(null);
-        if (this.page() > this.totalPages()) this.page.set(this.totalPages());
         this.showToast(`${this.title(r)} was deleted.`);
+        this.reload();
       },
       error: (error: unknown) => {
         // The server refuses (and says why) when the record is still in use.
@@ -289,25 +324,18 @@ protected readonly to = computed(() =>
     });
   }
 
+  /** The server's export of what is on screen: same search and filters, every page. */
   protected exportCsv(): void {
-    const cols = this.cfg.columns;
-    const esc = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const lines = [
-      cols.map((c) => esc(c.label)).join(','),
-      ...this.sorted().map((r) =>
-        cols
-          .map((c) =>
-            esc(c.kind === 'status' ? this.statusLabel(r) : c.kind === 'lead' ? `${this.code(c.key, r)} ${this.cell(c.key, r)}`.trim() : this.cell(c.key, r))
-          )
-          .join(',')
-      )
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${this.cfg.plural.toLowerCase().replace(/\s+/g, '-')}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    this.store.exportFile(this.cfg.key, this.request()).subscribe({
+      next: (blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${this.cfg.plural.toLowerCase().replace(/\s+/g, '-')}.csv`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      },
+      error: (error: unknown) => this.showToast(this.store.describeError(this.cfg.key, error).message)
+    });
   }
 
   protected showToast(text: string): void {

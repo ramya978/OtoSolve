@@ -5,7 +5,8 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
-import { LIFECYCLE_LABEL, Lifecycle, daysBetween, fmtDate, fmtTime, inr, todayIso } from '../../../Shared/Campaign/cw.data';
+import { LIFECYCLE_LABEL, Lifecycle, daysBetween, fmtDate, fmtTime, todayIso } from '../../../Shared/Campaign/cw.data';
+import { formatMoney } from '../../../Shared/services/money-format';
 
 type LifeAction = 'pause' | 'resume' | 'requestClose' | 'approveClose' | 'rejectClose';
 
@@ -44,7 +45,7 @@ export class CampaignLifecycle {
   protected readonly paths = CW_PATHS;
   protected readonly fmtDate = fmtDate;
   protected readonly fmtTime = fmtTime;
-  protected readonly inr = inr;
+  protected readonly inr = (n: number): string => formatMoney(n, this.c().currency, { style: 'whole' });
   protected readonly steps = STEPS;
   protected readonly label = LIFECYCLE_LABEL;
 

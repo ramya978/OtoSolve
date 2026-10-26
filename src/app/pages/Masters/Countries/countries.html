@@ -66,7 +66,7 @@
 
     <div class="ml-results">
       <p role="status" aria-live="polite">
-        <strong>{{ sorted().length }} of {{ rows().length }}</strong> countries
+        <strong>{{ total() }} of {{ overall() }}</strong> countries
         @if (hasFilters()) { <span> · filtered</span> }
       </p>
       @if (hasFilters()) {
@@ -200,7 +200,7 @@
   <div class="ml-pagination-left">
     <span class="ml-pagination-info">
       Showing <strong>{{ from() }}–{{ to() }}</strong>
-      of <strong>{{ sorted().length }}</strong>
+      of <strong>{{ total() }}</strong>
     </span>
 
     <div class="ml-rows">

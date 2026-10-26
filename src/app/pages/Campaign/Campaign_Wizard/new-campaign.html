@@ -164,7 +164,7 @@
             <span class="cp-help" tabindex="0" data-tip="The standard contribution amount for this campaign.">?</span>
           </div>
           <div class="cp-affix" [class.is-invalid]="showError('amount')">
-            <span class="cp-prefix">INR</span>
+            <span class="cp-prefix">{{ currencyCode() }}</span>
             <input id="cp-amount" type="text" inputmode="decimal" placeholder="e.g. 5000.00"
                    [value]="form().amount" (input)="setMoney('amount', $event)" (blur)="touch('amount')" />
           </div>
@@ -182,7 +182,7 @@
             <span class="cp-help" tabindex="0" data-tip="The total the campaign aims to raise.">?</span>
           </div>
           <div class="cp-affix" [class.is-invalid]="showError('target')">
-            <span class="cp-prefix">INR</span>
+            <span class="cp-prefix">{{ currencyCode() }}</span>
             <input id="cp-target" type="text" inputmode="decimal" placeholder="e.g. 1000000.00"
                    [value]="form().target" (input)="setMoney('target', $event)" (blur)="touch('target')" />
           </div>

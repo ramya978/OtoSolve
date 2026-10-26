@@ -62,31 +62,41 @@ export abstract class MasterFormBase implements OnInit {
     const id = String(this.route.snapshot.paramMap.get('id') ?? '');
     this.loading.set(true);
     this.store.whenReady().subscribe(() => {
-      this.loading.set(false);
-      if (!id) return;
-      const row = this.store.find(this.cfg.key, id);
-      if (!row) {
-        // A stale link: there is nothing to edit.
-        this.leave();
+      if (!id) {
+        this.loading.set(false);
         return;
       }
-      this.open(row);
-      // The list omits notes, patterns etc.; read the full record and refresh the form from it
-      // unless the person has already started typing.
+      // Only the record being edited is read - not the whole register.
       this.store.loadDetail(this.cfg.key, id).subscribe({
         next: (full) => {
-          if (full && !this.dirty()) this.open(full);
-          else if (full) this.editing = full;
+          this.loading.set(false);
+          if (!full) {
+            this.leave();
+            return;
+          }
+          if (!this.dirty()) this.open(full);
+          else this.editing = full;
         },
-        error: () => undefined
+        error: () => {
+          // A stale link: there is nothing to edit.
+          this.loading.set(false);
+          this.leave();
+        }
       });
     });
   }
 
   private open(row: MasterRow): void {
     this.editing = row;
+    this.preloadStates(row);
     this.initial = this.cfg.toForm(row);
     this.values.set({ ...this.initial });
+  }
+
+  /** A state or city being edited needs its country's states for the dropdown. */
+  private preloadStates(row: MasterRow): void {
+    const country = String(row['country'] ?? '');
+    if (country && this.fields.some((f) => f.optionsFrom === 'states')) this.store.loadStates(country);
   }
 
   protected readonly dirty = computed(() => JSON.stringify(this.values()) !== JSON.stringify(this.initial));
@@ -179,8 +189,9 @@ export abstract class MasterFormBase implements OnInit {
     // a dependent list (state) is cleared when its parent (country) changes to one that lacks it
     for (const d of this.fields) {
       if (d.dependsOn === key && d.optionsFrom) {
-        const ok = this.store.options(d.optionsFrom, value).some((o) => o.value === next[d.key]);
-        if (!ok) next[d.key] = '';
+        // the dependent list belongs to the old parent; read the new parent's list
+        if (this.values()[key] !== value) next[d.key] = '';
+        if (d.optionsFrom === 'states') this.store.loadStates(value);
       }
     }
     this.values.set(next);
