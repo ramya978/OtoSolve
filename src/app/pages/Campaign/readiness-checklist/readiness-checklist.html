@@ -1,4 +1,5 @@
 <!-- READINESS CHECKLIST - TABLE design -->
+<div class="rc-wrap">
 <app-page-header breadcrumb="Fundraising / Campaigns / Readiness" heading="Readiness checklist" description="Pre-launch checks that must pass before a campaign can go live.">
   @if (preLaunch()) {
     <span meta class="rc-meta-chip" [class.is-ready]="ready()">
@@ -7,16 +8,17 @@
   }
 
   <ng-container actions>
-    <button type="button" class="w-btn" (click)="startCreate()">
+   <div class="rc-head-acts">
+    <button type="button" class="w-btn rc-hbtn rc-hbtn-add" title="Add check" aria-label="Add check" (click)="startCreate()">
       <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-      Add check
+      <span class="rc-l-long">Add check</span><span class="rc-l-short">Add</span>
     </button>
     @if (preLaunch()) {
     <div class="rc-launch">
-      <button type="button" class="w-btn w-btn-primary" aria-haspopup="menu" [attr.aria-expanded]="launchMenu()"
+      <button type="button" class="w-btn w-btn-primary rc-hbtn" aria-haspopup="menu" [attr.aria-expanded]="launchMenu()"
               (click)="toggleLaunchMenu($event)">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('rocket')" /></svg>
-        Launch actions
+        <span class="rc-l-long">Launch actions</span><span class="rc-l-short">Launch</span>
         <svg class="w-ico rc-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevronDown')" /></svg>
       </button>
       @if (launchMenu()) {
@@ -34,6 +36,7 @@
       }
     </div>
     }
+   </div>
   </ng-container>
 
 </app-page-header>
@@ -106,7 +109,7 @@
             <td>
               <div class="rc-cell-check">
                 <span [class]="'rc-ico ' + statusTone(chk.status)"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(statusIcon(chk.status))" /></svg></span>
-                <span class="rc-cell-text"><strong>{{ chk.name }}</strong><small>{{ chk.criteria }}</small></span>
+                <span class="rc-cell-text"><strong>{{ chk.name }}</strong><small class="rc-cell-crit">{{ chk.criteria }}</small><small class="rc-cell-meta">{{ chk.owner || 'No owner' }} · Due {{ fmtDate(chk.due) }}</small></span>
               </div>
             </td>
             <td class="c-cat"><span class="rc-cat">{{ chk.category }}</span></td>
@@ -130,6 +133,8 @@
     <div class="rc-empty"><strong>No {{ filter() === 'all' ? '' : filter() }} checks</strong><span>Pick another filter or add a check.</span></div>
   }
 </section>
+
+</div><!-- /.rc-wrap -->
 
 <!-- ===== check drawer ===== -->
 @if (open(); as chk) {

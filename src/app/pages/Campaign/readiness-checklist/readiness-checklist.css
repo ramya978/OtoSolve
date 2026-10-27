@@ -1,5 +1,48 @@
 :host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+     is zoomed, so text, rows and the banner never look oversized. Sizes below multiply by these. */
+  --rc-k: 1;
+  --rc-fs: calc(var(--font-scale, 1) * var(--rc-k));
+  display: block;
+}
+
+/* the size container sits on the page wrapper, not on :host - a container on :host would pin the
+   fixed drawers, dialogs and overlays to the page box instead of the screen */
+.rc-wrap {
   container: rc-page / inline-size;
+  min-width: 0;
+}
+
+/* header buttons: one row; labels get shorter as the page narrows */
+.rc-head-acts {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: calc(8px * var(--rc-k));
+}
+
+.rc-head-acts .w-btn {
+  height: calc(36px * var(--rc-k));
+  padding: 0 calc(14px * var(--rc-k));
+  font-size: calc(13px * var(--rc-fs));
+  white-space: nowrap;
+}
+
+.rc-head-acts .w-btn .w-ico:not(.rc-chev) {
+  width: calc(16px * var(--rc-k));
+  height: calc(16px * var(--rc-k));
+}
+
+.rc-l-short { display: none; }
+
+@container rc-page (max-width: 700px) {
+  .rc-hbtn .rc-l-long { display: none; }
+  .rc-hbtn .rc-l-short { display: inline; }
+}
+
+@container rc-page (max-width: 340px) {
+  .rc-hbtn-add .rc-l-short { display: none; }
+  .rc-hbtn-add { width: calc(36px * var(--rc-k)); padding: 0 !important; justify-content: center; }
 }
 
 /* meta chip next to the lifecycle chip */
@@ -28,8 +71,8 @@
 }
 
 .rc-chev {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--rc-k));
+  height: calc(14px * var(--rc-k));
   margin-left: 2px;
 }
 
@@ -39,7 +82,7 @@
   right: 0;
   z-index: 50;
   display: grid;
-  width: 290px;
+  width: calc(290px * var(--rc-k));
   padding: 6px;
   border: 1px solid var(--w-line);
   border-radius: 12px;
@@ -51,8 +94,8 @@
 .rc-menu button {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 9px 10px;
+  gap: calc(10px * var(--rc-k));
+  padding: calc(9px * var(--rc-k)) calc(10px * var(--rc-k));
   border: 0;
   border-radius: 8px;
   background: none;
@@ -78,15 +121,15 @@
 
 .rc-menu small {
   color: var(--w-muted);
-  font-size: calc(11.5px * var(--font-scale, 1));
+  font-size: calc(11.5px * var(--rc-fs));
 }
 
 .rc-menu-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--rc-k));
+  height: calc(30px * var(--rc-k));
   border-radius: 8px;
   background: var(--t-bg);
   color: var(--t-ink);
@@ -104,9 +147,9 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 18px 28px;
-  margin-bottom: 18px;
-  padding: 18px 22px 26px;
+  gap: calc(18px * var(--rc-k)) calc(28px * var(--rc-k));
+  margin-bottom: calc(18px * var(--rc-k));
+  padding: calc(18px * var(--rc-k)) calc(22px * var(--rc-k));
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--bn) 18%, var(--w-line));
   border-radius: var(--w-radius);
@@ -121,7 +164,7 @@
 .rc-banner-main {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--rc-k));
   min-width: 0;
 }
 
@@ -129,16 +172,16 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: calc(44px * var(--rc-k));
+  height: calc(44px * var(--rc-k));
   border-radius: 12px;
   background: color-mix(in srgb, var(--bn) 12%, var(--white, #fff));
   color: var(--bn);
 }
 
 .rc-banner-ico .w-ico {
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--rc-k));
+  height: calc(20px * var(--rc-k));
 }
 
 .rc-banner-text {
@@ -149,19 +192,19 @@
 
 .rc-banner-text span {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
 }
 
 .rc-banner-text strong {
   color: color-mix(in srgb, var(--bn) 85%, #000);
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(16px * var(--rc-fs));
   font-weight: 600;
 }
 
 .rc-banner-text small {
   overflow: hidden;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -169,38 +212,38 @@
 .rc-banner-pct {
   display: grid;
   justify-items: end;
-  padding-right: 28px;
+  padding-right: calc(28px * var(--rc-k));
   border-right: 1px solid var(--w-row);
 }
 
 .rc-banner-pct strong {
   color: var(--w-heading);
-  font-size: calc(24px * var(--font-scale, 1));
+  font-size: calc(24px * var(--rc-fs));
   font-weight: 600;
   line-height: 1.1;
 }
 
 .rc-banner-pct strong small {
   color: var(--w-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--rc-fs));
 }
 
 .rc-banner-pct span {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
 }
 
 .rc-banner-stats {
   display: flex;
-  gap: 8px;
+  gap: calc(8px * var(--rc-k));
   margin: 0;
 }
 
 .rc-banner-stats > div {
   display: grid;
   justify-items: center;
-  min-width: 72px;
-  padding: 6px 12px;
+  min-width: calc(72px * var(--rc-k));
+  padding: 6px calc(12px * var(--rc-k));
   border: 1px solid var(--w-row);
   border-radius: 10px;
   background: var(--w-card);
@@ -208,13 +251,13 @@
 
 .rc-banner-stats dt {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
 }
 
 .rc-banner-stats dd {
   margin: 0;
   color: var(--w-heading);
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(16px * var(--rc-fs));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -222,8 +265,8 @@
 /* thin progress along the bottom edge */
 .rc-banner-bar {
   position: absolute;
-  left: 22px;
-  right: 22px;
+  left: calc(22px * var(--rc-k));
+  right: calc(22px * var(--rc-k));
   bottom: 12px;
   height: 3px;
   overflow: hidden;
@@ -239,13 +282,14 @@
   transition: width .5s ease;
 }
 
+/* the Passed / Failed / Pending boxes hide first - the filter above the table shows the same counts */
 @container rc-page (max-width: 900px) {
   .rc-banner {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .rc-banner-stats {
-    grid-column: 1 / -1;
+    display: none;
   }
 
   .rc-banner-pct {
@@ -256,21 +300,17 @@
 
 @container rc-page (max-width: 560px) {
   .rc-banner {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .rc-banner-pct {
-    justify-items: start;
+    gap: calc(12px * var(--rc-k));
+    padding: calc(14px * var(--rc-k)) calc(16px * var(--rc-k));
   }
 
   .rc-banner-text small {
     white-space: normal;
   }
+}
 
-  .rc-banner-stats > div {
-    flex: 1;
-    min-width: 0;
-  }
+@container rc-page (max-width: 380px) {
+  .rc-banner-ico { display: none; }
 }
 
 /* shared bits */
@@ -287,8 +327,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 18px;
+  gap: calc(12px * var(--rc-k));
+  padding: calc(12px * var(--rc-k)) calc(18px * var(--rc-k));
   border-bottom: 1px solid var(--w-row);
   background: var(--w-soft);
 }
@@ -296,38 +336,38 @@
 .rc-card-head h2 {
   margin: 0;
   color: var(--w-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--rc-fs));
   font-weight: 600;
 }
 
 .rc-card-head p {
   margin: 2px 0 0;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
 }
 
 .rc-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: calc(28px * var(--rc-k));
+  height: calc(28px * var(--rc-k));
   border-radius: 50%;
   background: var(--t-bg);
   color: var(--t-ink);
 }
 
 .rc-ico .w-ico {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--rc-k));
+  height: calc(14px * var(--rc-k));
 }
 
 .rc-req-tag {
-  padding: 1px 8px;
+  padding: 1px calc(8px * var(--rc-k));
   border-radius: 99px;
   background: var(--w-soft);
   color: var(--w-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--rc-fs));
   font-weight: 500;
   white-space: nowrap;
 }
@@ -346,15 +386,15 @@
   display: grid;
   justify-items: center;
   gap: 4px;
-  padding: 32px 20px;
+  padding: calc(32px * var(--rc-k)) calc(20px * var(--rc-k));
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
   text-align: center;
 }
 
 .rc-empty strong {
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--rc-fs));
   font-weight: 600;
 }
 
@@ -382,12 +422,12 @@
 /* first and last cells line up with the card padding */
 .rc-table th:first-child,
 .rc-table td:first-child {
-  padding-left: 18px;
+  padding-left: calc(18px * var(--rc-k));
 }
 
 .rc-table th:last-child,
 .rc-table td:last-child {
-  padding-right: 18px;
+  padding-right: calc(18px * var(--rc-k));
 }
 
 .rc-table td.c-act .rc-actions {
@@ -395,20 +435,20 @@
 }
 
 .rc-table th {
-  padding: 10px 14px;
+  padding: calc(10px * var(--rc-k)) calc(14px * var(--rc-k));
   border-bottom: 1px solid var(--w-row);
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
   font-weight: 500;
   text-align: left;
   white-space: nowrap;
 }
 
 .rc-table td {
-  padding: 10px 14px;
+  padding: calc(10px * var(--rc-k)) calc(14px * var(--rc-k));
   border-bottom: 1px solid var(--w-row);
   color: var(--w-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--rc-fs));
   vertical-align: middle;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -431,7 +471,7 @@
 .rc-cell-check {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(12px * var(--rc-k));
   min-width: 0;
 }
 
@@ -454,34 +494,37 @@
 .rc-cell-text small {
   overflow: hidden;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
   text-overflow: ellipsis;
 }
 
+/* owner · due line under the check name - only once those columns are hidden */
+.rc-cell-text .rc-cell-meta { display: none; }
+
 .rc-cat {
-  padding: 2px 8px;
+  padding: 2px calc(8px * var(--rc-k));
   border: 1px solid var(--w-line);
   border-radius: 6px;
   color: var(--w-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--rc-fs));
 }
 
 .rc-owner {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--rc-k));
 }
 
 .rc-owner b {
   display: grid;
   flex: none;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--rc-k));
+  height: calc(24px * var(--rc-k));
   border-radius: 50%;
   background: var(--w-primary-soft);
   color: var(--w-primary-ink);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--rc-fs));
   font-weight: 600;
 }
 
@@ -496,35 +539,48 @@
 /* hide columns as the table narrows */
 @container rc-page (max-width: 1000px) { .rc-table .c-cat { display: none; } }
 @container rc-page (max-width: 860px) { .rc-table .c-req { display: none; } }
-@container rc-page (max-width: 720px) { .rc-table .c-owner { display: none; } }
-@container rc-page (max-width: 560px) { .rc-table .c-due, .rc-table .c-act { display: none; } }
+@container rc-page (max-width: 720px) {
+  .rc-table .c-owner { display: none; }
+  .rc-cell-text .rc-cell-crit { display: none; }
+  .rc-cell-text .rc-cell-meta { display: block; }
+}
+@container rc-page (max-width: 560px) {
+  .rc-table .c-due,
+  .rc-table .c-act { display: none; }
+  .rc-table col.c-check { width: auto; }
+  .rc-table col.c-status { width: calc(118px * var(--rc-k)); }
+  .rc-table td:last-child { padding-right: calc(14px * var(--rc-k)); }
+  .rc-cell-check { gap: calc(10px * var(--rc-k)); }
+  .rc-card-head p { display: none; }
+  .rc-card-head .w-seg { max-width: 100%; flex-wrap: wrap; }
+}
 
 /* ---------- drawers ---------- */
 .rc-d-ico {
   display: grid;
   flex: none;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: calc(40px * var(--rc-k));
+  height: calc(40px * var(--rc-k));
   border-radius: 12px;
   background: var(--t-bg);
   color: var(--t-ink);
 }
 
 .rc-d-ico .w-ico {
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--rc-k));
+  height: calc(20px * var(--rc-k));
 }
 
 .rc-d-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: calc(8px * var(--rc-k));
   margin-top: 8px;
 }
 
 .rc-criteria {
-  padding: 14px 16px;
+  padding: calc(14px * var(--rc-k)) calc(16px * var(--rc-k));
   border-left: 3px solid var(--cc-btn, var(--w-primary));
   border-radius: 0 10px 10px 0;
   background: var(--w-primary-soft);
@@ -550,39 +606,74 @@
 .rc-step {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: calc(9px * var(--rc-k));
   margin: 4px 0 -4px;
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--rc-fs));
   font-weight: 650;
 }
 
 .rc-step span {
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--rc-k));
+  height: calc(22px * var(--rc-k));
   border: 1.5px solid var(--w-primary-ink);
   border-radius: 50%;
   color: var(--w-primary-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--rc-fs));
 }
 
 .rc-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: calc(12px * var(--rc-k));
 }
 
 .rc-count {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10px * var(--rc-k));
 }
 
 /* ---------- widths ---------- */
-@container rc-page (max-width: 600px) {
+@media (max-width: 600px) {
   .rc-two {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* ---------- page header (shared app-page-header) ----------
+   Its own sizes are large; on this page it follows the same density. !important because the
+   header's own styles are more specific. */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--rc-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--rc-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--rc-k)) !important;
+  font-size: calc(13.5px * var(--rc-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--rc-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --rc-k: .95; } }
+@media (max-width: 1600px) { :host { --rc-k: .9; } }
+@media (max-width: 1440px) { :host { --rc-k: .86; } }
+@media (max-width: 1280px) { :host { --rc-k: .84; } } 
