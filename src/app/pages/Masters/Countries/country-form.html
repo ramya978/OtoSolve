@@ -6,20 +6,15 @@
      ===================================================================================================== -->
 <section class="cf-page" aria-labelledby="cf-title">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-      <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="cf-title">{{ editing ? 'Edit country' : 'New country' }}</h1>
-      <p class="m-subtitle">Register a nation with its ISO 3166 codes, dialling prefix and default currency.</p>
-    </div>
-    <div class="m-actions">
+  <app-page-header breadcrumb="Master data / Geography" [heading]="editing ? 'Edit country' : 'New country'"
+                   description="Register a nation with its ISO 3166 codes, dialling prefix and default currency.">
+    <div class="cf-head-acts" actions>
       <button type="button" class="m-btn cf-outline" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <form class="cf-card" novalidate (submit)="$event.preventDefault(); save()">
 
@@ -47,8 +42,6 @@
 
     <!-- ===== right: fields ===== -->
     <div class="cf-main">
-
-
 
       <!-- Identity -->
       <h2 class="cf-group" id="mf-sec-country-01"><span>Identity</span></h2>
@@ -196,9 +189,11 @@
 
       <!-- actions -->
       <div class="cf-actions">
-      
         <span class="cf-spacer"></span>
-        <button type="button" class="m-btn cf-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
+        <button type="button" class="m-btn cf-outline" (click)="cancel()">
+          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+          Cancel
+        </button>
         <button type="submit" class="m-btn m-btn-primary">
           <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
           {{ editing ? 'Save' : 'Create' }}

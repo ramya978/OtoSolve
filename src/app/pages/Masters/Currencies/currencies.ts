@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { MasterListBase } from '../../../Shared/Masters/master-list.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { CURRENCY } from './currencies.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /**
  * Currencies - list page (/app/masters/currency).
@@ -11,7 +12,7 @@ import { CURRENCY } from './currencies.config';
  */
 @Component({
   selector: 'app-currencies',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './currencies.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-list.css', './currencies.css'],
   host: { '[style.--ml-metric-count]': 'metrics().length' }

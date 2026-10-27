@@ -5,22 +5,15 @@
      ===================================================================================================== -->
 <section class="mf-view" aria-labelledby="mf-title-state">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-   
-      <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="mf-title-state">{{ editing ? 'Edit state' : 'New state' }}</h1>
-      <p class="m-subtitle">Add a state, province or territory under its country, with tax and postal rules.</p>
-    </div>
-    <div class="m-actions">
-   
+  <app-page-header breadcrumb="Master data / Geography" [heading]="editing ? 'Edit state' : 'New state'"
+                   description="Add a state, province or territory under its country, with tax and postal rules.">
+    <div class="sf-head-acts" actions>
       <button type="button" class="m-btn" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <form class="mf-form" novalidate (submit)="$event.preventDefault(); save()">
 
@@ -57,9 +50,6 @@
               [attr.aria-valuenow]="progress()"><i [style.width.%]="progress()"></i></span>
       </div>
     </div>
-
-
-
 
     <div class="m-card mf-ledger">
 
@@ -332,13 +322,12 @@
       </section>
     </div>
 
-
     <!-- action bar -->
     <div class="mf-footer">
-     <button type="button" class="m-btn" (click)="cancel()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
-          Cancel
-        </button>
+      <button type="button" class="m-btn" (click)="cancel()">
+        <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        Cancel
+      </button>
       <button type="submit" class="m-btn m-btn-primary">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
         {{ editing ? 'Save' : 'Create' }}

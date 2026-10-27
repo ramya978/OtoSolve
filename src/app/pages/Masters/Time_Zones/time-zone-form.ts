@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormValues } from '../../../Shared/Masters/masters.types';
 import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { TIME_ZONE } from './time-zones.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /**
  * New time zone / edit time zone - create page (/app/masters/timezone/new and /app/masters/timezone/:id/edit).
@@ -10,7 +11,7 @@ import { TIME_ZONE } from './time-zones.config';
  */
 @Component({
   selector: 'app-time-zone-form',
-  imports: [],
+  imports: [PageHeader],
   templateUrl: './time-zone-form.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './time-zone-form.css']
 })

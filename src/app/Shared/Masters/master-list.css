@@ -2,20 +2,88 @@
    MASTER LIST - Workspace Kit payment register (payments.css): metric strip, register card with a
    labelled search + filter row, tinted 11px table header, 13px rows with a hairline, kit pager.
    Shared tokens / buttons / tags: masters-shared.css
+
+   Fits every screen (phone, tablet, 14" laptop up to 32" monitor) with no sideways scroll:
+   - sizes step down a little on laptops and when the browser is zoomed (--ml-k), so nothing looks heavy;
+   - the page measures its own width (sidebar open or closed) and, as it narrows, hides metric cards
+     first, then table columns.
+
+   Table columns that hide (per page, opt-in):
+     <table class="ml-table ml-fit">                      fit the card, no 960px minimum
+     <col|th|td class="ml-p1"> … "ml-p5"                   p1 hides first (≤1000px) … p5 last (≤440px)
+     under the lead name: <span class="ml-meta"><span class="ml-meta-in">
+       <span class="ml-m4">…</span><span class="ml-m1">…</span> …    an ml-mN value shows once ml-pN hides
+     </span></span>
    ===================================================================================================== */
 
-/* ---------- metrics (kit .metric-strip) ---------- */
+/* ---------- density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and zoomed ---------- */
+.ml-view,
+.ml-overlay,
+.ml-drawer,
+.ml-dialog,
+.ms-toast {
+  --ml-k: 1;
+  --ml-fs: calc(var(--font-scale, 1) * var(--ml-k));
+  /* drawer and dialog text never drops below 90% so they stay readable */
+  --ml-dfs: calc(var(--font-scale, 1) * max(var(--ml-k), .9));
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { .ml-view, .ml-overlay, .ml-drawer, .ml-dialog, .ms-toast { --ml-k: .95; } }
+@media (max-width: 1600px) { .ml-view, .ml-overlay, .ml-drawer, .ml-dialog, .ms-toast { --ml-k: .9; } }
+@media (max-width: 1440px) { .ml-view, .ml-overlay, .ml-drawer, .ml-dialog, .ms-toast { --ml-k: .86; } }
+@media (max-width: 1280px) { .ml-view, .ml-overlay, .ml-drawer, .ml-dialog, .ms-toast { --ml-k: .84; } }
+
+/* the page is its own measuring box, so layout follows the space it really has */
+.ml-view {
+  display: block;
+  min-width: 0;
+  container: ml-c / inline-size;
+}
+
+/* ---------- shared kit bits, sized with the page (masters-shared.css keeps their look) ---------- */
+:is(.ml-view, .ml-drawer, .ml-dialog) .m-ico {
+  flex: none;
+}
+:is(.ml-view, .ml-drawer, .ml-dialog) .m-btn {
+  height: calc(36px * var(--ml-k));
+  min-height: 0;
+  padding: 0 calc(14px * var(--ml-k));
+  gap: calc(6px * var(--ml-k));
+  font-size: calc(13px * var(--ml-fs));
+  white-space: nowrap;
+}
+:is(.ml-view, .ml-drawer, .ml-dialog) .m-btn .m-ico {
+  width: calc(15px * var(--ml-k));
+  height: calc(15px * var(--ml-k));
+}
+:is(.ml-view, .ml-drawer, .ml-dialog) .m-icon-btn {
+  width: calc(30px * var(--ml-k));
+  height: calc(30px * var(--ml-k));
+  min-width: 0;
+  padding: 0;
+}
+:is(.ml-view, .ml-drawer, .ml-dialog) .m-icon-btn .m-ico {
+  width: calc(14.5px * var(--ml-k));
+  height: calc(14.5px * var(--ml-k));
+}
+:is(.ml-view, .ml-drawer) .m-tag {
+  font-size: calc(11px * var(--ml-fs));
+  white-space: nowrap;
+}
+
+/* ---------- metrics (kit .metric-strip): one row, cards hide by priority ---------- */
 .ml-metrics {
-  display: grid;
-  gap: 16px;
-  margin-bottom: 24px
+  display: flex;
+  gap: calc(14px * var(--ml-k));
+  margin-bottom: calc(18px * var(--ml-k))
 }
 
 .ml-metric {
   display: flex;
+  flex: 1 1 0;
   flex-direction: column;
   min-width: 0;
-  padding: 20px 22px;
+  padding: calc(15px * var(--ml-k)) calc(18px * var(--ml-k));
   border: 1px solid var(--k-outline);
   border-radius: var(--radius, 12px);
   background: var(--white, #fff)
@@ -26,17 +94,20 @@
 }
 
 .ml-metric-label {
+  overflow: hidden;
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--ml-fs));
+  text-overflow: ellipsis;
+  white-space: nowrap
 }
 
 .ml-metric-value {
   display: block;
   color: var(--k-heading);
   font-family: var(--font-number, var(--k-font));
-  font-size: calc(clamp(25px, 2.1vw, 32px) * var(--font-scale, 1));
+  font-size: calc(22px * var(--ml-fs));
   font-weight: 600;
-  letter-spacing: -.8px;
+  letter-spacing: -.5px;
   line-height: 1.35;
   font-variant-numeric: tabular-nums
 }
@@ -46,29 +117,34 @@
 }
 
 .ml-metric-note {
-  margin-top: 4px;
+  margin-top: calc(2px * var(--ml-k));
+  overflow: hidden;
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
-  line-height: 1.6
+  font-size: calc(11px * var(--ml-fs));
+  line-height: 1.6;
+  text-overflow: ellipsis;
+  white-space: nowrap
 }
 
 /* ---------- register card ---------- */
+/* overflow stays visible so filter dropdown lists can open past the card; the table scrolls in its own box */
 .ml-register {
-  overflow: hidden
+  min-width: 0;
+  overflow: visible
 }
 
 .ml-register-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 22px 24px 0
+  gap: calc(16px * var(--ml-k));
+  padding: calc(18px * var(--ml-k)) calc(22px * var(--ml-k)) 0
 }
 
 .ml-register-title {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: calc(11px * var(--ml-k));
   min-width: 0
 }
 
@@ -76,68 +152,75 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: calc(34px * var(--ml-k));
+  height: calc(34px * var(--ml-k));
   border: 1px solid var(--k-line);
   border-radius: 9px;
   color: var(--k-accent-ink)
 }
 
+.ml-register-icon .m-ico {
+  width: calc(16px * var(--ml-k));
+  height: calc(16px * var(--ml-k))
+}
+
 .ml-register-title h2 {
   color: var(--k-heading);
   font-family: var(--font-heading, var(--k-font));
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(15px * var(--ml-fs));
   font-weight: 600;
   letter-spacing: -.2px;
   line-height: 1.4
 }
 
 .ml-register-title p {
-  margin-top: 4px;
+  margin-top: calc(2px * var(--ml-k));
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1));
-  line-height: 1.6
+  font-size: calc(12px * var(--ml-fs));
+  line-height: 1.55
 }
 
 .ml-register-hint {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 7px;
+  gap: calc(6px * var(--ml-k));
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ml-fs));
   white-space: nowrap
 }
 
 .ml-register-hint .m-ico {
-  width: 15px;
-  height: 15px
+  width: calc(14px * var(--ml-k));
+  height: calc(14px * var(--ml-k))
 }
 
 /* ---------- search + filters (kit .pay-filters) ---------- */
 .ml-filters {
   display: grid;
-  gap: 16px;
+  gap: calc(14px * var(--ml-k));
   align-items: end;
-  padding: 23px 24px 18px
+  padding: calc(18px * var(--ml-k)) calc(22px * var(--ml-k)) calc(14px * var(--ml-k))
 }
 
 .ml-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: calc(6px * var(--ml-k));
   min-width: 0
 }
 
 .ml-field > label {
   color: var(--k-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--ml-fs));
   font-weight: 550
 }
 
 .ml-search {
   display: flex;
   align-items: center;
-  min-height: 42px;
+  min-width: 0;
+  min-height: calc(38px * var(--ml-k));
   overflow: hidden;
   border: 1px solid var(--k-field-line);
   border-radius: var(--btn-radius, 8px);
@@ -150,21 +233,21 @@
 }
 
 .ml-search > .m-ico {
-  width: 17px;
-  height: 17px;
-  margin-left: 12px;
+  width: calc(16px * var(--ml-k));
+  height: calc(16px * var(--ml-k));
+  margin-left: calc(12px * var(--ml-k));
   color: var(--k-muted)
 }
 
 .ml-search input {
   flex: 1;
   min-width: 0;
-  padding: 10px 8px;
+  padding: calc(8px * var(--ml-k)) calc(8px * var(--ml-k));
   border: 0;
   outline: none !important;
   background: transparent;
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1))
+  font-size: calc(13px * var(--ml-fs))
 }
 
 .ml-search input::placeholder {
@@ -173,13 +256,14 @@
 
 .ml-search-submit {
   align-self: stretch;
-  padding: 0 14px;
+  padding: 0 calc(13px * var(--ml-k));
   border: 0;
   border-left: 1px solid var(--k-line);
   background: var(--k-tint);
   color: var(--k-accent-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--ml-fs));
   font-weight: 600;
+  white-space: nowrap;
   cursor: pointer
 }
 
@@ -197,19 +281,30 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 44px;
-  padding: 0 24px 14px
+  gap: calc(12px * var(--ml-k));
+  min-height: calc(40px * var(--ml-k));
+  padding: 0 calc(22px * var(--ml-k)) calc(12px * var(--ml-k))
 }
 
 .ml-results p {
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--ml-fs))
 }
 
 .ml-results strong {
   color: var(--k-ink);
   font-weight: 600
+}
+
+.ml-results .m-text-btn {
+  gap: calc(5px * var(--ml-k));
+  font-size: calc(12px * var(--ml-fs));
+  white-space: nowrap
+}
+
+.ml-results .m-text-btn .m-ico {
+  width: calc(14px * var(--ml-k));
+  height: calc(14px * var(--ml-k))
 }
 
 /* ---------- table (kit .pay-table) ---------- */
@@ -227,39 +322,49 @@
   text-align: left
 }
 
+/* pages that hide columns by priority fit the card instead of scrolling */
+.ml-table.ml-fit {
+  min-width: 0
+}
+
+/* four 30px buttons + gaps + cell padding */
 .ml-col-actions {
-  width: 176px
+  width: calc(166px * var(--ml-k))
 }
 
 .ml-table th {
-  padding: 13px 18px;
+  padding: calc(11px * var(--ml-k)) calc(14px * var(--ml-k));
+  overflow: hidden;
   border-top: 1px solid var(--k-line);
   border-bottom: 1px solid var(--k-line);
   background: var(--cc-grid-head, var(--k-tint));
   color: var(--cc-grid-ink, var(--k-ink));
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ml-fs));
   font-weight: 600;
   letter-spacing: .025em;
+  text-overflow: ellipsis;
   text-transform: none;
   white-space: nowrap
 }
 
 .ml-table th:first-child,
 .ml-table td:first-child {
-  padding-left: 24px
+  padding-left: calc(22px * var(--ml-k))
 }
 
 .ml-table th:last-child,
 .ml-table td:last-child {
-  padding-right: 20px
+  padding-right: calc(18px * var(--ml-k))
 }
 
 .ml-table td {
-  padding: var(--row-pad, 14px) 18px;
+  padding: calc(var(--row-pad, 13px) * var(--ml-k)) calc(14px * var(--ml-k));
+  overflow: hidden;
   border-bottom: 1px solid var(--k-row-line);
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--ml-fs));
   line-height: 1.45;
+  text-overflow: ellipsis;
   vertical-align: middle
 }
 
@@ -287,19 +392,21 @@
 .ml-sort {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: calc(6px * var(--ml-k));
+  max-width: 100%;
   padding: 3px 0;
   border: 0;
   background: transparent;
   color: inherit;
   font: inherit;
   letter-spacing: inherit;
+  white-space: nowrap;
   cursor: pointer
 }
 
 .ml-sort .m-ico {
-  width: 13px;
-  height: 13px;
+  width: calc(12px * var(--ml-k));
+  height: calc(12px * var(--ml-k));
   color: var(--k-muted);
   transition: transform 160ms
 }
@@ -320,7 +427,7 @@
 .ml-lead {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(11px * var(--ml-k));
   min-width: 0
 }
 
@@ -328,15 +435,15 @@
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
-  width: 46px;
-  height: 34px;
+  width: calc(42px * var(--ml-k));
+  height: calc(32px * var(--ml-k));
   padding: 0 4px;
   overflow: hidden;
   border: 1px solid var(--k-line);
   border-radius: 8px;
   background: var(--k-tint);
   color: var(--k-accent-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ml-fs));
   font-weight: 600;
   letter-spacing: .3px;
   font-variant-numeric: tabular-nums;
@@ -345,10 +452,10 @@
 
 .ml-code.lg {
   width: auto;
-  min-width: 46px;
-  padding: 0 8px;
-  height: 42px;
-  font-size: calc(13px * var(--font-scale, 1))
+  min-width: calc(42px * var(--ml-k));
+  padding: 0 calc(8px * var(--ml-k));
+  height: calc(38px * var(--ml-k));
+  font-size: calc(12.5px * var(--ml-dfs))
 }
 
 .ml-lead-copy {
@@ -360,19 +467,56 @@
 .ml-lead-name {
   overflow: hidden;
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--ml-fs));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap
 }
 
 .ml-lead-sub {
-  margin-top: 3px;
+  margin-top: calc(2px * var(--ml-k));
   overflow: hidden;
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ml-fs));
   text-overflow: ellipsis;
   white-space: nowrap
+}
+
+/* values of hidden columns, under the lead name (hidden until their column hides) */
+.ml-meta {
+  display: none;
+  margin-top: calc(3px * var(--ml-k));
+  overflow: hidden;
+  color: var(--k-muted);
+  font-size: calc(11px * var(--ml-fs))
+}
+
+.ml-meta-in {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  row-gap: calc(3px * var(--ml-k));
+  /* pulls the first dot of every line out of view, so dots show only between values */
+  margin-left: calc(-14px * var(--ml-k))
+}
+
+.ml-meta-in > * {
+  display: none;
+  flex: none;
+  align-items: center;
+  white-space: nowrap
+}
+
+.ml-meta-in > *::before {
+  content: "·";
+  display: inline-block;
+  width: calc(14px * var(--ml-k));
+  text-align: center
+}
+
+.ml-meta .m-tag {
+  padding: 1px calc(7px * var(--ml-k));
+  font-size: calc(10.5px * var(--ml-fs))
 }
 
 .ml-text {
@@ -381,7 +525,7 @@
 
 .ml-muted {
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--ml-fs))
 }
 
 .ml-accent {
@@ -398,12 +542,12 @@
 .ml-chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px calc(8px * var(--ml-k));
   border: 1px solid var(--k-line);
   border-radius: 5px;
   background: var(--white, #fff);
   color: var(--k-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ml-fs));
   font-weight: 550;
   font-variant-numeric: tabular-nums;
   white-space: nowrap
@@ -411,7 +555,7 @@
 
 .ml-actions {
   display: inline-flex;
-  gap: 4px
+  gap: calc(4px * var(--ml-k))
 }
 
 .ml-power.is-on {
@@ -420,39 +564,47 @@
 
 /* ---------- empty + pager ---------- */
 .ml-empty {
-  padding: 42px 24px;
+  padding: calc(36px * var(--ml-k)) calc(22px * var(--ml-k));
   color: var(--k-muted);
   text-align: center
 }
 
 .ml-empty > .m-ico {
-  width: 27px;
-  height: 27px
+  width: calc(26px * var(--ml-k));
+  height: calc(26px * var(--ml-k))
 }
 
 .ml-empty h3 {
-  margin: 12px 0 5px;
+  margin: calc(10px * var(--ml-k)) 0 calc(4px * var(--ml-k));
   color: var(--k-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--ml-fs));
   font-weight: 600
 }
 
 .ml-empty p {
-  margin-bottom: 14px;
-  font-size: calc(12px * var(--font-scale, 1))
+  margin-bottom: calc(12px * var(--ml-k));
+  font-size: calc(12px * var(--ml-fs))
 }
+
 /* ---------- Pagination container ---------- */
 .ml-pagination {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  min-height: 54px;
-  padding: 10px 16px;
+  gap: calc(10px * var(--ml-k)) calc(16px * var(--ml-k));
+  min-height: calc(50px * var(--ml-k));
+  padding: calc(10px * var(--ml-k)) calc(16px * var(--ml-k));
   border-top: 1px solid #f0f0f2;
   background: #fff;
   color: #727787;
-  font-size: 11px;
+  font-size: calc(11.5px * var(--ml-fs));
+}
+
+/* last thing in the card: follows the card's rounded bottom corners */
+.ml-register > .ml-pagination:last-child {
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
 }
 
 /* ---------- Left section ---------- */
@@ -460,7 +612,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 14px;
+  gap: calc(14px * var(--ml-k));
 }
 
 .ml-pagination-info {
@@ -486,9 +638,9 @@
 }
 
 .ml-rows-select-native {
-  width: 78px;
-  height: 29px;
-  padding: 0 8px;
+  width: calc(74px * var(--ml-k));
+  height: calc(29px * var(--ml-k));
+  padding: 0 calc(8px * var(--ml-k));
   border: 1px solid #dfe1e8;
   border-radius: 8px;
   outline: none;
@@ -508,7 +660,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 5px;
+  gap: calc(5px * var(--ml-k));
 }
 
 /* Page buttons */
@@ -516,15 +668,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  padding: 0;
+  flex: 0 0 auto;
+  min-width: calc(29px * var(--ml-k));
+  height: calc(29px * var(--ml-k));
+  padding: 0 calc(5px * var(--ml-k));
   border: 1px solid #dfe1e8;
   border-radius: 8px;
   background: #fff;
   color: #303443;
-  font-size: 11px;
+  font-size: calc(11.5px * var(--ml-fs));
   font-weight: 400;
   cursor: pointer;
   transition:
@@ -549,7 +701,7 @@
 
 /* Previous / Next arrows */
 .ml-page-arrow {
-  font-size: 19px;
+  font-size: calc(17px * var(--ml-fs));
   line-height: 1;
   color: #7e8492;
 }
@@ -567,34 +719,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 30px;
+  width: calc(18px * var(--ml-k));
+  height: calc(29px * var(--ml-k));
   color: #727787;
-  font-size: 12px;
+  font-size: calc(12px * var(--ml-fs));
 }
 
-/* ---------- Responsive ---------- */
-@media (max-width: 600px) {
-  .ml-pagination {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-  }
-
-  .ml-pagination-left {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .ml-pager {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-}
-
-/* ---------- view drawer (kit .as-drawer) ---------- */
+/* ---------- view drawer (kit .as-drawer): same design, lighter ---------- */
 .ml-overlay {
   position: fixed;
   inset: 0;
@@ -613,7 +744,7 @@
   z-index: 901;
   display: flex;
   flex-direction: column;
-  width: 480px;
+  width: calc(440px * var(--ml-k));
   max-width: 100vw;
   border-left: 1px solid var(--k-line);
   background: var(--white, #fff);
@@ -625,40 +756,44 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 22px 24px;
+  gap: calc(14px * var(--ml-k));
+  padding: calc(16px * var(--ml-k)) calc(20px * var(--ml-k));
   border-bottom: 1px solid var(--k-line)
 }
 
 .ml-drawer-id {
   display: flex;
   align-items: center;
-  gap: 13px;
+  gap: calc(11px * var(--ml-k));
   min-width: 0
 }
 
 .ml-drawer-id .m-eyebrow {
-  margin-bottom: 4px
+  margin-bottom: calc(2px * var(--ml-k));
+  font-size: calc(10.5px * var(--ml-dfs))
 }
 
 .ml-drawer-id h2 {
+  overflow: hidden;
   color: var(--k-heading);
   font-family: var(--font-heading, var(--k-font));
-  font-size: calc(20px * var(--font-scale, 1));
+  font-size: calc(16px * var(--ml-dfs));
   font-weight: 600;
-  letter-spacing: -.4px;
-  line-height: 1.3
+  letter-spacing: -.3px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap
 }
 
 .ml-drawer-body {
   flex: 1;
   min-height: 0;
-  padding: 20px 24px;
+  padding: calc(16px * var(--ml-k)) calc(20px * var(--ml-k));
   overflow-y: auto
 }
 
 .ml-drawer-status {
-  margin-bottom: 14px
+  margin-bottom: calc(10px * var(--ml-k))
 }
 
 .ml-details {
@@ -667,9 +802,9 @@
 
 .ml-details > div {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: 14px;
-  padding: 12px 0;
+  grid-template-columns: calc(130px * var(--ml-k)) minmax(0, 1fr);
+  gap: calc(12px * var(--ml-k));
+  padding: calc(10px * var(--ml-k)) 0;
   border-bottom: 1px solid var(--k-row-line)
 }
 
@@ -679,13 +814,13 @@
 
 .ml-details dt {
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(11.5px * var(--ml-dfs))
 }
 
 .ml-details dd {
   margin: 0;
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--ml-dfs));
   font-weight: 500;
   overflow-wrap: anywhere
 }
@@ -693,20 +828,26 @@
 .ml-drawer-foot {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 16px 24px;
+  gap: calc(8px * var(--ml-k));
+  padding: calc(12px * var(--ml-k)) calc(20px * var(--ml-k));
   border-top: 1px solid var(--k-line)
 }
 
-/* ---------- delete dialog (kit .as-dialog) ---------- */
+.ml-drawer .m-btn,
+.ml-dialog .m-btn {
+  height: calc(34px * var(--ml-k));
+  font-size: calc(12.5px * var(--ml-dfs))
+}
+
+/* ---------- delete dialog (kit .as-dialog): same design, lighter ---------- */
 .ml-dialog {
   position: fixed;
   top: 50%;
   left: 50%;
   z-index: 902;
-  width: 440px;
+  width: calc(420px * var(--ml-k));
   max-width: calc(100vw - 24px);
-  padding: 24px;
+  padding: calc(20px * var(--ml-k));
   border: 1px solid var(--k-line);
   border-radius: 14px;
   background: var(--white, #fff);
@@ -717,16 +858,16 @@
 
 .ml-dialog h2 {
   color: var(--k-heading);
-  font-size: calc(19px * var(--font-scale, 1));
+  font-size: calc(16px * var(--ml-dfs));
   font-weight: 600;
-  letter-spacing: -.4px
+  letter-spacing: -.3px
 }
 
 .ml-dialog p {
-  margin-top: 10px;
+  margin-top: calc(8px * var(--ml-k));
   color: var(--k-muted);
-  font-size: calc(13px * var(--font-scale, 1));
-  line-height: 1.75
+  font-size: calc(12.5px * var(--ml-dfs));
+  line-height: 1.65
 }
 
 .ml-dialog p strong {
@@ -736,8 +877,13 @@
 .ml-dialog-foot {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px
+  gap: calc(8px * var(--ml-k));
+  margin-top: calc(18px * var(--ml-k))
+}
+
+.ms-toast {
+  max-width: calc(100vw - 32px);
+  font-size: calc(12.5px * var(--ml-fs))
 }
 
 @keyframes ml-fade {
@@ -748,13 +894,39 @@
   from { opacity: .5; transform: translateX(24px) }
 }
 
-/* ---------- responsive ---------- */
-@media (max-width: 1200px) {
-  .ml-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 10px
-  }
+/* ---------- as the page narrows (measured on the page, so the sidebar counts) ---------- */
 
+/* metric cards hide first: 5th, then 4th, then 3rd */
+@container ml-c (max-width: 1150px) {
+  .ml-metric:nth-child(n + 5) { display: none }
+}
+
+@container ml-c (max-width: 900px) {
+  .ml-metric:nth-child(n + 4) { display: none }
+  .ml-register-hint { display: none }
+}
+
+@container ml-c (max-width: 640px) {
+  .ml-metric:nth-child(n + 3) { display: none }
+}
+
+/* table columns by priority (pages opt in with ml-p1 … ml-p5); each value moves under the lead name */
+@container ml-c (max-width: 1000px) {
+  .ml-p1 { display: none }
+  .ml-meta { display: block }
+  .ml-meta-in > .ml-m1 { display: inline-flex }
+}
+
+@container ml-c (max-width: 860px) {
+  .ml-p2 { display: none }
+  .ml-meta-in > .ml-m2 { display: inline-flex }
+}
+
+@container ml-c (max-width: 720px) {
+  .ml-p3 { display: none }
+  .ml-meta-in > .ml-m3 { display: inline-flex }
+
+  /* search on its own row, filters two per row */
   .ml-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important
   }
@@ -764,30 +936,57 @@
   }
 }
 
-@media (max-width: 760px) {
-  .ml-metrics {
-    grid-template-columns: 1fr !important
+@container ml-c (max-width: 560px) {
+  .ml-p4 { display: none }
+  .ml-meta-in > .ml-m4 { display: inline-flex }
+
+  .ml-search-submit { display: none }
+
+  .ml-register-heading { padding: calc(14px * var(--ml-k)) calc(14px * var(--ml-k)) 0 }
+  .ml-filters { padding: calc(14px * var(--ml-k)) }
+  .ml-results { padding: 0 calc(14px * var(--ml-k)) calc(10px * var(--ml-k)) }
+
+  .ml-table th:first-child,
+  .ml-table td:first-child { padding-left: calc(14px * var(--ml-k)) }
+
+  .ml-table th:last-child,
+  .ml-table td:last-child { padding-right: calc(12px * var(--ml-k)) }
+
+  /* pager: count + rows on one line, page buttons centred under it */
+  .ml-pagination { justify-content: center; padding: calc(10px * var(--ml-k)) calc(14px * var(--ml-k)) }
+  .ml-pagination-left { width: 100%; justify-content: space-between }
+}
+
+@container ml-c (max-width: 440px) {
+  .ml-p5 { display: none }
+  .ml-meta-in > .ml-m5 { display: inline-flex }
+
+  .ml-col-actions { width: calc(148px * var(--ml-k)) }
+  .ml-actions { gap: 2px }
+
+  .ml-table th,
+  .ml-table td {
+    padding-left: calc(8px * var(--ml-k));
+    padding-right: calc(8px * var(--ml-k))
   }
 
-  .ml-filters {
-    grid-template-columns: 1fr !important;
-    padding: 18px 16px
-  }
+  .ml-code:not(.lg) { display: none }
 
-  .ml-register-heading {
-    flex-wrap: wrap;
-    padding: 18px 16px 0
-  }
+  .ml-metrics { gap: calc(10px * var(--ml-k)) }
+  .ml-metric { padding: calc(12px * var(--ml-k)) }
+  .ml-metric-note { display: none }
 
-  .ml-results {
-    padding: 0 16px 12px
-  }
+  /* only the current page number between ‹ › */
+  .ml-page:not(.is-active):not(.ml-page-arrow),
+  .ml-page-ellipsis { display: none }
+}
 
-  .ml-pagination {
-    flex-wrap: wrap;
-    padding: 12px 16px
-  }
+@container ml-c (max-width: 340px) {
+  .ml-filters { grid-template-columns: 1fr !important }
+}
 
+/* drawer on phones: details stack */
+@media (max-width: 560px) {
   .ml-details > div {
     grid-template-columns: 1fr;
     gap: 3px

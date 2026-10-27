@@ -1,3 +1,49 @@
+/* =====================================================================================================
+   MASTER FORM - shared create / edit register: preview strip, readiness, numbered sections with the
+   label on the left and the control on the right, action bar, leave dialog.
+
+   Fits every screen (phone, tablet, 14" laptop up to 32" monitor) with no sideways scroll:
+   sizes step down a little on laptops and when the browser is zoomed (--mf-k), so nothing looks heavy;
+   the form measures its own width (sidebar open or closed) for its layout steps.
+   ===================================================================================================== */
+
+/* ---------- density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and zoomed ---------- */
+.mf-view,
+.mf-overlay,
+.mf-dialog {
+  --mf-k: 1;
+  --mf-fs: calc(var(--font-scale, 1) * var(--mf-k));
+  /* the leave dialog: text never drops below 90% */
+  --mf-dfs: calc(var(--font-scale, 1) * max(var(--mf-k), .9));
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { .mf-view, .mf-overlay, .mf-dialog { --mf-k: .95; } }
+@media (max-width: 1600px) { .mf-view, .mf-overlay, .mf-dialog { --mf-k: .9; } }
+@media (max-width: 1440px) { .mf-view, .mf-overlay, .mf-dialog { --mf-k: .86; } }
+@media (max-width: 1280px) { .mf-view, .mf-overlay, .mf-dialog { --mf-k: .84; } }
+
+.mf-view {
+  /* dropdowns (ms-select) follow this page's size step */
+  --ms-scale: var(--mf-k);
+  display: block;
+  min-width: 0;
+}
+
+/* buttons on form pages, sized with the page */
+:is(.mf-view, .mf-dialog) .m-btn {
+  height: calc(36px * var(--mf-k));
+  min-height: 0;
+  padding: 0 calc(14px * var(--mf-k));
+  gap: calc(6px * var(--mf-k));
+  font-size: calc(13px * var(--mf-fs));
+  white-space: nowrap;
+}
+
+:is(.mf-view, .mf-dialog) .m-btn .m-ico {
+  flex: none;
+  width: calc(15px * var(--mf-k));
+  height: calc(15px * var(--mf-k));
+}
 
 .mf-form {
   container: mf-register / inline-size
@@ -6,9 +52,9 @@
 .mf-intro {
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin-bottom: 18px;
-  padding: 15px 18px;
+  gap: calc(22px * var(--mf-k));
+  margin-bottom: calc(18px * var(--mf-k));
+  padding: calc(15px * var(--mf-k)) calc(18px * var(--mf-k));
   border: 1px solid color-mix(in srgb, var(--k-accent) 16%, var(--k-line));
   border-radius: 12px;
   background: var(--k-tint)
@@ -18,7 +64,7 @@
   display: flex;
   flex: 1;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--mf-k));
   min-width: 0
 }
 
@@ -26,14 +72,14 @@
   display: grid;
   flex: none;
   place-items: center;
-  min-width: 46px;
-  height: 46px;
-  padding: 0 8px;
+  min-width: calc(42px * var(--mf-k));
+  height: calc(42px * var(--mf-k));
+  padding: 0 calc(8px * var(--mf-k));
   border: 1px solid transparent;
   border-radius: 10px;
   background: var(--cc-btn, var(--k-accent));
   color: var(--cc-btn-ink, var(--primary-on, #fff));
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--mf-fs));
   font-weight: 600;
   letter-spacing: .3px;
   font-variant-numeric: tabular-nums;
@@ -47,7 +93,7 @@
 .mf-intro-label {
   display: block;
   color: var(--k-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--mf-fs));
   font-weight: 600;
   letter-spacing: 1.2px;
   text-transform: uppercase
@@ -57,7 +103,7 @@
   display: block;
   overflow: hidden;
   color: var(--k-heading);
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(15px * var(--mf-fs));
   font-weight: 600;
   letter-spacing: -.2px;
   line-height: 1.45;
@@ -74,7 +120,7 @@
 .mf-intro-copy p {
   overflow: hidden;
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   text-overflow: ellipsis;
   white-space: nowrap
 }
@@ -86,14 +132,14 @@
 }
 
 .mf-facts > div {
-  min-width: 78px;
-  padding: 2px 18px;
+  min-width: calc(78px * var(--mf-k));
+  padding: 2px calc(18px * var(--mf-k));
   border-left: 1px solid color-mix(in srgb, var(--k-accent) 20%, var(--k-line))
 }
 
 .mf-facts dt {
   color: var(--k-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--mf-fs));
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase
@@ -102,7 +148,7 @@
 .mf-facts dd {
   margin: 3px 0 0;
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--mf-fs));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap
@@ -132,12 +178,12 @@
 
 .mf-state {
   flex: none;
-  padding: 6px 10px;
+  padding: 6px calc(10px * var(--mf-k));
   border: 1px solid color-mix(in srgb, var(--k-accent) 34%, var(--k-line));
   border-radius: 999px;
   background: var(--white, #fff);
   color: var(--k-accent-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--mf-fs));
   font-weight: 600;
   white-space: nowrap
 }
@@ -147,21 +193,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  margin: 0 0 17px;
+  gap: calc(24px * var(--mf-k));
+  margin: 0 0 calc(17px * var(--mf-k));
   padding: 0 2px
 }
 
 .mf-meta-ref {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--mf-k));
   min-width: 0
 }
 
 .mf-meta-ref > span {
   color: var(--k-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--mf-fs));
   letter-spacing: .7px;
   text-transform: uppercase;
   white-space: nowrap
@@ -169,22 +215,22 @@
 
 .mf-meta-ref strong {
   color: var(--k-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   font-weight: 400
 }
 
 .mf-readiness {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(12px * var(--mf-k));
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--mf-fs));
   white-space: nowrap
 }
 
 .mf-bar {
   display: block;
-  width: 100px;
+  width: calc(100px * var(--mf-k));
   height: 6px;
   overflow: hidden;
   border-radius: 9px;
@@ -208,20 +254,20 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin: 0 0 16px
+  gap: calc(8px * var(--mf-k));
+  margin: 0 0 calc(16px * var(--mf-k))
 }
 
 .mf-links button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 11px;
+  gap: calc(8px * var(--mf-k));
+  padding: calc(8px * var(--mf-k)) calc(11px * var(--mf-k));
   border: 1px solid color-mix(in srgb, var(--k-accent) 24%, var(--k-line));
   border-radius: var(--btn-radius, 7px);
   background: var(--white, #fff);
   color: var(--k-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   cursor: pointer;
   transition: background-color 160ms, color 160ms, border-color 160ms
 }
@@ -232,7 +278,7 @@
   border-radius: 5px;
   background: color-mix(in srgb, var(--k-accent) 12%, var(--white, #fff));
   color: var(--k-accent-ink);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--mf-fs));
   font-variant-numeric: tabular-nums
 }
 
@@ -244,19 +290,19 @@
 
 /* ---------- error summary (kit .error-summary) ---------- */
 .mf-errors {
-  margin-bottom: 16px;
-  padding: 14px 18px;
+  margin-bottom: calc(16px * var(--mf-k));
+  padding: calc(14px * var(--mf-k)) calc(18px * var(--mf-k));
   border: 1px solid var(--status-danger-line, #d68591);
   border-radius: 8px;
   background: var(--white, #fff);
   color: var(--status-danger-ink, #8d2030);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--mf-fs));
   outline: none
 }
 
 .mf-errors ul {
   margin: 6px 0 0;
-  padding-left: 18px
+  padding-left: calc(18px * var(--mf-k))
 }
 
 .mf-errors button {
@@ -264,7 +310,7 @@
   border: 0;
   background: none;
   color: inherit;
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   text-align: left;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -280,8 +326,8 @@
 
 .mf-section {
   min-width: 0;
-  padding: 22px 25px 14px;
-  scroll-margin-top: 150px
+  padding: calc(20px * var(--mf-k)) calc(24px * var(--mf-k)) calc(12px * var(--mf-k));
+  scroll-margin-top: calc(150px * var(--mf-k))
 }
 
 .mf-section + .mf-section {
@@ -292,59 +338,56 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 22px;
-  margin-bottom: 8px;
+  gap: calc(22px * var(--mf-k));
+  margin-bottom: calc(8px * var(--mf-k));
   padding-bottom: 15px;
-     border-bottom: 1px dashed 
-color-mix(in srgb, var(--k-accent) 12%, var(--k-line));
+  border-bottom: 1px dashed color-mix(in srgb, var(--k-accent) 12%, var(--k-line));
 }
 
 .mf-section-title {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 11px
+  gap: calc(11px * var(--mf-k))
 }
 
 /* the numbered primary badge (PRIMARY colour, as the theme gives selected tabs) -
    font stays exactly as the original: 11px / weight 500 */
 .mf-section-no {
-display: inline-grid;
-    place-items: center;
-    min-width: 26px;
-    height: 26px;
-    padding: 0 7px;
-    border-radius: 7px;
-    background: var(--cc-btn, var(--k-accent));
-    background: 
-color-mix(in srgb, var(--k-accent) 12%, white);
-    color: var(--k-accent);
-    font-size: calc(11px * var(--font-scale, 1));
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
+  display: inline-grid;
+  place-items: center;
+  min-width: calc(24px * var(--mf-k));
+  height: calc(24px * var(--mf-k));
+  padding: 0 7px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--k-accent) 12%, white);
+  color: var(--k-accent);
+  font-size: calc(11px * var(--mf-fs));
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .mf-section-title h2 {
   color: var(--k-heading);
   font-family: var(--font-heading, var(--k-font));
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--mf-fs));
   font-weight: 600;
   letter-spacing: -.1px;
   line-height: 1.5
 }
 
 .mf-section-head p {
-  max-width: 440px;
+  max-width: calc(440px * var(--mf-k));
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--mf-fs));
   line-height: 1.65;
   text-align: right
 }
 
 .mf-lanes {
   display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(436px, 1fr));
-  column-gap: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(436px * var(--mf-k))), 1fr));
+  column-gap: calc(32px * var(--mf-k));
   align-items: stretch;
   min-width: 0
 }
@@ -352,11 +395,11 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 /* one row: label left, control right (kit .org-field) */
 .mf-field {
   display: grid;
-  grid-template-columns: 174px minmax(0, 1fr);
-  gap: 6px 18px;
+  grid-template-columns: calc(174px * var(--mf-k)) minmax(0, 1fr);
+  gap: 6px calc(18px * var(--mf-k));
   align-items: start;
   min-width: 0;
-  padding: 13px 0;
+  padding: calc(11px * var(--mf-k)) 0;
   /* border-bottom: 1px solid var(--k-line) */
 }
 
@@ -367,9 +410,9 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 .mf-field > label {
   display: block;
   min-width: 0;
-  padding: 10px 0 0;
+  padding: calc(9px * var(--mf-k)) 0 0;
   color: var(--k-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   font-weight: 550;
   line-height: 1.55
 }
@@ -378,7 +421,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   display: block;
   margin-top: 1px;
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--mf-fs));
   font-weight: 400;
   line-height: 1.5
 }
@@ -392,29 +435,25 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 .mf-control input,
 .mf-control textarea {
   width: 100%;
-  min-height: 41px;
-  padding: 9px 11px;
-    border: 1px solid #80808085;
+  min-height: calc(38px * var(--mf-k));
+  padding: calc(7px * var(--mf-k)) calc(11px * var(--mf-k));
+  border: 1px solid #80808085;
   border-radius: var(--btn-radius, 7px);
   background: var(--white, #fff);
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--mf-fs));
   line-height: 1.5;
   transition: border-color 140ms, box-shadow 140ms
 }
 
 .mf-control textarea {
-  min-height: 91px;
+  min-height: calc(80px * var(--mf-k));
   resize: vertical
-}
-
-.mf-control input.is-short {
-  /* max-width: 220px */
 }
 
 .mf-control input.mono {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: calc(12.5px * var(--font-scale, 1))
+  font-size: calc(12.5px * var(--mf-fs))
 }
 
 .mf-control input::placeholder,
@@ -443,7 +482,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 
 .mf-error {
   color: var(--status-danger-ink, #a12336);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--mf-fs));
   line-height: 1.6
 }
 
@@ -452,12 +491,12 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   align-items: center;
   gap: 5px;
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--mf-fs))
 }
 
 .mf-lock .m-ico {
-  width: 13px;
-  height: 13px
+  width: calc(13px * var(--mf-k));
+  height: calc(13px * var(--mf-k))
 }
 
 /* segmented choice (kit .ap-choices) */
@@ -468,7 +507,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   justify-self: start;
   gap: 3px;
   padding: 3px;
-    border: 1px dashed #b9b9b9;
+  border: 1px dashed #b9b9b9;
   border-radius: var(--btn-radius, 8px)
 }
 
@@ -476,13 +515,13 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  min-height: 33px;
-  padding: 5px 11px;
+  min-height: calc(31px * var(--mf-k));
+  padding: 5px calc(11px * var(--mf-k));
   border: 1px solid transparent;
   border-radius: calc(var(--btn-radius, 8px) - 2px);
   background: transparent;
   color: var(--k-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--mf-fs));
   white-space: nowrap;
   cursor: pointer;
   transition: background-color 140ms, color 140ms, border-color 140ms
@@ -491,8 +530,8 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 .mf-choice i {
   display: grid;
   place-items: center;
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--mf-k));
+  height: calc(12px * var(--mf-k));
   border: 1.5px solid currentColor;
   border-radius: 50%
 }
@@ -524,22 +563,22 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 .mf-note {
   display: flex;
   align-items: flex-start;
-  gap: 9px;
-  max-width: 1100px;
-  margin-top: 17px;
-  padding: 13px 15px;
+  gap: calc(9px * var(--mf-k));
+  max-width: calc(1100px * var(--mf-k));
+  margin-top: calc(17px * var(--mf-k));
+  padding: calc(13px * var(--mf-k)) calc(15px * var(--mf-k));
   border: 1px solid color-mix(in srgb, var(--secondary, #138879) 30%, var(--k-line));
   border-radius: 10px;
   background: color-mix(in srgb, var(--secondary, #138879) 6%, var(--white, #fff));
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--mf-fs));
   line-height: 1.75
 }
 
 .mf-note .m-ico {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--mf-k));
+  height: calc(15px * var(--mf-k));
   margin-top: 3px;
   color: var(--secondary, #138879)
 }
@@ -553,16 +592,16 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   display: flex;
   align-items: center;
   justify-content: end;
-  gap: 16px;
-  margin-top: 17px;
-  padding-top: 18px;
+  gap: calc(16px * var(--mf-k));
+  margin-top: calc(17px * var(--mf-k));
+  padding-top: calc(18px * var(--mf-k));
   border-top: 1px solid var(--k-line)
 }
 
 .mf-footer-left {
   display: flex;
   align-items: center;
-  gap: 14px
+  gap: calc(14px * var(--mf-k))
 }
 
 .mf-footer .m-text-btn:disabled {
@@ -584,9 +623,9 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   top: 50%;
   left: 50%;
   z-index: 901;
-  width: 430px;
+  width: calc(420px * var(--mf-k));
   max-width: calc(100vw - 24px);
-  padding: 24px;
+  padding: calc(20px * var(--mf-k));
   border: 1px solid var(--k-line);
   border-radius: 14px;
   background: var(--white, #fff);
@@ -595,24 +634,30 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 }
 
 .mf-dialog h2 {
+  margin: 0;
   color: var(--k-heading);
-  font-size: calc(19px * var(--font-scale, 1));
+  font-size: calc(16px * var(--mf-dfs));
   font-weight: 600;
   letter-spacing: -.4px
 }
 
 .mf-dialog p {
-  margin-top: 10px;
+  margin: calc(8px * var(--mf-k)) 0 0;
   color: var(--k-muted);
-  font-size: calc(13px * var(--font-scale, 1));
-  line-height: 1.75
+  font-size: calc(12.5px * var(--mf-dfs));
+  line-height: 1.65
 }
 
 .mf-dialog-foot {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px
+  gap: calc(8px * var(--mf-k));
+  margin-top: calc(18px * var(--mf-k))
+}
+
+.mf-dialog .m-btn {
+  height: calc(34px * var(--mf-k));
+  font-size: calc(12.5px * var(--mf-dfs));
 }
 
 /* ---------- THEME COLOUR ROLES (primary + secondary on every create page) ----------
@@ -656,12 +701,12 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 @container mf-register (min-width: 1100px) {
   .mf-lanes {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 36px
+    column-gap: calc(36px * var(--mf-k))
   }
 
   .mf-field {
-    grid-template-columns: 152px minmax(0, 1fr);
-    column-gap: 16px
+    grid-template-columns: calc(152px * var(--mf-k)) minmax(0, 1fr);
+    column-gap: calc(16px * var(--mf-k))
   }
 
   .mf-field.is-wide {
@@ -674,7 +719,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   }
 
   .mf-section {
-    padding-inline: 27px
+    padding-inline: calc(27px * var(--mf-k))
   }
 }
 
@@ -696,22 +741,22 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 
   .mf-section-head p {
     max-width: none;
-    margin: 5px 0 0 35px;
+    margin: 5px 0 0 calc(35px * var(--mf-k));
     text-align: left
   }
 
   .mf-field {
-    grid-template-columns: 145px minmax(0, 1fr);
-    gap: 6px 14px
+    grid-template-columns: calc(145px * var(--mf-k)) minmax(0, 1fr);
+    gap: 6px calc(14px * var(--mf-k))
   }
 
   .mf-section {
-    padding: 18px 19px 10px
+    padding: calc(18px * var(--mf-k)) calc(19px * var(--mf-k)) calc(10px * var(--mf-k))
   }
 
   .mf-meta {
     flex-wrap: wrap;
-    gap: 10px
+    gap: calc(10px * var(--mf-k))
   }
 
   .mf-state {
@@ -723,7 +768,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   .mf-field {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 7px;
-    padding: 15px 0
+    padding: calc(15px * var(--mf-k)) 0
   }
 
   .mf-field > label {
@@ -731,7 +776,7 @@ color-mix(in srgb, var(--k-accent) 12%, white);
   }
 
   .mf-section {
-    padding: 16px 16px 7px
+    padding: calc(16px * var(--mf-k)) calc(16px * var(--mf-k)) 7px
   }
 
   .mf-footer {
@@ -740,5 +785,61 @@ color-mix(in srgb, var(--k-accent) 12%, white);
 
   .mf-control input.is-short {
     max-width: none
+  }
+}
+
+/* ---------- phones ---------- */
+@container mf-register (max-width: 560px) {
+  .mf-intro {
+    gap: calc(12px * var(--mf-k));
+    padding: calc(12px * var(--mf-k)) calc(14px * var(--mf-k))
+  }
+
+  /* facts two per line under the name */
+  .mf-facts {
+    width: 100%;
+    row-gap: calc(8px * var(--mf-k))
+  }
+
+  .mf-facts > div {
+    flex: 1 1 40%;
+    border-left: 0;
+    padding: 0
+  }
+
+  .mf-meta-ref {
+    flex-wrap: wrap;
+    gap: calc(4px * var(--mf-k)) calc(10px * var(--mf-k))
+  }
+
+  .mf-readiness {
+    width: 100%;
+    white-space: normal
+  }
+
+  .mf-bar {
+    flex: 1 1 auto;
+    width: auto
+  }
+
+  .mf-section-head p {
+    margin-left: 0
+  }
+
+  /* Cancel and Create share the row */
+  .mf-footer > .m-btn {
+    flex: 1 1 0;
+    justify-content: center
+  }
+}
+
+@media (max-width: 420px) {
+  .mf-dialog-foot {
+    flex-wrap: wrap
+  }
+
+  .mf-dialog-foot .m-btn {
+    flex: 1 1 auto;
+    justify-content: center
   }
 }

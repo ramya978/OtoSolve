@@ -5,22 +5,15 @@
      ===================================================================================================== -->
 <section class="mf-view" aria-labelledby="mf-title-timezone">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-     
-      <span class="m-eyebrow">Master data / Scheduling</span>
-      <h1 class="m-title" id="mf-title-timezone">{{ editing ? 'Edit time zone' : 'New time zone' }}</h1>
-      <p class="m-subtitle">Add an IANA time zone with its standard offset and daylight-saving behaviour.</p>
-    </div>
-    <div class="m-actions">
-  
+  <app-page-header breadcrumb="Master data / Scheduling" [heading]="editing ? 'Edit time zone' : 'New time zone'"
+                   description="Add an IANA time zone with its standard offset and daylight-saving behaviour.">
+    <div class="tzf-head-acts" actions>
       <button type="button" class="m-btn" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <form class="mf-form" novalidate (submit)="$event.preventDefault(); save()">
 
@@ -57,8 +50,6 @@
               [attr.aria-valuenow]="progress()"><i [style.width.%]="progress()"></i></span>
       </div>
     </div>
-
-
 
     <div class="m-card mf-ledger">
 
@@ -271,14 +262,12 @@
       </section>
     </div>
 
-
-
     <!-- action bar -->
     <div class="mf-footer">
-        <button type="button" class="m-btn" (click)="cancel()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
-          Cancel
-        </button>
+      <button type="button" class="m-btn" (click)="cancel()">
+        <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        Cancel
+      </button>
       <button type="submit" class="m-btn m-btn-primary">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
         {{ editing ? 'Save' : 'Create' }}

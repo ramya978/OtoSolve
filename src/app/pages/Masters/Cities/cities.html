@@ -6,13 +6,13 @@
 <section class="ml-view" aria-labelledby="ml-title-city">
 
   <app-page-header breadcrumb="Master data / Geography" heading="Cities" description="Cities mapped to their state and country, used for addresses, reporting and analytics.">
-  <ng-container actions>
-    <button type="button" class="m-btn m-btn-primary" (click)="create()">
-      <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-      Create
+    <div class="ci-head-acts" actions>
+      <button type="button" class="m-btn m-btn-primary" (click)="create()">
+        <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+        Create
       </button>
-  </ng-container>
-</app-page-header>
+    </div>
+  </app-page-header>
 
   <!-- overview -->
   <div class="ml-metrics" aria-label="Overview of cities">
@@ -83,15 +83,15 @@
     </div>
 
     <!-- table -->
-    <div class="ml-table-wrap" tabindex="0" role="region" aria-label="Cities table; scroll sideways on small screens">
-      <table class="ml-table">
+    <div class="ml-table-wrap" tabindex="0" role="region" aria-label="Cities table">
+      <table class="ml-table ml-fit">
         <caption class="m-sr">Cities · Pick a country to narrow the state filter to its regions.</caption>
         <colgroup>
           <col class="col-name" />
-          <col class="col-state" />
-          <col class="col-country" />
-          <col class="col-coords" />
-          <col class="col-status" />
+          <col class="col-state ml-p4" />
+          <col class="col-country ml-p2" />
+          <col class="col-coords ml-p1" />
+          <col class="col-status ml-p5" />
           <col class="ml-col-actions" />
         </colgroup>
         <thead>
@@ -102,20 +102,20 @@
                 <svg class="m-ico" [class.is-desc]="isDesc('name')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col" [attr.aria-sort]="ariaSort('state')">
+            <th scope="col" class="ml-p4" [attr.aria-sort]="ariaSort('state')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('state')" (click)="sortBy('state')">
                 State
                 <svg class="m-ico" [class.is-desc]="isDesc('state')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col" [attr.aria-sort]="ariaSort('country')">
+            <th scope="col" class="ml-p2" [attr.aria-sort]="ariaSort('country')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('country')" (click)="sortBy('country')">
                 Country
                 <svg class="m-ico" [class.is-desc]="isDesc('country')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col">Coordinates</th>
-            <th scope="col" [attr.aria-sort]="ariaSort('status')">
+            <th scope="col" class="ml-p1">Coordinates</th>
+            <th scope="col" class="ml-p5" [attr.aria-sort]="ariaSort('status')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('status')" (click)="sortBy('status')">
                 Status
                 <svg class="m-ico" [class.is-desc]="isDesc('status')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
@@ -134,23 +134,30 @@
                   <span class="ml-lead-copy">
                     <span class="ml-lead-name">{{ cell('name', r) }}</span>
                     <span class="ml-lead-sub">{{ sub('name', r) }}</span>
+                    <!-- values of columns hidden on narrow screens -->
+                    <span class="ml-meta"><span class="ml-meta-in">
+                      <span class="ml-m4">{{ cell('state', r) }}</span>
+                      <span class="ml-m2">{{ cell('country', r) }}</span>
+                      <span class="ml-m1">{{ cell('coords', r) }}</span>
+                      <span class="ml-m5"><span [class]="'m-tag ' + r['status']">{{ statusLabel(r) }}</span></span>
+                    </span></span>
                   </span>
                 </div>
               </td>
               <!-- State -->
-              <td>
+              <td class="ml-p4">
                 <span class="ml-text">{{ cell('state', r) }}</span>
               </td>
               <!-- Country -->
-              <td>
+              <td class="ml-p2">
                 <span class="ml-muted">{{ cell('country', r) }}</span>
               </td>
               <!-- Coordinates -->
-              <td>
+              <td class="ml-p1">
                 <span class="ml-muted">{{ cell('coords', r) }}</span>
               </td>
               <!-- Status -->
-              <td>
+              <td class="ml-p5">
                 <span [class]="'m-tag ' + r['status']">{{ statusLabel(r) }}</span>
               </td>
               <td class="is-right">
@@ -187,80 +194,79 @@
     }
 
     <!-- pager -->
-   <div class="ml-pagination">
+    <div class="ml-pagination">
 
-  <!-- Left: Results count + page size -->
-  <div class="ml-pagination-left">
-    <span class="ml-pagination-info">
-      Showing <strong>{{ from() }}–{{ to() }}</strong>
-      of <strong>{{ total() }}</strong>
-    </span>
+      <!-- Left: Results count + page size -->
+      <div class="ml-pagination-left">
+        <span class="ml-pagination-info">
+          Showing <strong>{{ from() }}–{{ to() }}</strong>
+          of <strong>{{ total() }}</strong>
+        </span>
 
-    <div class="ml-rows">
-      <span class="ml-rows-label">Rows</span>
+        <div class="ml-rows">
+          <span class="ml-rows-label">Rows</span>
 
-      <select
-        class="ml-rows-select-native"
-        [value]="pageSize()"
-        (change)="setPageSize($any($event.target).value)"
-        aria-label="Rows per page"
-      >
-        @for (size of pageSizes; track size.value) {
-          <option [value]="size.value">{{ size.label }}</option>
-        }
-      </select>
-    </div>
-  </div>
+          <select
+            class="ml-rows-select-native"
+            [value]="pageSize()"
+            (change)="setPageSize($any($event.target).value)"
+            aria-label="Rows per page"
+          >
+            @for (size of pageSizes; track size.value) {
+              <option [value]="size.value">{{ size.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
 
-  <!-- Right: Page navigation -->
-  <nav class="ml-pager" aria-label="Pagination">
+      <!-- Right: Page navigation -->
+      <nav class="ml-pager" aria-label="Pagination">
 
-    <!-- Previous -->
-    <button
-      type="button"
-      class="ml-page ml-page-arrow"
-      (click)="goPage(page() - 1)"
-      [disabled]="page() === 1"
-      aria-label="Previous page"
-    >
-      ‹
-    </button>
-
-    <!-- Page numbers -->
-    @for (p of pages(); track $index) {
-
-      @if (p === '…') {
-        <span class="ml-page-ellipsis">...</span>
-      } @else {
+        <!-- Previous -->
         <button
           type="button"
-          class="ml-page"
-          [class.is-active]="page() === p"
-          [attr.aria-current]="page() === p ? 'page' : null"
-          (click)="goPage(p)"
-          [attr.aria-label]="'Page ' + p"
+          class="ml-page ml-page-arrow"
+          (click)="goPage(page() - 1)"
+          [disabled]="page() === 1"
+          aria-label="Previous page"
         >
-          {{ p }}
+          ‹
         </button>
-      }
 
-    }
+        <!-- Page numbers -->
+        @for (p of pages(); track $index) {
 
-    <!-- Next -->
-    <button
-      type="button"
-      class="ml-page ml-page-arrow"
-      (click)="goPage(page() + 1)"
-      [disabled]="page() === totalPages()"
-      aria-label="Next page"
-    >
-      ›
-    </button>
+          @if (p === '…') {
+            <span class="ml-page-ellipsis">...</span>
+          } @else {
+            <button
+              type="button"
+              class="ml-page"
+              [class.is-active]="page() === p"
+              [attr.aria-current]="page() === p ? 'page' : null"
+              (click)="goPage(p)"
+              [attr.aria-label]="'Page ' + p"
+            >
+              {{ p }}
+            </button>
+          }
 
-  </nav>
-</div>
+        }
+
+        <!-- Next -->
+        <button
+          type="button"
+          class="ml-page ml-page-arrow"
+          (click)="goPage(page() + 1)"
+          [disabled]="page() === totalPages()"
+          aria-label="Next page"
+        >
+          ›
+        </button>
+
+      </nav>
+    </div>
   </section>
-
 
 </section>
 

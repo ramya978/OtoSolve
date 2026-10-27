@@ -7,20 +7,15 @@
      ===================================================================================================== -->
 <section class="ct-page" aria-labelledby="ct-title">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-      <span class="m-eyebrow">Master data / Geography</span>
-      <h1 class="m-title" id="ct-title">{{ editing ? 'Edit city' : 'New city' }}</h1>
-      <p class="m-subtitle">Add a city under its state, with postal pattern and map position.</p>
-    </div>
-    <div class="m-actions">
+  <app-page-header breadcrumb="Master data / Geography" [heading]="editing ? 'Edit city' : 'New city'"
+                   description="Add a city under its state, with postal pattern and map position.">
+    <div class="ct-head-acts" actions>
       <button type="button" class="m-btn ct-outline" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
         Back
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <form class="ct-sheet" novalidate (submit)="$event.preventDefault(); save()">
 
@@ -234,8 +229,10 @@
         <span><strong>{{ filledRequired() }} of {{ requiredFields.length }}</strong> required filled</span>
       </div>
       <div class="ct-bar-actions">
-   
-        <button type="button" class="m-btn ct-outline" (click)="cancel()">   <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
+        <button type="button" class="m-btn ct-outline" (click)="cancel()">
+          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+          Cancel
+        </button>
         <button type="submit" class="m-btn m-btn-primary">
           <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
           {{ editing ? 'Save' : 'Create' }}

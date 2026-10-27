@@ -5,22 +5,15 @@
      ===================================================================================================== -->
 <section class="mf-view" aria-labelledby="mf-title-currency">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-     
-      <span class="m-eyebrow">Master data / Finance</span>
-      <h1 class="m-title" id="mf-title-currency">{{ editing ? 'Edit currency' : 'New currency' }}</h1>
-      <p class="m-subtitle">Add an ISO 4217 currency with its symbol, display format and rounding rule.</p>
-    </div>
-    <div class="m-actions">
-    
+  <app-page-header breadcrumb="Master data / Finance" [heading]="editing ? 'Edit currency' : 'New currency'"
+                   description="Add an ISO 4217 currency with its symbol, display format and rounding rule.">
+    <div class="cuf-head-acts" actions>
       <button type="button" class="m-btn" (click)="cancel()">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
-        Back 
+        Back
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <form class="mf-form" novalidate (submit)="$event.preventDefault(); save()">
 
@@ -57,8 +50,6 @@
               [attr.aria-valuenow]="progress()"><i [style.width.%]="progress()"></i></span>
       </div>
     </div>
-
-  
 
     <div class="m-card mf-ledger">
 
@@ -328,14 +319,12 @@
       </section>
     </div>
 
- 
-
     <!-- action bar -->
     <div class="mf-footer">
-     <button type="button" class="m-btn" (click)="cancel()">
-          <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
-          Cancel
-        </button>
+      <button type="button" class="m-btn" (click)="cancel()">
+        <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        Cancel
+      </button>
       <button type="submit" class="m-btn m-btn-primary">
         <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(editing ? 'save' : 'check')" /></svg>
         {{ editing ? 'Save' : 'Create' }}

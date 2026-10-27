@@ -8,14 +8,83 @@
    10px uppercase captions · 16px name.
    Theme roles: PRIMARY = Create, mark, selected segment, progress, focus · SECONDARY = Back / Cancel.
    ===================================================================================================== */
+:host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed */
+  --cf-k: 1;
+  --cf-fs: calc(var(--font-scale, 1) * var(--cf-k));
+  /* the leave dialog: text never drops below 90% */
+  --cf-dfs: calc(var(--font-scale, 1) * max(var(--cf-k), .9));
+  display: block;
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --cf-k: .95; } }
+@media (max-width: 1600px) { :host { --cf-k: .9; } }
+@media (max-width: 1440px) { :host { --cf-k: .86; } }
+@media (max-width: 1280px) { :host { --cf-k: .84; } }
+
 .cf-page {
+  /* dropdowns (ms-select) follow this page's size step */
+  --ms-scale: var(--cf-k);
+  display: block;
+  min-width: 0;
   container: cf-page / inline-size
+}
+
+/* ---------- page header (shared app-page-header), same as every other page ---------- */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--cf-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--cf-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--cf-k)) !important;
+  font-size: calc(13.5px * var(--cf-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--cf-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* header Back button: one line, top-right, normal height */
+.cf-head-acts {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-self: flex-start;
+  gap: calc(8px * var(--cf-k));
+}
+
+/* buttons on this page, sized with it */
+:is(.cf-page, .cf-dialog) .m-btn {
+  height: calc(36px * var(--cf-k)) !important;
+  min-height: 0 !important;
+  padding: 0 calc(14px * var(--cf-k)) !important;
+  gap: calc(6px * var(--cf-k)) !important;
+  font-size: calc(13px * var(--cf-fs)) !important;
+  white-space: nowrap;
+}
+:is(.cf-page, .cf-dialog) .m-btn .m-ico {
+  width: calc(15px * var(--cf-k));
+  height: calc(15px * var(--cf-k));
+  flex: none;
 }
 
 /* ---------- card ---------- */
 .cf-page .cf-card {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: calc(250px * var(--cf-k)) minmax(0, 1fr);
   /* max-width: 1180px; */
   overflow: hidden;
   border: 1px solid var(--k-outline);
@@ -29,7 +98,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 24px 22px;
+  padding: calc(22px * var(--cf-k)) calc(20px * var(--cf-k));
   border-right: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line));
   background: var(--k-tint)
 }
@@ -38,14 +107,14 @@
   display: grid;
   place-items: center;
   align-self: flex-start;
-  min-width: 52px;
-  height: 52px;
+  min-width: calc(46px * var(--cf-k));
+  height: calc(46px * var(--cf-k));
   margin-bottom: 12px;
-  padding: 0 9px;
+  padding: 0 calc(9px * var(--cf-k));
   border-radius: 12px;
   background: var(--cc-btn, var(--k-accent));
   color: var(--cc-btn-ink, var(--primary-on, #fff));
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(14.5px * var(--cf-fs));
   font-weight: 600;
   letter-spacing: .4px;
   white-space: nowrap
@@ -55,7 +124,7 @@
   display: block;
   overflow: hidden;
   color: var(--k-heading);
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(15px * var(--cf-fs));
   font-weight: 600;
   letter-spacing: -.2px;
   line-height: 1.4;
@@ -72,27 +141,27 @@
 .cf-page .cf-sub {
   margin: 0;
   color: var(--k-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cf-fs));
   line-height: 1.5
 }
 
 .cf-page .cf-facts {
   display: grid;
-  margin: 18px 0 0
+  margin: calc(18px * var(--cf-k)) 0 0
 }
 
 .cf-page .cf-facts > div {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
-  padding: 9px 0;
+  gap: calc(10px * var(--cf-k));
+  padding: calc(9px * var(--cf-k)) 0;
   border-top: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line))
 }
 
 .cf-page .cf-facts dt {
   color: var(--k-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cf-fs));
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase
@@ -101,7 +170,7 @@
 .cf-page .cf-facts dd {
   margin: 0;
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cf-fs));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap
@@ -115,7 +184,7 @@
   display: grid;
   gap: 7px;
   margin-top: auto;
-  padding-top: 18px
+  padding-top: calc(18px * var(--cf-k))
 }
 
 .cf-page .cf-progress > div {
@@ -123,7 +192,7 @@
   align-items: baseline;
   justify-content: space-between;
   color: var(--k-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cf-fs));
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase
@@ -131,7 +200,7 @@
 
 .cf-page .cf-progress strong {
   color: var(--k-accent-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cf-fs));
   letter-spacing: 0;
   font-variant-numeric: tabular-nums
 }
@@ -155,7 +224,7 @@
 /* ---------- right: fields ---------- */
 .cf-page .cf-main {
   min-width: 0;
-  padding: 8px 26px 22px;
+  padding: calc(6px * var(--cf-k)) calc(24px * var(--cf-k)) calc(20px * var(--cf-k));
   container: cf-main / inline-size
 }
 
@@ -163,15 +232,15 @@
 .cf-page .cf-group {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 20px 0 12px;
+  gap: calc(12px * var(--cf-k));
+  margin: calc(18px * var(--cf-k)) 0 calc(11px * var(--cf-k));
   color: var(--k-accent-ink);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cf-fs));
   font-weight: 600;
   letter-spacing: 1.2px;
   line-height: 1.4;
   text-transform: uppercase;
-  scroll-margin-top: 90px
+  scroll-margin-top: calc(90px * var(--cf-k))
 }
 
 .cf-page .cf-group::after {
@@ -184,7 +253,7 @@
 .cf-page .cf-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px 16px;
+  gap: calc(13px * var(--cf-k)) calc(14px * var(--cf-k));
   align-items: start
 }
 
@@ -199,7 +268,7 @@
 .cf-page .cf-label {
   display: block;
   color: var(--k-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cf-fs));
   font-weight: 550;
   line-height: 1.4;
   text-align: left;
@@ -214,14 +283,14 @@
   display: block;
   width: 100%;
   min-width: 0;
-  height: 40px;
+  height: calc(38px * var(--cf-k));
   margin: 0;
-  padding: 8px 11px;
+  padding: calc(8px * var(--cf-k)) calc(11px * var(--cf-k));
   border: 1px solid #8080806e;
   border-radius: var(--btn-radius, 7px);
   background: var(--white, #fff);
   color: var(--k-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cf-fs));
   line-height: 1.5;
   box-shadow: none;
   transition: border-color 140ms, box-shadow 140ms
@@ -229,7 +298,7 @@
 
 .cf-page .cf-field input.cf-mono {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: calc(12.5px * var(--font-scale, 1))
+  font-size: calc(12.5px * var(--cf-fs))
 }
 
 .cf-page .cf-field input::placeholder {
@@ -263,7 +332,7 @@
 
 .cf-page .cf-field small {
   color: var(--k-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cf-fs));
   line-height: 1.45
 }
 
@@ -278,15 +347,15 @@
 }
 
 .cf-page .cf-note .m-ico {
-  width: 13px;
-  height: 13px
+  width: calc(13px * var(--cf-k));
+  height: calc(13px * var(--cf-k))
 }
 
 /* segmented choice: one row, equal height with the inputs */
 .cf-page .cf-segs {
   display: flex;
   gap: 3px;
-  height: 40px;
+  height: calc(38px * var(--cf-k));
   padding: 3px;
   border: 1px dashed var(--k-field-line);
   border-radius: var(--btn-radius, 7px);
@@ -298,16 +367,17 @@
 }
 
 .cf-page .cf-segs .cf-seg {
-  flex: 1;
+  /* options share the row by the length of their text, so "Has subdivisions" fits a narrow field */
+  flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  padding: 0 10px;
+  padding: 0 calc(8px * var(--cf-k));
   overflow: hidden;
   border: 0;
   border-radius: calc(var(--btn-radius, 7px) - 2px);
   background: transparent;
   color: var(--k-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--cf-fs));
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -333,20 +403,20 @@
 
 /* ---------- error summary ---------- */
 .cf-page .cf-errors {
-  margin: 18px 0 4px;
-  padding: 12px 16px;
+  margin: calc(18px * var(--cf-k)) 0 4px;
+  padding: calc(12px * var(--cf-k)) calc(16px * var(--cf-k));
   border: 1px solid var(--status-danger-line, #d68591);
   border-left: 3px solid var(--status-danger, #b42335);
   border-radius: 8px;
   background: var(--status-danger-bg, #fbeef0);
   color: var(--status-danger-ink, #8d2030);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cf-fs));
   outline: none
 }
 
 .cf-page .cf-errors ul {
   margin: 6px 0 0;
-  padding-left: 18px
+  padding-left: calc(18px * var(--cf-k))
 }
 
 .cf-page .cf-errors button {
@@ -354,7 +424,7 @@
   border: 0;
   background: none;
   color: inherit;
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cf-fs));
   text-align: left;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -366,9 +436,9 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 24px;
-  padding-top: 18px;
+  gap: calc(10px * var(--cf-k));
+  margin-top: calc(22px * var(--cf-k));
+  padding-top: calc(16px * var(--cf-k));
   border-top: 1px solid var(--k-line)
 }
 
@@ -412,9 +482,9 @@
   top: 50%;
   left: 50%;
   z-index: 901;
-  width: 430px;
+  width: calc(420px * var(--cf-k));
   max-width: calc(100vw - 24px);
-  padding: 24px;
+  padding: calc(20px * var(--cf-k));
   border: 1px solid var(--k-line);
   border-radius: 14px;
   background: var(--white, #fff);
@@ -423,24 +493,30 @@
 }
 
 .cf-dialog h2 {
+  margin: 0;
   color: var(--k-heading);
-  font-size: calc(19px * var(--font-scale, 1));
+  font-size: calc(16px * var(--cf-dfs));
   font-weight: 600;
   letter-spacing: -.4px
 }
 
 .cf-dialog p {
-  margin-top: 10px;
+  margin: calc(8px * var(--cf-k)) 0 0;
   color: var(--k-muted);
-  font-size: calc(13px * var(--font-scale, 1));
-  line-height: 1.75
+  font-size: calc(12.5px * var(--cf-dfs));
+  line-height: 1.65
 }
 
 .cf-dialog-foot {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 22px
+  gap: calc(8px * var(--cf-k));
+  margin-top: calc(18px * var(--cf-k))
+}
+
+.cf-dialog .m-btn {
+  height: calc(34px * var(--cf-k)) !important;
+  font-size: calc(12.5px * var(--cf-dfs)) !important;
 }
 
 /* ---------- widths ---------- */
@@ -460,8 +536,8 @@
   .cf-page .cf-side {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    column-gap: 14px;
-    padding: 16px 18px;
+    column-gap: calc(14px * var(--cf-k));
+    padding: calc(16px * var(--cf-k)) calc(18px * var(--cf-k));
     border-right: 0;
     border-bottom: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line))
   }
@@ -479,8 +555,8 @@
   .cf-page .cf-facts {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 18px;
-    margin-top: 12px
+    gap: 0 calc(18px * var(--cf-k));
+    margin-top: calc(12px * var(--cf-k))
   }
 
   .cf-page .cf-facts > div {
@@ -490,11 +566,11 @@
   }
 
   .cf-page .cf-progress {
-    padding-top: 10px
+    padding-top: calc(10px * var(--cf-k))
   }
 
   .cf-page .cf-main {
-    padding-inline: 18px
+    padding-inline: calc(18px * var(--cf-k))
   }
 }
 
@@ -505,5 +581,42 @@
 
   .cf-page .cf-field {
     grid-column: auto
+  }
+}
+/* ---------- phones ---------- */
+@container cf-page (max-width: 520px) {
+  /* preview strip: name and progress only, facts wrap two per line */
+  .cf-page .cf-side {
+    padding: calc(14px * var(--cf-k));
+  }
+
+  .cf-page .cf-facts > div {
+    flex: 1 1 40%;
+    justify-content: flex-start;
+  }
+
+  .cf-page .cf-main {
+    padding: calc(4px * var(--cf-k)) calc(14px * var(--cf-k)) calc(16px * var(--cf-k));
+  }
+
+  /* Cancel and Create share the row */
+  .cf-page .cf-spacer {
+    display: none;
+  }
+
+  .cf-page .cf-actions > .m-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .cf-dialog-foot {
+    flex-wrap: wrap;
+  }
+
+  .cf-dialog-foot .m-btn {
+    flex: 1 1 auto;
+    justify-content: center;
   }
 }

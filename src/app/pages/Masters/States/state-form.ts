@@ -3,6 +3,7 @@ import { FormValues } from '../../../Shared/Masters/masters.types';
 import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { STATE } from './states.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 /**
  * New state / edit state - create page (/app/masters/state/new and /app/masters/state/:id/edit).
@@ -11,7 +12,7 @@ import { STATE } from './states.config';
  */
 @Component({
   selector: 'app-state-form',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './state-form.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './state-form.css']
 })

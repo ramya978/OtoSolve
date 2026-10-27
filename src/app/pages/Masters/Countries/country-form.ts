@@ -3,12 +3,13 @@ import { FormValues } from '../../../Shared/Masters/masters.types';
 import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { COUNTRY } from './countries.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 type StepState = 'current' | 'done' | 'error' | 'todo';
 
 @Component({
   selector: 'app-country-form',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './country-form.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './country-form.css']
 })

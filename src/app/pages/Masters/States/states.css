@@ -1,23 +1,95 @@
 /* =====================================================================================================
    STATES - list page styles
-   Shared register styles: app/Shared/Masters/masters-shared.css + app/Shared/Masters/master-list.css.
-   This file holds what belongs to this page only: its column widths and the overview grid.
+   Shared register styles: app/Shared/Masters/masters-shared.css + app/Shared/Masters/master-list.css
+   (sizing by screen, metric hiding, column priorities ml-p1…ml-p5, drawer and dialog live there).
+   This file holds what belongs to this page only: the header, its column widths and the filter row.
    ===================================================================================================== */
 
-/* overview: one row of metric cards (count set from the component) */
-.ml-metrics {
-  grid-template-columns: repeat(var(--ml-metric-count, 5), minmax(0, 1fr))
+:host {
+  display: block;
 }
 
-/* search wider, then one lane per filter */
+/* ---------- page header (shared app-page-header), same as every other page ---------- */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--ml-k, 1)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--ml-fs, 1)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--ml-k, 1)) !important;
+  font-size: calc(13.5px * var(--ml-fs, 1)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--ml-fs, 1)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* header button: one line, top-right */
+.st-head-acts {
+  display: flex;
+  flex-wrap: nowrap;
+  align-self: flex-start;
+  gap: calc(8px * var(--ml-k, 1));
+}
+
+/* ---------- search wider, then one lane per filter (three filters) ---------- */
 .ml-filters {
-  grid-template-columns: minmax(240px, 1.6fr) repeat(3, minmax(150px, .7fr))
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, .7fr))
 }
 
-/* column widths (the actions column is fixed in master-list.css) */
-.col-name { width: 28.89% }
-.col-country { width: 16.67% }
-.col-jurisdiction { width: 15.56% }
-.col-gst { width: 8.89% }
-.col-timezone { width: 16.67% }
-.col-status { width: 13.33% }
+/* the shared select, same height as search */
+:host ::ng-deep .ml-field ms-select {
+  display: block;
+  min-width: 0;
+}
+:host ::ng-deep .ml-field ms-select button,
+:host ::ng-deep .ml-field ms-select select,
+:host ::ng-deep .ml-field ms-select input {
+  min-height: 0 !important;
+  height: calc(38px * var(--ml-k, 1)) !important;
+  font-size: calc(13px * var(--ml-fs, 1)) !important;
+}
+
+/* narrower: search on its own row, the three filters side by side under it */
+@container ml-c (max-width: 960px) {
+  .ml-filters { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .ml-filters > .ml-field:first-child { grid-column: 1 / -1; }
+}
+/* phones: two per row, status takes the full row */
+@container ml-c (max-width: 520px) {
+  .ml-filters { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .ml-filters > .ml-field:last-child { grid-column: 1 / -1; }
+}
+
+/* ---------- column widths (actions column is sized in master-list.css) ---------- */
+.col-name { width: 28% }
+.col-country { width: 16% }
+.col-jurisdiction { width: 15% }
+.col-gst { width: 10% }
+.col-timezone { width: 16% }
+.col-status { width: 13% }
+
+/* as columns hide (time zone → GST → jurisdiction → country → status), the state column takes the room */
+@container ml-c (max-width: 860px) {
+  .col-name { width: 36% }
+}
+@container ml-c (max-width: 720px) {
+  .col-name { width: auto }
+  .col-country { width: 24% }
+  .col-status { width: 22% }
+}
+@container ml-c (max-width: 560px) {
+  .col-status { width: 30% }
+}

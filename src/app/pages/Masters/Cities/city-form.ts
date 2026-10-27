@@ -3,11 +3,12 @@ import { FormValues } from '../../../Shared/Masters/masters.types';
 import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { CITY } from './cities.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 @Component({
   selector: 'app-city-form',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './city-form.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './city-form.css']
 })

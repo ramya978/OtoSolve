@@ -1,4 +1,6 @@
-/* Custom dropdown in the Workspace Kit style: 41px field, 7px corners, hairline panel, theme states */
+/* Custom dropdown in the Workspace Kit style: 38px field, 7px corners, hairline panel, theme states.
+   Sizes follow the page (--ms-scale from the page, or --ml-k from master-list.css; 1 elsewhere), so it stays light on laptops
+   and when zoomed. The list never runs off the card: in the last field of a row it opens to the left. */
 :host {
   --ms-accent: var(--primary, var(--accent, #087e8b));
   --ms-accent-ink: color-mix(in srgb, var(--ms-accent) 55%, var(--mix-ink, #000));
@@ -6,6 +8,10 @@
   --ms-hover-ink: color-mix(in srgb, var(--theme-hover, var(--ms-accent)) 60%, var(--mix-ink, #000));
   --ms-tint: color-mix(in srgb, var(--ms-accent) 9%, var(--white, #fff));
   --ms-field-line: color-mix(in srgb, var(--muted, #536777) 70%, var(--line, #e2e9ee));
+
+  /* a page can pass its own size step as --ms-scale; master lists pass --ml-k */
+  --ms-k: var(--ms-scale, var(--ml-k, 1));
+  --ms-fs: calc(var(--font-scale, 1) * var(--ms-k));
 
   position: relative;
   display: block;
@@ -15,16 +21,16 @@
 .ms-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--ms-k));
   width: 100%;
-  min-height: 41px;
-  padding: 8px 11px;
-    border: 1px solid #80808085;
+  min-height: calc(38px * var(--ms-k));
+  padding: calc(6px * var(--ms-k)) calc(11px * var(--ms-k));
+  border: 1px solid #80808085;
   border-radius: var(--btn-radius, 7px);
   background: var(--white, #fff);
   color: var(--ink, #20364a);
   font: inherit;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--ms-fs));
   line-height: 1.5;
   text-align: left;
   cursor: pointer;
@@ -32,8 +38,8 @@
 }
 
 :host(.is-compact) .ms-trigger {
-  min-height: 42px;
-  font-size: calc(12px * var(--font-scale, 1))
+  min-height: calc(38px * var(--ms-k));
+  font-size: calc(12.5px * var(--ms-fs))
 }
 
 .ms-trigger:hover:not(:disabled) {
@@ -72,13 +78,13 @@
 .ms-value-hint {
   flex: none;
   color: var(--muted, #536777);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--ms-fs))
 }
 
 .ms-chev {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: calc(15px * var(--ms-k));
+  height: calc(15px * var(--ms-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
@@ -95,12 +101,12 @@
 /* ---- panel ---- */
 .ms-panel {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 4px);
   left: 0;
   z-index: 60;
   width: 100%;
-  min-width: 200px;
-  padding: 5px;
+  min-width: min(calc(190px * var(--ms-k)), 100vw - 32px);
+  padding: calc(4px * var(--ms-k));
   border: 1px solid var(--line, #e2e9ee);
   border-radius: var(--btn-radius, 8px);
   background: var(--white, #fff);
@@ -110,7 +116,14 @@
 
 .ms-panel.is-up {
   top: auto;
-  bottom: calc(100% + 5px)
+  bottom: calc(100% + 4px)
+}
+
+/* last field of a filter row (right edge of the card): open towards the left so the list stays in view */
+:host-context(.ml-field:last-child) .ms-panel,
+:host(.is-end) .ms-panel {
+  left: auto;
+  right: 0
 }
 
 @keyframes ms-in {
@@ -120,9 +133,9 @@
 .ms-search {
   display: flex;
   align-items: center;
-  gap: 7px;
-  margin: 0 0 5px;
-  padding: 0 9px;
+  gap: calc(7px * var(--ms-k));
+  margin: 0 0 calc(4px * var(--ms-k));
+  padding: 0 calc(9px * var(--ms-k));
   border: 1px solid var(--line, #e2e9ee);
   border-radius: 6px
 }
@@ -133,8 +146,8 @@
 
 .ms-search svg {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: calc(14px * var(--ms-k));
+  height: calc(14px * var(--ms-k));
   fill: none;
   stroke: var(--muted, #536777);
   stroke-width: 1.5;
@@ -144,18 +157,18 @@
 .ms-search input {
   flex: 1;
   min-width: 0;
-  height: 34px;
+  height: calc(32px * var(--ms-k));
   padding: 0;
   border: 0;
   outline: none;
   background: transparent;
   color: var(--ink, #20364a);
   font: inherit;
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12.5px * var(--ms-fs))
 }
 
 .ms-list {
-  max-height: 264px;
+  max-height: calc(264px * var(--ms-k));
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -167,12 +180,12 @@
 .ms-option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 7px 9px;
+  gap: calc(8px * var(--ms-k));
+  min-height: calc(32px * var(--ms-k));
+  padding: calc(6px * var(--ms-k)) calc(9px * var(--ms-k));
   border-radius: 6px;
   color: var(--ink, #20364a);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--ms-fs));
   line-height: 1.4;
   cursor: pointer
 }
@@ -184,7 +197,7 @@
 
 .ms-option.is-selected {
   color: var(--ms-accent-ink);
-  font-weight: 600
+  font-weight: 550
 }
 
 .ms-option-label {
@@ -198,14 +211,14 @@
 .ms-option-hint {
   flex: none;
   color: var(--muted, #536777);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--ms-fs));
   font-weight: 400
 }
 
 .ms-tick {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: calc(14px * var(--ms-k));
+  height: calc(14px * var(--ms-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -214,9 +227,9 @@
 }
 
 .ms-empty {
-  padding: 14px 9px;
+  padding: calc(12px * var(--ms-k)) calc(9px * var(--ms-k));
   color: var(--muted, #536777);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--ms-fs));
   text-align: center
 }
 

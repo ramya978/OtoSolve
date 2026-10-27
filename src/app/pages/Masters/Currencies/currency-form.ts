@@ -3,10 +3,11 @@ import { FormValues } from '../../../Shared/Masters/masters.types';
 import { MasterFormBase } from '../../../Shared/Masters/master-form.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { CURRENCY } from './currencies.config';
+import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 @Component({
   selector: 'app-currency-form',
-  imports: [MsSelect],
+  imports: [MsSelect,PageHeader],
   templateUrl: './currency-form.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-form.css', './currency-form.css']
 })

@@ -5,21 +5,14 @@
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-currency">
 
-  <!-- page heading -->
-  <div class="m-heading">
-    <div>
-      <span class="m-eyebrow">Master data / Finance</span>
-      <h1 class="m-title" id="ml-title-currency">Currencies</h1>
-      <p class="m-subtitle">ISO 4217 currencies for billing and payments, with their symbol, decimals and rounding.</p>
-    </div>
-    <div class="m-actions">
-     
+  <app-page-header breadcrumb="Master data / Finance" heading="Currencies" description="ISO 4217 currencies for billing and payments, with their symbol, decimals and rounding.">
+    <div class="cu-head-acts" actions>
       <button type="button" class="m-btn m-btn-primary" (click)="create()">
         <svg class="m-ico m-ico-plus" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        Create 
+        Create
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- overview -->
   <div class="ml-metrics" aria-label="Overview of currencies">
@@ -85,16 +78,16 @@
     </div>
 
     <!-- table -->
-    <div class="ml-table-wrap" tabindex="0" role="region" aria-label="Currencies table; scroll sideways on small screens">
-      <table class="ml-table">
+    <div class="ml-table-wrap" tabindex="0" role="region" aria-label="Currencies table">
+      <table class="ml-table ml-fit">
         <caption class="m-sr">Currencies · Decimals and rounding decide how every amount in that currency is stored and shown.</caption>
         <colgroup>
           <col class="col-name" />
-          <col class="col-symbol" />
-          <col class="col-type" />
-          <col class="col-decimals" />
-          <col class="col-sample" />
-          <col class="col-status" />
+          <col class="col-symbol ml-p4" />
+          <col class="col-type ml-p3" />
+          <col class="col-decimals ml-p2" />
+          <col class="col-sample ml-p1" />
+          <col class="col-status ml-p5" />
           <col class="ml-col-actions" />
         </colgroup>
         <thead>
@@ -105,21 +98,21 @@
                 <svg class="m-ico" [class.is-desc]="isDesc('name')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col" class="is-center">Symbol</th>
-            <th scope="col" [attr.aria-sort]="ariaSort('type')">
+            <th scope="col" class="is-center ml-p4">Symbol</th>
+            <th scope="col" class="ml-p3" [attr.aria-sort]="ariaSort('type')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('type')" (click)="sortBy('type')">
                 Type
                 <svg class="m-ico" [class.is-desc]="isDesc('type')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col" class="is-center" [attr.aria-sort]="ariaSort('decimals')">
+            <th scope="col" class="is-center ml-p2" [attr.aria-sort]="ariaSort('decimals')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('decimals')" (click)="sortBy('decimals')">
                 Decimals
                 <svg class="m-ico" [class.is-desc]="isDesc('decimals')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
               </button>
             </th>
-            <th scope="col">Shown as</th>
-            <th scope="col" [attr.aria-sort]="ariaSort('status')">
+            <th scope="col" class="ml-p1">Shown as</th>
+            <th scope="col" class="ml-p5" [attr.aria-sort]="ariaSort('status')">
               <button type="button" class="ml-sort" [class.is-on]="isSorted('status')" (click)="sortBy('status')">
                 Status
                 <svg class="m-ico" [class.is-desc]="isDesc('status')" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
@@ -138,27 +131,35 @@
                   <span class="ml-lead-copy">
                     <span class="ml-lead-name">{{ cell('name', r) }}</span>
                     <span class="ml-lead-sub">{{ sub('name', r) }}</span>
+                    <!-- values of columns hidden on narrow screens -->
+                    <span class="ml-meta"><span class="ml-meta-in">
+                      @if (cell('symbol', r) !== '—') { <span class="ml-m4">{{ cell('symbol', r) }}</span> }
+                      <span class="ml-m3">{{ cell('type', r) }}</span>
+                      <span class="ml-m2">{{ cell('decimals', r) }} decimals</span>
+                      <span class="ml-m1">{{ cell('sample', r) }}</span>
+                      <span class="ml-m5"><span [class]="'m-tag ' + r['status']">{{ statusLabel(r) }}</span></span>
+                    </span></span>
                   </span>
                 </div>
               </td>
               <!-- Symbol -->
-              <td class="is-center">
+              <td class="is-center ml-p4">
                 @if (cell('symbol', r) !== '—') { <span class="ml-chip">{{ cell('symbol', r) }}</span> } @else { <span class="ml-muted">—</span> }
               </td>
               <!-- Type -->
-              <td>
+              <td class="ml-p3">
                 <span class="ml-muted">{{ cell('type', r) }}</span>
               </td>
               <!-- Decimals -->
-              <td class="is-center">
+              <td class="is-center ml-p2">
                 <span class="ml-num">{{ cell('decimals', r) }}</span>
               </td>
               <!-- Shown as -->
-              <td>
+              <td class="ml-p1">
                 <span class="ml-text">{{ cell('sample', r) }}</span>
               </td>
               <!-- Status -->
-              <td>
+              <td class="ml-p5">
                 <span [class]="'m-tag ' + r['status']">{{ statusLabel(r) }}</span>
               </td>
               <td class="is-right">
@@ -195,78 +196,78 @@
     }
 
     <!-- pager -->
-  <div class="ml-pagination">
+    <div class="ml-pagination">
 
-  <!-- Left: Results count + page size -->
-  <div class="ml-pagination-left">
-    <span class="ml-pagination-info">
-      Showing <strong>{{ from() }}–{{ to() }}</strong>
-      of <strong>{{ total() }}</strong>
-    </span>
+      <!-- Left: Results count + page size -->
+      <div class="ml-pagination-left">
+        <span class="ml-pagination-info">
+          Showing <strong>{{ from() }}–{{ to() }}</strong>
+          of <strong>{{ total() }}</strong>
+        </span>
 
-    <div class="ml-rows">
-      <span class="ml-rows-label">Rows</span>
+        <div class="ml-rows">
+          <span class="ml-rows-label">Rows</span>
 
-      <select
-        class="ml-rows-select-native"
-        [value]="pageSize()"
-        (change)="setPageSize($any($event.target).value)"
-        aria-label="Rows per page"
-      >
-        @for (size of pageSizes; track size.value) {
-          <option [value]="size.value">{{ size.label }}</option>
-        }
-      </select>
-    </div>
-  </div>
+          <select
+            class="ml-rows-select-native"
+            [value]="pageSize()"
+            (change)="setPageSize($any($event.target).value)"
+            aria-label="Rows per page"
+          >
+            @for (size of pageSizes; track size.value) {
+              <option [value]="size.value">{{ size.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
 
-  <!-- Right: Page navigation -->
-  <nav class="ml-pager" aria-label="Pagination">
+      <!-- Right: Page navigation -->
+      <nav class="ml-pager" aria-label="Pagination">
 
-    <!-- Previous -->
-    <button
-      type="button"
-      class="ml-page ml-page-arrow"
-      (click)="goPage(page() - 1)"
-      [disabled]="page() === 1"
-      aria-label="Previous page"
-    >
-      ‹
-    </button>
-
-    <!-- Page numbers -->
-    @for (p of pages(); track $index) {
-
-      @if (p === '…') {
-        <span class="ml-page-ellipsis">...</span>
-      } @else {
+        <!-- Previous -->
         <button
           type="button"
-          class="ml-page"
-          [class.is-active]="page() === p"
-          [attr.aria-current]="page() === p ? 'page' : null"
-          (click)="goPage(p)"
-          [attr.aria-label]="'Page ' + p"
+          class="ml-page ml-page-arrow"
+          (click)="goPage(page() - 1)"
+          [disabled]="page() === 1"
+          aria-label="Previous page"
         >
-          {{ p }}
+          ‹
         </button>
-      }
 
-    }
+        <!-- Page numbers -->
+        @for (p of pages(); track $index) {
 
-    <!-- Next -->
-    <button
-      type="button"
-      class="ml-page ml-page-arrow"
-      (click)="goPage(page() + 1)"
-      [disabled]="page() === totalPages()"
-      aria-label="Next page"
-    >
-      ›
-    </button>
+          @if (p === '…') {
+            <span class="ml-page-ellipsis">...</span>
+          } @else {
+            <button
+              type="button"
+              class="ml-page"
+              [class.is-active]="page() === p"
+              [attr.aria-current]="page() === p ? 'page' : null"
+              (click)="goPage(p)"
+              [attr.aria-label]="'Page ' + p"
+            >
+              {{ p }}
+            </button>
+          }
 
-  </nav>
-</div>
+        }
+
+        <!-- Next -->
+        <button
+          type="button"
+          class="ml-page ml-page-arrow"
+          (click)="goPage(page() + 1)"
+          [disabled]="page() === totalPages()"
+          aria-label="Next page"
+        >
+          ›
+        </button>
+
+      </nav>
+    </div>
   </section>
 
 </section>
