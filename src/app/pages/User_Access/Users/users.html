@@ -6,19 +6,19 @@
 <div class="us-page">
   <app-page-header breadcrumb="Users &amp; Access / People" heading="Everyone who can sign in" description="People in this organisation with their role, unit and access — as cards or a compact list.">
   <ng-container actions>
-     <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
+     <div class="us-head-acts">
    @if (checkedCount()) {
       <button type="button" class="i-btn" (click)="openBulkActions()"
               [attr.aria-label]="'Open bulk actions for ' + checkedCount() + ' people'">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('layers')" /></svg>
-        Bulk actions
+        <span class="us-l-long">Bulk actions</span><span class="us-l-short">Bulk</span>
         <span class="i-count i-count--on-primary">{{ checkedCount() }}</span>
       </button>
     }
-    <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportCsv()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+    <button type="button" class="i-btn us-export" title="Export" aria-label="Export" [disabled]="exporting()" (click)="exportCsv()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span>Export</span></button>
     <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg><span class="us-l-long">Invite person</span><span class="us-l-short">Invite</span></button>
      </div>
  
   </ng-container>
