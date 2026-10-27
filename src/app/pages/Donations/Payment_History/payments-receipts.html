@@ -50,40 +50,40 @@
 
   <div class="pr-tablewrap">
     <table class="pr-table">
-      <colgroup>
-        <col class="c-donor" />
-        <col class="c-ref" />
-        <col class="c-amount" />
-        <col class="c-status" />
-        <col class="c-receipt" />
-        <col class="c-action" />
-      </colgroup>
+      <!-- column widths live on the headings; columns hide as the card narrows:
+           E-mail → Receipt → Status (their facts move under the donor name) -->
       <thead>
         <tr>
-          <th>Donor / E-mail</th>
-          <th>Event / Receipt ref</th>
-          <th>Amount</th>
-          <th>Status &amp; Received</th>
-          <th>Receipt</th>
-          <th>Action</th>
+          <th class="pr-col-donor">Donor / Ref</th>
+          <th class="pr-col-ref">E-mail</th>
+          <th class="pr-col-amount">Amount</th>
+          <th class="pr-col-status">Status &amp; Received</th>
+          <th class="pr-col-receipt">Receipt</th>
+          <th class="pr-col-action"><span class="pr-sr">Action</span></th>
         </tr>
       </thead>
       <tbody>
         @for (r of pageRows(); track r.ref) {
           <tr>
-            <!-- donor name first, e-mail below -->
-            <td>
+            <!-- donor name first, reference below; when columns hide, their facts show here -->
+            <td class="pr-col-donor">
               <div class="pr-donor">
                 <span [class]="'pr-av ' + avatarTone(r.donor)" aria-hidden="true">{{ initials(r.donor) }}</span>
                 <div class="pr-stack">
                   <span class="pr-main" [class.is-anon]="!r.donor">{{ r.donor ?? 'Anonymous donation' }}</span>
-                  <span class="pr-sub"> {{ r.ref }}</span>
+                  <span class="pr-sub">{{ r.ref }}</span>
+                  <span class="pr-sub pr-meta-email">{{ r.email ?? 'No e-mail on record' }}</span>
+                  <span class="pr-meta">
+                    <span [class]="'pr-tag tag-' + r.status">{{ statusLabel(r.status) }}</span>
+                    <span class="pr-meta-date">{{ fmtDate(r.receivedAt) }}</span>
+                    <span [class]="'pr-meta-receipt receipt-' + receiptState(r)">· {{ receiptTitle(r) }}</span>
+                  </span>
                 </div>
               </div>
             </td>
 
-            <!-- reference -->
-            <td>
+            <!-- e-mail -->
+            <td class="pr-col-ref">
               <div class="pr-stack">
                 <span class="pr-ref">{{ r.email ?? 'No e-mail on record' }}</span>
                 <!-- <span class="pr-sub">{{ refNote(r) }}</span> -->
@@ -91,12 +91,12 @@
             </td>
 
             <!-- amount -->
-            <td>
+            <td class="pr-col-amount">
               <span class="pr-amount">{{ curreny(r.amount, r.currency) }}</span>
             </td>
 
             <!-- status pill + received date -->
-            <td>
+            <td class="pr-col-status">
               <div class="pr-stack">
                 <span [class]="'pr-tag tag-' + r.status">{{ statusLabel(r.status) }}</span>
                 <span class="pr-sub">{{ fmtDate(r.receivedAt) }}</span>
@@ -104,7 +104,7 @@
             </td>
 
             <!-- receipt state -->
-            <td>
+            <td class="pr-col-receipt">
               <div class="pr-stack">
                 <span [class]="'pr-main receipt-' + receiptState(r)">{{ receiptTitle(r) }}</span>
                 <span class="pr-sub">{{ receiptSub(r) }}</span>
@@ -112,7 +112,7 @@
             </td>
 
             <!-- action -->
-            <td>
+            <td class="pr-col-action">
               <button type="button" class="pr-view" data-tip="View" [attr.aria-label]="'View ' + r.ref"
                       (click)="selected.set(r)">
                 <svg class="pr-eye" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
