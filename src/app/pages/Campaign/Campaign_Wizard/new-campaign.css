@@ -28,9 +28,14 @@
   --cp-amber-soft: var(--status-warning-bg);
   --cp-amber-line: var(--status-warning-line);
 
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+     is zoomed, so fields, labels and cards never look oversized. Sizes below multiply by these. */
+  --cp-k: 1;
+  --cp-fs: calc(var(--font-scale, 1) * var(--cp-k));
+
   display: block;
   color: var(--cp-ink);
-  font: calc(14px * var(--font-scale, 1))/var(--line-height, 1.5) var(--cp-font);
+  font: calc(14px * var(--cp-fs))/var(--line-height, 1.5) var(--cp-font);
   font-weight: var(--font-weight, 400)
 }
 
@@ -76,9 +81,31 @@
 
 
 
+/* the size container sits on the page wrapper, not on :host - a container on :host would pin the
+   fixed toast to the page box instead of the screen */
+.cp-wrap {
+  container: cp-page / inline-size;
+  min-width: 0;
+}
+
+/* hints and errors under each field (was an inline margin-top: 10px) */
+.cp-field > .cp-hint,
+.cp-field > .cp-error,
+.cp-rt-foot > .cp-hint,
+.cp-rt-foot > .cp-error {
+  margin-top: calc(8px * var(--cp-k));
+}
+
+.cp-info .cp-connects {
+  margin-top: calc(14px * var(--cp-k));
+}
+
+/* short labels for narrow screens */
+.cp-l-short { display: none; }
+
 .cp-ico {
-  width: 16px;
-  height: 16px;
+  width: calc(16px * var(--cp-k));
+  height: calc(16px * var(--cp-k));
   flex-shrink: 0;
   fill: none;
   stroke: currentColor;
@@ -95,11 +122,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  min-height: 38px;
-  padding: 8px 14px;
+  gap: calc(8px * var(--cp-k));
+  min-height: calc(38px * var(--cp-k));
+  padding: calc(8px * var(--cp-k)) calc(14px * var(--cp-k));
   border-radius: var(--btn-radius);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-weight: 550;
   white-space: nowrap;
   transition: background-color .15s, color .15s, border-color .15s
@@ -127,7 +154,7 @@
   padding: 4px 6px;
   border-radius: 6px;
   color: var(--secondary-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   font-weight: 550
 }
 
@@ -142,32 +169,32 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 22px
+  gap: calc(18px * var(--cp-k));
+  margin-bottom: calc(22px * var(--cp-k))
 }
 
 .cp-pagehead h1 {
   color: var(--cp-heading);
-  font-size: calc(30px * var(--font-scale, 1));
+  font-size: calc(30px * var(--cp-fs));
   font-weight: 650;
   letter-spacing: -.8px;
   line-height: 1.25
 }
 
 .cp-pagehead p {
-  max-width: 680px;
-  margin-top: 8px;
+  max-width: calc(680px * var(--cp-k));
+  margin-top: calc(8px * var(--cp-k));
   color: var(--cp-muted);
-  font-size: calc(13px * var(--font-scale, 1))
+  font-size: calc(13px * var(--cp-fs))
 }
 
 .cp-create {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 24px 26px;
-  margin-bottom: 20px;
+  gap: calc(18px * var(--cp-k));
+  padding: calc(24px * var(--cp-k)) calc(26px * var(--cp-k));
+  margin-bottom: calc(20px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--cp-line);
   border-radius: var(--radius)}
@@ -176,16 +203,16 @@
 .cp-index-title {
   display: block;
   color: var(--cp-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cp-fs));
   font-weight: 600;
   letter-spacing: 1.2px;
   text-transform: uppercase
 }
 
 .cp-create h2 {
-  margin-top: 8px;
+  margin-top: calc(8px * var(--cp-k));
   color: var(--cp-heading);
-  font-size: calc(21px * var(--font-scale, 1));
+  font-size: calc(21px * var(--cp-fs));
   font-weight: 650;
   letter-spacing: -.4px;
   line-height: 1.3
@@ -194,22 +221,22 @@
 .cp-create p {
   margin-top: 6px;
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-create-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(12px * var(--cp-k));
   flex-shrink: 0
 }
 
 .cp-pill {
-  padding: 4px 9px;
+  padding: 4px calc(9px * var(--cp-k));
   border-radius: 6px;
   background: var(--cp-soft);
   color: var(--cp-strong);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 600
 }
 
@@ -218,8 +245,8 @@
    ===================================================================================================== */
 .cp-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr) 250px;
-  gap: 20px;
+  grid-template-columns: calc(200px * var(--cp-k)) minmax(0, 1fr) calc(250px * var(--cp-k));
+  gap: calc(20px * var(--cp-k));
   align-items: start
 }
 
@@ -228,11 +255,11 @@
   position: sticky;
   top: 16px;
   display: grid;
-  gap: 16px
+  gap: calc(16px * var(--cp-k))
 }
 
 .cp-index > .cp-index-title {
-  padding: 6px 8px 0
+  padding: 6px calc(8px * var(--cp-k)) 0
 }
 
 .cp-index-list {
@@ -245,9 +272,9 @@
 .cp-index-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: calc(10px * var(--cp-k));
   width: 100%;
-  padding: 9px 8px;
+  padding: calc(9px * var(--cp-k)) calc(8px * var(--cp-k));
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -262,20 +289,20 @@
 .cp-index-no {
   display: grid;
   place-items: center;
-  flex: 0 0 22px;
-  height: 22px;
+  flex: 0 0 calc(22px * var(--cp-k));
+  height: calc(22px * var(--cp-k));
   margin-top: 1px;
   border-radius: 6px;
   background: var(--chip);
   color: var(--cp-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cp-fs));
   font-weight: 600;
   font-variant-numeric: tabular-nums
 }
 
 .cp-index-no svg {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--cp-k));
+  height: calc(12px * var(--cp-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 2.2;
@@ -291,14 +318,14 @@
 
 .cp-index-name {
   color: var(--cp-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   line-height: 1.4
 }
 
 .cp-index-copy small {
   margin-top: 2px;
   color: var(--cp-faint);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--cp-fs))
 }
 
 .cp-index-item.is-current {
@@ -330,16 +357,16 @@
 }
 
 .cp-required {
-  padding: 16px;
+  padding: calc(16px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--cp-line);
   border-radius: var(--radius)}
 
 .cp-required-count {
   display: block;
-  margin-top: 10px;
+  margin-top: calc(10px * var(--cp-k));
   color: var(--cp-strong);
-  font-size: calc(24px * var(--font-scale, 1));
+  font-size: calc(24px * var(--cp-fs));
   font-weight: 600;
   letter-spacing: -.3px;
   font-variant-numeric: tabular-nums
@@ -348,7 +375,7 @@
 .cp-progress {
   display: block;
   height: 4px;
-  margin-top: 10px;
+  margin-top: calc(10px * var(--cp-k));
   border-radius: 4px;
   background: var(--chip);
   overflow: hidden
@@ -363,22 +390,22 @@
 }
 
 .cp-required p {
-  margin-top: 10px;
+  margin-top: calc(10px * var(--cp-k));
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   line-height: 1.55
 }
 
 /* ---------- centre ---------- */
 .cp-main {
   display: grid;
-  gap: 20px;
+  gap: calc(20px * var(--cp-k));
   min-width: 0
 }
 
 .cp-card {
   scroll-margin-top: 16px;
-  padding: 22px 24px 24px;
+  padding: calc(22px * var(--cp-k)) calc(24px * var(--cp-k)) calc(24px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--cp-line);
   border-radius: var(--radius)}
@@ -386,26 +413,26 @@
 .cp-card-head {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 20px
+  gap: calc(12px * var(--cp-k));
+  margin-bottom: calc(20px * var(--cp-k))
 }
 
 .cp-num {
   display: grid;
   place-items: center;
-  flex: 0 0 28px;
-  height: 28px;
+  flex: 0 0 calc(28px * var(--cp-k));
+  height: calc(28px * var(--cp-k));
   border-radius: 7px;
   background: var(--cp-soft);
   color: var(--cp-strong);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 600;
   font-variant-numeric: tabular-nums
 }
 
 .cp-card-head h3 {
   color: var(--cp-heading);
-  font-size: calc(15px * var(--font-scale, 1));
+  font-size: calc(15px * var(--cp-fs));
   font-weight: 650;
   letter-spacing: -.15px;
   line-height: 1.35
@@ -414,13 +441,13 @@
 .cp-card-head p {
   margin-top: 2px;
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px
+  gap: calc(18px * var(--cp-k)) calc(20px * var(--cp-k))
 }
 
 .cp-span {
@@ -440,14 +467,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10px * var(--cp-k));
   margin-bottom: 7px;
-  min-height: 20px
+  min-height: calc(20px * var(--cp-k))
 }
 
 .cp-label {
   color: var(--ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   font-weight: 600
 }
 
@@ -458,7 +485,7 @@
 .cp-label-tools {
   display: flex;
   align-items: center;
-  gap: 8px
+  gap: calc(8px * var(--cp-k))
 }
 
 /* "?" help bubble with tooltip */
@@ -466,12 +493,12 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: calc(16px * var(--cp-k));
+  height: calc(16px * var(--cp-k));
   border: 1px solid var(--cp-field-line);
   border-radius: 50%;
   color: var(--cp-faint);
-  font-size: calc(9px * var(--font-scale, 1));
+  font-size: calc(9px * var(--cp-fs));
   font-weight: 600;
   line-height: 1;
   cursor: help
@@ -484,12 +511,12 @@
   bottom: calc(100% + 8px);
   z-index: 30;
   width: max-content;
-  max-width: 230px;
-  padding: 7px 10px;
+  max-width: calc(230px * var(--cp-k));
+  padding: 7px calc(10px * var(--cp-k));
   border-radius: 7px;
   background: var(--inverse-bg);
   color: #fff;
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 400;
   line-height: 1.5;
   text-align: left;
@@ -518,13 +545,13 @@
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 40px;
-  padding: 8px 12px;
+  min-height: calc(40px * var(--cp-k));
+  padding: calc(8px * var(--cp-k)) calc(12px * var(--cp-k));
   border: 1px solid var(--cp-field-line);
   border-radius: var(--btn-radius);
   background: var(--white);
   color: var(--cp-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   text-align: left;
   transition: border-color .15s, box-shadow .15s
 }
@@ -579,7 +606,7 @@ input.cp-input:focus,
 .cp-hint,
 .cp-error {
   margin-top: 6px;
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   line-height: 1.5
 }
 
@@ -595,7 +622,7 @@ input.cp-input:focus,
 .cp-affix {
   display: flex;
   align-items: center;
-  min-height: 40px;
+  min-height: calc(40px * var(--cp-k));
   border: 1px solid var(--cp-field-line);
   border-radius: var(--btn-radius);
   background: var(--white);
@@ -606,12 +633,12 @@ input.cp-input:focus,
 .cp-affix input {
   flex: 1;
   min-width: 0;
-  height: 38px;
-  padding: 0 12px;
+  height: calc(38px * var(--cp-k));
+  padding: 0 calc(12px * var(--cp-k));
   border: 0;
   outline: none;
   background: transparent;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-variant-numeric: tabular-nums
 }
 
@@ -620,10 +647,10 @@ input.cp-input:focus,
   display: flex;
   align-items: center;
   align-self: stretch;
-  padding: 0 11px;
+  padding: 0 calc(11px * var(--cp-k));
   background: var(--panel2);
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 600;
   letter-spacing: .3px
 }
@@ -645,7 +672,7 @@ input.cp-input:focus,
 
 .cp-trigger {
   justify-content: space-between;
-  gap: 10px
+  gap: calc(10px * var(--cp-k))
 }
 
 .cp-trigger > span {
@@ -659,8 +686,8 @@ input.cp-input:focus,
 }
 
 .cp-chev {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--cp-k));
+  height: calc(14px * var(--cp-k));
   transition: transform .16s ease
 }
 
@@ -670,19 +697,19 @@ input.cp-input:focus,
 }
 
 .cp-combo {
-  gap: 9px;
-  padding: 0 12px;
+  gap: calc(9px * var(--cp-k));
+  padding: 0 calc(12px * var(--cp-k));
   cursor: text
 }
 
 .cp-combo input {
   flex: 1;
   min-width: 0;
-  height: 38px;
+  height: calc(38px * var(--cp-k));
   border: 0;
   outline: none;
   background: transparent;
-  font-size: calc(13px * var(--font-scale, 1))
+  font-size: calc(13px * var(--cp-fs))
 }
 
 /* chosen value shown as placeholder while searching - keep it dark */
@@ -700,7 +727,7 @@ input.cp-input:focus,
   left: 0;
   right: 0;
   z-index: 25;
-  max-height: 252px;
+  max-height: calc(252px * var(--cp-k));
   margin: 0;
   padding: 6px;
   overflow-y: auto;
@@ -716,12 +743,12 @@ input.cp-input:focus,
 .cp-menu li {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 36px;
-  padding: 7px 10px;
+  gap: calc(10px * var(--cp-k));
+  min-height: calc(36px * var(--cp-k));
+  padding: 7px calc(10px * var(--cp-k));
   border-radius: 7px;
   color: var(--cp-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   cursor: pointer
 }
 
@@ -738,7 +765,7 @@ input.cp-input:focus,
 
 .cp-menu li.cp-empty {
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   cursor: default
 }
 
@@ -759,25 +786,25 @@ input.cp-input:focus,
 
 .cp-opt-copy small {
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 400
 }
 
 .cp-avatar {
   display: grid;
   place-items: center;
-  flex: 0 0 28px;
-  height: 28px;
+  flex: 0 0 calc(28px * var(--cp-k));
+  height: calc(28px * var(--cp-k));
   border-radius: 50%;
   background: var(--cp-soft);
   color: var(--cp-strong);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 650
 }
 
 .cp-tick {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--cp-k));
+  height: calc(15px * var(--cp-k));
   color: var(--cp-primary)
 }
 
@@ -801,8 +828,8 @@ input.cp-input:focus,
   top: calc(100% + 6px);
   left: 0;
   z-index: 25;
-  width: 284px;
-  padding: 12px;
+  width: calc(284px * var(--cp-k));
+  padding: calc(12px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -814,20 +841,20 @@ input.cp-input:focus,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px
+  margin-bottom: calc(8px * var(--cp-k))
 }
 
 .cp-cal-head strong {
   color: var(--cp-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-weight: 600
 }
 
 .cp-cal-nav {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--cp-k));
+  height: calc(30px * var(--cp-k));
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -848,19 +875,19 @@ input.cp-input:focus,
 .cp-cal-wd {
   padding: 4px 0;
   color: var(--cp-faint);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cp-fs));
   font-weight: 600;
   text-align: center;
   text-transform: uppercase
 }
 
 .cp-cal-day {
-  height: 34px;
+  height: calc(34px * var(--cp-k));
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: var(--cp-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   font-variant-numeric: tabular-nums
 }
 
@@ -894,7 +921,7 @@ input.cp-input:focus,
 .cp-cal-foot {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
+  margin-top: calc(8px * var(--cp-k));
   padding-top: 8px;
   border-top: 1px solid var(--cp-row-line)
 }
@@ -905,14 +932,14 @@ input.cp-input:focus,
 .cp-choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px
+  gap: calc(14px * var(--cp-k))
 }
 
 .cp-choice {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: calc(12px * var(--cp-k));
+  padding: calc(14px * var(--cp-k)) calc(16px * var(--cp-k));
   border: 1px solid var(--cp-line);
   border-radius: 10px;
   background: var(--white);
@@ -931,8 +958,8 @@ input.cp-input:focus,
 }
 
 .cp-radio {
-  flex: 0 0 16px;
-  height: 16px;
+  flex: 0 0 calc(16px * var(--cp-k));
+  height: calc(16px * var(--cp-k));
   margin-top: 2px;
   border: 1.5px solid var(--cp-field-hover);
   border-radius: 50%;
@@ -953,13 +980,13 @@ input.cp-input:focus,
 
 .cp-choice-copy b {
   color: var(--cp-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-weight: 600
 }
 
 .cp-choice-copy small {
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 /* =====================================================================================================
@@ -970,7 +997,7 @@ input.cp-input:focus,
   align-items: center;
   align-self: flex-start;
   gap: 2px;
-  min-height: 40px;
+  min-height: calc(40px * var(--cp-k));
   padding: 3px;
   border: 1px solid var(--cp-field-line);
   border-radius: var(--btn-radius);
@@ -981,12 +1008,12 @@ input.cp-input:focus,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 8px 0 10px;
+  height: calc(32px * var(--cp-k));
+  padding: 0 calc(8px * var(--cp-k)) 0 calc(10px * var(--cp-k));
   border: 0;
   border-radius: 6px;
   background: transparent;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-variant-numeric: tabular-nums
 }
 
@@ -1006,8 +1033,8 @@ input.cp-input:focus,
 
 .cp-menu-narrow {
   right: auto;
-  width: 84px;
-  max-height: 220px
+  width: calc(84px * var(--cp-k));
+  max-height: calc(220px * var(--cp-k))
 }
 
 .cp-menu-narrow li {
@@ -1024,13 +1051,13 @@ input.cp-input:focus,
 }
 
 .cp-seg button {
-  height: 28px;
-  padding: 0 10px;
+  height: calc(28px * var(--cp-k));
+  padding: 0 calc(10px * var(--cp-k));
   border: 0;
   border-radius: 5px;
   background: transparent;
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 600
 }
 
@@ -1051,18 +1078,18 @@ input.cp-input:focus,
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 26px;
-  padding: 0 9px;
+  height: calc(26px * var(--cp-k));
+  padding: 0 calc(9px * var(--cp-k));
   border: 1px solid var(--cp-line);
   border-radius: var(--btn-radius);
   background: var(--white);
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--cp-fs))
 }
 
 .cp-preview-btn .cp-ico {
-  width: 13px;
-  height: 13px
+  width: calc(13px * var(--cp-k));
+  height: calc(13px * var(--cp-k))
 }
 
 .cp-preview-btn:hover {
@@ -1098,7 +1125,7 @@ input.cp-input:focus,
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 7px 8px;
+  padding: 7px calc(8px * var(--cp-k));
   border-bottom: 1px solid var(--cp-line);
   border-radius: 8px 8px 0 0;
   background: var(--panel2)
@@ -1109,24 +1136,24 @@ input.cp-input:focus,
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 30px;
-  height: 30px;
+  min-width: calc(30px * var(--cp-k));
+  height: calc(30px * var(--cp-k));
   padding: 0 7px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
   color: var(--cp-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   transition: background-color .12s, border-color .12s
 }
 
 .cp-tb .cp-ico {
-  width: 15px;
-  height: 15px
+  width: calc(15px * var(--cp-k));
+  height: calc(15px * var(--cp-k))
 }
 
 .cp-tb-text {
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-tb:hover,
@@ -1142,31 +1169,31 @@ input.cp-input:focus,
 }
 
 .cp-tb-menu .cp-chev {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--cp-k));
+  height: calc(12px * var(--cp-k));
   color: var(--cp-muted)
 }
 
 .cp-tb-sep {
   width: 1px;
-  height: 18px;
+  height: calc(18px * var(--cp-k));
   margin: 0 4px;
   background: var(--cp-line)
 }
 
 .cp-menu-tool {
   right: auto;
-  min-width: 132px
+  min-width: calc(132px * var(--cp-k))
 }
 
 .cp-rt-area {
-  min-height: 150px;
-  max-height: 360px;
-  padding: 12px 14px;
+  min-height: calc(150px * var(--cp-k));
+  max-height: calc(360px * var(--cp-k));
+  padding: calc(12px * var(--cp-k)) calc(14px * var(--cp-k));
   overflow-y: auto;
   outline: none;
   color: var(--cp-ink);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   line-height: 1.65;
   overflow-wrap: anywhere
 }
@@ -1187,7 +1214,7 @@ input.cp-input:focus,
 
 .cp-rt-area h3 {
   color: var(--cp-heading);
-  font-size: calc(15px * var(--font-scale, 1));
+  font-size: calc(15px * var(--cp-fs));
   font-weight: 650
 }
 
@@ -1205,13 +1232,13 @@ input.cp-input:focus,
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px
+  gap: calc(12px * var(--cp-k))
 }
 
 .cp-count {
   margin-top: 6px;
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   white-space: nowrap;
   font-variant-numeric: tabular-nums
 }
@@ -1225,15 +1252,15 @@ input.cp-input:focus,
    ===================================================================================================== */
 .cp-review {
   display: grid;
-  gap: 16px
+  gap: calc(16px * var(--cp-k))
 }
 
 .cp-summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 16px 18px;
+  gap: calc(20px * var(--cp-k));
+  padding: calc(16px * var(--cp-k)) calc(18px * var(--cp-k));
   border: 1px solid var(--cp-line);
   border-left: 3px solid var(--cp-primary);
   border-radius: var(--radius)}
@@ -1244,7 +1271,7 @@ input.cp-input:focus,
 
 .cp-summary h4 {
   color: var(--cp-heading);
-  font-size: calc(17px * var(--font-scale, 1));
+  font-size: calc(17px * var(--cp-fs));
   font-weight: 650;
   letter-spacing: -.25px;
   overflow-wrap: anywhere
@@ -1254,10 +1281,10 @@ input.cp-input:focus,
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
+  gap: 6px calc(14px * var(--cp-k));
   margin-top: 6px;
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-code-chip {
@@ -1265,7 +1292,7 @@ input.cp-input:focus,
   border-radius: 5px;
   background: var(--chip);
   color: var(--cp-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--cp-fs));
   font-weight: 600;
   letter-spacing: .3px
 }
@@ -1278,8 +1305,8 @@ input.cp-input:focus,
 }
 
 .cp-status .cp-ico {
-  width: 14px;
-  height: 14px
+  width: calc(14px * var(--cp-k));
+  height: calc(14px * var(--cp-k))
 }
 
 .cp-status.is-warn {
@@ -1296,7 +1323,7 @@ input.cp-input:focus,
 }
 
 .cp-stats > div {
-  padding: 0 16px;
+  padding: 0 calc(16px * var(--cp-k));
   border-left: 1px solid var(--cp-line)
 }
 
@@ -1306,7 +1333,7 @@ input.cp-input:focus,
 
 .cp-stats dt {
   color: var(--cp-muted);
-  font-size: calc(10px * var(--font-scale, 1));
+  font-size: calc(10px * var(--cp-fs));
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase
@@ -1315,7 +1342,7 @@ input.cp-input:focus,
 .cp-stats dd {
   margin-top: 4px;
   color: var(--cp-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums
@@ -1324,7 +1351,7 @@ input.cp-input:focus,
 .cp-review-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px
+  gap: calc(16px * var(--cp-k))
 }
 
 .cp-rcard {
@@ -1336,36 +1363,36 @@ input.cp-input:focus,
 .cp-rcard header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: calc(10px * var(--cp-k));
+  padding: calc(12px * var(--cp-k)) calc(14px * var(--cp-k));
   border-bottom: 1px solid var(--cp-row-line)
 }
 
 .cp-rno {
   display: grid;
   place-items: center;
-  flex: 0 0 22px;
-  height: 22px;
+  flex: 0 0 calc(22px * var(--cp-k));
+  height: calc(22px * var(--cp-k));
   border: 1px solid var(--cp-field-line);
   border-radius: 50%;
   color: var(--cp-muted);
-  font-size: calc(11px * var(--font-scale, 1))
+  font-size: calc(11px * var(--cp-fs))
 }
 
 .cp-rcard h5 {
   flex: 1;
   color: var(--cp-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--cp-fs));
   font-weight: 600
 }
 
 .cp-rows > div {
   display: grid;
-  grid-template-columns: 130px minmax(0, 1fr);
-  gap: 12px;
-  padding: 10px 14px;
+  grid-template-columns: calc(130px * var(--cp-k)) minmax(0, 1fr);
+  gap: calc(12px * var(--cp-k));
+  padding: calc(10px * var(--cp-k)) calc(14px * var(--cp-k));
   border-bottom: 1px solid var(--cp-row-line);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-rows > div:last-child {
@@ -1383,9 +1410,9 @@ input.cp-input:focus,
 }
 
 .cp-rtext {
-  padding: 12px 14px;
+  padding: calc(12px * var(--cp-k)) calc(14px * var(--cp-k));
   color: var(--cp-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   line-height: 1.65;
   overflow-wrap: anywhere
 }
@@ -1400,8 +1427,8 @@ input.cp-input:focus,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 14px 18px;
+  gap: calc(16px * var(--cp-k));
+  padding: calc(14px * var(--cp-k)) calc(18px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--cp-line);
   border-radius: var(--radius);
@@ -1410,12 +1437,12 @@ input.cp-input:focus,
 
 .cp-actionbar p {
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-actionbar-btns {
   display: flex;
-  gap: 10px;
+  gap: calc(10px * var(--cp-k));
   flex-shrink: 0
 }
 
@@ -1425,23 +1452,23 @@ input.cp-input:focus,
 .cp-info {
   position: sticky;
   top: 16px;
-  padding: 20px;
+  padding: calc(20px * var(--cp-k));
   background: var(--white);
   border: 1px solid var(--cp-line);
   border-radius: var(--radius)}
 
 .cp-info section {
   padding-bottom: 16px;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--cp-k));
   border-bottom: 1px solid var(--cp-line)
 }
 
 .cp-info h4 {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--cp-k));
   color: var(--cp-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   font-weight: 650
 }
 
@@ -1450,16 +1477,16 @@ input.cp-input:focus,
 }
 
 .cp-info p {
-  margin-top: 8px;
+  margin-top: calc(8px * var(--cp-k));
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--cp-fs));
   line-height: 1.7
 }
 
 .cp-connects {
   display: grid;
-  gap: 9px;
-  margin-top: 10px;
+  gap: calc(9px * var(--cp-k));
+  margin-top: calc(10px * var(--cp-k));
   padding: 0;
   list-style: none
 }
@@ -1467,21 +1494,21 @@ input.cp-input:focus,
 .cp-connects li {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: calc(9px * var(--cp-k));
   color: var(--cp-muted);
-  font-size: calc(12px * var(--font-scale, 1))
+  font-size: calc(12px * var(--cp-fs))
 }
 
 .cp-connects .cp-ico {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--cp-k));
+  height: calc(15px * var(--cp-k));
   color: var(--cp-faint)
 }
 
 .cp-note {
   display: flex;
-  gap: 10px;
-  padding: 14px;
+  gap: calc(10px * var(--cp-k));
+  padding: calc(14px * var(--cp-k));
   background: var(--cp-amber-soft);
   border: 1px solid var(--cp-amber-line);
   border-radius: var(--radius);
@@ -1507,13 +1534,13 @@ input.cp-input:focus,
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: calc(9px * var(--cp-k));
   max-width: calc(100vw - 32px);
-  padding: 12px 18px;
+  padding: calc(12px * var(--cp-k)) calc(18px * var(--cp-k));
   border-radius: var(--radius);
   background: var(--inverse-bg);
   color: #fff;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--cp-fs));
   box-shadow: 0 8px 26px #102b3f33;
   transform: translateX(-50%);
   animation: cp-toast .2s ease-out
@@ -1542,9 +1569,9 @@ input.cp-input:focus,
 /* =====================================================================================================
    RESPONSIVE
    ===================================================================================================== */
-@media (max-width: 1280px) {
+@container cp-page (max-width: 1100px) {
   .cp-layout {
-    grid-template-columns: 200px minmax(0, 1fr)
+    grid-template-columns: calc(200px * var(--cp-k)) minmax(0, 1fr)
   }
 
   .cp-info {
@@ -1552,7 +1579,7 @@ input.cp-input:focus,
     grid-column: 2;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 20px
+    gap: calc(20px * var(--cp-k))
   }
 
   .cp-info section {
@@ -1575,7 +1602,7 @@ input.cp-input:focus,
   }
 }
 
-@media (max-width: 900px) {
+@container cp-page (max-width: 760px) {
   .cp-layout {
     grid-template-columns: minmax(0, 1fr)
   }
@@ -1586,14 +1613,40 @@ input.cp-input:focus,
 
   .cp-index-list {
     display: flex;
-    gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 10px
+    flex-wrap: wrap;
+    gap: calc(6px * var(--cp-k));
+    padding-bottom: calc(10px * var(--cp-k))
   }
 
   .cp-index-item {
-    flex: 0 0 auto;
-    width: auto
+    flex: 0 1 auto;
+    width: auto;
+    align-items: center;
+    padding: calc(6px * var(--cp-k)) calc(10px * var(--cp-k)) calc(6px * var(--cp-k)) calc(6px * var(--cp-k));
+    border: 1px solid var(--cp-line)
+  }
+
+  .cp-index-item.is-current {
+    border-color: transparent
+  }
+
+  .cp-index-copy small {
+    display: none
+  }
+
+  .cp-index > .cp-index-title {
+    display: none
+  }
+
+  /* the explainer sections hide; the activation note stays */
+  .cp-info section {
+    display: none
+  }
+
+  .cp-info {
+    padding: 0;
+    border: 0;
+    background: transparent
   }
 
   .cp-required {
@@ -1611,7 +1664,7 @@ input.cp-input:focus,
   }
 }
 
-@media (max-width: 640px) {
+@container cp-page (max-width: 560px) {
   .cp-pagehead,
   .cp-create {
     flex-direction: column;
@@ -1619,15 +1672,15 @@ input.cp-input:focus,
   }
 
   .cp-pagehead h1 {
-    font-size: calc(26px * var(--font-scale, 1))
+    font-size: calc(26px * var(--cp-fs))
   }
 
   .cp-create {
-    padding: 20px
+    padding: calc(20px * var(--cp-k))
   }
 
   .cp-card {
-    padding: 18px 16px 20px
+    padding: calc(18px * var(--cp-k)) calc(16px * var(--cp-k)) calc(20px * var(--cp-k))
   }
 
   .cp-grid {
@@ -1640,7 +1693,7 @@ input.cp-input:focus,
   }
 
   .cp-stats > div {
-    padding: 0 12px 0 0;
+    padding: 0 calc(12px * var(--cp-k)) 0 0;
     border: 0
   }
 
@@ -1658,6 +1711,21 @@ input.cp-input:focus,
     flex: 1
   }
 
+  .cp-actionbar p {
+    display: none
+  }
+
+  .cp-l-long { display: none; }
+  .cp-l-short { display: inline; }
+
+  .cp-create p {
+    display: none
+  }
+
+  .cp-create-actions {
+    justify-content: space-between
+  }
+
   .cp-cal {
     width: min(284px, calc(100vw - 48px))
   }
@@ -1671,3 +1739,60 @@ input.cp-input:focus,
     transition: none !important
   }
 }
+
+/* ---------- Back button in the page header ----------
+   It sits straight in the header's actions slot, so the header was stretching it to the height of
+   the title block (a tall, heavy button). Fixed height, kept at the top, sized with the page. */
+app-page-header .cp-btn {
+  flex: none !important;
+  align-self: flex-start !important;
+  height: calc(36px * var(--cp-k)) !important;
+  min-height: 0 !important;
+  max-height: calc(36px * var(--cp-k)) !important;
+  padding: 0 calc(14px * var(--cp-k)) !important;
+  gap: calc(6px * var(--cp-k)) !important;
+  font-size: calc(13px * var(--cp-fs)) !important;
+  line-height: 1 !important;
+  transform: none !important;
+}
+
+app-page-header .cp-btn .cp-ico {
+  width: calc(15px * var(--cp-k));
+  height: calc(15px * var(--cp-k));
+}
+
+/* ---------- page header (shared app-page-header) ----------
+   Its own sizes are large; on this page it follows the same density. !important because the
+   header's own styles are more specific. */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--cp-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--cp-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--cp-k)) !important;
+  font-size: calc(13.5px * var(--cp-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--cp-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --cp-k: .95; } }
+@media (max-width: 1600px) { :host { --cp-k: .9; } }
+@media (max-width: 1440px) { :host { --cp-k: .86; } }
+@media (max-width: 1280px) { :host { --cp-k: .84; } }
