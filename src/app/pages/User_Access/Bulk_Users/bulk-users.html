@@ -108,6 +108,25 @@
     </section>
   </div>
 
+  <section class="i-card bu-c-card">
+    <header class="bu-c-head"><h2>Operation history</h2><p>Recent bulk actions run for your organisation.</p></header>
+    @if (history().length) {
+      <ul class="bu-people">
+        @for (o of history(); track o.id) {
+          <li>
+            <span class="bu-ptext"><strong>{{ o.operationNumber }} · {{ o.actionDisplay || o.actionType }}</strong><small>{{ o.requestedByName || '—' }} · {{ fmtDate2(o.createdAtUtc || '') }} · {{ o.succeededItemCount ?? 0 }}/{{ o.totalItemCount ?? 0 }} done{{ o.failedItemCount ? ' · ' + o.failedItemCount + ' failed' : '' }}</small></span>
+            <span class="bu-out" [class.is-ok]="o.status === 'completed'">{{ o.statusDisplay || o.status }}</span>
+            @if (canCancelOp(o)) {
+              <button type="button" class="bu-btn" [disabled]="cancellingId() === o.id" (click)="cancelOp(o)">Cancel</button>
+            }
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="bu-note">{{ historyBusy() ? 'Loading…' : 'No bulk actions have been run yet.' }}</p>
+    }
+  </section>
+
   <section class="i-card bu-c-bar">
     <div class="bu-c-bar-text">
       <strong>{{ current().label }} · {{ affected() }} {{ affected() === 1 ? 'user' : 'users' }}</strong>

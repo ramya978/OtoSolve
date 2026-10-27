@@ -209,6 +209,7 @@ export class MenuCatalogue implements OnInit {
     const clash = this.items().some((i) => i.code === code && i.id !== this.editingId);
     const e: Record<string, string> = {};
     if (!f.name.trim()) e['name'] = 'Give it a name.';
+    else if (!/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u.test(f.name.trim())) e['name'] = 'Name can contain letters and spaces only.';
     if (!code) e['code'] = 'Add a code.';
     else if (!/^[A-Z0-9_-]+$/.test(code)) e['code'] = 'Use upper case letters, digits, underscores or hyphens.';
     else if (clash) e['code'] = 'This code is already used.';
@@ -336,9 +337,10 @@ export class MenuCatalogue implements OnInit {
       const id = this.editingId;
       const cur = this.items().find((i) => i.id === id);
       this.api.updateMenuDefinition(id, {
-        expectedVersion: cur?.version, name: f.name.trim(), description: f.description.trim() || null, route: f.route.trim() || null,
-        icon: f.icon.trim() || null, requiredPermissionCode: f.permission.trim() || null, displayOrder: f.position,
-        isEnabledByDefault: f.defaultOn, opensInNewTab: f.newTab, badgeKey: f.badgeKey.trim() || null
+        // Every editable field, blanks as '' : null means "leave alone", '' clears (as the old screen sent it).
+        expectedVersion: cur?.version, name: f.name.trim(), description: f.description.trim(), route: f.route.trim(),
+        icon: f.icon.trim(), requiredPermissionCode: f.permission.trim(), displayOrder: f.position,
+        isEnabledByDefault: f.defaultOn, opensInNewTab: f.newTab, badgeKey: f.badgeKey.trim()
       }).subscribe({
         next: () => { this.saving.set(false); this.selectedId.set(id); this.closeForm(); this.reload(); this.toast.success('Saved', f.name.trim()); },
         error: onError

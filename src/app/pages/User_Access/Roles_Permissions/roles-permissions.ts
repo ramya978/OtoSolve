@@ -46,6 +46,11 @@ export class RolesPermissions implements OnInit {
   readonly loading = this.store.loading;
   readonly loadError = this.store.error;
   readonly saving = signal(false);
+  readonly hydrating = this.store.hydrating;
+  readonly exporting = signal(false);
+  /** Role being deleted / changed in status, with the reason typed so far. */
+  readonly lifecycle = signal<{ kind: 'delete' | 'status'; role: IamRole; status?: RoleStatus } | null>(null);
+  readonly lifeReason = signal('');
 
   ngOnInit(): void {
     this.store.load(() => {
@@ -417,6 +422,7 @@ export class RolesPermissions implements OnInit {
 
   saveEdit(r: IamRole): void {
     if (!this.editDirty(r) || !r.id || this.saving()) return;
+    if (this.hydrating()) { this.toast.show('Please wait', 'Roles are still loading.', 'warning'); return; }
     this.saving.set(true);
     this.api.assignPermissions(r.id, {
       permissionCodes: PERMISSIONS.filter((p) => this.editGrants().has(p.code)).map((p) => p.code),
@@ -525,6 +531,7 @@ export class RolesPermissions implements OnInit {
   saveDrawer(): void {
     this.tried.set(true);
     if (this.hasErrors() || this.saving()) return;
+    if (this.hydrating()) { this.toast.show('Please wait', 'Roles are still loading.', 'warning'); return; }
     const d = this.draft();
     this.saving.set(true);
     const idOf = (code: string) => this.roles().find((x) => x.code === code)?.id ?? '';
@@ -577,6 +584,68 @@ export class RolesPermissions implements OnInit {
     this.store.load(() => { this.expanded.set(code); this.detailTab.set('permissions'); });
   }
 
+  // ---------------------------------------------------------------- export, status, delete
+  exportRoles(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.api.export({}).subscribe({
+      next: (f) => {
+        this.exporting.set(false);
+        const url = URL.createObjectURL(f.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.toast.show('Export ready', f.reference ? 'Reference ' + f.reference : 'The roles were downloaded as CSV.', 'success');
+      },
+      error: (e) => {
+        this.exporting.set(false);
+        this.toast.show('Export failed', apiErrorMessage(e, 'The export could not be created.'), 'error');
+      },
+    });
+  }
+
+  canChangeStatus(r: IamRole): boolean { return !!r.id && !r.builtIn; }
+  canDelete(r: IamRole): boolean { return !!r.id && !r.builtIn && !(r.members ?? 0); }
+  nextStatus(r: IamRole): RoleStatus { return r.status === 'active' ? 'inactive' : 'active'; }
+
+  askStatus(r: IamRole): void {
+    this.lifeReason.set('');
+    this.lifecycle.set({ kind: 'status', role: r, status: this.nextStatus(r) });
+  }
+
+  askDelete(r: IamRole): void {
+    this.lifeReason.set('');
+    this.lifecycle.set({ kind: 'delete', role: r });
+  }
+
+  cancelLifecycle(): void { this.lifecycle.set(null); }
+
+  confirmLifecycle(): void {
+    const l = this.lifecycle();
+    if (!l || this.saving() || !l.role.id) return;
+    const reason = this.lifeReason().trim();
+    if (l.kind === 'delete' && reason.length < 10) {
+      this.toast.show('Reason needed', 'Give a reason of at least 10 characters.', 'warning');
+      return;
+    }
+    this.saving.set(true);
+    const call = l.kind === 'delete'
+      ? this.api.deleteRole(l.role.id, { expectedVersion: l.role.version ?? 0, reason })
+      : this.api.changeStatus(l.role.id, { status: l.status, expectedVersion: l.role.version ?? 0, reason: reason || null });
+    call.subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.lifecycle.set(null);
+        this.toast.show(l.kind === 'delete' ? 'Role deleted' : 'Role ' + (l.status === 'active' ? 'activated' : 'deactivated'), l.role.name, 'success');
+        if (l.kind === 'delete') { this.panel.set(false); this.expanded.set(''); }
+        this.store.load(() => { if (!this.roles().some((x) => x.code === this.expanded())) this.expanded.set(this.list()[0]?.code ?? ''); });
+      },
+      error: (e) => this.fail(e, l.kind === 'delete' ? 'The role could not be deleted.' : 'The status could not be changed.'),
+    });
+  }
+
   // ---------------------------------------------------------------- compare
   openCompare(): void {
     const r = this.current();
@@ -618,7 +687,8 @@ export class RolesPermissions implements OnInit {
   // ---------------------------------------------------------------- misc
   @HostListener('document:keydown.escape')
   onEsc(): void {
-    if (this.compareOpen()) this.compareOpen.set(false);
+    if (this.lifecycle()) this.lifecycle.set(null);
+    else if (this.compareOpen()) this.compareOpen.set(false);
     else if (this.drawer()) this.drawer.set(null);
     else this.closePanel();
   }

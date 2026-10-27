@@ -15,7 +15,7 @@
         <span class="i-count i-count--on-primary">{{ checkedCount() }}</span>
       </button>
     }
-    <button type="button" class="i-btn">
+    <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportCsv()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
     <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('personPlus')" /></svg>Invite person</button>
@@ -274,6 +274,38 @@
             </li>
           </ol>
         </section>
+
+        <!-- @if (hasAccountActions()) {
+          <section class="i-detail-sec">
+            <h3>Account actions</h3>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              @if (can('Suspend') && u.status !== 'suspended') {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('suspend', u)">Suspend</button>
+              }
+              @if (can('Unlock')) {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('unlock', u)">Unlock</button>
+              }
+              @if (can('ResetPassword')) {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('resetPassword', u)">Reset password</button>
+              }
+              @if (canResetMfa()) {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('resetMfa', u)">Reset two-step</button>
+              }
+              @if (can('ForceSignOut')) {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('signOut', u)">Sign out everywhere</button>
+              }
+              @if (can('ResendInvitation') && u.invitation !== 'Accepted') {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('resend', u)">Resend invitation</button>
+              }
+              @if (canRevoke() && u.invitation === 'Pending') {
+                <button type="button" class="i-btn i-btn--sm i-btn--danger" (click)="beginAct('revoke', u)">Withdraw invitation</button>
+              }
+              @if (can('ExtendAccess')) {
+                <button type="button" class="i-btn i-btn--sm" (click)="beginAct('extend', u)">Extend access</button>
+              }
+            </div>
+          </section>
+        } -->
       </div>
 
       <footer class="i-drawer-foot">
@@ -287,6 +319,46 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
         <button type="button" class="i-btn i-btn--primary" (click)="openFullProfile(u)">Full profile
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg></button>
+      </footer>
+    </aside>
+  </div>
+}
+
+<!-- ================= account action: reason (and a date for extending access) ================= -->
+@if (act(); as a) {
+  <div class="i-overlay us-top" (click)="cancelAct()">
+    <aside class="i-drawer" role="dialog" aria-modal="true" aria-labelledby="us-act-title" (click)="$event.stopPropagation()">
+      <header class="i-detail-head">
+        <div>
+          <span class="i-label">{{ a.user.name }}</span>
+          <h2 id="us-act-title">{{ actTitle() }}</h2>
+        </div>
+        <button type="button" class="i-icon-btn i-icon-btn--bare" aria-label="Close" (click)="cancelAct()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg></button>
+      </header>
+      <div class="i-drawer-body">
+        <section class="i-detail-sec">
+          @if (a.kind === 'extend') {
+            <label class="i-field">
+              <span class="i-field-label">Access ends on <em>*</em></span>
+              <input class="i-input" type="date" [min]="minDate" [value]="actDate()" (input)="actDate.set($any($event.target).value)" />
+            </label>
+          }
+          @if (actNeedsReason()) {
+            <label class="i-field">
+              <span class="i-field-label">Reason <em>*</em></span>
+              <textarea class="i-input us-reason" rows="3" maxlength="300" placeholder="Recorded in the audit trail (at least 10 characters)."
+                        [value]="actReason()" (input)="actReason.set($any($event.target).value)"></textarea>
+            </label>
+          } @else {
+            <p class="i-foot-note">The invitation e-mail is sent to {{ a.user.email }} again.</p>
+          }
+        </section>
+      </div>
+      <footer class="i-drawer-foot">
+        <span class="i-foot-note"></span>
+        <button type="button" class="i-btn" (click)="cancelAct()">Cancel</button>
+        <button type="button" class="i-btn i-btn--primary" [disabled]="!actReady()" (click)="confirmAct()">Confirm</button>
       </footer>
     </aside>
   </div>

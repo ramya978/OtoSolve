@@ -1,9 +1,13 @@
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { concatMap, filter, from, last, switchMap } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import { OrgSummary, Row, WebAddress, HistoryEntry, Tone } from '../../../Shared/Organization/organisation-profile.data';
 import { OrgStore } from '../../../Shared/Organization/org.store';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
+import {
+  DocumentDecision, DocumentSubmission, DocumentSubmissionApiService, DocumentUploadPolicy, SubmissionFile
+} from '../../../Service/document-submission-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { OrganisationDetailResponse, TenantStatus } from '../../../Shared/models/iam-contract.model';
@@ -62,23 +66,39 @@ interface SubFile {
   checksum: string;
   by: string;
   isImage: boolean;
-  /** object URL for files added in this session (view / download) */
+  /** object URL for a file picked on this page and not yet sent (view only) */
   url?: string;
+  /** the file itself, until it has been sent */
+  file?: File;
 }
 
-/** one document set: a type, a title and its files */
+/** one document set: a type, a title and its files (drawn from the API's submission) */
 interface Submission {
   id: string;
   type: string;
   title: string;
   note: string;
+  /** one of the four looks the page has (draft / submitted / approved / rejected) */
   status: SubStatus;
+  /** the server's own word for the state ("Under review", "Re-upload requested" ...) */
+  label: string;
   files: SubFile[];
   by: string;
   submittedAt?: string;
-  /** created on this page (not yet stored on the server) */
-  local: boolean;
+  /** what THIS person may do with it, as the server says */
+  actions: string[];
+  raw: DocumentSubmission;
 }
+
+/** The server's names for the profile fields, as people read them on the form. */
+const FIELD_LABELS: Record<string, string> = {
+  name: 'Name', legalname: 'Registered legal name', registrationnumber: 'Registration number',
+  taxidentificationnumber: 'Tax identification number', pannumber: 'PAN', gstnumber: 'GST',
+  organisationtype: 'Organisation type', establishedon: 'Established on', description: 'About',
+  contactpersonname: 'Contact person', contactemail: 'Contact e-mail', contactphone: 'Telephone',
+  websiteurl: 'Website', addressline1: 'Address line 1', addressline2: 'Address line 2', city: 'City',
+  state: 'State or province', country: 'Country', postalcode: 'Postal code'
+};
 
 const ALL_TABS: TabDef[] = [
   { key: 'profile', label: 'Profile', icon: 'profile' },
@@ -91,9 +111,18 @@ const ALL_TABS: TabDef[] = [
 const ACCEPT = ['doc', 'docx', 'jpeg', 'jpg', 'pdf', 'png', 'webp', 'xls', 'xlsx'];
 const IMAGE = ['jpeg', 'jpg', 'png', 'webp'];
 const MAX_BYTES = 5 * 1024 * 1024;
+/** Kept in step with TenantDocumentType on the server (value = what the API takes). */
 const DOC_TYPES = [
-  'Registration certificate', 'Trust deed / MoA', 'PAN card', 'GST certificate',
-  '12A certificate', '80G certificate', 'Address proof', 'Bank proof', 'Other'
+  { value: 'RegistrationCertificate', label: 'Registration certificate' },
+  { value: 'TaxExemptionCertificate', label: 'Tax exemption certificate' },
+  { value: 'PanCard', label: 'PAN card' },
+  { value: 'GstCertificate', label: 'GST certificate' },
+  { value: 'AddressProof', label: 'Address proof' },
+  { value: 'BankProof', label: 'Bank proof' },
+  { value: 'TrustDeed', label: 'Trust deed' },
+  { value: 'AnnualReport', label: 'Annual report' },
+  { value: 'AuthorisedSignatoryProof', label: 'Authorised signatory proof' },
+  { value: 'Other', label: 'Other' }
 ];
 
 /** icons this page needs that may not exist in IAM_ICONS (24x24, drawn with currentColor); IAM_ICONS is the fallback */
@@ -143,22 +172,39 @@ export class OrganisationProfile implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly store = inject(OrgStore);
   private readonly api = inject(OrganisationApiService);
+  private readonly docApi = inject(DocumentSubmissionApiService);
   private readonly toast = inject(ToastService);
+
+  /** Set only when a platform administrator opens somebody else's organisation. */
+  private readonly orgId: string | null = this.route.snapshot.queryParamMap.get('id');
+  /** True for an organisation looking at its own record (every call then goes to /organisations/mine). */
+  readonly isOwn = this.orgId === null;
 
   readonly loading = this.store.loading;
   readonly sending = signal(false);
   private readonly d = computed<OrganisationDetailResponse | null>(() => this.store.detail());
 
   ngOnInit(): void {
-    this.store.loadDetail(this.route.snapshot.queryParamMap.get('id')).subscribe({
+    this.store.loadDetail(this.orgId).subscribe({
       error: (e: unknown) => this.toast.error('Organisation not loaded', apiErrorMessage(e, 'The organisation could not be loaded.'))
     });
+    this.docApi.getPolicy().subscribe({ next: (p) => this.policy.set(p), error: () => undefined });
+    this.loadDocs();
   }
 
   ngOnDestroy(): void {
-    for (const s of this.localSubs()) this.revoke(s.files);
     this.revoke(this.cFiles());
   }
+
+  // ---------------- what this person may do (the server's permittedActions) ----------------
+  private readonly permitted = computed(() => this.d()?.permittedActions ?? []);
+
+  can(action: string): boolean {
+    return this.permitted().includes(action);
+  }
+
+  /** Edit is for an organisation's own profile, never for the platform administrator looking at it. */
+  readonly canEdit = computed(() => this.isOwn && (this.can('Edit') || this.can('EditProfile')));
 
   get org(): OrgSummary {
     const d = this.d();
@@ -169,6 +215,13 @@ export class OrganisationProfile implements OnInit, OnDestroy {
       status: this.status(), statusLabel: this.statusLabel()
     };
   }
+
+  /** The outstanding profile fields as people read them on the form. */
+  readonly missingLabels = computed(() =>
+    (this.d()?.outstandingProfileFields ?? []).map(
+      (f) => FIELD_LABELS[f.toLowerCase()] ?? f.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
+    )
+  );
 
   /** "Oct 2026" for the heading */
   get sinceMonth(): string { return monthYear(this.d()?.createdAtUtc); }
@@ -251,13 +304,15 @@ export class OrganisationProfile implements OnInit, OnDestroy {
   });
 
   /** only a draft or a rejected organisation can be sent for approval */
-  readonly canSend = computed(() => !this.sent() && (this.status() === 'draft' || this.status() === 'rejected'));
+  readonly canSend = computed(() => this.isOwn && !this.sent() && (this.status() === 'draft' || this.status() === 'rejected'));
 
   get verifiedAddresses(): number { return this.webAddresses.filter((w) => !!w.verifiedOn).length; }
 
   // ---------------- tabs ----------------
   /** Review & submit is not needed once the organisation is active */
-  readonly tabs = computed<TabDef[]>(() => ALL_TABS.filter((t) => t.key !== 'review' || this.status() !== 'active'));
+  readonly tabs = computed<TabDef[]>(() =>
+    // The platform administrator sees four tabs: Review & submit belongs to the organisation itself.
+    ALL_TABS.filter((t) => t.key !== 'review' || (this.isOwn && this.status() !== 'active')));
 
   private readonly tab = signal<TabKey>('profile');
 
@@ -273,39 +328,67 @@ export class OrganisationProfile implements OnInit, OnDestroy {
     this.tab.set(key);
   }
 
-  // ---------------- documents ----------------
-  readonly docTypes = DOC_TYPES;
-  readonly acceptAttr = ACCEPT.map((e) => '.' + e).join(',');
-  readonly acceptLabel = ACCEPT.map((e) => e.toUpperCase()).join(', ');
+  // ---------------- documents (the documents API) ----------------
+  readonly docTypes = DOC_TYPES.map((o) => o.label);
 
-  /** documents already stored on the server, grouped by type into sets */
-  private readonly serverSubs = computed<Submission[]>(() => {
-    const s = this.status();
-    const status: SubStatus = s === 'active' ? 'approved' : s === 'rejected' ? 'rejected' : 'submitted';
-    const groups = new Map<string, Submission>();
-    for (const x of this.d()?.documents ?? []) {
-      const type = x.documentTypeDisplay || spaced(x.documentType ?? '') || 'Document';
-      let set = groups.get(type);
-      if (!set) {
-        set = { id: 'srv-' + type, type, title: type, note: '', status, files: [], by: '', submittedAt: undefined, local: false };
-        groups.set(type, set);
-      }
-      const name = x.fileName ?? '';
-      const ext = extOf(name);
-      set.files.push({ id: set.id + '-' + set.files.length, name, ext, size: x.fileSizeBytes ?? 0, checksum: '', by: '', isImage: IMAGE.includes(ext) });
-      const at = x.uploadedAtUtc ?? undefined;
-      if (at && (!set.submittedAt || at > set.submittedAt)) set.submittedAt = at;
-    }
-    return [...groups.values()];
-  });
+  /** What the server accepts, read from the API so the sentence under the drop zone and the rule agree. */
+  readonly policy = signal<DocumentUploadPolicy | null>(null);
+  private get allowedExts(): string[] {
+    const p = this.policy();
+    return p?.allowedExtensions?.length ? p.allowedExtensions.map((e) => e.replace('.', '').toLowerCase()) : ACCEPT;
+  }
+  get acceptAttr(): string { return this.allowedExts.map((e) => '.' + e).join(','); }
+  get acceptLabel(): string { return this.allowedExts.map((e) => e.toUpperCase()).join(', '); }
+  private get maxBytes(): number { return this.policy()?.maximumFileSizeBytes ?? MAX_BYTES; }
+  get maxMb(): number { return this.policy()?.maximumFileSizeMegabytes ?? MAX_BYTES / 1024 / 1024; }
 
-  /** sets started on this page */
-  readonly localSubs = signal<Submission[]>([]);
+  /** The submissions as the server holds them: the organisation's own, or the one being reviewed. */
+  private readonly docs = signal<DocumentSubmission[]>([]);
+  readonly docsBusy = signal(false);
+  /** upload progress for the submission being added to (0-100) */
+  readonly uploadPct = signal<number | null>(null);
+  private readonly uploadingId = signal<string | null>(null);
 
-  readonly submissions = computed<Submission[]>(() => [...this.localSubs(), ...this.serverSubs()]);
+  private loadDocs(): void {
+    const req = this.orgId ? this.docApi.getForOrganisation(this.orgId) : this.docApi.getMine();
+    req.subscribe({
+      next: (list) => this.docs.set(list),
+      error: (e: unknown) => this.toast.error('Documents not loaded', apiErrorMessage(e, 'The submissions could not be loaded.'))
+    });
+  }
+
+  private toSub(x: DocumentSubmission): Submission {
+    const st = (x.status ?? '').toLowerCase();
+    const look: SubStatus = st === 'approved' ? 'approved' : st === 'rejected' || st === 'reuploadrequested' ? 'rejected' : st === 'draft' ? 'draft' : 'submitted';
+    return {
+      id: x.id, type: x.documentTypeDisplay || x.documentType, title: x.title || x.documentTypeDisplay || x.documentType,
+      note: x.notes ?? '', status: look, label: x.statusDisplay || spaced(x.status ?? ''),
+      files: (x.files ?? []).map((f) => this.toFile(f)), by: x.submittedByName ?? '',
+      submittedAt: x.submittedAtUtc ?? undefined, actions: x.permittedActions ?? [], raw: x
+    };
+  }
+
+  private toFile(f: SubmissionFile): SubFile {
+    const ext = extOf(f.fileName ?? '');
+    return {
+      id: f.id, name: f.fileName ?? '', ext, size: f.fileSizeBytes ?? 0, checksum: (f.contentHash ?? '').slice(0, 8),
+      by: f.uploadedByName ?? '', isImage: IMAGE.includes(ext) || (f.contentType ?? '').startsWith('image/')
+    };
+  }
+
+  readonly submissions = computed<Submission[]>(() => this.docs().map((x) => this.toSub(x)));
   readonly awaiting = computed(() => this.submissions().filter((s) => s.status === 'submitted').length);
 
-  // new submission: one panel — pick a type, add files, send
+  canOn(s: Submission, action: string): boolean {
+    return s.actions.includes(action);
+  }
+
+  /** a draft can be withdrawn - by the organisation, and only while it is still a draft */
+  canDiscard(s: Submission): boolean {
+    return this.isOwn && (s.raw.status ?? '').toLowerCase() === 'draft';
+  }
+
+  // new submission: one panel - pick a type, add files, send
   readonly composeOpen = signal(false);
   readonly cType = signal('');
   readonly cTitle = signal('');
@@ -314,13 +397,17 @@ export class OrganisationProfile implements OnInit, OnDestroy {
   readonly cTouched = signal(false);
   readonly dragOver = signal(false);
 
-  /** uploading is closed once the organisation is active */
-  readonly canUpload = computed(() => this.status() !== 'active');
+  /** uploading is for the organisation itself, and closes once its registration is decided */
+  readonly canUpload = computed(
+    () => this.isOwn && (this.permitted().length ? this.can('UploadDocument') : this.status() !== 'active')
+  );
 
-  readonly composeReady = computed(() => !!this.cType() && this.cFiles().length > 0);
+  readonly composeReady = computed(() => !!this.cType() && this.cFiles().length > 0 && !this.docsBusy());
 
   /** what is still missing before the set can be sent, or a short "ready" line */
   readonly composeHint = computed(() => {
+    const pct = this.uploadPct();
+    if (this.docsBusy()) return pct === null ? 'Sending…' : 'Uploading… ' + pct + '%';
     const noType = !this.cType();
     const noFiles = !this.cFiles().length;
     if (noType && noFiles) return 'Pick a document type and add at least one file.';
@@ -373,20 +460,30 @@ export class OrganisationProfile implements OnInit, OnDestroy {
     this.addFiles(e.dataTransfer?.files ?? null);
   }
 
+  /** the files that pass the server's rules (type and size); the rest are named in a message */
+  private accepted(list: FileList | File[]): { good: File[]; bad: string[] } {
+    const good: File[] = [];
+    const bad: string[] = [];
+    for (const f of Array.from(list)) {
+      if (!this.allowedExts.includes(extOf(f.name))) { bad.push(f.name + ' (type not allowed)'); continue; }
+      if (f.size > this.maxBytes) { bad.push(f.name + ' (over ' + this.maxMb + ' MB)'); continue; }
+      good.push(f);
+    }
+    return { good, bad };
+  }
+
   async addFiles(list: FileList | null): Promise<void> {
     if (!list?.length) return;
-    const bad: string[] = [];
-    const good: SubFile[] = [];
-    for (const f of Array.from(list)) {
+    const { good, bad } = this.accepted(list);
+    const added: SubFile[] = [];
+    for (const f of good) {
       const ext = extOf(f.name);
-      if (!ACCEPT.includes(ext)) { bad.push(f.name + ' (type not allowed)'); continue; }
-      if (f.size > MAX_BYTES) { bad.push(f.name + ' (over 5 MB)'); continue; }
-      good.push({
+      added.push({
         id: uid(), name: f.name, ext, size: f.size, checksum: await checksum(f), by: 'You',
-        isImage: IMAGE.includes(ext), url: URL.createObjectURL(f)
+        isImage: IMAGE.includes(ext), url: URL.createObjectURL(f), file: f
       });
     }
-    if (good.length) this.cFiles.update((l) => [...l, ...good]);
+    if (added.length) this.cFiles.update((l) => [...l, ...added]);
     if (bad.length) this.toast.error('Some files were not added', bad.join(', '));
   }
 
@@ -395,35 +492,167 @@ export class OrganisationProfile implements OnInit, OnDestroy {
     this.cFiles.update((l) => l.filter((x) => x.id !== f.id));
   }
 
+  /** a file picked on this page and not sent yet */
   viewFile(f: SubFile): void {
     if (f.url) window.open(f.url, '_blank', 'noopener');
   }
 
-  downloadFile(f: SubFile): void {
-    if (!f.url) return;
-    const a = document.createElement('a');
-    a.href = f.url;
-    a.download = f.name;
-    a.click();
+  /**
+   * Opens or saves a file the server holds. The link is fetched when it is wanted: it expires in
+   * minutes by design, so one fetched when the list was drawn would be dead by the time it is clicked.
+   */
+  openFile(s: Submission, f: SubFile, inline: boolean): void {
+    const req = this.orgId
+      ? this.docApi.getReviewFileLink(this.orgId, s.id, f.id, inline)
+      : this.docApi.getMyFileLink(s.id, f.id, inline);
+    req.subscribe({
+      next: (link) => window.open(link.url, '_blank', 'noopener'),
+      error: (e: unknown) => this.toast.error('File not opened', apiErrorMessage(e, 'That file could not be opened.'))
+    });
   }
 
-  /** send the panel's files as one set */
+  /** Sends files one after another (each answer carries the whole submission, so parallel uploads would overwrite each other). */
+  private uploadAll(sub: DocumentSubmission, files: File[]) {
+    this.uploadingId.set(sub.id);
+    return from(files).pipe(
+      concatMap((file) =>
+        this.docApi.uploadFile(sub.id, file).pipe(
+          filter((e) => {
+            if (e?.kind === 'progress') this.uploadPct.set(e.percent);
+            return e?.kind === 'done';
+          })
+        )
+      ),
+      last(),
+      switchMap((e) => [e.kind === 'done' ? e.submission : sub])
+    );
+  }
+
+  private docsFailed(title: string, fallback: string, e: unknown): void {
+    this.docsBusy.set(false);
+    this.uploadPct.set(null);
+    this.uploadingId.set(null);
+    this.toast.error(title, apiErrorMessage(e, fallback));
+    this.loadDocs();
+  }
+
+  private docsChanged(): void {
+    this.docsBusy.set(false);
+    this.uploadPct.set(null);
+    this.uploadingId.set(null);
+    this.loadDocs();
+    // the organisation's own status can move with its documents
+    this.store.loadDetail(this.orgId).subscribe({ error: () => undefined });
+  }
+
+  /** send the panel's files as one set: start the submission, upload each file, then send it for review */
   submitCompose(): void {
     this.cTouched.set(true);
     if (!this.canUpload() || !this.composeReady()) return;
-    const type = this.cType();
-    // TODO: upload the files and submit this set through the documents API
-    this.localSubs.update((list) => [{
-      id: uid(), type, title: this.cTitle().trim() || type, note: this.cNote().trim(), status: 'submitted',
-      files: this.cFiles(), by: 'You', submittedAt: new Date().toISOString(), local: true
-    }, ...list]);
-    this.cFiles.set([]); // the files now belong to the set, so their links stay open
-    this.resetCompose();
-    this.composeOpen.set(false);
+    const type = DOC_TYPES.find((o) => o.label === this.cType())?.value ?? this.cType();
+    const files = this.cFiles().map((f) => f.file!).filter(Boolean);
+    this.docsBusy.set(true);
+    this.docApi
+      .createMine({ documentType: type, title: this.cTitle().trim() || null, notes: this.cNote().trim() || null })
+      .pipe(
+        switchMap((sub) => this.uploadAll(sub, files)),
+        switchMap((sub) => this.docApi.submitMine(sub.id, sub.version))
+      )
+      .subscribe({
+        next: () => {
+          this.revoke(this.cFiles());
+          this.resetCompose();
+          this.composeOpen.set(false);
+          this.docsChanged();
+        },
+        error: (e: unknown) => this.docsFailed('Not sent', 'The documents could not be sent for review.', e)
+      });
   }
 
-  subStatusLabel(s: SubStatus): string {
-    return { draft: 'Draft', submitted: 'Submitted', approved: 'Approved', rejected: 'Rejected' }[s];
+  // ---- working on a draft that is already on the server ----
+  addToDraft(s: Submission, list: FileList | null): void {
+    if (!list?.length || this.docsBusy()) return;
+    const { good, bad } = this.accepted(list);
+    if (bad.length) this.toast.error('Some files were not added', bad.join(', '));
+    if (!good.length) return;
+    this.docsBusy.set(true);
+    this.uploadAll(s.raw, good).subscribe({
+      next: () => this.docsChanged(),
+      error: (e: unknown) => this.docsFailed('Not uploaded', 'The file could not be uploaded.', e)
+    });
+  }
+
+  onPickDraft(s: Submission, input: HTMLInputElement): void {
+    this.addToDraft(s, input.files);
+    input.value = '';
+  }
+
+  onDropDraft(s: Submission, e: DragEvent): void {
+    e.preventDefault();
+    this.dragOver.set(false);
+    this.addToDraft(s, e.dataTransfer?.files ?? null);
+  }
+
+  removeServerFile(s: Submission, f: SubFile): void {
+    if (this.docsBusy()) return;
+    this.docsBusy.set(true);
+    this.docApi.removeFile(s.id, f.id).subscribe({
+      next: () => this.docsChanged(),
+      error: (e: unknown) => this.docsFailed('Not removed', 'The file could not be removed.', e)
+    });
+  }
+
+  sendDraft(s: Submission): void {
+    if (this.docsBusy()) return;
+    this.docsBusy.set(true);
+    this.docApi.submitMine(s.id, s.raw.version).subscribe({
+      next: () => this.docsChanged(),
+      error: (e: unknown) => this.docsFailed('Not sent', 'It could not be sent for review.', e)
+    });
+  }
+
+  discardDraft(s: Submission): void {
+    if (this.docsBusy() || !this.canDiscard(s)) return;
+    const n = s.files.length;
+    const q = n ? `Discard this draft and the ${n} file${n === 1 ? '' : 's'} attached to it?` : 'Discard this empty draft?';
+    if (!window.confirm(q)) return;
+    this.docsBusy.set(true);
+    this.docApi.discardMine(s.id, s.raw.version).subscribe({
+      next: () => this.docsChanged(),
+      error: (e: unknown) => this.docsFailed('Not discarded', 'The draft could not be discarded.', e)
+    });
+  }
+
+  // ---- the platform reviewer's decision on a submission ----
+  readonly decidingOn = signal<{ id: string; decision: DocumentDecision } | null>(null);
+  readonly decisionNotes = signal('');
+
+  beginDecision(s: Submission, decision: DocumentDecision): void {
+    this.decidingOn.set({ id: s.id, decision });
+    this.decisionNotes.set('');
+  }
+
+  cancelDecision(): void {
+    this.decidingOn.set(null);
+    this.decisionNotes.set('');
+  }
+
+  confirmDecision(s: Submission): void {
+    const d = this.decidingOn();
+    if (!d || !this.orgId || this.docsBusy()) return;
+    // a reason is required for anything but an approval - the same rule the server applies
+    if (d.decision !== 'Approve' && !this.decisionNotes().trim()) {
+      this.toast.error('Reason needed', 'Give a reason, so the organisation knows what to change.');
+      return;
+    }
+    this.docsBusy.set(true);
+    this.docApi.decide(this.orgId, s.id, d.decision, s.raw.version, this.decisionNotes().trim() || null).subscribe({
+      next: () => {
+        this.cancelDecision();
+        this.docsChanged();
+      },
+      error: (e: unknown) => this.docsFailed('Decision not recorded', 'The decision could not be recorded.', e)
+    });
   }
 
   totalSize(s: Submission): number {
@@ -446,6 +675,10 @@ export class OrganisationProfile implements OnInit, OnDestroy {
     return isNaN(+d) ? '' : d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
   }
 
+  uploadingTo(s: Submission): boolean {
+    return this.uploadingId() === s.id && this.uploadPct() !== null;
+  }
+
   private revoke(files: SubFile[]): void {
     for (const f of files) if (f.url) URL.revokeObjectURL(f.url);
   }
@@ -461,10 +694,11 @@ export class OrganisationProfile implements OnInit, OnDestroy {
     const sentSets = subs.filter((s) => s.status !== 'draft' && s.files.length);
     const files = sentSets.reduce((n, s) => n + s.files.length, 0);
     const missing = d?.outstandingProfileFields?.length ?? 0;
+    const names = this.missingLabels();
     const web = this.webAddresses;
     return [
       d?.isProfileComplete === false
-        ? { no: '01', title: 'Profile details', detail: missing + ' required field' + (missing === 1 ? '' : 's') + ' missing', state: 'warn', act: 'edit', action: 'Edit', actionIcon: 'edit' }
+        ? { no: '01', title: 'Profile details', detail: missing + ' required field' + (missing === 1 ? '' : 's') + ' missing' + (names.length ? ': ' + names.join(', ') : ''), state: 'warn', act: 'edit', action: 'Edit', actionIcon: 'edit' }
         : { no: '01', title: 'Profile details', detail: 'Complete', state: 'ok' },
       sentSets.length
         ? { no: '02', title: 'Supporting documents', detail: files + ' file' + (files === 1 ? '' : 's') + ' in ' + sentSets.length + ' set' + (sentSets.length === 1 ? '' : 's'), state: 'ok' }
@@ -503,13 +737,86 @@ export class OrganisationProfile implements OnInit, OnDestroy {
       next: () => {
         this.sending.set(false);
         this.sent.set(true);
-        this.store.loadDetail(this.route.snapshot.queryParamMap.get('id')).subscribe({ error: () => undefined });
+        this.store.loadDetail(this.orgId).subscribe({ error: () => undefined });
       },
       error: (e: unknown) => {
         this.sending.set(false);
         this.toast.error('Not submitted', apiErrorMessage(e, 'The organisation could not be sent for approval.'));
       }
     });
+  }
+
+  // ---------------- the platform administrator's decisions on the organisation ----------------
+  readonly acting = signal<'approve' | 'reject' | 'suspend' | 'reactivate' | 'archive' | null>(null);
+  readonly actReason = signal('');
+  readonly actNotes = signal('');
+  readonly activateNow = signal(true);
+  readonly actBusy = signal(false);
+
+  readonly actTitle = computed(() => ({
+    approve: 'Approve this organisation', reject: 'Send this back', suspend: 'Suspend this organisation',
+    reactivate: 'Lift the suspension', archive: 'Archive this organisation', none: ''
+  }[this.acting() ?? 'none']));
+
+  /** a reason is needed to send back, suspend or archive - at least ten characters, as the server asks */
+  readonly actReasonRequired = computed(() => ['reject', 'suspend', 'archive'].includes(this.acting() ?? ''));
+  readonly actReady = computed(() => !!this.acting() && !this.actBusy() && (!this.actReasonRequired() || this.actReason().trim().length >= 10));
+
+  toBack(): void {
+    this.router.navigateByUrl('/app/administration/organisation/directory');
+  }
+
+  startOrgReview(): void {
+    const d = this.d();
+    if (!d?.id || this.actBusy()) return;
+    this.actBusy.set(true);
+    this.api.startReview(d.id, { expectedVersion: d.version }).subscribe({
+      next: (o) => this.actDone('Review started', o.message ?? 'This organisation is now under review.'),
+      error: (e: unknown) => this.actFailed(e)
+    });
+  }
+
+  chooseAct(a: 'approve' | 'reject' | 'suspend' | 'reactivate' | 'archive'): void {
+    this.acting.set(a);
+    this.actReason.set('');
+    this.actNotes.set('');
+    this.activateNow.set(true);
+  }
+
+  cancelAct(): void {
+    this.acting.set(null);
+  }
+
+  confirmAct(): void {
+    const d = this.d();
+    const a = this.acting();
+    if (!d?.id || !a || !this.actReady()) return;
+    const version = d.version;
+    const reason = this.actReason().trim();
+    const notes = this.actNotes().trim() || null;
+    this.actBusy.set(true);
+    const call =
+      a === 'approve' ? this.api.review(d.id, { approved: true, expectedVersion: version, notes, activateImmediately: this.activateNow() })
+      : a === 'reject' ? this.api.review(d.id, { approved: false, expectedVersion: version, reason, notes })
+      : a === 'suspend' ? this.api.suspend(d.id, { reason, expectedVersion: version })
+      : a === 'reactivate' ? this.api.reactivate(d.id, { notes: reason || notes, expectedVersion: version })
+      : this.api.archive(d.id, { reason, expectedVersion: version });
+    call.subscribe({
+      next: (o) => this.actDone('Decision recorded', o.message ?? 'The organisation has been updated.'),
+      error: (e: unknown) => this.actFailed(e)
+    });
+  }
+
+  private actDone(title: string, message: string): void {
+    this.actBusy.set(false);
+    this.acting.set(null);
+    this.toast.success(title, message);
+    this.store.loadDetail(this.orgId).subscribe({ error: () => undefined });
+  }
+
+  private actFailed(e: unknown): void {
+    this.actBusy.set(false);
+    this.toast.error('Not recorded', apiErrorMessage(e, 'That decision could not be recorded.'));
   }
 
   /** open the edit page */

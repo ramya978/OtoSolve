@@ -1,5 +1,7 @@
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import QRCode from 'qrcode';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { SecurityApiService } from '../../../Service/security-api.service';
 import { AuthService } from '../../../Shared/Auth/auth.service';
 import { ToastService } from '../../../Shared/services/toast.service';
@@ -7,7 +9,7 @@ import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { UserSecurityResponse } from '../../../Shared/models/iam-contract.model';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  IAM_NOW, IamSession, SecurityActivity, fmtDate, fmtDateTime, fmtTime, initialsOf
+  IamSession, SecurityActivity, fmtDate, fmtDateTime, fmtTime, initialsOf
 } from '../../../Shared/IAM/iam-data';
 
 type Dialog = 'methods' | 'app' | 'email' | 'password' | 'codes' | null;
@@ -65,7 +67,8 @@ export class MySecurity implements OnInit {
   readonly activity = signal<SecurityActivity[]>([]);
   readonly methods = signal<MfaMethod[]>([]);
   readonly recoveryCodes = signal<string[]>([]);
-  readonly rememberedDevices = signal(0);
+  readonly trusted = signal<{ id: string; name: string; detail: string; lastSeen: string }[]>([]);
+  readonly rememberedDevices = computed(() => this.trusted().length);
   readonly devicesReviewed = signal(false);
 
   readonly dialog = signal<Dialog>(null);
@@ -98,6 +101,11 @@ export class MySecurity implements OnInit {
       next: (r) => {
         this.sec.set(r);
         this.passwordChanged.set(r.passwordChangedAtUtc ?? '');
+        this.trusted.set((r.trustedDevices ?? []).filter((d) => !d.isExpired).map((d) => ({
+          id: d.id ?? '', name: d.deviceName || [d.browser, d.operatingSystem].filter(Boolean).join(' on ') || 'Device',
+          detail: [d.browser, d.operatingSystem].filter(Boolean).join(' on ') + (d.ipAddress ? ' · ' + d.ipAddress : ''),
+          lastSeen: d.lastSeenAtUtc ?? d.trustedAtUtc ?? '',
+        })));
         this.sessions.set((r.activeSessions ?? []).map((x) => ({
           id: x.id ?? '', device: x.deviceName || [x.browser, x.operatingSystem].filter(Boolean).join(' on ') || 'Device',
           detail: [x.browser, x.operatingSystem].filter(Boolean).join(' on ') + (x.ipAddress ? ' · ' + x.ipAddress : ''),
@@ -136,7 +144,7 @@ export class MySecurity implements OnInit {
 
   // ---------------------------------------------------------------- status
   readonly mfaOn = computed(() => this.methods().length > 0);
-  readonly passwordGood = computed(() => !!this.passwordChanged() && (IAM_NOW.getTime() - new Date(this.passwordChanged()).getTime()) / 86400000 <= 90);
+  readonly passwordGood = computed(() => !!this.passwordChanged() && (Date.now() - new Date(this.passwordChanged()).getTime()) / 86400000 <= 90);
 
   /** four checks behind the security level */
   readonly checks = computed(() => [
@@ -282,6 +290,12 @@ export class MySecurity implements OnInit {
           this.reload();
           this.dialog.set('codes');
         };
+        // A device remembered before the second factor existed would walk past it at the next
+        // sign-in, so the code is asked for everywhere from now on.
+        const stale = this.trusted();
+        if (stale.length) {
+          forkJoin(stale.map((d) => this.api.revokeMyTrustedDevice(d.id, 'Second factor enrolled').pipe(catchError(() => of(null))))).subscribe();
+        }
         if (!this.recoveryCodes().length) {
           this.api.generateRecoveryCodes().subscribe({
             next: (c) => { this.recoveryCodes.set(c.codes ?? []); afterwards(); },
@@ -315,6 +329,13 @@ export class MySecurity implements OnInit {
     this.api.revokeMySession(s.id, 'Revoked from My security').subscribe({
       next: () => { this.toast.show('Session revoked', s.device, 'success'); this.reload(); },
       error: (e) => this.fail(e, 'The session could not be revoked.'),
+    });
+  }
+
+  revokeTrusted(d: { id: string; name: string }): void {
+    this.api.revokeMyTrustedDevice(d.id, 'Removed from My security').subscribe({
+      next: () => { this.toast.show('Device forgotten', d.name, 'success'); this.reload(); },
+      error: (e) => this.fail(e, 'The device could not be removed.'),
     });
   }
 

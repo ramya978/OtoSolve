@@ -38,13 +38,65 @@
         </ul> -->
       </div>
     </div>
-    @if (current() === 'profile') {
+    @if (!isOwn || (current() === 'profile' && canEdit())) {
       <div class="i-head-actions">
-        <button type="button" class="i-btn i-btn--primary" (click)="edit()">
-          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+        @if (!isOwn) {
+          <button type="button" class="i-btn" (click)="toBack()">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M12 19l-7-7 7-7" /></svg>All organisations</button>
+          @if (can('StartReview')) {
+            <button type="button" class="i-btn" [disabled]="actBusy()" (click)="startOrgReview()">Start review</button>
+          }
+          @if (can('Approve')) {
+            <button type="button" class="i-btn i-btn--primary" (click)="chooseAct('approve')">Approve</button>
+          }
+          @if (can('Reject')) {
+            <button type="button" class="i-btn i-btn--danger" (click)="chooseAct('reject')">Send back</button>
+          }
+          @if (can('Suspend')) {
+            <button type="button" class="i-btn i-btn--danger" (click)="chooseAct('suspend')">Suspend</button>
+          }
+          @if (can('Reactivate')) {
+            <button type="button" class="i-btn i-btn--primary" (click)="chooseAct('reactivate')">Reactivate</button>
+          }
+          @if (can('Archive')) {
+            <button type="button" class="i-btn i-btn--danger" (click)="chooseAct('archive')">Archive</button>
+          }
+        }
+        @if (current() === 'profile' && canEdit()) {
+          <button type="button" class="i-btn i-btn--primary" (click)="edit()">
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>Edit</button>
+        }
       </div>
     }
   </header>
+
+  @if (acting()) {
+    <section class="i-card og-main og-pad" aria-label="Decision">
+      <div class="og-c-block">
+        <span class="og-c-label">{{ actTitle() }}</span>
+        @if (actReasonRequired() || acting() === 'reactivate') {
+          <textarea class="og-input og-input--area og-input--note" [value]="actReason()" maxlength="500"
+                    [placeholder]="actReasonRequired() ? 'Say why (at least 10 characters).' : 'Anything worth recording.'"
+                    (input)="actReason.set($any($event.target).value)"></textarea>
+        }
+        @if (acting() === 'approve') {
+          <textarea class="og-input og-input--area og-input--note" [value]="actNotes()" maxlength="500" placeholder="Note (optional)"
+                    (input)="actNotes.set($any($event.target).value)"></textarea>
+          <label class="og-c-hint">
+            <input type="checkbox" [checked]="activateNow()" (change)="activateNow.set($any($event.target).checked)" />
+            Activate it straight away
+          </label>
+        }
+      </div>
+      <footer class="og-c-foot">
+        <span class="og-c-hint"></span>
+        <div class="og-c-actions">
+          <button type="button" class="i-btn" (click)="cancelAct()">Cancel</button>
+          <button type="button" class="i-btn i-btn--primary" [disabled]="!actReady()" (click)="confirmAct()">Confirm</button>
+        </div>
+      </footer>
+    </section>
+  }
 
   <section class="i-card og-main" aria-label="Organisation details">
     <div class="og-tabbar">
@@ -151,7 +203,7 @@
                 <span class="og-drop-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('cloud')" /></svg></span>
                 <span class="og-drop-text">
                   <strong>Drop files here or <u>browse</u></strong>
-                  <small>{{ acceptLabel }} · up to 5 MB each</small>
+                  <small>{{ acceptLabel }} · up to {{ maxMb }} MB each</small>
                 </span>
                 <input #picker type="file" multiple hidden [attr.accept]="acceptAttr" (click)="$event.stopPropagation()" (change)="onPick(picker)" />
               </div>
@@ -207,7 +259,7 @@
             @for (s of submissions(); track s.id) {
               <article class="og-sub">
                 <header class="og-sub-head">
-                  <span [class]="'og-sub-st og-sub-st--' + s.status">{{ subStatusLabel(s.status) }}</span>
+                  <span [class]="'og-sub-st og-sub-st--' + s.status">{{ s.label }}</span>
                   <h4>{{ s.title }}</h4>
                   @if (s.title !== s.type) { <span class="og-sub-type">{{ s.type }}</span> }
                   <dl class="og-sub-meta">
@@ -229,17 +281,68 @@
                           <strong [attr.title]="f.name">{{ f.name }}</strong>
                           <small>{{ fmtSize(f.size) }}@if (f.by) { · {{ f.by }} }@if (f.checksum) { · checksum {{ f.checksum }} }</small>
                         </span>
-                        @if (f.url) {
-                          <span class="og-file-acts">
-                            <button type="button" class="og-icon-btn" aria-label="View" title="View" (click)="viewFile(f)">
-                              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></button>
-                            <button type="button" class="og-icon-btn" aria-label="Download" title="Download" (click)="downloadFile(f)">
-                              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg></button>
-                          </span>
-                        }
+                        <span class="og-file-acts">
+                          <button type="button" class="og-icon-btn" aria-label="View" title="View" (click)="openFile(s, f, true)">
+                            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg></button>
+                          <button type="button" class="og-icon-btn" aria-label="Download" title="Download" (click)="openFile(s, f, false)">
+                            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg></button>
+                          @if (canOn(s, 'RemoveFile')) {
+                            <button type="button" class="og-icon-btn is-danger" aria-label="Remove file" title="Remove" [disabled]="docsBusy()" (click)="removeServerFile(s, f)">
+                              <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+                          }
+                        </span>
                       </li>
                     }
                   </ul>
+                }
+
+                @if (canOn(s, 'AddFile')) {
+                  <div class="og-drop" [class.is-over]="dragOver()" (dragover)="onDragOver($event)" (dragleave)="dragOver.set(false)"
+                       (drop)="onDropDraft(s, $event)" (click)="sp.click()">
+                    <span class="og-drop-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('cloud')" /></svg></span>
+                    <span class="og-drop-text">
+                      <strong>Drop more files here or <u>browse</u></strong>
+                      <small>{{ acceptLabel }} · up to {{ maxMb }} MB each</small>
+                    </span>
+                    <input #sp type="file" multiple hidden [attr.accept]="acceptAttr" (click)="$event.stopPropagation()" (change)="onPickDraft(s, sp)" />
+                  </div>
+                }
+
+                @if (canOn(s, 'Submit') || canOn(s, 'Resubmit') || canDiscard(s) || (!isOwn && canOn(s, 'Approve'))) {
+                  <footer class="og-c-foot">
+                    <span class="og-c-hint">@if (uploadingTo(s)) { Uploading… {{ uploadPct() }}% }</span>
+                    <div class="og-c-actions">
+                      @if (canOn(s, 'Submit') || canOn(s, 'Resubmit')) {
+                        <button type="button" class="i-btn i-btn--primary" [disabled]="docsBusy()" (click)="sendDraft(s)">
+                          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('send')" /></svg>{{ canOn(s, 'Resubmit') ? 'Resubmit for review' : 'Send for review' }}</button>
+                      }
+                      @if (canDiscard(s)) {
+                        <button type="button" class="i-btn i-btn--danger" [disabled]="docsBusy()" (click)="discardDraft(s)">Discard draft</button>
+                      }
+                      @if (!isOwn && canOn(s, 'Approve') && decidingOn()?.id !== s.id) {
+                        <button type="button" class="i-btn" [disabled]="docsBusy()" (click)="beginDecision(s, 'Approve')">
+                          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Approve</button>
+                        <button type="button" class="i-btn i-btn--danger" [disabled]="docsBusy()" (click)="beginDecision(s, 'Reject')">
+                          <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Reject</button>
+                      }
+                    </div>
+                  </footer>
+                }
+
+                @if (decidingOn()?.id === s.id) {
+                  <div class="og-c-block">
+                    <span class="og-c-label">{{ decidingOn()?.decision === 'Approve' ? 'Approve this submission' : 'Reject this submission' }}</span>
+                    <textarea class="og-input og-input--area og-input--note" maxlength="500" [value]="decisionNotes()"
+                              [placeholder]="decidingOn()?.decision === 'Approve' ? 'Note (optional)' : 'Reason (required) - say what is wrong, so it can be corrected.'"
+                              (input)="decisionNotes.set($any($event.target).value)"></textarea>
+                    <footer class="og-c-foot">
+                      <span class="og-c-hint"></span>
+                      <div class="og-c-actions">
+                        <button type="button" class="i-btn" (click)="cancelDecision()">Cancel</button>
+                        <button type="button" class="i-btn i-btn--primary" [disabled]="docsBusy()" (click)="confirmDecision(s)">Confirm</button>
+                      </div>
+                    </footer>
+                  </div>
                 }
               </article>
             }
@@ -248,7 +351,9 @@
           <div class="og-empty">
             <span class="og-empty-ico"><svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('inbox')" /></svg></span>
             <strong>No documents yet</strong>
-            @if (canUpload()) {
+            @if (!isOwn) {
+              <span>No documents were submitted for this organisation.</span>
+            } @else if (canUpload()) {
               <span>Upload your registration certificate and other proofs so a reviewer can check them.</span>
               <!-- <button type="button" class="i-btn i-btn--primary" (click)="openCompose()">
                 <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg>Upload documents</button> -->

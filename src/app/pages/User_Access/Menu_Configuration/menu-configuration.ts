@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import { IamOption, MenuGroup, MenuItem, initialsOf, slugCode } from '../../../Shared/IAM/iam-data';
@@ -59,14 +59,15 @@ export class MenuConfiguration implements OnInit {
     return this.base();
   }
   readonly menus = signal<MenuGroup[]>([]);
+  private readonly hasRoles = computed(() => this.rolesStore.roles().length > 0);
   get orgName(): string { return this.nav.organisationName(); }
 
   constructor() {
     // the role picker sets viewRole directly; load that role's visible entries when it changes
     effect(() => {
       const code = this.viewRole();
-      const roles = this.rolesStore.roles();
-      if (code && roles.length) this.setViewRole(code);
+      const ready = this.hasRoles();
+      if (code && ready) untracked(() => this.setViewRole(code));
     });
   }
 
@@ -171,7 +172,8 @@ export class MenuConfiguration implements OnInit {
   });
 
   // ---------------------------------------------------------------- selection
-  readonly group = computed(() => this.menus().find((m) => m.code === this.selected()) ?? this.menus()[0]);
+  private static readonly NO_GROUP: MenuGroup = { code: '', name: '', icon: 'grid', permission: '', inUse: false, module: '', items: [] };
+  readonly group = computed<MenuGroup>(() => this.menus().find((m) => m.code === this.selected()) ?? this.menus()[0] ?? MenuConfiguration.NO_GROUP);
   readonly groupIndex = computed(() => this.menus().findIndex((m) => m.code === this.group().code));
 
   readonly shownItems = computed(() => {
@@ -320,6 +322,63 @@ export class MenuConfiguration implements OnInit {
     return !!visible && visible.has(item.code);
   }
 
+  // ---- role-to-menu mapping (PUT /menus/role-mapping/{roleId})
+  readonly roleDirty = signal(false);
+  readonly roleSaving = signal(false);
+  private readonly rolePermitted = signal<Set<string>>(new Set());
+  private roleLanding: string | null = null;
+
+  toggleRoleVisible(item: MenuItem | MenuGroup): void {
+    if (!this.rolePermitted().has(item.code)) {
+      this.toast.show('Not permitted', 'This role does not hold the permission this item needs.', 'warning');
+      return;
+    }
+    const n = new Set(this.roleVisible() ?? []);
+    if (n.has(item.code)) n.delete(item.code);
+    else n.add(item.code);
+    this.roleVisible.set(n);
+    this.roleDirty.set(true);
+  }
+
+  saveRoleMapping(): void {
+    const role = this.rolesStore.roles().find((r) => r.code === this.viewRole());
+    if (!role?.id || this.roleSaving()) return;
+    const visible = new Set(this.roleVisible() ?? []);
+    // A menu is shown when any of its items is.
+    for (const g of this.menus()) if (g.items.some((i) => visible.has(i.code))) visible.add(g.code);
+    const ids = [...visible].map((c) => this.meta.get(c)?.id).filter((x): x is string => !!x);
+    this.roleSaving.set(true);
+    this.api.mapRoleMenus(role.id, { visibleMenuIds: ids, expectedVersion: role.version ?? 0, landingMenuId: this.roleLanding }).subscribe({
+      next: (o) => {
+        this.roleSaving.set(false);
+        this.roleDirty.set(false);
+        this.toast.show('Role menus saved', o.message ?? role.name, 'success');
+        this.rolesStore.load();
+      },
+      error: (e) => {
+        this.roleSaving.set(false);
+        this.toast.show('Not saved', apiErrorMessage(e, 'The role menus could not be saved.'), 'error');
+      },
+    });
+  }
+
+  // ---- export of the working copy
+  exportCsv(): void {
+    const q = (v: string) => '"' + v.replace(/"/g, '""') + '"';
+    const rows = [['Menu', 'Item', 'Route', 'Permission', 'In use'].join(',')];
+    for (const g of this.menus()) {
+      rows.push([q(g.name), '', '', q(g.permission), g.inUse ? 'Yes' : 'No'].join(','));
+      for (const i of g.items) rows.push([q(g.name), q(i.name), q(i.route), q(i.permission), i.inUse ? 'Yes' : 'No'].join(','));
+    }
+    const url = URL.createObjectURL(new Blob([rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'menu-configuration.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    this.toast.show('Export ready', 'The menu configuration was downloaded as CSV.', 'success');
+  }
+
   /** loads which menu entries the chosen role can open */
   private setViewRole(code: string): void {
     const role = this.rolesStore.roles().find((r) => r.code === code);
@@ -327,10 +386,18 @@ export class MenuConfiguration implements OnInit {
     this.api.getRoleMenuMapping(role.id).subscribe({
       next: (m) => {
         const out = new Set<string>();
+        const permitted = new Set<string>();
         const walk = (l: RoleMenuNodeResponse[] | null | undefined): void => {
-          for (const n of l ?? []) { if (n.isVisible && n.isPermitted !== false) out.add(n.code ?? ''); walk(n.children); }
+          for (const n of l ?? []) {
+            if (n.isPermitted !== false) permitted.add(n.code ?? '');
+            if (n.isVisible && n.isPermitted !== false) out.add(n.code ?? '');
+            walk(n.children);
+          }
         };
         walk(m.nodes);
+        this.roleLanding = m.landingMenuId ?? null;
+        this.rolePermitted.set(permitted);
+        this.roleDirty.set(false);
         this.roleVisible.set(out);
       },
       error: () => this.roleVisible.set(new Set()),
@@ -513,10 +580,21 @@ export class MenuConfiguration implements OnInit {
       this.toast.show('Not saved', apiErrorMessage(err, 'That change could not be saved.'), 'error');
     };
     if (d.editing && meta) {
-      this.api.updateMenuDefinition(meta.id, {
-        expectedVersion: meta.version, name: d.name.trim(), route: d.route.trim(), icon: d.icon ?? '',
-        requiredPermissionCode: d.permission, displayOrder: order || null,
-      }).subscribe({ next: () => done('Menu item updated'), error: fail });
+      // An organisation's edit is an override saved through PUT /menus/configuration (the same
+      // call as the switches); the catalogue definition itself belongs to the platform.
+      const items: TenantMenuItemRequest[] = [];
+      this.menus().forEach((g, gi) => {
+        if (this.meta.get(g.code)) {
+          const edited = g.code === d.editing;
+          items.push(this.requestFor(g.code, edited ? d.name : g.name, g.inUse, edited ? (d.icon || g.icon) : g.icon, edited && order ? order : gi + 1));
+        }
+        g.items.forEach((it, ii) => {
+          if (!this.meta.get(it.code)) return;
+          const edited = it.code === d.editing;
+          items.push(this.requestFor(it.code, edited ? d.name : it.name, it.inUse, '', edited && order ? order : ii + 1));
+        });
+      });
+      this.api.configureMenu({ items }).subscribe({ next: () => done('Menu item updated'), error: fail });
       return;
     }
     const parent = d.parent ? this.meta.get(d.parent) : undefined;
