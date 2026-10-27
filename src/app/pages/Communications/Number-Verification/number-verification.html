@@ -327,7 +327,7 @@
       </div>
 
       @if (reportList().length) {
-        <div class="nv-table-wrap"><table class="nv-table">
+        <div class="nv-table-wrap"><table class="nv-table nv-report">
           <thead><tr><th>Number</th><th>Name</th><th>Result</th><th>Note</th><th class="nv-num"><span class="nv-sr">Copy</span></th></tr></thead>
           <tbody>
             @for (r of reportRows(); track r.number) {
@@ -376,7 +376,7 @@
     </nav>
 
     @if (jobList().length) {
-      <div class="nv-table-wrap"><table class="nv-table">
+      <div class="nv-table-wrap"><table class="nv-table nv-jobs">
         <thead><tr><th>File</th><th>Campaign</th><th>Status</th><th class="nv-num">Checked</th><th class="nv-num">On WhatsApp</th><th class="nv-num">Cost</th><th>Started</th><th><span class="nv-sr">Actions</span></th></tr></thead>
         <tbody>
           @for (j of jobList(); track j.id) {

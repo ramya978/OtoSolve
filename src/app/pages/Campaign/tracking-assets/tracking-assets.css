@@ -377,8 +377,8 @@ display: block;
     background: none;
     color: var(--cr-heading);
     overflow: hidden;
-    font-size: calc(13px * var(--ta-fs));
-    font-weight: 600;
+      font-size: calc(10px * var(--ta-fs));
+    font-weight: 500;
     text-align: left;
     cursor: pointer;
 }

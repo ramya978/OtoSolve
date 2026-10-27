@@ -1,4 +1,17 @@
 /* Platform — Workspace Kit layout on top of iam-shared.css (same look as the Organisation profile) */
+:host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
+     sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
+  --po-k: 1;
+  --po-fs: calc(var(--font-scale, 1) * var(--po-k));
+  display: block;
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --po-k: .95; } }
+@media (max-width: 1600px) { :host { --po-k: .9; } }
+@media (max-width: 1440px) { :host { --po-k: .86; } }
+@media (max-width: 1280px) { :host { --po-k: .84; } }
+
 .pl-page {
   container: pl-page / inline-size;
 }
@@ -28,7 +41,7 @@
 }
 
 .pl-sumcard {
-  margin-bottom: 20px;
+  margin-bottom: calc(20px * var(--po-k));
   overflow: hidden;
 }
 
@@ -43,8 +56,8 @@
 
 .pl-tabs {
   display: flex;
-  gap: 24px;
-  padding: 0 24px;
+  gap: calc(24px * var(--po-k));
+  padding: 0 calc(24px * var(--po-k));
   overflow-x: auto;
   border-bottom: 1px solid var(--i-line);
   scrollbar-width: none;
@@ -57,16 +70,16 @@
 .pl-tab {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--po-k));
   flex: none;
   margin-bottom: -1px;
-  padding: 16px 0 13px;
+  padding: calc(16px * var(--po-k)) 0 calc(13px * var(--po-k));
   border: 0;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--i-muted);
   font: inherit;
-  font-size: calc(13.5px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--po-fs));
   font-weight: 500;
   cursor: pointer;
 }
@@ -82,12 +95,12 @@
 }
 
 .pl-tab-n {
-  min-width: 20px;
+  min-width: calc(20px * var(--po-k));
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--i-hover);
   color: var(--i-muted);
-  font-size: calc(11.5px * var(--font-scale, 1));
+  font-size: calc(11.5px * var(--po-fs));
   font-weight: 600;
   text-align: center;
 }
@@ -99,21 +112,21 @@
 
 /* headings + layout */
 .pl-h3 {
-  margin: 0 0 14px;
+  margin: 0 0 calc(14px * var(--po-k));
   color: var(--i-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--po-fs));
   font-weight: 600;
 }
 
 .pl-sub {
-  margin-left: 8px;
+  margin-left: calc(8px * var(--po-k));
   color: var(--i-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--po-fs));
   font-weight: 400;
 }
 
 .pl-pad {
-  padding: 24px;
+  padding: calc(24px * var(--po-k));
 }
 
 .pl-grid {
@@ -122,7 +135,7 @@
 }
 
 .pl-sec {
-  padding: 24px;
+  padding: calc(24px * var(--po-k));
   border-bottom: 1px solid var(--i-line);
 }
 
@@ -138,21 +151,21 @@
 .pl-domain {
   margin: 0;
   color: var(--i-heading);
-  font-size: calc(15px * var(--font-scale, 1));
+  font-size: calc(14.5px * var(--po-fs));
   font-weight: 600;
 }
 
 .pl-note {
   margin: 6px 0 0;
   color: var(--i-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--po-fs));
   line-height: 1.5;
 }
 
 .pl-about {
   margin: 0;
   color: var(--i-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--po-fs));
   line-height: 1.6;
 }
 
@@ -162,8 +175,8 @@
   align-items: flex-end;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 20px;
+  gap: calc(12px * var(--po-k));
+  margin-bottom: calc(20px * var(--po-k));
 }
 
 .pl-orgs .pl-h3 {
@@ -173,7 +186,7 @@
 .pl-big {
   margin: 0;
   color: var(--i-heading);
-  font-size: calc(40px * var(--font-scale, 1));
+  font-size: calc(28px * var(--po-fs));
   font-weight: 500;
   letter-spacing: -1px;
   line-height: 1;
@@ -182,8 +195,8 @@
 .pl-split {
   display: flex;
   gap: 4px;
-  height: 10px;
-  margin-bottom: 20px;
+  height: calc(10px * var(--po-k));
+  margin-bottom: calc(20px * var(--po-k));
 }
 
 .pl-split-i {
@@ -215,8 +228,8 @@
 
 .pl-dot {
   flex: none;
-  width: 9px;
-  height: 9px;
+  width: calc(9px * var(--po-k));
+  height: calc(9px * var(--po-k));
   border-radius: 50%;
 }
 
@@ -224,14 +237,14 @@
 .pl-stages {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: calc(14px * var(--po-k));
 }
 
 .pl-stage {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px 18px;
+  gap: calc(10px * var(--po-k));
+  padding: calc(16px * var(--po-k)) calc(18px * var(--po-k));
   border: 1px solid var(--i-line);
   border-radius: var(--i-radius);
   background: var(--i-card, transparent);
@@ -250,19 +263,19 @@
 .pl-stage-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--po-k));
   color: var(--i-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--po-fs));
 }
 
 .pl-stage-top em {
   margin-left: auto;
   font-style: normal;
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--po-fs));
 }
 
 .pl-stage-n {
-  font-size: calc(28px * var(--font-scale, 1));
+  font-size: calc(22px * var(--po-fs));
   font-weight: 600;
   line-height: 1.1;
 }
@@ -294,21 +307,21 @@
 }
 
 .pl-table th {
-  padding: 11px 18px;
+  padding: calc(11px * var(--po-k)) calc(18px * var(--po-k));
   border-bottom: 1px solid var(--i-line);
   background: var(--cc-grid-head, var(--i-head-bg));
   color: var(--i-heading);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--po-fs));
   font-weight: 600;
   text-align: left;
   white-space: nowrap;
 }
 
 .pl-table td {
-  padding: 14px 18px;
+  padding: calc(14px * var(--po-k)) calc(18px * var(--po-k));
   border-bottom: 1px solid var(--i-soft);
   color: var(--i-heading);
-  font-size: calc(13.5px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--po-fs));
   vertical-align: middle;
 }
 
@@ -327,8 +340,8 @@
 .pl-track {
   display: inline-block;
   width: min(240px, 40%);
-  height: 8px;
-  margin-right: 12px;
+  height: calc(8px * var(--po-k));
+  margin-right: calc(12px * var(--po-k));
   overflow: hidden;
   border-radius: 999px;
   background: var(--i-hover);
@@ -344,11 +357,11 @@
 
 .pl-pct {
   color: var(--i-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--po-fs));
 }
 
 .pl-cnt {
-  font-size: calc(15px * var(--font-scale, 1));
+  font-size: calc(14.5px * var(--po-fs));
   font-weight: 600;
 }
 
@@ -406,12 +419,12 @@
 
 @container pl-page (max-width: 520px) {
   .pl-tabs {
-    padding-inline: 16px;
+    padding-inline: calc(16px * var(--po-k));
   }
 
   .pl-pad,
   .pl-sec {
-    padding: 18px 16px;
+    padding: calc(18px * var(--po-k)) calc(16px * var(--po-k));
   }
 
   .pl-stages {
@@ -421,4 +434,57 @@
   .pl-track {
     display: none;
   }
+}
+
+/* ---------- fit every screen: no sideways scroll ---------- */
+/* tabs wrap onto a second line on narrow screens instead of scrolling sideways */
+.pl-tabs { flex-wrap: wrap; column-gap: calc(20px * var(--po-k)); overflow-x: visible; }
+
+/* ---------- page header: same look as the shared page header on every other page ---------- */
+.pl-page > .i-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: flex-start !important;
+  justify-content: space-between;
+  gap: calc(12px * var(--po-k)) calc(20px * var(--po-k));
+  margin: 0 0 calc(16px * var(--po-k)) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+.pl-page > .i-head > :first-child { flex: 1 1 calc(320px * var(--po-k)); min-width: 0; }
+.pl-page > .i-head .i-eyebrow {
+  margin: 0 !important;
+  font-size: calc(11px * var(--po-fs)) !important;
+  letter-spacing: 1px !important;
+  line-height: 1.5 !important;
+}
+.pl-page > .i-head h1 {
+  margin: calc(4px * var(--po-k)) 0 0 !important;
+  font-size: calc(26px * var(--po-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+.pl-page > .i-head p {
+  margin: calc(6px * var(--po-k)) 0 0 !important;
+  font-size: calc(13.5px * var(--po-fs)) !important;
+  line-height: 1.5 !important;
+}
+/* header buttons: one row, top-right, normal height */
+.pl-page > .i-head .i-head-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: calc(8px * var(--po-k));
+}
+.pl-page > .i-head .i-head-actions .i-btn {
+  height: calc(36px * var(--po-k)) !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  font-size: calc(13px * var(--po-fs)) !important;
+  white-space: nowrap;
 }

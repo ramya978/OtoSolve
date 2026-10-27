@@ -1,5 +1,18 @@
 /* Custom dropdown - theme tokens, button radius from Theme Settings. */
 :host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
+     sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
+  --lcs-k: 1;
+  --lcs-fs: calc(var(--font-scale, 1) * var(--lcs-k));
+  display: block;
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --lcs-k: .95; } }
+@media (max-width: 1600px) { :host { --lcs-k: .9; } }
+@media (max-width: 1440px) { :host { --lcs-k: .86; } }
+@media (max-width: 1280px) { :host { --lcs-k: .84; } }
+
+:host {
   display: block;
   min-width: 0;
   --ls-primary: var(--primary, var(--accent, #5b3a6e));
@@ -22,16 +35,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: calc(8px * var(--lcs-k));
   width: 100%;
-  height: 38px;
-  padding: 0 12px;
+  height: calc(38px * var(--lcs-k));
+  padding: 0 calc(12px * var(--lcs-k));
   border: 1px solid var(--ls-line);
   border-radius: var(--ls-radius);
   background: var(--ls-card);
   color: var(--ink, #2b2b33);
   font: inherit;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lcs-fs));
   text-align: left;
   cursor: pointer;
   transition: border-color .15s, box-shadow .15s;
@@ -51,7 +64,7 @@
 .ls-ph { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-ph { color: var(--muted, #6f6f7a); }
 
-.ls-chev { flex: none; width: 14px; height: 14px; color: var(--muted, #6f6f7a); transition: transform .2s; }
+.ls-chev { flex: none; width: calc(14px * var(--lcs-k)); height: calc(14px * var(--lcs-k)); color: var(--muted, #6f6f7a); transition: transform .2s; }
 .ls.is-open .ls-chev { transform: rotate(180deg); }
 
 .ls-pop {
@@ -60,7 +73,7 @@
   right: 0;
   left: 0;
   z-index: 40;
-  min-width: 200px;
+  min-width: calc(200px * var(--lcs-k));
   border: 1px solid var(--ls-line);
   border-radius: var(--ls-radius);
   background: var(--ls-card);
@@ -73,16 +86,16 @@
   align-items: center;
   gap: 7px;
   margin: 6px 6px 0;
-  padding: 0 9px;
+  padding: 0 calc(9px * var(--lcs-k));
   border: 1px solid var(--ls-line);
   border-radius: calc(var(--ls-radius) - 2px);
 }
 
-.ls-search svg { flex: none; width: 14px; height: 14px; color: var(--muted, #6f6f7a); }
-.ls-search input { flex: 1; min-width: 0; height: 30px; border: 0; outline: 0; background: none; font: inherit; font-size: calc(13px * var(--font-scale, 1)); }
+.ls-search svg { flex: none; width: calc(14px * var(--lcs-k)); height: calc(14px * var(--lcs-k)); color: var(--muted, #6f6f7a); }
+.ls-search input { flex: 1; min-width: 0; height: calc(30px * var(--lcs-k)); border: 0; outline: 0; background: none; font: inherit; font-size: calc(13px * var(--lcs-fs)); }
 
 .ls-list {
-  max-height: 240px;
+  max-height: calc(240px * var(--lcs-k));
   margin: 0;
   padding: 5px;
   overflow-y: auto;
@@ -93,10 +106,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 7px 10px;
+  gap: calc(10px * var(--lcs-k));
+  padding: 7px calc(10px * var(--lcs-k));
   border-radius: max(3px, calc(var(--ls-radius) - 3px));
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lcs-fs));
   cursor: pointer;
 }
 
@@ -104,12 +117,12 @@
 .ls-list li:focus-visible { outline: 0; background: color-mix(in srgb, var(--ls-line) 30%, var(--white, #fff)); }
 .ls-list li.is-on { background: color-mix(in srgb, var(--ls-primary) 9%, var(--white, #fff)); color: var(--ls-primary); font-weight: 500; }
 
-.ls-list li > svg { flex: none; width: 14px; height: 14px; opacity: 0; stroke-width: 2.2; }
+.ls-list li > svg { flex: none; width: calc(14px * var(--lcs-k)); height: calc(14px * var(--lcs-k)); opacity: 0; stroke-width: 2.2; }
 .ls-list li.is-on > svg { opacity: 1; }
 
 .ls-opt { display: grid; min-width: 0; }
 .ls-opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ls-opt small { color: var(--muted, #6f6f7a); font-size: calc(11px * var(--font-scale, 1)); font-weight: 400; }
+.ls-opt small { color: var(--muted, #6f6f7a); font-size: calc(11px * var(--lcs-fs)); font-weight: 400; }
 
 .ls-list li.ls-empty { justify-content: center; color: var(--muted, #6f6f7a); cursor: default; }
 

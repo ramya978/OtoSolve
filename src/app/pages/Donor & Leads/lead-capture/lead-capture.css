@@ -1,9 +1,73 @@
 /* LEAD CAPTURE shell - heading + mode switch. Theme tokens only. */
 :host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
+     sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
+  --lc-k: 1;
+  --lc-fs: calc(var(--font-scale, 1) * var(--lc-k));
+  display: block;
+}
+/* CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --lc-k: .95; } }
+@media (max-width: 1600px) { :host { --lc-k: .9; } }
+@media (max-width: 1440px) { :host { --lc-k: .86; } }
+@media (max-width: 1280px) { :host { --lc-k: .84; } }
+
+
+/* ---------- page header (shared app-page-header): same on every page ---------- */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--lc-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--lc-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--lc-k)) !important;
+  font-size: calc(13.5px * var(--lc-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--lc-fs)) !important;
+  letter-spacing: 1px !important;
+}
+/* header buttons: one row, top-right, normal height */
+:host ::ng-deep app-page-header [actions],
+:host ::ng-deep app-page-header [slot="actions"] {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  align-self: flex-start;
+  gap: calc(8px * var(--lc-k));
+}
+:host ::ng-deep app-page-header [actions] :is(button, a),
+:host ::ng-deep app-page-header [slot="actions"] :is(button, a) {
+  height: calc(36px * var(--lc-k)) !important;
+  min-height: 0 !important;
+  padding-block: 0 !important;
+  font-size: calc(13px * var(--lc-fs)) !important;
+  white-space: nowrap;
+}
+/* phones: the header actions drop under the title instead of squeezing it */
+@media (max-width: 700px) {
+  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
+  :host ::ng-deep app-page-header [actions],
+  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+}
+
+:host {
   --lc-primary: var(--primary, var(--accent, #5b3a6e));
   display: block;
   color: var(--ink, #2b2b33);
-  font: calc(13px * var(--font-scale, 1)) / 1.5 var(--font-body, Inter, "Segoe UI", Arial, sans-serif);
+  font: calc(13px * var(--lc-fs)) / 1.5 var(--font-body, Inter, "Segoe UI", Arial, sans-serif);
 }
 
 :host svg {
@@ -19,15 +83,15 @@
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px 24px;
-  margin-bottom: 18px;
+  gap: calc(16px * var(--lc-k)) calc(24px * var(--lc-k));
+  margin-bottom: calc(18px * var(--lc-k));
 }
 
 .lc-eyebrow {
   display: block;
   margin-bottom: 3px;
   color: var(--lc-primary);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--lc-fs));
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -36,7 +100,7 @@
 .lc-title h1 {
   margin: 0;
   color: var(--heading-color, var(--ink, #1f1f27));
-  font-size: calc(22px * var(--font-scale, 1));
+  font-size: calc(18px * var(--lc-fs));
   font-weight: 600;
   letter-spacing: -.3px;
 }
@@ -44,7 +108,7 @@
 .lc-title p {
   margin: 4px 0 0;
   color: var(--muted, #6f6f7a);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
 }
 
 /* two-option switch on a soft track */
@@ -60,8 +124,8 @@
 .lc-mode {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 14px 7px 8px;
+  gap: calc(10px * var(--lc-k));
+  padding: 7px calc(14px * var(--lc-k)) 7px calc(8px * var(--lc-k));
   border-radius: var(--btn-radius, 8px);
   color: var(--muted, #6f6f7a);
   text-decoration: none;
@@ -80,18 +144,18 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--lc-k));
+  height: calc(30px * var(--lc-k));
   border-radius: var(--btn-radius, 8px);
   transition: background .15s, color .15s;
 }
 
-.lc-mode-ico svg { width: 16px; height: 16px; }
+.lc-mode-ico svg { width: calc(16px * var(--lc-k)); height: calc(16px * var(--lc-k)); }
 .lc-mode.is-on .lc-mode-ico { background: color-mix(in srgb, var(--lc-primary) 10%, var(--white, #fff)); color: var(--lc-primary); }
 
 .lc-mode-txt { display: grid; line-height: 1.3; }
-.lc-mode-txt b { font-size: calc(13px * var(--font-scale, 1)); font-weight: 600; }
-.lc-mode-txt small { color: var(--muted, #6f6f7a); font-size: calc(11px * var(--font-scale, 1)); }
+.lc-mode-txt b { font-size: calc(13px * var(--lc-fs)); font-weight: 600; }
+.lc-mode-txt small { color: var(--muted, #6f6f7a); font-size: calc(11px * var(--lc-fs)); }
 
 @media (max-width: 640px) {
   .lc-modes { width: 100%; }

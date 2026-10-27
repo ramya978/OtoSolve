@@ -165,7 +165,7 @@
         </div>
 
         <div class="wm-table-wrap wm-rec-scroll" [class.is-loading]="poolLoading()">
-          <table class="wm-table">
+          <table class="wm-table wm-pool">
             <thead>
               <tr>
                 <th class="wm-cb"><input type="checkbox" aria-label="Select this page" [checked]="allShown()" [indeterminate]="someShown()" [disabled]="!pool().length" (change)="toggleShown()" /></th>
@@ -377,7 +377,7 @@
     <!-- table -->
     @if (pageRows().length) {
       <div class="wm-table-wrap">
-        <table class="wm-table">
+        <table class="wm-table wm-deliv">
           <thead><tr><th>Recipient</th><th>Broadcast</th><th>Template</th><th>Status</th><th>Sent</th><th>Last update</th></tr></thead>
           <tbody>
             @for (m of pageRows(); track m.id) {
