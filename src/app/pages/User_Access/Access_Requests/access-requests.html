@@ -208,7 +208,7 @@
           </div>
           <div class="i-field">
             <span class="i-field-label">Person <em>*</em></span>
-            <iam-select [options]="personOptions" [value]="draft().person" placeholder="Choose a person" [invalid]="tried() && !!errors().person"
+            <iam-select [options]="personOptions" [value]="draft().person" placeholder="Choose a person" [disabled]="!canPickPerson()" [invalid]="tried() && !!errors().person"
                         (valueChange)="patch('person', $event)" />
             @if (tried() && errors().person) { <span class="i-err">{{ errors().person }}</span> }
           </div>

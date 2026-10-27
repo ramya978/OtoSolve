@@ -74,8 +74,15 @@ export class AccessRequests implements OnInit {
     s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'muted';
 
   private readonly personOptionsC = computed<IamOption[]>(() =>
-    this.directory().map((u) => ({ value: u.id, label: u.name, hint: u.hint, initials: initialsOf(u.name) })));
+    this.withSelf(this.directory().map((u) => ({ value: u.id, label: u.name, hint: u.hint, initials: initialsOf(u.name) }))));
+  private withSelf(list: IamOption[]): IamOption[] {
+    const id = this.me.reference();
+    if (this.canPickPerson() || !id || list.some((o) => o.value === id)) return list;
+    const name = this.me.displayName() || 'Me';
+    return [{ value: id, label: name, hint: this.me.email() ?? '', initials: initialsOf(name) }, ...list];
+  }
   get personOptions(): IamOption[] { return this.personOptionsC(); }
+  readonly canPickPerson = computed(() => this.me.isOrganisationAdmin());
   private readonly roleOptionsC = computed<IamOption[]>(() =>
     this.requestable().map((r) => ({
       value: r.id, label: r.name, hint: r.privileged ? r.code + ' · Privileged' : r.code, initials: initialsOf(r.name)
@@ -239,7 +246,8 @@ export class AccessRequests implements OnInit {
 
   // ---- create drawer ----
   openCreate(): void {
-    this.draft.set({ person: '', role: '', from: this.today, until: '', reason: '' });
+    // Only an organisation admin raises a request for somebody else; everyone else asks for themselves.
+    this.draft.set({ person: this.canPickPerson() ? '' : this.me.reference(), role: '', from: this.today, until: '', reason: '' });
     this.tried.set(false);
     this.drawer.set(true);
   }
