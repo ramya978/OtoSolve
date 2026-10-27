@@ -80,8 +80,20 @@
 }
 
 :host ::ng-deep app-page-header {
-  margin-bottom: calc(18px * var(--pr-k));
+  display: block;
+  margin: 0 0 calc(16px * var(--pr-k)) !important;
+  padding-bottom: 0 !important;
 }
+
+/* the header's own bottom spacing made the gap to the cards too big - the gap is set above instead */
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* the cards row already carries the global .mb spacing; keep it tight to the table */
+.pr-stats.mb { margin-bottom: calc(16px * var(--pr-k)) }
 
 /* ---------- summary cards ---------- */
 /* the cards sit in one row that never wraps; as the row narrows the last cards hide */
@@ -273,14 +285,17 @@
   font-size: calc(13px * var(--pr-fs))
 }
 
-/* widths sit on the headings so a hidden column simply drops out (donor takes what is left) */
-.pr-table th.pr-col-donor { width: auto }
-.pr-table th.pr-col-ref { width: 21% }
-.pr-table th.pr-col-amount { width: 13% }
-.pr-table th.pr-col-status { width: 16% }
-.pr-table th.pr-col-receipt { width: 19% }
-.pr-table th.pr-col-action { width: calc(64px * var(--pr-k)) }
-.pr-col-action { text-align: center !important }
+/* equal columns: only the action column has a set width, every visible data column shares the rest
+   equally - and stays equal when a column hides on a smaller screen */
+.pr-table th.pr-col-action { width: calc(96px * var(--pr-k)) }
+
+/* the View button sits centred in its column, with the same space on both sides */
+.pr-table th.pr-col-action,
+.pr-table td.pr-col-action {
+  padding-left: calc(12px * var(--pr-k)) !important;
+  padding-right: calc(24px * var(--pr-k)) !important;
+  text-align: center !important
+}
 
 .pr-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 
@@ -860,9 +875,6 @@ td.empty {
 @container pr-card (max-width: 1240px) {
   .pr-col-ref { display: none }
   .pr-meta-email { display: block }
-  .pr-table th.pr-col-amount { width: 15% }
-  .pr-table th.pr-col-status { width: 19% }
-  .pr-table th.pr-col-receipt { width: 22% }
 }
 
 @container pr-card (max-width: 1000px) {
@@ -871,8 +883,6 @@ td.empty {
   .pr-meta .pr-tag,
   .pr-meta .pr-meta-date { display: none }
   .pr-meta-receipt { display: inline }
-  .pr-table th.pr-col-amount { width: 20% }
-  .pr-table th.pr-col-status { width: 26% }
 }
 
 @container pr-card (max-width: 900px) {
@@ -886,14 +896,12 @@ td.empty {
   .pr-col-status { display: none }
   .pr-meta .pr-tag,
   .pr-meta .pr-meta-date { display: inline-flex }
-  .pr-table th.pr-col-amount { width: 30% }
   .pr-foot { justify-content: center }
 }
 
 @container pr-card (max-width: 480px) {
   .pr-meta-email { display: none }
   .pr-av { display: none }
-  .pr-table th.pr-col-amount { width: 36% }
   .pr-table thead th, .pr-table tbody td { padding-left: 12px; padding-right: 12px }
   .pr-tools { flex-wrap: wrap }
   .pr-select { width: 100% }
