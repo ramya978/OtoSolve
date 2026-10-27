@@ -1,27 +1,38 @@
 /* PAUSE, RESUME & CLOSE - TABS design. Shared tokens / buttons / dialog: cw-shared.css */
 :host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+     is zoomed, so text, figures and tiles never look oversized. Sizes below multiply by these. */
+  --lc-k: 1;
+  --lc-fs: calc(var(--font-scale, 1) * var(--lc-k));
+  display: block;
+}
+
+/* the size container sits on the page wrapper, not on :host - a container on :host would pin the
+   fixed confirmation dialog and its overlay to the page box instead of the screen */
+.lc-wrap {
   container: lc-page / inline-size;
+  min-width: 0;
 }
 
 .lc-muted {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
 }
 
 /* ---------- KPI cards (same as campaign detail) ---------- */
 .lc-kpis {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  margin-bottom: 18px;
+  display: flex;
+  gap: calc(14px * var(--lc-k));
+  margin-bottom: calc(18px * var(--lc-k));
 }
 
 .lc-kpi {
+  flex: 1 1 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--lc-k));
   min-width: 0;
-  padding: 16px;
+  padding: calc(16px * var(--lc-k));
   border: 1px solid var(--w-line);
   border-radius: var(--w-radius);
   background: var(--w-card);
@@ -31,16 +42,16 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: calc(44px * var(--lc-k));
+  height: calc(44px * var(--lc-k));
   border-radius: 12px;
   background: var(--t-bg, var(--w-primary-soft));
   color: var(--t-ink, var(--w-primary-ink));
 }
 
 .lc-kpi-ico .w-ico {
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--lc-k));
+  height: calc(20px * var(--lc-k));
 }
 
 .lc-kpi > div {
@@ -50,15 +61,18 @@
 }
 
 .lc-kpi-label {
+  overflow: hidden;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(12px * var(--lc-fs));
   font-weight: 500;
 }
 
 .lc-kpi strong {
   overflow: hidden;
   color: var(--w-heading);
-  font-size: calc(20px * var(--font-scale, 1));
+  font-size: calc(20px * var(--lc-fs));
   font-weight: 600;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -68,7 +82,7 @@
 .lc-kpi small {
   overflow: hidden;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -76,13 +90,13 @@
 /* ---------- close request ---------- */
 .lc-req {
   display: flex;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 14px 16px;
+  gap: calc(12px * var(--lc-k));
+  margin-bottom: calc(18px * var(--lc-k));
+  padding: calc(14px * var(--lc-k)) calc(16px * var(--lc-k));
   border: 1px solid color-mix(in srgb, var(--status-warning, #976821) 30%, var(--w-line));
   border-radius: var(--w-radius);
   background: var(--w-card);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
 }
 
 .lc-col .lc-req {
@@ -93,8 +107,8 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: calc(36px * var(--lc-k));
+  height: calc(36px * var(--lc-k));
   border-radius: 10px;
   background: var(--status-warning-bg, #f5f0e9);
   color: var(--status-warning-ink, #7d561b);
@@ -129,8 +143,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
-  padding: 14px 18px;
+  gap: calc(8px * var(--lc-k)) calc(12px * var(--lc-k));
+  padding: calc(14px * var(--lc-k)) calc(18px * var(--lc-k));
   border-bottom: 1px solid var(--w-row);
 }
 
@@ -141,25 +155,25 @@
 .lc-card-head h2 {
   margin: 0;
   color: var(--w-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--lc-fs));
   font-weight: 600;
 }
 
 .lc-card-head p {
   margin: 2px 0 0;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
 }
 
 .lc-move {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 10px;
+  padding: 2px calc(10px * var(--lc-k));
   border-radius: 99px;
   background: var(--w-soft);
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   white-space: nowrap;
 }
 
@@ -172,27 +186,27 @@
   display: grid;
   justify-items: center;
   gap: 6px;
-  padding: 28px 20px;
+  padding: calc(28px * var(--lc-k)) calc(20px * var(--lc-k));
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   text-align: center;
 }
 
 .lc-empty strong {
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
   font-weight: 600;
 }
 
 .lc-note {
   display: flex;
-  gap: 8px;
+  gap: calc(8px * var(--lc-k));
   margin: 0;
-  padding: 10px 12px;
+  padding: calc(10px * var(--lc-k)) calc(12px * var(--lc-k));
   border-radius: 10px;
   background: var(--w-soft);
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   line-height: 1.55;
 }
 
@@ -203,17 +217,19 @@
 }
 
 /* action tiles */
+/* as many tiles per row as fit (about 230px each), so 2 or 3 actions fill the row without gaps */
 .lc-tiles {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, calc(230px * var(--lc-k))), 1fr));
+  gap: calc(14px * var(--lc-k));
 }
 
 .lc-tile {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px 14px;
-  padding: 16px;
+  grid-template-rows: 1fr auto; /* buttons line up at the bottom of every tile */
+  gap: calc(12px * var(--lc-k)) calc(14px * var(--lc-k));
+  padding: calc(16px * var(--lc-k));
   border: 1px solid var(--w-line);
   border-radius: 12px;
   transition: border-color .15s, box-shadow .15s;
@@ -227,29 +243,29 @@
 .lc-tile-ico {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: calc(42px * var(--lc-k));
+  height: calc(42px * var(--lc-k));
   border-radius: 12px;
   background: var(--t-bg);
   color: var(--t-ink);
 }
 
 .lc-tile-ico .w-ico {
-  width: 19px;
-  height: 19px;
+  width: calc(19px * var(--lc-k));
+  height: calc(19px * var(--lc-k));
 }
 
 .lc-tile h3 {
   margin: 0;
   color: var(--w-heading);
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--lc-fs));
   font-weight: 600;
 }
 
 .lc-tile p {
-  margin: 3px 0 8px;
+  margin: 3px 0 calc(8px * var(--lc-k));
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   line-height: 1.55;
 }
 
@@ -271,8 +287,8 @@
   --tone-ink: var(--w-primary-ink);
   position: relative;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: calc(34px * var(--lc-k)) minmax(0, 1fr);
+  gap: calc(12px * var(--lc-k));
   padding-bottom: 16px;
 }
 
@@ -283,9 +299,9 @@
 .lc-history li:not(:last-child)::before {
   content: "";
   position: absolute;
-  top: 34px;
+  top: calc(34px * var(--lc-k));
   bottom: 0;
-  left: 16.5px;
+  left: calc(16.5px * var(--lc-k));
   width: 1px;
   background: var(--w-line);
 }
@@ -300,16 +316,16 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: calc(34px * var(--lc-k));
+  height: calc(34px * var(--lc-k));
   border-radius: 50%;
   background: var(--tone-bg);
   color: var(--tone-ink);
 }
 
 .lc-h-ico .w-ico {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--lc-k));
+  height: calc(15px * var(--lc-k));
 }
 
 .lc-h-body {
@@ -321,37 +337,37 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10px * var(--lc-k));
 }
 
 .lc-h-top strong {
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
   font-weight: 600;
 }
 
 .lc-h-top time {
   flex: none;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
 }
 
 .lc-history p {
   margin: 3px 0 0;
   color: var(--w-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   line-height: 1.55;
 }
 
 .lc-history small {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
 }
 
 .lc-h-empty {
   display: block !important;
   color: var(--w-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
 }
 
 /* vertical steps */
@@ -365,7 +381,7 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: calc(12px * var(--lc-k));
   padding-bottom: 14px;
 }
 
@@ -376,9 +392,9 @@
 .lc-vsteps li:not(:last-child)::before {
   content: "";
   position: absolute;
-  top: 30px;
+  top: calc(30px * var(--lc-k));
   bottom: 0;
-  left: 14.5px;
+  left: calc(14.5px * var(--lc-k));
   width: 2px;
   background: var(--w-row);
 }
@@ -391,19 +407,19 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: calc(30px * var(--lc-k));
+  height: calc(30px * var(--lc-k));
   border: 1.5px solid var(--w-line);
   border-radius: 50%;
   background: var(--w-card);
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--lc-fs));
   font-weight: 600;
 }
 
 .lc-vnode .w-ico {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--lc-k));
+  height: calc(14px * var(--lc-k));
   stroke-width: 2.4;
 }
 
@@ -423,9 +439,9 @@ li.is-now .lc-vnode {
 .lc-vlabel {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--lc-k));
   color: var(--w-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
 }
 
 li.is-done .lc-vlabel,
@@ -435,11 +451,11 @@ li.is-now .lc-vlabel {
 }
 
 .lc-vlabel em {
-  padding: 1px 8px;
+  padding: 1px calc(8px * var(--lc-k));
   border-radius: 99px;
   background: var(--w-primary-soft);
   color: var(--w-primary-ink);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--lc-fs));
   font-style: normal;
   font-weight: 600;
 }
@@ -453,7 +469,7 @@ li.is-now .lc-vlabel {
 .lc-tabs {
   display: flex;
   gap: 4px;
-  padding: 8px 10px 0;
+  padding: calc(8px * var(--lc-k)) calc(10px * var(--lc-k)) 0;
   border-bottom: 1px solid var(--w-row);
   background: var(--w-soft);
 }
@@ -462,29 +478,29 @@ li.is-now .lc-vlabel {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px 12px;
+  gap: calc(8px * var(--lc-k));
+  padding: calc(10px * var(--lc-k)) calc(14px * var(--lc-k)) calc(12px * var(--lc-k));
   border: 0;
   background: none;
   color: var(--w-muted);
   font: inherit;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--lc-fs));
   font-weight: 500;
   cursor: pointer;
   transition: color .15s;
 }
 
 .lc-tabs button .w-ico {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--lc-k));
+  height: calc(15px * var(--lc-k));
 }
 
 .lc-tabs button span {
-  min-width: 20px;
+  min-width: calc(20px * var(--lc-k));
   padding: 0 6px;
   border-radius: 99px;
   background: var(--w-card);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--lc-fs));
   text-align: center;
 }
 
@@ -500,8 +516,8 @@ li.is-now .lc-vlabel {
 .lc-tabs button.is-on::after {
   content: "";
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: calc(10px * var(--lc-k));
+  right: calc(10px * var(--lc-k));
   bottom: -1px;
   height: 2px;
   border-radius: 2px 2px 0 0;
@@ -514,8 +530,8 @@ li.is-now .lc-vlabel {
 
 .lc-tab-body {
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: calc(16px * var(--lc-k));
+  padding: calc(20px * var(--lc-k));
 }
 
 /* journey tab: horizontal steps */
@@ -523,7 +539,7 @@ li.is-now .lc-vlabel {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   margin: 0;
-  padding: 10px 0;
+  padding: calc(10px * var(--lc-k)) 0;
   list-style: none;
 }
 
@@ -531,16 +547,16 @@ li.is-now .lc-vlabel {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--lc-k));
   text-align: center;
 }
 
 .lc-hsteps li:not(:last-child)::after {
   content: "";
   position: absolute;
-  top: 14px;
+  top: calc(14px * var(--lc-k));
   left: calc(50% + 20px);
-  right: calc(-50% + 20px);
+  right: calc(-50% + calc(20px * var(--lc-k)));
   height: 2px;
   background: var(--w-row);
 }
@@ -554,19 +570,38 @@ li.is-now .lc-vlabel {
   gap: 4px;
 }
 
-@container lc-page (max-width: 1000px) {
-  .lc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* ---------- widths ----------
+   KPI cards stay on one row and hide from lowest priority: Live assets, then Donors */
+@container lc-page (max-width: 900px) {
+  .lc-kpi:nth-child(4) { display: none; }
 }
 
 @container lc-page (max-width: 700px) {
-  .lc-tiles { grid-template-columns: minmax(0, 1fr); }
-  .lc-hsteps { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 16px; }
+  .lc-kpi:nth-child(3) { display: none; }
+  .lc-hsteps { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: calc(16px * var(--lc-k)); }
   .lc-hsteps li:nth-child(3)::after { display: none; }
-  .lc-tabs { overflow-x: auto; }
+  .lc-tab-body { padding: calc(16px * var(--lc-k)); }
 }
 
-@container lc-page (max-width: 480px) {
-  .lc-kpis { grid-template-columns: minmax(0, 1fr); }
+@container lc-page (max-width: 600px) {
+  .lc-h-top { flex-wrap: wrap; gap: 0 calc(10px * var(--lc-k)); }
+}
+
+/* phones: smaller cards (icon hides), tabs fit without scrolling */
+@container lc-page (max-width: 460px) {
+  .lc-kpi { gap: 0; padding: calc(12px * var(--lc-k)) calc(14px * var(--lc-k)); }
+  .lc-kpi-ico { display: none; }
+  .lc-kpis { gap: calc(10px * var(--lc-k)); }
+  .lc-tabs { gap: 0; padding-inline: calc(4px * var(--lc-k)); }
+  .lc-tabs button { gap: calc(6px * var(--lc-k)); padding-inline: calc(10px * var(--lc-k)); }
+  .lc-tabs button .w-ico { display: none; }
+  .lc-req { gap: calc(10px * var(--lc-k)); }
+}
+
+@container lc-page (max-width: 340px) {
+  .lc-hsteps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lc-hsteps li:nth-child(3)::after { display: block; }
+  .lc-hsteps li:nth-child(2n)::after { display: none; }
 }
 
 /* dialog bits */
@@ -578,5 +613,40 @@ li.is-now .lc-vlabel {
 .lc-count {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10px * var(--lc-k));
 }
+/* ---------- page header (shared app-page-header) ----------
+   Its own sizes are large; on this page it follows the same density. !important because the
+   header's own styles are more specific. */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--lc-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--lc-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--lc-k)) !important;
+  font-size: calc(13.5px * var(--lc-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--lc-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --lc-k: .95; } }
+@media (max-width: 1600px) { :host { --lc-k: .9; } }
+@media (max-width: 1440px) { :host { --lc-k: .86; } }
+@media (max-width: 1280px) { :host { --lc-k: .84; } }
