@@ -42,7 +42,7 @@
       <div class="i-head-actions">
         @if (!isOwn) {
           <button type="button" class="i-btn" (click)="toBack()">
-            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M12 19l-7-7 7-7" /></svg>All organisations</button>
+            <svg class="og-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5 M12 19l-7-7 7-7" /></svg><span class="og-l-long">All organisations</span><span class="og-l-short">Back</span></button>
           @if (can('StartReview')) {
             <button type="button" class="i-btn" [disabled]="actBusy()" (click)="startOrgReview()">Start review</button>
           }
@@ -442,13 +442,13 @@
         @if (webAddresses.length) {
           <div class="og-tablewrap">
             <table class="og-table">
-              <thead><tr><th>Address</th><th>Kind</th><th>Primary</th><th>Verification</th></tr></thead>
+              <thead><tr><th>Address</th><th class="og-col-kind">Kind</th><th class="og-col-primary">Primary</th><th>Verification</th></tr></thead>
               <tbody>
                 @for (w of webAddresses; track w.address) {
                   <tr>
-                    <td><strong>{{ w.address }}</strong></td>
-                    <td>{{ w.kind }}</td>
-                    <td>@if (w.primary) { <span class="i-chip">Primary</span> } @else { — }</td>
+                    <td><strong [attr.title]="w.address">{{ w.address }}</strong>@if (w.primary) { <span class="i-chip og-prim-inline">Primary</span> }</td>
+                    <td class="og-col-kind">{{ w.kind }}</td>
+                    <td class="og-col-primary">@if (w.primary) { <span class="i-chip">Primary</span> } @else { — }</td>
                     <td>
                       @if (w.verifiedOn) { <span class="i-st i-st--success">Verified {{ w.verifiedOn }}</span> }
                       @else { <span class="i-st i-st--warning">Not verified</span> }
