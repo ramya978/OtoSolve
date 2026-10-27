@@ -1,20 +1,34 @@
 /* Settings page only - base look comes from org-shared.css */
 
+/* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+   is zoomed, so cards, options and steppers never look heavy. Sizes below multiply by these. */
+:host {
+  --st-k: 1;
+  --st-fs: calc(var(--font-scale, 1) * var(--st-k));
+  display: block;
+}
+
+/* the page width decides the layout (not the screen), so the sidebar does not throw it off */
+.st-wrap {
+  container: st-page / inline-size;
+  min-width: 0;
+}
+
 
 /* ---------- intro + banner ---------- */
 .st-intro {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: calc(16px * var(--st-k));
   flex-wrap: wrap;
-  margin: 0 0 14px;
+  margin: 0 0 calc(14px * var(--st-k));
 }
 
 .st-eyebrow {
     display: block;
     margin-bottom: 6px;
-    font-size: calc(10px * var(--font-scale, 1));
+    font-size: calc(10px * var(--st-fs));
     font-weight: 650;
     letter-spacing: 1.2px;
     text-transform: uppercase;
@@ -24,7 +38,7 @@
 .st-title {
      color: var(--cr-heading);
     font-family: var(--cr-heading-font);
-    font-size: calc(30px * var(--font-scale, 1));
+    font-size: calc(30px * var(--st-fs));
     font-weight: 650;
     letter-spacing: 0.2px;
     line-height: 1.25;
@@ -33,13 +47,13 @@
 .st-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  margin-bottom: 16px;
+  gap: calc(12px * var(--st-k));
+  padding: calc(14px * var(--st-k)) calc(20px * var(--st-k));
+  margin-bottom: calc(16px * var(--st-k));
   border-radius: 14px;
   background: color-mix(in srgb, var(--accent) 7%, transparent);
   color: var(--muted);
-  font-size: calc(13.5px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--st-fs));
 }
 
 .st-banner p {
@@ -52,8 +66,8 @@
 }
 
 .st-banner svg {
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--st-k));
+  height: calc(18px * var(--st-k));
   flex: none;
   fill: none;
   stroke: var(--accent);
@@ -65,16 +79,16 @@
 /* ---------- section cards ---------- */
 .st-card {
   padding: 0;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--st-k));
   overflow: hidden;
 }
 
 .st-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: calc(16px * var(--st-k));
   align-items: stretch;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--st-k));
 }
 
 .st-pair .st-card {
@@ -84,37 +98,37 @@
 .st-card-head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 28px;
+  gap: calc(14px * var(--st-k));
+  padding: calc(14px * var(--st-k)) calc(22px * var(--st-k));
   border-bottom: 1px solid var(--line);
 }
 
 .st-card-head h3 {
   margin: 0;
-  font-size: calc(17px * var(--font-scale, 1));
+  font-size: calc(15px * var(--st-fs));
   font-weight: 650;
   color: var(--ink);
 }
 
 .st-card-head p {
-  margin: 3px 0 0;
-  font-size: calc(13px * var(--font-scale, 1));
+  margin: 2px 0 0;
+  font-size: calc(12.5px * var(--st-fs));
   color: var(--muted);
 }
 
 .st-ico {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: calc(36px * var(--st-k));
+  height: calc(36px * var(--st-k));
   flex: none;
   border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
 .st-ico svg {
-  width: 20px;
-  height: 20px;
+  width: calc(18px * var(--st-k));
+  height: calc(18px * var(--st-k));
   fill: none;
   stroke: var(--accent);
   stroke-width: 1.7;
@@ -123,28 +137,28 @@
 }
 
 .st-body {
-  padding: 24px 28px;
+  padding: calc(18px * var(--st-k)) calc(22px * var(--st-k));
 }
 
 .st-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: calc(10px * var(--st-k));
 }
 
 /* ---------- radio cards ---------- */
 .st-opts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: calc(16px * var(--st-k));
 }
 
 .st-opt {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: calc(12px * var(--st-k));
   width: 100%;
-  padding: 18px;
+  padding: calc(14px * var(--st-k)) calc(16px * var(--st-k));
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--card, #fff);
@@ -160,13 +174,12 @@
 
 .st-opt.is-on {
   border: 1px solid var(--accent);
-  padding: 17px;
   background: var(--og-accent-tint);
 }
 
 .st-optic {
-  width: 20px;
-  height: 20px;
+  width: calc(18px * var(--st-k));
+  height: calc(18px * var(--st-k));
   margin-top: 2px;
   color: var(--accent);
   flex-shrink: 0;
@@ -181,14 +194,14 @@
 }
 
 .st-opttext b {
-  font-size: calc(15.5px * var(--font-scale, 1));
+  font-size: calc(13.5px * var(--st-fs));
   font-weight: 650;
 }
 
 .st-opttext b em {
   margin-left: 8px;
   font-style: normal;
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--st-fs));
   font-weight: 650;
   letter-spacing: .8px;
   text-transform: uppercase;
@@ -196,13 +209,13 @@
 }
 
 .st-opttext small {
-  font-size: calc(13.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--st-fs));
   color: var(--muted);
 }
 
 .st-radio {
-  width: 22px;
-  height: 22px;
+  width: calc(18px * var(--st-k));
+  height: calc(18px * var(--st-k));
   border: 1.5px solid var(--line);
   border-radius: 50%;
   background: var(--card, #fff);
@@ -210,15 +223,15 @@
 }
 
 .st-opt.is-on .st-radio {
-  border: 6px solid var(--accent);
+  border: calc(5px * var(--st-k)) solid var(--accent);
 }
 
 /* ---------- stepper rows ---------- */
 .st-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
+  gap: calc(12px * var(--st-k));
+  padding: calc(11px * var(--st-k)) calc(14px * var(--st-k));
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--card, #fff);
@@ -238,7 +251,7 @@
 }
 
 .st-itext label {
-  font-size: calc(14.5px * var(--font-scale, 1));
+  font-size: calc(13px * var(--st-fs));
   font-weight: 600;
   color: var(--ink);
 }
@@ -249,14 +262,14 @@
 }
 
 .st-itext small {
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12px * var(--st-fs));
   color: var(--muted);
 }
 
 .st-step {
   display: inline-flex;
   align-items: stretch;
-  height: 40px;
+  height: calc(36px * var(--st-k));
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
@@ -266,7 +279,7 @@
 .st-step button {
   display: grid;
   place-items: center;
-  width: 38px;
+  width: calc(34px * var(--st-k));
   border: none;
   background: var(--og-tint);
   color: var(--ink);
@@ -284,8 +297,8 @@
 }
 
 .st-step button svg {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--st-k));
+  height: calc(15px * var(--st-k));
 }
 
 .st-val {
@@ -293,18 +306,18 @@
   align-items: baseline;
   justify-content: center;
   gap: 6px;
-  min-width: 88px;
-  padding: 0 10px;
+  min-width: calc(80px * var(--st-k));
+  padding: 0 calc(10px * var(--st-k));
   background: var(--card, #fff);
 }
 
 .st-val input {
-  width: 46px;
+  width: calc(46px * var(--st-k));
   padding: 0;
   border: none;
   background: none;
   font: inherit;
-  font-size: calc(18px * var(--font-scale, 1));
+  font-size: calc(15px * var(--st-fs));
   font-weight: 500;
   text-align: right;
   color: var(--ink);
@@ -329,7 +342,7 @@
 
 .st-val em {
   font-style: normal;
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--st-fs));
   color: var(--muted);
   align-self: center;
 }
@@ -339,23 +352,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(12px * var(--st-k));
   flex-wrap: wrap;
-  padding: 4px 0 24px;
+  padding: 4px 0 calc(24px * var(--st-k));
 }
 
 .st-bar p {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--st-k));
   margin: 0;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--st-fs));
   color: var(--muted);
 }
 
 .st-bar p svg {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--st-k));
+  height: calc(15px * var(--st-k));
 }
 
 .st-bar p i {
@@ -366,21 +379,21 @@
 .st-bar-acts {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: calc(14px * var(--st-k));
 }
 
 .st-saved {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--st-fs));
   font-weight: 600;
   color: var(--status-success-ink, var(--status-success));
 }
 
 .st-saved svg {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--st-k));
+  height: calc(15px * var(--st-k));
 }
 
 .st-opt:focus-visible,
@@ -389,30 +402,92 @@
   outline-offset: 2px;
 }
 
-@media (max-width: 1100px) {
+@container st-page (max-width: 1000px) {
   .st-pair {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 720px) {
+@container st-page (max-width: 640px) {
   .st-opts {
     grid-template-columns: 1fr;
   }
 
   .st-card-head {
-    padding: 16px 18px;
+    padding: calc(16px * var(--st-k)) calc(18px * var(--st-k));
   }
 
   .st-body {
-    padding: 18px;
+    padding: calc(18px * var(--st-k));
   }
 
   .st-item {
     flex-wrap: wrap;
   }
 
+  /* the stepper drops under the text, lined up with it */
+  .st-step {
+    margin-left: calc(30px * var(--st-k));
+  }
+
+  .st-card-head p {
+    display: none;
+  }
+
+  .st-bar p {
+    display: none;
+  }
+
+  .st-bar-acts {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
   .st-title {
-    font-size: calc(24px * var(--font-scale, 1));
+    font-size: calc(24px * var(--st-fs));
   }
 }
+/* footer Save button sized with the page */
+.st-bar .pf-hbtn {
+  height: calc(36px * var(--st-k)) !important;
+  min-height: 0 !important;
+  padding: 0 calc(16px * var(--st-k)) !important;
+  gap: calc(6px * var(--st-k)) !important;
+  font-size: calc(13px * var(--st-fs)) !important;
+}
+
+/* ---------- page header (shared app-page-header) ----------
+   Its own sizes are large; on this page it follows the same density. !important because the
+   header's own styles are more specific. */
+:host ::ng-deep app-page-header {
+  display: block;
+  margin: 0 0 calc(16px * var(--st-k)) !important;
+  padding-bottom: 0 !important;
+}
+:host ::ng-deep app-page-header > *,
+:host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(26px * var(--st-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--st-k)) !important;
+  font-size: calc(13.5px * var(--st-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--st-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --st-k: .95; } }
+@media (max-width: 1600px) { :host { --st-k: .9; } }
+@media (max-width: 1440px) { :host { --st-k: .86; } }
+@media (max-width: 1280px) { :host { --st-k: .84; } }
