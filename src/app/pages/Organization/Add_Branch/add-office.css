@@ -1,49 +1,92 @@
-/* Add Office page only - base look comes from org-shared.css */
+/* Add Office page only - base look comes from org-shared.css.
+   Everything is sized with --ao-k: 1 on big screens (24"-32"), a step smaller on laptops
+   (14"-15.6") and when the browser is zoomed, so the page never looks heavy. */
+:host {
+  --ao-k: 1;
+  --ao-fs: calc(var(--font-scale, 1) * var(--ao-k));
+  display: block;
+}
 
-/* ---------- page header (plain, no card) ---------- */
+/* the page width decides the layout (not the screen), so the sidebar does not throw it off */
+.ao-wrap {
+  container: ao-page / inline-size;
+  min-width: 0;
+}
+
+/* ---------- page header: same as the shared app-page-header on the other pages ---------- */
 .ao-head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: calc(12px * var(--ao-k)) calc(20px * var(--ao-k));
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--ao-k));
+}
+
+.ao-head-text {
+  flex: 1 1 calc(360px * var(--ao-k));
+  min-width: 0;
 }
 
 .ao-eyebrow {
-  margin: 0 0 8px;
-  font-size: calc(11.5px * var(--font-scale, 1));
-  font-weight: 700;
-  letter-spacing: .14em;
+  margin: 0 0 calc(4px * var(--ao-k));
+  font-size: calc(11px * var(--ao-fs));
+  font-weight: 600;
+  letter-spacing: 1px;
+  line-height: 1.4;
   text-transform: uppercase;
   color: var(--accent);
 }
 
 .ao-title {
   margin: 0;
-  font-size: calc(32px * var(--font-scale, 1));
-  font-weight: 700;
-  line-height: 1.1;
+  font-size: calc(26px * var(--ao-fs));
+  font-weight: 650;
+  letter-spacing: -.5px;
+  line-height: 1.25;
   color: var(--ink);
 }
 
 .ao-sub {
-  margin: 8px 0 0;
-  font-size: calc(14px * var(--font-scale, 1));
+  margin: calc(6px * var(--ao-k)) 0 0;
+  font-size: calc(13.5px * var(--ao-fs));
+  line-height: 1.5;
   color: var(--muted);
+}
+
+/* buttons in the header and the footer bar */
+.ao-head .pf-hbtn,
+.ao-bar .pf-hbtn {
+  height: calc(36px * var(--ao-k)) !important;
+  min-height: 0 !important;
+  padding: 0 calc(14px * var(--ao-k)) !important;
+  gap: calc(6px * var(--ao-k)) !important;
+  font-size: calc(13px * var(--ao-fs)) !important;
+  white-space: nowrap;
+}
+
+.ao-head .pf-hbtn {
+  flex: none;
+  align-self: flex-start;
+}
+
+.ao-head .og-ico,
+.ao-bar .og-ico {
+  width: calc(14px * var(--ao-k));
+  height: calc(14px * var(--ao-k));
 }
 
 /* ---------- info banner ---------- */
 .ao-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
-  margin-bottom: 16px;
-  border-radius: 14px;
+  gap: calc(12px * var(--ao-k));
+  padding: calc(12px * var(--ao-k)) calc(16px * var(--ao-k));
+  margin-bottom: calc(16px * var(--ao-k));
+  border-radius: 12px;
   background: color-mix(in srgb, var(--accent) 7%, transparent);
   color: var(--muted);
-  font-size: calc(13.5px * var(--font-scale, 1));
+  font-size: calc(13px * var(--ao-fs));
 }
 
 .ao-banner p {
@@ -61,8 +104,8 @@
 }
 
 .ao-banner svg {
-  width: 18px;
-  height: 18px;
+  width: calc(17px * var(--ao-k));
+  height: calc(17px * var(--ao-k));
   flex: none;
   fill: none;
   stroke: var(--accent);
@@ -74,16 +117,16 @@
 /* ---------- section cards ---------- */
 .ao-card {
   padding: 0;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--ao-k));
   overflow: hidden;
 }
 
 .ao-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: calc(16px * var(--ao-k));
   align-items: stretch;
-  margin-bottom: 16px;
+  margin-bottom: calc(16px * var(--ao-k));
 }
 
 .ao-row .ao-card {
@@ -93,37 +136,41 @@
 .ao-card-head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 28px;
+  gap: calc(12px * var(--ao-k));
+  padding: calc(14px * var(--ao-k)) calc(22px * var(--ao-k));
   border-bottom: 1px solid var(--line, rgba(0, 0, 0, .08));
+}
+
+.ao-card-head > div {
+  min-width: 0;
 }
 
 .ao-card-head h2 {
   margin: 0;
-  font-size: calc(17px * var(--font-scale, 1));
+  font-size: calc(15px * var(--ao-fs));
   font-weight: 650;
   color: var(--ink);
 }
 
 .ao-card-head p {
-  margin: 3px 0 0;
-  font-size: calc(13px * var(--font-scale, 1));
+  margin: calc(2px * var(--ao-k)) 0 0;
+  font-size: calc(12.5px * var(--ao-fs));
   color: var(--muted);
 }
 
 .ao-ico {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: calc(36px * var(--ao-k));
+  height: calc(36px * var(--ao-k));
   flex: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
 .ao-ico svg {
-  width: 20px;
-  height: 20px;
+  width: calc(18px * var(--ao-k));
+  height: calc(18px * var(--ao-k));
   fill: none;
   stroke: var(--accent);
   stroke-width: 1.7;
@@ -132,14 +179,17 @@
 }
 
 .ao-body {
-  padding: 24px 28px 10px;
+  padding: calc(18px * var(--ao-k)) calc(22px * var(--ao-k)) calc(4px * var(--ao-k));
 }
 
+/* ---------- shared fields (org-shared.css) at this page's density ---------- */
 .ao-body .og-field {
-  margin-bottom: 18px;
+  gap: calc(6px * var(--ao-k));
+  margin-bottom: calc(14px * var(--ao-k));
 }
 
 .ao-body .og-flabel {
+  font-size: calc(12.5px * var(--ao-fs));
   font-weight: 600;
 }
 
@@ -148,9 +198,53 @@
   color: var(--status-danger);
 }
 
+.ao-body .og-input {
+  height: calc(38px * var(--ao-k));
+  padding: 0 calc(12px * var(--ao-k));
+  border-radius: 10px;
+  font-size: calc(13px * var(--ao-fs));
+}
+
+.ao-body .og-area {
+  height: auto;
+  min-height: calc(84px * var(--ao-k));
+  padding: calc(9px * var(--ao-k)) calc(12px * var(--ao-k));
+  line-height: 1.5;
+}
+
+.ao-body .og-hint,
+.ao-body .og-err,
+.ao-body .og-count {
+  font-size: calc(11.5px * var(--ao-fs));
+}
+
+.ao-body .og-addon > span {
+  width: calc(38px * var(--ao-k));
+  border-radius: 10px 0 0 10px;
+}
+
+.ao-body .og-addon > span svg {
+  width: calc(15px * var(--ao-k));
+  height: calc(15px * var(--ao-k));
+}
+
+.ao-body .og-addon .og-input {
+  border-radius: 0 10px 10px 0;
+}
+
+.ao-body .og-chip {
+  height: calc(30px * var(--ao-k));
+  padding: 0 calc(12px * var(--ao-k));
+  font-size: calc(12.5px * var(--ao-fs));
+}
+
+.ao-body .og-toggle {
+  font-size: calc(13px * var(--ao-fs));
+}
+
 .ao-opt {
-  margin-left: 6px;
-  font-size: calc(12.5px * var(--font-scale, 1));
+  margin-left: calc(6px * var(--ao-k));
+  font-size: calc(11.5px * var(--ao-fs));
   font-weight: 400;
   color: var(--muted);
 }
@@ -159,24 +253,27 @@
 .ao-grid2 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 20px;
+  gap: 0 calc(16px * var(--ao-k));
 }
 
 .ao-grid4 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0 20px;
+  gap: 0 calc(16px * var(--ao-k));
 }
 
 .ao-quick {
-  margin: -4px 0 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6px * var(--ao-k));
+  margin: calc(-4px * var(--ao-k)) 0 calc(14px * var(--ao-k));
 }
 
 .ao-label-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(12px * var(--ao-k));
 }
 
 .ao-active {
@@ -184,18 +281,19 @@
 }
 
 .ao-active .og-toggle {
-  height: 44px;
+  height: calc(38px * var(--ao-k));
 }
 
 /* ---------- footer actions ---------- */
 .ao-bar {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 4px 0 24px;
+  gap: calc(8px * var(--ao-k));
+  padding: calc(4px * var(--ao-k)) 0 calc(24px * var(--ao-k));
 }
 
-@media (max-width: 1100px) {
+/* ---------- widths (page area, not the screen) ---------- */
+@container ao-page (max-width: 1100px) {
   .ao-row {
     grid-template-columns: 1fr;
   }
@@ -205,23 +303,22 @@
   }
 }
 
-@media (max-width: 640px) {
-
+@container ao-page (max-width: 640px) {
   .ao-grid2,
   .ao-grid4 {
     grid-template-columns: 1fr;
   }
 
   .ao-card-head {
-    padding: 16px 18px;
+    padding: calc(12px * var(--ao-k)) calc(16px * var(--ao-k));
+  }
+
+  .ao-card-head p {
+    display: none;
   }
 
   .ao-body {
-    padding: 18px 18px 6px;
-  }
-
-  .ao-title {
-    font-size: calc(26px * var(--font-scale, 1));
+    padding: calc(14px * var(--ao-k)) calc(16px * var(--ao-k)) calc(2px * var(--ao-k));
   }
 
   .ao-bar {
@@ -233,3 +330,10 @@
     justify-content: center;
   }
 }
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --ao-k: .95; } }
+@media (max-width: 1600px) { :host { --ao-k: .9; } }
+@media (max-width: 1440px) { :host { --ao-k: .86; } }
+@media (max-width: 1280px) { :host { --ao-k: .84; } }
