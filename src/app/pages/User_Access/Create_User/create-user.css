@@ -230,8 +230,6 @@
   .cu-help .cu-note { margin-top: 0; }
   .cu-help { grid-column: auto; }
   .cu-nav { position: static; }
-  .cu-nav ol { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .cu-nav li button { flex-direction: column; gap: 6px; }
   .cu-req { display: none; }
   .cu-review { grid-template-columns: minmax(0, 1fr); }
 }
@@ -239,9 +237,6 @@
 @container cu-page (max-width: 640px) {
   .cu-grid { grid-template-columns: minmax(0, 1fr); }
   .cu-grid > .i-field { grid-column: 1 / -1 !important; }
-  .cu-nav ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .cu-nav-text small { display: none; }
-  .cu-nav li button { flex-direction: row; align-items: center; }
   .cu-record p { display: none; }
   .cu-actions .cu-l-long { display: none; }
   .cu-actions .cu-l-short { display: inline; }
@@ -250,6 +245,70 @@
   .cu-progress { display: none; }
   .cu-actions { position: static; flex-wrap: wrap; }
   .cu-actions .i-btn { flex: 1; }
+}
+
+/* ---------- section index on narrow pages: one compact step bar ----------
+   (replaces the big stacked tiles) number + title in one line, progress below, the current
+   step tinted; on phones the other steps shrink to just their number. */
+@container cu-page (max-width: 900px) {
+  .cu-nav { gap: 0; }
+  .cu-nav-label { display: none; }
+
+  .cu-nav ol {
+    display: flex;
+    gap: calc(4px * var(--cu-k));
+    padding: calc(4px * var(--cu-k));
+    border: 1px solid var(--i-line);
+    border-radius: var(--i-radius, 12px);
+    background: var(--i-surface, #fff);
+  }
+
+  .cu-nav li {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .cu-nav li button {
+    flex-direction: row;
+    align-items: center;
+    gap: calc(8px * var(--cu-k));
+    height: 100%;
+    padding: calc(7px * var(--cu-k)) calc(10px * var(--cu-k));
+    border-radius: 8px;
+  }
+
+  .cu-nav .cu-no {
+    width: calc(22px * var(--cu-k));
+    height: calc(22px * var(--cu-k));
+    border-radius: 50%;
+    font-size: calc(10.5px * var(--cu-fs));
+  }
+
+  .cu-nav-text strong {
+    overflow: hidden;
+    font-size: calc(12.5px * var(--cu-fs));
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cu-nav-text small {
+    overflow: hidden;
+    font-size: calc(11px * var(--cu-fs));
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@container cu-page (max-width: 640px) {
+  .cu-nav-text small { display: none; }
+}
+
+/* phones: only the current step keeps its title, the others show just the number */
+@container cu-page (max-width: 520px) {
+  .cu-nav li { flex: 0 0 auto; }
+  .cu-nav li:has(button.is-on) { flex: 1 1 auto; }
+  .cu-nav li button:not(.is-on) .cu-nav-text { display: none; }
+  .cu-nav li button:not(.is-on) { justify-content: center; padding-inline: calc(8px * var(--cu-k)); }
 }
 
 /* short button labels for phones */
