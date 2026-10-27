@@ -636,6 +636,190 @@
   gap: calc(10px * var(--rc-k));
 }
 
+/* ---------- drawers and dialogs: same layout, lighter sizes ----------
+   The shared drawer / dialog styles are sized for big screens. On this page they follow the same
+   density as the page, so labels, inputs and buttons no longer look heavy on a 14" screen or when
+   zoomed. Layout, colours and order are unchanged - only font sizes, spacing and width. */
+/* forms stay readable: text in drawers and dialogs never drops below 92% */
+.w-drawer,
+.w-dialog {
+  --rc-dfs: calc(var(--font-scale, 1) * max(var(--rc-k), .92));
+}
+
+.w-drawer {
+  width: min(calc(460px * var(--rc-k)), 100vw);
+  max-width: 100vw;
+}
+
+.w-drawer .w-drawer-head {
+  gap: calc(12px * var(--rc-k));
+  padding: calc(16px * var(--rc-k)) calc(20px * var(--rc-k)) calc(14px * var(--rc-k));
+}
+
+.w-drawer .w-drawer-head h2 {
+  margin: calc(2px * var(--rc-k)) 0 0;
+  font-size: calc(17px * var(--rc-dfs));
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.w-drawer .w-caption,
+.w-dialog .w-caption {
+  font-size: calc(10.5px * var(--rc-dfs));
+  letter-spacing: .8px;
+}
+
+.w-drawer .w-drawer-head .w-close,
+.w-dialog .w-dialog-head .w-close {
+  width: calc(30px * var(--rc-k));
+  height: calc(30px * var(--rc-k));
+}
+
+.w-drawer .w-drawer-body {
+  gap: calc(14px * var(--rc-k));
+  padding: calc(16px * var(--rc-k)) calc(20px * var(--rc-k)) calc(20px * var(--rc-k));
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .w-field,
+.w-dialog .w-field {
+  gap: calc(6px * var(--rc-k));
+}
+
+.w-drawer .w-label,
+.w-dialog .w-label {
+  font-size: calc(12.5px * var(--rc-dfs));
+  font-weight: 500;
+}
+
+.w-drawer .w-label small,
+.w-dialog .w-label small {
+  font-size: calc(11.5px * var(--rc-dfs));
+}
+
+.w-drawer .w-input,
+.w-dialog .w-input {
+  height: calc(36px * var(--rc-k));
+  padding: 0 calc(12px * var(--rc-k));
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .w-textarea,
+.w-dialog .w-textarea {
+  min-height: calc(72px * var(--rc-k));
+  padding: calc(8px * var(--rc-k)) calc(12px * var(--rc-k));
+  font-size: calc(13px * var(--rc-dfs));
+  line-height: 1.5;
+}
+
+.w-drawer .w-input::placeholder,
+.w-drawer .w-textarea::placeholder,
+.w-dialog .w-textarea::placeholder {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+/* the shared dropdown inside the drawer */
+.w-drawer cw-select {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer cw-select ::ng-deep button,
+.w-drawer cw-select ::ng-deep input,
+.w-drawer cw-select ::ng-deep [role="combobox"],
+.w-drawer cw-select ::ng-deep li,
+.w-drawer cw-select ::ng-deep span {
+  font-size: calc(13px * var(--rc-dfs)) !important;
+}
+
+.w-drawer cw-select ::ng-deep button[aria-haspopup],
+.w-drawer cw-select ::ng-deep [role="combobox"] {
+  height: calc(36px * var(--rc-k)) !important;
+  min-height: 0 !important;
+  padding-inline: calc(12px * var(--rc-k)) !important;
+}
+
+.w-drawer .w-error,
+.w-drawer .w-help,
+.w-dialog .w-error,
+.w-dialog .w-help {
+  font-size: calc(12px * var(--rc-dfs));
+}
+
+/* required / optional choice cards */
+.w-drawer .w-options {
+  gap: calc(8px * var(--rc-k));
+}
+
+.w-drawer .w-option {
+  gap: calc(10px * var(--rc-k));
+  padding: calc(10px * var(--rc-k)) calc(12px * var(--rc-k));
+}
+
+.w-drawer .w-option strong {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .w-option small {
+  font-size: calc(12px * var(--rc-dfs));
+  line-height: 1.45;
+}
+
+/* details list in the check drawer and dialogs */
+.w-drawer .w-kv dt,
+.w-dialog .w-kv dt {
+  font-size: calc(12px * var(--rc-dfs));
+}
+
+.w-drawer .w-kv dd,
+.w-dialog .w-kv dd {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .rc-criteria p,
+.w-drawer .rc-p {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .rc-req {
+  font-size: calc(12px * var(--rc-dfs));
+}
+
+.w-drawer .w-pill {
+  font-size: calc(12px * var(--rc-dfs));
+}
+
+/* footer buttons */
+.w-drawer .w-drawer-foot {
+  gap: calc(8px * var(--rc-k));
+  padding: calc(12px * var(--rc-k)) calc(20px * var(--rc-k));
+}
+
+.w-drawer .w-drawer-foot .w-btn,
+.w-dialog .w-dialog-foot .w-btn {
+  height: calc(36px * var(--rc-k));
+  padding: 0 calc(14px * var(--rc-k));
+  font-size: calc(13px * var(--rc-dfs));
+}
+
+.w-drawer .w-drawer-foot .w-btn .w-ico,
+.w-dialog .w-dialog-foot .w-btn .w-ico {
+  width: calc(15px * var(--rc-k));
+  height: calc(15px * var(--rc-k));
+}
+
+/* dialogs (delete / reject launch) */
+.w-dialog {
+  width: min(calc(480px * var(--rc-k)), calc(100vw - 32px));
+}
+
+.w-dialog .w-dialog-head h2 {
+  font-size: calc(16px * var(--rc-dfs));
+}
+
+.w-dialog .w-dialog-body {
+  font-size: calc(13px * var(--rc-dfs));
+}
+
 /* ---------- widths ---------- */
 @media (max-width: 600px) {
   .rc-two {
@@ -676,4 +860,4 @@
 @media (max-width: 1800px) { :host { --rc-k: .95; } }
 @media (max-width: 1600px) { :host { --rc-k: .9; } }
 @media (max-width: 1440px) { :host { --rc-k: .86; } }
-@media (max-width: 1280px) { :host { --rc-k: .84; } } 
+@media (max-width: 1280px) { :host { --rc-k: .84; } }
