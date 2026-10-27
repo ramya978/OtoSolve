@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { forkJoin, from, of } from 'rxjs';
+import { catchError, mergeMap } from 'rxjs/operators';
 import { RoleCatalogueApiService } from '../../Service/role-catalogue-api.service';
 import { apiErrorMessage } from '../models/api-response.model';
 import { PermissionModuleResponse, RoleDetailResponse, RoleListItemResponse } from '../models/iam-contract.model';
@@ -24,6 +24,8 @@ export class IamRolesStore {
   readonly loading = signal(false);
   readonly error = signal('');
   readonly version = signal(0);
+  /** True while the per-role permission sets are still arriving in the background. */
+  readonly hydrating = signal(false);
   /** role code → { conflicting role code → incompatibility id } */
   readonly incompatIds = new Map<string, Map<string, string>>();
 
@@ -35,27 +37,39 @@ export class IamRolesStore {
     forkJoin({
       matrix: this.api.getPermissionMatrix(),
       list: this.api.searchAll(),
-    }).pipe(
-      switchMap(({ matrix, list }) => {
-        const details = list.length
-          ? forkJoin(list.map((r) => this.api.getRole(r.id ?? '').pipe(catchError(() => of(null)))))
-          : of([] as (RoleDetailResponse | null)[]);
-        return details.pipe(map((d) => ({ matrix, list, details: d })));
-      }),
-    ).subscribe({
-      next: ({ matrix, list, details }) => {
+    }).subscribe({
+      next: ({ matrix, list }) => {
         this.fillCatalogue(matrix.modules ?? []);
         const idToCode = new Map(list.map((r) => [r.id ?? '', r.code ?? '']));
         this.incompatIds.clear();
-        this.roles.set(list.map((r, i) => this.toRole(r, details[i], idToCode)));
+        // The list paints at once; each role's permission set follows (four at a time).
+        this.roles.set(list.map((r) => this.toRole(r, null, idToCode)));
         this.version.update((v) => v + 1);
         this.loading.set(false);
         done?.();
+        this.hydrate(list, idToCode);
       },
       error: (e) => {
         this.error.set(apiErrorMessage(e, 'Roles could not be loaded.'));
         this.loading.set(false);
       },
+    });
+  }
+
+  private hydrate(list: RoleListItemResponse[], idToCode: Map<string, string>): void {
+    if (!list.length) return;
+    this.hydrating.set(true);
+    from(list).pipe(
+      mergeMap((r) => this.api.getRole(r.id ?? '').pipe(catchError(() => of(null)), mergeMap((d) => of({ r, d }))), 4),
+    ).subscribe({
+      next: ({ r, d }) => {
+        if (!d) return;
+        const full = this.toRole(r, d, idToCode);
+        this.roles.update((all) => all.map((x) => (x.code === full.code ? full : x)));
+        this.version.update((v) => v + 1);
+      },
+      complete: () => this.hydrating.set(false),
+      error: () => this.hydrating.set(false),
     });
   }
 

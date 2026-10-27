@@ -3,11 +3,12 @@ import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  AccessRequest, IAM_NOW, IamOption, REQUEST_STATUS_LABEL, RequestStatus,
+  AccessRequest, iamToday, IamOption, REQUEST_STATUS_LABEL, RequestStatus,
   fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
 import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
-import { IamRolesStore } from '../../../Shared/IAM/iam-roles.store';
+import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
+import { CurrentUserService } from '../../../Shared/services/current-user.service';
 import { AccessRequestApiService } from '../../../Service/access-request-api.service';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { ToastService } from '../../../Shared/services/toast.service';
@@ -41,9 +42,14 @@ type Tone = 'success' | 'warning' | 'danger' | 'muted';
 export class AccessRequests implements OnInit {
   private readonly api = inject(AccessRequestApiService);
   private readonly usersStore = inject(IamDirectoryStore);
-  private readonly rolesStore = inject(IamRolesStore);
+  private readonly userApi = inject(UserDirectoryApiService);
+  private readonly me = inject(CurrentUserService);
+  /** The organisation's people directory: readable by every member, active people only. */
+  private readonly directory = signal<{ id: string; name: string; hint: string }[]>([]);
+  /** Roles a request may ask for (their own endpoint: staff roles cannot read the role catalogue). */
+  private readonly requestable = signal<{ id: string; name: string; code: string; privileged: boolean }[]>([]);
   private readonly toast = inject(ToastService);
-  private readonly meta = new Map<string, { id: string; version: number }>();
+  private readonly meta = new Map<string, { id: string; version: number; actions: string[] }>();
 
   readonly requests = signal<AccessRequest[]>([]);
   readonly loading = signal(false);
@@ -57,7 +63,8 @@ export class AccessRequests implements OnInit {
   readonly draft = signal<RequestDraft>({ person: '', role: '', from: '', until: '', reason: '' });
   readonly tried = signal(false);
 
-  readonly today = IAM_NOW.toISOString().slice(0, 10);
+  readonly today = iamToday();
+  readonly exporting = signal(false);
   readonly fmtDate = fmtDate;
   readonly initials = initialsOf;
   readonly statusLabel = (s: RequestStatus): string => (REQUEST_STATUS_LABEL as Record<string, string>)[s] ?? s;
@@ -67,11 +74,11 @@ export class AccessRequests implements OnInit {
     s === 'approved' ? 'success' : s === 'pending' ? 'warning' : s === 'rejected' ? 'danger' : 'muted';
 
   private readonly personOptionsC = computed<IamOption[]>(() =>
-    this.usersStore.users().map((u) => ({ value: u.id, label: u.name, hint: u.email, initials: initialsOf(u.name) })));
+    this.directory().map((u) => ({ value: u.id, label: u.name, hint: u.hint, initials: initialsOf(u.name) })));
   get personOptions(): IamOption[] { return this.personOptionsC(); }
   private readonly roleOptionsC = computed<IamOption[]>(() =>
-    this.rolesStore.roles().map((r) => ({
-      value: r.id ?? '', label: r.name, hint: r.privileged ? r.code + ' · Privileged' : r.code, initials: initialsOf(r.name)
+    this.requestable().map((r) => ({
+      value: r.id, label: r.name, hint: r.privileged ? r.code + ' · Privileged' : r.code, initials: initialsOf(r.name)
     })));
   get roleOptions(): IamOption[] { return this.roleOptionsC(); }
 
@@ -90,9 +97,40 @@ export class AccessRequests implements OnInit {
   }
 
   ngOnInit(): void {
-    if (!this.usersStore.users().length) this.usersStore.load();
-    if (!this.rolesStore.roles().length) this.rolesStore.load();
+    this.userApi.peopleDirectory(undefined, 500).subscribe({
+      next: (l) => this.directory.set(l.filter((p) => p.id).map((p) => ({
+        id: p.id ?? '', name: p.displayName ?? p.code ?? '', hint: [p.code, p.unitName].filter(Boolean).join(' · ') }))),
+      error: () => undefined,
+    });
+    // E-mail addresses come from the full user list, which only an organisation admin may read.
+    if (this.me.isOrganisationAdmin() && !this.usersStore.users().length) this.usersStore.load();
+    this.api.requestableRoles().subscribe({
+      next: (l) => this.requestable.set(l.filter((r) => r.id).map((r) => ({
+        id: r.id ?? '', name: r.name ?? r.code ?? '', code: r.code ?? '', privileged: !!r.isPrivileged }))),
+      error: () => undefined,
+    });
     this.load();
+  }
+
+  exportCsv(): void {
+    if (this.exporting()) return;
+    this.exporting.set(true);
+    this.api.export({ search: this.query().trim() || undefined }).subscribe({
+      next: (f) => {
+        this.exporting.set(false);
+        const url = URL.createObjectURL(f.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.toast.show('Export ready', f.reference ? 'Reference ' + f.reference : 'The requests were downloaded as CSV.', 'success');
+      },
+      error: (e) => {
+        this.exporting.set(false);
+        this.toast.show('Export failed', apiErrorMessage(e, 'The export could not be created.'), 'error');
+      },
+    });
   }
 
   private load(): void {
@@ -113,7 +151,7 @@ export class AccessRequests implements OnInit {
 
   private toRequest(i: AccessRequestListItemResponse): AccessRequest {
     const ref = i.requestNumber ?? i.id ?? '';
-    this.meta.set(ref, { id: i.id ?? '', version: i.version ?? 0 });
+    this.meta.set(ref, { id: i.id ?? '', version: i.version ?? 0, actions: i.permittedActions ?? [] });
     return {
       ref, person: i.requestedForName ?? '', role: i.roleName ?? i.permissionName ?? i.permissionCode ?? '', reason: '',
       status: STATUS_MAP[i.status ?? 'submitted'] ?? 'pending',
@@ -161,7 +199,12 @@ export class AccessRequests implements OnInit {
   }
 
   isPrivileged(code: string): boolean {
-    return !!this.rolesStore.roles().find((r) => r.name === code)?.privileged;
+    return !!this.requestable().find((r) => r.name === code)?.privileged;
+  }
+
+  /** Whether the server offered this action on this request to the signed-in person. */
+  can(ref: string, action: string): boolean {
+    return !!this.meta.get(ref)?.actions.includes(action);
   }
 
   personOf(name: string) {
@@ -230,9 +273,10 @@ export class AccessRequests implements OnInit {
     this.saving.set(true);
     this.api.create({
       requestedForUserId: d.person, requestType: 'roleAssignment', roleId: d.role,
-      businessJustification: d.reason.trim(), scopeType: 'organisation',
-      accessStartsAtUtc: d.from ? new Date(d.from).toISOString() : null,
-      accessEndsAtUtc: d.until ? new Date(d.until).toISOString() : null,
+      businessJustification: d.reason.trim(), permissionCode: null, scopeValue: null,
+      // local midnight of the chosen day; only a data-scope request names a scope
+      accessStartsAtUtc: d.from ? new Date(d.from + 'T00:00:00').toISOString() : null,
+      accessEndsAtUtc: d.until ? new Date(d.until + 'T00:00:00').toISOString() : null,
       submitImmediately: true,
     }).subscribe({
       next: (o) => {

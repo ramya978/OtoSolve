@@ -40,7 +40,14 @@ export const dayLabel = (iso: string, now: Date = IAM_NOW): string => {
   return diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : fmtDate(iso);
 };
 
-export const IAM_NOW = new Date('2026-10-20T11:24:00');
+/** The current moment (read when the app loads; it used to be a frozen sample date). */
+export const IAM_NOW = new Date();
+
+/** Today as yyyy-mm-dd in the person's own time zone (toISOString would give the UTC date). */
+export const iamToday = (): string => {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
 
 export const ORG_NAME = 'HelpAge India';
 

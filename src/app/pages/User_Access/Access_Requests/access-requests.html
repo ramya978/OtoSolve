@@ -11,7 +11,7 @@
       <p>Work through the review queue: pick a request on the left, check it on the right, then decide.</p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn">
+      <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportCsv()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
       <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>New request</button>
@@ -129,15 +129,21 @@
           </ol>
         </div>
 
-        @if (r.status === 'pending') {
+        @if (r.status === 'pending' && (can(r.ref, 'Withdraw') || can(r.ref, 'Reject') || can(r.ref, 'Approve'))) {
           <footer class="ar-rfoot">
+            @if (can(r.ref, 'Withdraw')) {
             <button type="button" class="i-btn" (click)="decide(r, 'withdrawn')">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>Withdraw</button>
+            }
             <span class="i-spacer"></span>
+            @if (can(r.ref, 'Reject')) {
             <button type="button" class="i-btn i-btn--danger" (click)="decide(r, 'rejected')">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Reject</button>
+            }
+            @if (can(r.ref, 'Approve')) {
             <button type="button" class="i-btn i-btn--primary" (click)="decide(r, 'approved')">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Approve</button>
+            }
           </footer>
         }
       } @else {

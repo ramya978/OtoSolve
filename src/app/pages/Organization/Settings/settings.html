@@ -38,7 +38,7 @@
 
 <!-- ============================== numeric groups, side by side ============================== -->
 <div class="st-pair">
-  @for (g of groups; track g.title) {
+  @for (g of groups(); track g.title) {
     <section class="og-card st-card" [attr.aria-label]="g.title">
       <div class="st-card-head">
         <span class="st-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(g.items[0].icon)" /></svg></span>

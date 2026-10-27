@@ -1,13 +1,13 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { initialsOf, IAM_NOW, IamOption, USER_STATUS_LABEL, IamUser, UserStatus, IAM_PATHS, fmtDate } from '../../../Shared/IAM/iam-data';
+import { initialsOf, iamToday, IamOption, USER_STATUS_LABEL, IamUser, UserStatus, IAM_PATHS, fmtDate } from '../../../Shared/IAM/iam-data';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDirectoryStore } from '../../../Shared/IAM/iam-directory.store';
 import { BulkUserAdminApiService } from '../../../Service/bulk-user-admin-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
-import { BulkActionType } from '../../../Shared/models/iam-contract.model';
+import { BulkActionType, BulkOperationListItemResponse } from '../../../Shared/models/iam-contract.model';
 
 
 
@@ -65,13 +65,48 @@ export class BulkUsers implements OnInit {
 
   ngOnInit(): void {
     if (!this.store.users().length) this.store.load();
+    this.loadHistory();
+  }
+
+  /** Operation history (newest first) and cancel. */
+  readonly history = signal<BulkOperationListItemResponse[]>([]);
+  readonly historyBusy = signal(false);
+  readonly cancellingId = signal('');
+  readonly fmtDate2 = fmtDate;
+
+  loadHistory(): void {
+    this.historyBusy.set(true);
+    this.api.getHistory(1, 10).subscribe({
+      next: (p) => { this.history.set(p.items ?? []); this.historyBusy.set(false); },
+      error: () => this.historyBusy.set(false),
+    });
+  }
+
+  canCancelOp(o: BulkOperationListItemResponse): boolean {
+    return o.status === 'draft' || o.status === 'validated' || o.status === 'queued';
+  }
+
+  cancelOp(o: BulkOperationListItemResponse): void {
+    if (!o.id || this.cancellingId()) return;
+    this.cancellingId.set(o.id);
+    this.api.cancel(o.id, o.version ?? 0, 'Cancelled from bulk user administration').subscribe({
+      next: (r) => {
+        this.cancellingId.set('');
+        this.toast.show('Cancelled', r.message ?? 'The operation was cancelled.', 'success');
+        this.loadHistory();
+      },
+      error: (e) => {
+        this.cancellingId.set('');
+        this.toast.show('Could not cancel', apiErrorMessage(e, 'The operation could not be cancelled.'), 'error');
+      },
+    });
   }
 
   readonly actions = ACTIONS;
   readonly groups = ['Account access', 'Roles, security & data'] as const;
   readonly initials = initialsOf;
   readonly fmtDate = fmtDate; 
-  readonly today = fmtDate(IAM_NOW.toISOString().slice(0, 10));
+  readonly today = fmtDate(iamToday());
   readonly selectedIds = signal<string[]>(this.passedIds());
 
   readonly action = signal<ActionKey>('invite');
@@ -92,7 +127,7 @@ export class BulkUsers implements OnInit {
   readonly dateOptions: IamOption[] = [30, 90, 180, 365].map((d) => {
     const iso = this.addDays(d);
     return { value: iso, label: fmtDate(iso), hint: d === 365 ? 'In one year' : 'In ' + d + ' days', icon: 'calendar' };
-  }).concat([{ value: IAM_NOW.getFullYear() + '-12-31', label: fmtDate(IAM_NOW.getFullYear() + '-12-31'), hint: 'End of this year', icon: 'calendar' }]);
+  }).concat([{ value: new Date().getFullYear() + '-12-31', label: fmtDate(new Date().getFullYear() + '-12-31'), hint: 'End of this year', icon: 'calendar' }]);
 
   readonly addOptions = computed<IamOption[]>(() =>
     this.store.users().filter((u) => !this.selectedIds().includes(u.id))
@@ -256,6 +291,7 @@ export class BulkUsers implements OnInit {
             });
             this.toast.show('Bulk action started', done.message ?? 'The action has been applied.', 'success');
             this.store.load();
+            this.loadHistory();
           },
           error: (e) => this.fail(e),
         });
@@ -286,9 +322,9 @@ export class BulkUsers implements OnInit {
   }
 
   private addDays(n: number): string {
-    const d = new Date(IAM_NOW);
+    const d = new Date();
     d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
   openPanel(key?: string): void {

@@ -10,7 +10,7 @@
   <app-page-header breadcrumb="Users &amp; Access / Roles" heading="Roles &amp; permissions" description="Pick a permission area to see what every role can do in it. Open a role to read or change its permissions.">
   <ng-container actions>
       <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
-  <button type="button" class="i-btn">
+  <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportRoles()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
     <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create role</button>
@@ -195,6 +195,14 @@
           <p class="rp-note">Blocked beats allowed — a blocked permission stays off even if another role allows it.</p>
         </div>
 
+        @if (lifecycle(); as l) {
+          <div class="rp-dr-body">
+            <p class="rp-note">{{ l.kind === 'delete' ? 'Delete ' + l.role.name + '? This cannot be undone.' : (l.status === 'active' ? 'Activate ' : 'Deactivate ') + l.role.name + '?' }}</p>
+            <input class="i-input" [placeholder]="l.kind === 'delete' ? 'Reason (at least 10 characters)' : 'Reason (optional)'" [value]="lifeReason()" (input)="lifeReason.set($any($event.target).value)" />
+            <button type="button" class="rp-btn" (click)="cancelLifecycle()">Cancel</button>
+            <button type="button" class="rp-btn is-primary" [disabled]="saving()" (click)="confirmLifecycle()">Confirm</button>
+          </div>
+        }
         <footer class="rp-dr-foot">
           @if (!editing()) {
             <button type="button" class="rp-btn rp-left" (click)="openEdit(r)">
@@ -203,6 +211,14 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>Clone</button>
             <button type="button" class="rp-btn" (click)="openCompare()">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('compare')" /></svg>Compare</button>
+            @if (canChangeStatus(r)) {
+              <button type="button" class="rp-btn" (click)="askStatus(r)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(r.status === 'active' ? 'ban' : 'checkCircle')" /></svg>{{ r.status === 'active' ? 'Deactivate' : 'Activate' }}</button>
+            }
+            @if (canDelete(r)) {
+              <button type="button" class="rp-btn" (click)="askDelete(r)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Delete</button>
+            }
             <button type="button" class="rp-btn is-primary" (click)="startEdit(r)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('key')" /></svg>Change permissions</button>
           } @else {

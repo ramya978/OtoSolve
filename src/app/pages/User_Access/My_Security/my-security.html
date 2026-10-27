@@ -151,6 +151,15 @@
           <section class="i-card" aria-labelledby="ms-s2">
             <header class="i-card-head"><div><h3 id="ms-s2">Remembered devices</h3><p>Devices that skip the second step.</p></div>
               <span class="i-count">{{ rememberedDevices() }}</span></header>
+            @for (d of trusted(); track d.id) {
+              <div class="i-lrow">
+                <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg></span>
+                <span class="i-lrow-text"><strong>{{ d.name }}</strong><small>{{ d.detail }} · last seen {{ fmtDateTime(d.lastSeen) }}</small></span>
+                <button type="button" class="i-btn i-btn--sm i-btn--danger" (click)="revokeTrusted(d)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('xCircle')" /></svg>Forget</button>
+              </div>
+            }
+            @if (!trusted().length) {
             <div class="i-lrow">
               <span class="i-ibox i-ibox--sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('devices')" /></svg></span>
               <span class="i-lrow-text"><strong>No device is remembered</strong>
@@ -161,6 +170,7 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Mark reviewed</button>
               }
             </div>
+            }
           </section>
         }
 

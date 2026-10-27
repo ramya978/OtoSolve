@@ -59,7 +59,7 @@
           </label>
           <label class="oe-field">
             <span class="oe-label">Established on</span>
-            <input class="oe-input" type="text" [value]="form().established" [disabled]="locked" (input)="set('established', $any($event.target).value)" />
+            <input class="oe-input" type="date" [value]="form().established" [disabled]="locked" (input)="set('established', $any($event.target).value)" />
           </label>
 
           <label class="oe-field">

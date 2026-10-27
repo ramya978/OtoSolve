@@ -13,7 +13,7 @@
       <p>Pick a menu on the left to see its items. Rename, reorder or switch them off — nothing is published until you save.</p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn">
+      <button type="button" class="i-btn" (click)="exportCsv()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
       <button type="button" class="i-btn i-btn--primary" (click)="createTop()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create menu</button>
@@ -46,6 +46,8 @@
     </div>
     @if (scope() === 'role') {
       <div class="mc-role"><iam-select [options]="roleOptions" [value]="viewRole()" placeholder="Choose a role" (valueChange)="viewRole.set($event)" /></div>
+      <button type="button" class="i-btn i-btn--primary" [disabled]="!roleDirty() || roleSaving() || !viewRole()" (click)="saveRoleMapping()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save role menus</button>
     }
     <span class="i-spacer"></span>
     <label class="i-search mc-search">
@@ -135,7 +137,10 @@
             <span class="mc-itext">
               <strong>{{ it.name }}</strong>
               <small class="i-mono">{{ it.route || 'Heading only — no page' }}</small>
-              @if (scope() === 'role' && !visibleTo(it)) { <small class="mc-warn">Hidden from this role</small> }
+              @if (scope() === 'role' && viewRole()) {
+                <small [class.mc-warn]="!visibleTo(it)">{{ visibleTo(it) ? 'Visible to this role' : 'Hidden from this role' }} ·
+                  <button type="button" class="i-btn" (click)="toggleRoleVisible(it)">{{ visibleTo(it) ? 'Hide' : 'Show' }}</button></small>
+              }
             </span>
             <span class="c-perm mc-perm">{{ it.permission || 'Everyone' }}</span>
             <span class="c-chg mc-chg" [class.is-changed]="itemChange(group(), it) !== 'Saved baseline'">

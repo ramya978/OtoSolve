@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { OrgStore, Security, ICONS } from '../../../Shared/Organization/org.store';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
@@ -53,7 +53,25 @@ export class OrgSettings implements OnInit {
       error: (e: unknown) => this.toast.error('Settings not loaded', apiErrorMessage(e, 'The security settings could not be loaded.'))
     });
   }
-  protected readonly groups = GROUPS;
+  /**
+   * The ranges are the server's (`securityLimits` on the organisation); the ones written in GROUPS are
+   * only what the page shows until the record arrives, or when an older API does not send them.
+   */
+  protected readonly groups = computed<Group[]>(() => {
+    const limits = this.store.detail()?.securityLimits;
+    const server: Record<NumKey, { minimum?: number; maximum?: number } | undefined> = {
+      maxFailed: limits?.maximumFailedAccessAttempts, lockoutMin: limits?.lockoutDurationMinutes,
+      idleMin: limits?.sessionIdleTimeoutMinutes, minLength: limits?.passwordMinimumLength, expireDays: limits?.passwordExpiryDays
+    };
+    return GROUPS.map((g) => ({
+      ...g,
+      items: g.items.map((i) => {
+        const r = server[i.key];
+        if (r?.minimum === undefined || r?.maximum === undefined) return i;
+        return { ...i, min: r.minimum, max: r.maximum, hint: i.key === 'expireDays' ? i.hint : `Between ${r.minimum} and ${r.maximum}` };
+      })
+    }));
+  });
 
   protected readonly values = signal<Security>({ ...this.store.security() });
   protected readonly saved = signal(false);
@@ -79,6 +97,12 @@ export class OrgSettings implements OnInit {
     const d = this.store.detail();
     if (!d || this.saving()) return;
     const v = this.values();
+    // every value must sit inside the server's range before anything is sent
+    const bad = this.groups().flatMap((g) => g.items).find((s) => v[s.key] < s.min || v[s.key] > s.max);
+    if (bad) {
+      this.toast.error('Settings not saved', `${bad.label} must be between ${bad.min} and ${bad.max}.`);
+      return;
+    }
     this.saving.set(true);
     this.api.updateMySettings({
       defaultMfaRequirement: v.twoStep,

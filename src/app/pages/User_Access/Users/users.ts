@@ -9,7 +9,10 @@ import { IamDirectoryStore, mergeDetail } from '../../../Shared/IAM/iam-director
 import { UserDirectoryApiService } from '../../../Service/user-directory-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
-import { UserStatisticsResponse } from '../../../Shared/models/iam-contract.model';
+import { UserDetailResponse, UserStatisticsResponse } from '../../../Shared/models/iam-contract.model';
+import { SecurityApiService } from '../../../Service/security-api.service';
+import { iamToday } from '../../../Shared/IAM/iam-data';
+import { UserSearchFilter } from '../../../Shared/models/user-directory.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
@@ -45,6 +48,19 @@ const TITLES = ['Mr', 'Mrs', 'Ms', 'Miss', 'Dr', 'Prof'];
 const DIAL_CODES = ['+91', '+1', '+44', '+61', '+65', '+971', '+49', '+33', '+81', '+86'];
 const REASON_MIN = 10;
 
+type ActKind = 'suspend' | 'unlock' | 'resetPassword' | 'resetMfa' | 'signOut' | 'resend' | 'revoke' | 'extend';
+const ACT_TITLE: Record<ActKind, string> = {
+  suspend: 'Suspend this account', unlock: 'Unlock this account', resetPassword: 'Send a password reset link',
+  resetMfa: 'Reset two-step verification', signOut: 'Sign out everywhere', resend: 'Send the invitation again',
+  revoke: 'Withdraw the invitation', extend: 'Extend access'
+};
+const ACT_DONE: Record<ActKind, string> = {
+  suspend: 'The account was suspended and signed out.', unlock: 'The account was unlocked.',
+  resetPassword: 'A password reset link was sent.', resetMfa: 'Two-step verification was reset.',
+  signOut: 'Every session has ended.', resend: 'The invitation was sent again.',
+  revoke: 'The invitation was withdrawn.', extend: 'Access was extended.'
+};
+
 /** Users — Workspace Kit "People directory" pattern: summary strip, filters, cards ↔ compact list,
  *  record detail drawer and an invite / edit drawer. */
 @Component({
@@ -59,6 +75,7 @@ export class Users implements OnInit {
   private readonly api = inject(UserDirectoryApiService);
   private readonly toast = inject(ToastService);
   private readonly geo = inject(GeoMasterService);
+  private readonly security = inject(SecurityApiService);
 
   readonly users = this.store.users;
   readonly loading = this.store.loading;
@@ -269,13 +286,125 @@ export class Users implements OnInit {
   // ---- selection ----
   select(u: IamUser): void {
     this.selectedId.set(u.id);
+    this.detail.set(null);
     this.api.getUser(u.id).subscribe({
-      next: (d) => this.store.replace(mergeDetail(u, d)),
+      next: (d) => {
+        if (this.selectedId() === u.id) this.detail.set(d);
+        this.store.replace(mergeDetail(u, d));
+      },
       error: () => undefined,
     });
   }
   closeDetail(): void {
     this.selectedId.set('');
+    this.detail.set(null);
+  }
+
+  // ---- account actions on the person in the drawer (what the server permits for this record) ----
+  /** the full record of the person in the drawer: its version and what the caller may do with it */
+  private readonly detail = signal<UserDetailResponse | null>(null);
+  private readonly perms = computed(() => this.detail()?.permittedActions ?? []);
+  can(action: string): boolean { return this.perms().includes(action); }
+  readonly canResetMfa = computed(() => this.can('ResetMfa') || this.can('ResetPassword'));
+  readonly canRevoke = computed(() => this.can('RevokeInvitation') || this.can('Withdraw'));
+  readonly hasAccountActions = computed(() =>
+    ['Suspend', 'Unlock', 'ResetPassword', 'ForceSignOut', 'ResendInvitation', 'ExtendAccess'].some((a) => this.can(a))
+    || this.canResetMfa() || this.canRevoke());
+
+  /** the action waiting for its reason (and a date for "extend access") */
+  readonly act = signal<{ kind: ActKind; user: IamUser } | null>(null);
+  readonly actReason = signal('');
+  readonly actDate = signal('');
+  readonly actBusy = signal(false);
+  readonly minDate = iamToday();
+
+  readonly actTitle = computed(() => {
+    const a = this.act();
+    return a ? ACT_TITLE[a.kind] : '';
+  });
+  /** a reason of at least ten characters is asked for everything except re-sending an invitation */
+  readonly actNeedsReason = computed(() => this.act()?.kind !== 'resend');
+  readonly actReady = computed(() => {
+    const a = this.act();
+    if (!a || this.actBusy()) return false;
+    if (this.actNeedsReason() && this.actReason().trim().length < REASON_MIN) return false;
+    return a.kind !== 'extend' || !!this.actDate();
+  });
+
+  beginAct(kind: ActKind, u: IamUser): void {
+    this.act.set({ kind, user: u });
+    this.actReason.set('');
+    this.actDate.set('');
+  }
+  cancelAct(): void { this.act.set(null); }
+
+  confirmAct(): void {
+    const a = this.act();
+    const d = this.detail();
+    if (!a || !d?.id || !this.actReady()) return;
+    const id = d.id;
+    const version = d.version ?? 0;
+    const reason = this.actReason().trim();
+    this.actBusy.set(true);
+    const call =
+      a.kind === 'suspend' ? this.api.suspendUser(id, { reason, expectedVersion: version })
+      : a.kind === 'unlock' ? this.security.unlockUser(id, version, reason)
+      : a.kind === 'resetPassword' ? this.api.resetPassword(id, { reason, expectedVersion: version })
+      : a.kind === 'resetMfa' ? this.security.resetUserMfa(id, reason)
+      : a.kind === 'signOut' ? this.security.forceSignOut(id, reason)
+      : a.kind === 'revoke' ? this.api.revokeInvitation(id, reason)
+      : a.kind === 'extend' ? this.api.extendAccess(id, new Date(this.actDate() + 'T23:59:59').toISOString(), version, reason)
+      : null;
+    if (a.kind === 'resend') {
+      this.api.resendInvitation(id).subscribe({
+        next: (r) => this.actDone(a.user, r.invitationSent === false ? (r.deliveryMessage ?? 'The e-mail could not be sent.') : 'The invitation was sent again.', r.invitationSent !== false),
+        error: (e) => this.actFailed(e)
+      });
+      return;
+    }
+    call!.subscribe({
+      next: (o) => this.actDone(a.user, o.message ?? ACT_DONE[a.kind], true),
+      error: (e) => this.actFailed(e)
+    });
+  }
+
+  private actDone(u: IamUser, message: string, ok: boolean): void {
+    this.actBusy.set(false);
+    this.act.set(null);
+    this.toast.show(ok ? 'Done' : 'Not sent', message, ok ? 'success' : 'warning');
+    this.store.load();
+    this.loadStats();
+    this.select(u);
+  }
+  private actFailed(e: unknown): void {
+    this.actBusy.set(false);
+    this.toast.show('Could not complete', apiErrorMessage(e, 'The change was not saved.'), 'error');
+  }
+
+  // ---- export (the same search and filters as the screen) ----
+  readonly exporting = signal(false);
+  exportCsv(): void {
+    if (this.exporting()) return;
+    const byName = (list: readonly { id?: string; name?: string | null }[], name: string) => list.find((x) => x.name === name)?.id;
+    const filter: UserSearchFilter = {
+      search: this.query().trim() || undefined,
+      status: this.status() || undefined,
+      departmentId: this.department() ? byName(this.store.departments(), this.department()) : undefined,
+      organisationUnitId: this.unit() ? byName(this.store.units(), this.unit()) : undefined,
+      roleId: this.role() ? byName(this.store.roles(), this.role()) : undefined
+    };
+    this.exporting.set(true);
+    this.api.exportDirectory(filter).subscribe({
+      next: (blob) => {
+        this.exporting.set(false);
+        this.api.saveBlob(blob, 'people.csv');
+        this.toast.show('Export ready', 'The people list was downloaded as CSV.', 'success');
+      },
+      error: (e) => {
+        this.exporting.set(false);
+        this.toast.show('Export failed', apiErrorMessage(e, 'The export could not be created.'), 'error');
+      }
+    });
   }
   toggleCheck(id: string): void {
     const n = new Set(this.checked());

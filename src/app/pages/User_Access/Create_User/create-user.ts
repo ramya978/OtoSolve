@@ -5,7 +5,7 @@ import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import {
-  DATA_SCOPES, IAM_NOW, IAM_PATHS, IamOption,
+  IAM_PATHS, IamOption, iamToday,
   fmtDate, initialsOf
 } from '../../../Shared/IAM/iam-data';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
@@ -44,7 +44,8 @@ interface UserForm {
   message: string;
 }
 
-const today = IAM_NOW.toISOString().slice(0, 10);
+/** today in the person's own time zone (the real date, not a sample one) */
+const today = iamToday();
 
 const EMPTY: UserForm = {
   title: '', firstName: '', lastName: '', displayName: '', preferredName: '', email: '', username: '',
@@ -61,6 +62,17 @@ const REQUIRED: Record<Exclude<SectionKey, 'review'>, (keyof UserForm)[]> = {
 };
 
 const JUSTIFY_MAX = 1000;
+
+/** What each grantable data scope does, in a sentence (the names come from the server). */
+const SCOPE_HINT: Record<string, string> = {
+  organisation: 'Everything in this organisation that their role allows.',
+  assignment: 'Only what is theirs: campaigns they own, leads and donors assigned to them, donations they took.'
+};
+/** what the choice shows only if the server's list has not arrived */
+const SCOPE_FALLBACK: IamOption[] = [
+  { value: 'organisation', label: 'Whole organisation', hint: SCOPE_HINT['organisation'] },
+  { value: 'assignment', label: 'Own records only', hint: SCOPE_HINT['assignment'] }
+];
 
 /** Create user — single-page record form in the campaign-wizard layout: page heading, record card,
  *  section index with completion on the left, all sections stacked in the middle, guidance on the
@@ -85,7 +97,17 @@ export class CreateUser implements OnInit {
     this.store.load();
     // Titles, dialling prefixes, languages and time zones come from the server catalogues, not from lists in this file.
     this.enums.getAll().subscribe({
-      next: (e) => this.titleList.set((e.personTitles ?? []).map((o) => String(o.value ?? '')).filter(Boolean)),
+      next: (e) => {
+        this.titleList.set((e.personTitles ?? []).map((o) => String(o.value ?? '')).filter(Boolean));
+        // Only the two scopes that name no record can be granted here; narrower ones go through an access request.
+        const scopes = (e.dataScopeTypes ?? []).filter((o) => SCOPE_HINT[String(o.value ?? '').toLowerCase()]);
+        if (scopes.length) {
+          this.scopeList.set(scopes.map((o) => {
+            const value = String(o.value ?? '');
+            return { value, label: o.label ?? value, hint: SCOPE_HINT[value.toLowerCase()] };
+          }));
+        }
+      },
       error: () => undefined
     });
     this.geo.getCountries().subscribe({
@@ -158,7 +180,8 @@ export class CreateUser implements OnInit {
   private readonly roleOptionsC = computed<IamOption[]>(() => this.store.roles().filter((r) => r.isActive !== false).map((r) => ({
     value: r.id ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '')
   })));
-  readonly scopeOptions: IamOption[] = DATA_SCOPES.map((s) => ({ value: s.value, label: s.label, hint: s.hint }));
+  private readonly scopeList = signal<IamOption[]>([]);
+  get scopeOptions(): IamOption[] { return this.scopeList().length ? this.scopeList() : SCOPE_FALLBACK; }
   readonly mfaOptions: IamOption[] = [
     { value: 'required', label: 'Required', hint: 'They set up a second factor during activation', icon: 'shieldCheck' },
     { value: 'optional', label: 'Optional (organisation default)', hint: 'They may add one later', icon: 'shield' }
@@ -189,7 +212,30 @@ export class CreateUser implements OnInit {
     if (this.status() !== 'editing') this.status.set('editing');
   }
 
+  // ---- is the e-mail / username free? Asked of the server (check-identity), which sees every account, not just the loaded page ----
+  private readonly identity = signal<{ email: string; username: string; emailTaken: boolean; usernameTaken: boolean; message: string } | null>(null);
+  readonly identityChecking = signal(false);
+
+  private checkIdentity(): void {
+    const f = this.form();
+    const email = f.email.trim().toLowerCase();
+    const username = f.username.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !username) return;
+    this.identityChecking.set(true);
+    this.api.checkIdentity({ email: email || undefined, username: username || undefined }).subscribe({
+      next: (r) => {
+        this.identityChecking.set(false);
+        this.identity.set({
+          email, username, emailTaken: r.emailAvailable === false, usernameTaken: r.usernameAvailable === false, message: r.message ?? ''
+        });
+      },
+      // A failed check must not block the form: the server checks again when the account is created.
+      error: () => { this.identityChecking.set(false); this.identity.set(null); }
+    });
+  }
+
   touch(key: keyof UserForm): void {
+    if (key === 'email' || key === 'username') this.checkIdentity();
     if (this.touched().has(key)) return;
     const n = new Set(this.touched());
     n.add(key);
@@ -209,10 +255,10 @@ export class CreateUser implements OnInit {
     if (!f.displayName.trim()) e.displayName = 'Display name is required.';
     if (!f.email.trim()) e.email = 'Login e-mail is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = 'Enter a valid e-mail address.';
-    else if (this.store.users().some((u) => u.email.toLowerCase() === f.email.trim().toLowerCase())) e.email = 'Someone already signs in with this e-mail.';
+    else if (this.identity()?.emailTaken && this.identity()?.email === f.email.trim().toLowerCase()) e.email = 'Someone already signs in with this e-mail.';
     if (!f.username.trim()) e.username = 'Username is required.';
     else if (!/^[a-z0-9._-]{3,}$/.test(f.username.trim())) e.username = 'Use 3 or more lower-case letters, digits, dots, - or _.';
-    else if (this.store.users().some((u) => u.username === f.username.trim())) e.username = 'This username is taken.';
+    else if (this.identity()?.usernameTaken && this.identity()?.username === f.username.trim().toLowerCase()) e.username = 'This username is taken.';
     if (f.mobile && !/^\d{6,12}$/.test(f.mobile.replace(/\s/g, ''))) e.mobile = 'Use 6–12 digits, without the country code.';
     if (!f.unit) e.unit = 'Choose an organisation unit.';
     if (!f.department) e.department = 'Choose a department.';
@@ -248,7 +294,7 @@ export class CreateUser implements OnInit {
   // ---------------------------------------------------------------- review helpers
   readonly roleName = computed(() => this.store.roles().find((r) => r.id === this.form().role)?.name ?? '');
   readonly rolePrivileged = computed(() => false);
-  readonly scopeName = computed(() => DATA_SCOPES.find((s) => s.value === this.form().dataScope)?.label ?? '');
+  readonly scopeName = computed(() => (this.scopeList().length ? this.scopeList() : SCOPE_FALLBACK).find((s) => s.value === this.form().dataScope)?.label ?? '');
   readonly mfaName = computed(() => this.mfaOptions.find((m) => m.value === this.form().mfa)?.label ?? '');
   readonly fullMobile = computed(() => (this.form().mobile ? `${this.form().countryCode} ${this.form().mobile}` : ''));
 
@@ -302,7 +348,7 @@ export class CreateUser implements OnInit {
       accessEndsAtUtc: f.accessUntil ? new Date(f.accessUntil).toISOString() : null,
       mfaRequirement: f.mfa === 'required' ? 'required' : 'inherited',
       roleIds: f.role ? [f.role] : [],
-      dataScopes: f.dataScope === 'own' ? [{ scopeType: 'assignment', scopeValue: '' }] : [],
+      dataScopes: f.dataScope.toLowerCase() === 'assignment' ? [{ scopeType: 'assignment', scopeValue: '' }] : [],
       justification: f.justification.trim() || null,
       credentialSetupMethod: 'invitationLink',
       sendInvitation,
