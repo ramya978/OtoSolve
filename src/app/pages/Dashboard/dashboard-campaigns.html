@@ -1,5 +1,3 @@
-
-
 <div class="dc">
 
  
@@ -26,7 +24,7 @@
         <div><h3>Donation statistics</h3><p>Amount received and gifts per month · hover a month for details</p></div>
         <div class="dc-seg" role="group" aria-label="Period">
           @for (r of ranges; track r) {
-            <button type="button" [class.is-on]="range() === r" [attr.aria-pressed]="range() === r" (click)="setRange(r)">{{ r }} months</button>
+            <button type="button" [class.is-on]="range() === r" [attr.aria-pressed]="range() === r" (click)="setRange(r)">{{ r }}<span class="dc-seg-long"> months</span><span class="dc-seg-short">M</span></button>
           }
         </div>
       </header>
