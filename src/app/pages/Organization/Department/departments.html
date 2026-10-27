@@ -1,6 +1,7 @@
+<div class="dp-wrap">
 <app-page-header breadcrumb="Administration / Organisation" heading="Departments" description="Departments across the organisation, with their heads, people and status.">
   <ng-container actions>
-     <div style="display: flex;gap: 10px;flex-wrap:wrap ;">
+     <div class="dp-head-acts">
  <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>
       Export
@@ -92,6 +93,7 @@
               <div class="og-cell">
                 <button type="button" class="og-name" (click)="openView(d)">{{ d.name }}</button>
                 @if (d.description) { <span class="og-desc">{{ d.description }}</span> }
+                <span class="dp-meta"><span class="dp-m-code">{{ d.code }} · </span>{{ parentName(d) }}<span class="dp-m-head"> · {{ store.person(d.headId)?.name || 'No head' }}</span></span>
               </div>
             </td>
             <td><span class="og-code">{{ d.code }}</span></td>
@@ -128,6 +130,7 @@
     </table>
   </div>
 </section>
+</div><!-- /.dp-wrap -->
 
 <!-- ============================== popup: department details ============================== -->
 @if (viewing(); as v) {
