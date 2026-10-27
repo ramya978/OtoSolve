@@ -6,6 +6,12 @@
    ===================================================================== */
 
 :host {
+    /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+       is zoomed, so KPIs, rows and popups never look oversized. Sizes below multiply by these. */
+    --dp-k: 1;
+    --dp-fs: calc(var(--font-scale, 1) * var(--dp-k));
+    /* popups: text never drops below 90% so they stay readable */
+    --dp-pfs: calc(var(--font-scale, 1) * max(var(--dp-k), .9));
     display: block;
     padding-bottom: 32px;
     --og-tint: color-mix(in srgb, var(--ink) 4%, transparent);
@@ -27,8 +33,8 @@ select {
 }
 
 .og-ico {
-    width: 14px;
-    height: 14px;
+    width: calc(14px * var(--dp-k));
+    height: calc(14px * var(--dp-k));
     stroke-width: 1.9;
     flex: 0 0 auto;
 }
@@ -47,8 +53,8 @@ select {
     align-items: flex-end;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 14px 20px;
-    margin: 4px 0 22px;
+    gap: calc(14px * var(--dp-k)) calc(20px * var(--dp-k));
+    margin: 4px 0 calc(22px * var(--dp-k));
 }
 
 .og-page-text {
@@ -58,7 +64,7 @@ select {
 .og-crumb {
     display: block;
     margin-bottom: 6px;
-    font-size: calc(10px * var(--font-scale, 1));
+    font-size: calc(10px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: 1.2px;
     text-transform: uppercase;
@@ -68,22 +74,22 @@ select {
 .og-page-title {
     color: var(--cr-heading);
     font-family: var(--cr-heading-font);
-    font-size: calc(30px * var(--font-scale, 1));
+    font-size: calc(30px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: -.8px;
     line-height: 1.25;
 }
 
 .og-page-sub {
-    margin: 10px 0 0;
-    font-size: calc(15px * var(--font-scale, 1));
+    margin: calc(10px * var(--dp-k)) 0 0;
+    font-size: calc(15px * var(--dp-fs));
     color: var(--muted);
 }
 
 .og-page-actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: calc(10px * var(--dp-k));
 }
 
 /* =====================================================================
@@ -92,7 +98,7 @@ select {
 .og-kpis {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    margin-bottom: 14px;
+    margin-bottom: calc(14px * var(--dp-k));
     border: 1px solid var(--line);
     border-radius: 18px;
     background: var(--card, #fff);
@@ -103,7 +109,7 @@ select {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding: 20px 24px 18px;
+    padding: calc(20px * var(--dp-k)) calc(24px * var(--dp-k)) calc(18px * var(--dp-k));
     border-left: 1px solid var(--line);
 }
 
@@ -115,18 +121,18 @@ select {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: calc(10px * var(--dp-k));
 }
 
 .og-kpi > header span {
-    font-size: calc(15px * var(--font-scale, 1));
+    font-size: calc(15px * var(--dp-fs));
     font-weight: 500;
     color: var(--muted);
 }
 
 .og-kpi > header svg {
-    width: 18px;
-    height: 18px;
+    width: calc(18px * var(--dp-k));
+    height: calc(18px * var(--dp-k));
     color: var(--muted);
 }
 
@@ -138,12 +144,12 @@ select {
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 12px;
-    margin-top: 18px;
+    gap: calc(12px * var(--dp-k));
+    margin-top: calc(18px * var(--dp-k));
 }
 
 .og-kpi-main > b {
-    font-size: calc(38px * var(--font-scale, 1));
+    font-size: calc(38px * var(--dp-fs));
     font-weight: 600;
     letter-spacing: -0.5px;
     line-height: 1;
@@ -166,27 +172,27 @@ select {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    padding-left: 12px;
+    padding-left: calc(12px * var(--dp-k));
     border-left: 1px solid var(--line);
     text-align: right;
 }
 
 .og-kpi-side b {
-    font-size: calc(17px * var(--font-scale, 1));
+    font-size: calc(17px * var(--dp-fs));
     font-weight: 600;
     color: var(--ink);
 }
 
 .og-kpi-side span {
     margin-top: 2px;
-    font-size: calc(13px * var(--font-scale, 1));
+    font-size: calc(13px * var(--dp-fs));
     color: var(--muted);
     white-space: nowrap;
 }
 
 .og-kpi > p {
-    margin: 14px 0 0;
-    font-size: calc(13.5px * var(--font-scale, 1));
+    margin: calc(14px * var(--dp-k)) 0 0;
+    font-size: calc(13.5px * var(--dp-fs));
     line-height: 1.5;
     color: var(--muted);
 }
@@ -211,7 +217,7 @@ select {
 
 .og-table--list {
     width: 100% !important;
-    min-width: 1000px;
+    min-width: calc(1000px * var(--dp-k));
     table-layout: fixed !important;
 }
 
@@ -219,20 +225,20 @@ select {
 .og-table--list td {
     width: 14.285714% !important;
     min-width: 0 !important;
-    padding: 14px 12px !important;
+    padding: calc(14px * var(--dp-k)) calc(12px * var(--dp-k)) !important;
     box-sizing: border-box;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: middle;
     text-align: left;
     border-bottom: 1px solid var(--line);
-    font-size: calc(14px * var(--font-scale, 1));
+    font-size: calc(14px * var(--dp-fs));
     color: var(--ink);
 }
 
 .og-table--list th {
     background: transparent;
-    font-size: calc(11.5px * var(--font-scale, 1));
+    font-size: calc(11.5px * var(--dp-fs));
     font-weight: 600;
     letter-spacing: 1.3px;
     text-transform: uppercase;
@@ -242,7 +248,7 @@ select {
 
 .og-table--list th:first-child,
 .og-table--list td:first-child {
-    padding-left: 22px !important;
+    padding-left: calc(22px * var(--dp-k)) !important;
 }
 
 .og-table--list th:last-child,
@@ -301,7 +307,7 @@ select {
     display: block;
     width: 100%;
     max-width: 100%;
-    font-size: calc(13px * var(--font-scale, 1));
+    font-size: calc(13px * var(--dp-fs));
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
@@ -314,7 +320,7 @@ select {
     padding: 0;
     border: none;
     background: none;
-    font-size: calc(13.5px * var(--font-scale, 1));
+    font-size: calc(13.5px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: 1px;
     white-space: nowrap;
@@ -343,7 +349,7 @@ select {
 .og-person {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: calc(8px * var(--dp-k));
     max-width: 100%;
     min-width: 0;
     white-space: nowrap;
@@ -354,12 +360,12 @@ select {
     display: inline-grid;
     place-items: center;
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: calc(26px * var(--dp-k));
+    height: calc(26px * var(--dp-k));
     border-radius: 50%;
     background: var(--og-tint);
     font-style: normal;
-    font-size: calc(10px * var(--font-scale, 1));
+    font-size: calc(10px * var(--dp-fs));
     font-weight: 650;
     color: var(--ink);
 }
@@ -368,12 +374,12 @@ select {
 .og-count-pill {
     display: inline-grid;
     place-items: center;
-    min-width: 32px;
-    height: 28px;
-    padding: 0 10px;
+    min-width: calc(32px * var(--dp-k));
+    height: calc(28px * var(--dp-k));
+    padding: 0 calc(10px * var(--dp-k));
     border-radius: 999px;
     background: var(--og-tint);
-    font-size: calc(13px * var(--font-scale, 1));
+    font-size: calc(13px * var(--dp-fs));
     font-weight: 600;
     color: var(--ink);
 }
@@ -383,7 +389,7 @@ select {
     display: inline;
     padding: 0;
     background: none;
-    font-size: calc(14px * var(--font-scale, 1));
+    font-size: calc(14px * var(--dp-fs));
     font-weight: 600;
     white-space: nowrap;
     color: var(--muted);
@@ -407,8 +413,8 @@ select {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 34px;
-    height: 34px;
+    width: calc(34px * var(--dp-k));
+    height: calc(34px * var(--dp-k));
     border: 1px solid var(--line);
     border-radius: 9px;
     background: var(--card, #fff);
@@ -427,8 +433,8 @@ select {
 }
 
 .og-iconbtn svg {
-    width: 15px;
-    height: 15px;
+    width: calc(15px * var(--dp-k));
+    height: calc(15px * var(--dp-k));
 }
 
 /* =====================================================================
@@ -440,7 +446,7 @@ select {
     z-index: 1000;
     display: grid;
     place-items: center;
-    padding: 24px;
+    padding: calc(24px * var(--dp-k));
     background: rgb(15 10 25 / .32);
     backdrop-filter: blur(3px);
     animation: og-fade .14s ease-out;
@@ -476,26 +482,26 @@ select {
 }
 
 .og-pop {
-    max-width: 860px;
+    max-width: calc(860px * var(--dp-k));
     flex-direction: column;
 }
 
 .og-pop--view {
-    max-width: 1000px;
+    max-width: calc(1000px * var(--dp-k));
 }
 
 .og-pop-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 24px 38px 22px;
+    gap: calc(16px * var(--dp-k));
+    padding: calc(24px * var(--dp-k)) calc(38px * var(--dp-k)) calc(22px * var(--dp-k));
     border-bottom: 1px solid var(--line);
 }
 
 .og-pop-head h2 {
     margin: 0;
-    font-size: calc(22px * var(--font-scale, 1));
+    font-size: calc(22px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: -0.2px;
     color: var(--ink);
@@ -506,8 +512,8 @@ select {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 54px;
-    height: 54px;
+    width: calc(54px * var(--dp-k));
+    height: calc(54px * var(--dp-k));
     border: 1px solid var(--line);
     border-radius: 12px;
     background: var(--card, #fff);
@@ -520,13 +526,13 @@ select {
 }
 
 .og-xbox svg {
-    width: 20px;
-    height: 20px;
+    width: calc(20px * var(--dp-k));
+    height: calc(20px * var(--dp-k));
 }
 
 .og-pop-body {
     flex: 1;
-    padding: 30px 38px 32px;
+    padding: calc(30px * var(--dp-k)) calc(38px * var(--dp-k)) calc(32px * var(--dp-k));
     overflow-y: auto;
 }
 
@@ -534,8 +540,8 @@ select {
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 12px;
-    padding: 22px 38px;
+    gap: calc(12px * var(--dp-k));
+    padding: calc(22px * var(--dp-k)) calc(38px * var(--dp-k));
     border-top: 1px solid var(--line);
 }
 
@@ -546,21 +552,21 @@ select {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: calc(16px * var(--dp-k));
 }
 
 .og-eyebrow {
     display: block;
     margin: 0;
-    font-size: calc(10px * var(--font-scale, 1));
+    font-size: calc(10px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: 1.2px;
     text-transform: uppercase;
 }
 
 .og-pop-name {
-    margin: 10px 0 0;
-    font-size: calc(34px * var(--font-scale, 1));
+    margin: calc(10px * var(--dp-k)) 0 0;
+    font-size: calc(34px * var(--dp-fs));
     font-weight: 600;
     letter-spacing: -0.4px;
     line-height: 1.15;
@@ -570,10 +576,10 @@ select {
 .og-pill {
     display: inline-flex;
     align-items: center;
-    padding: 9px 14px;
+    padding: calc(9px * var(--dp-k)) calc(14px * var(--dp-k));
     border-radius: 9px;
     white-space: nowrap;
-    font-size: calc(14.5px * var(--font-scale, 1));
+    font-size: calc(14.5px * var(--dp-fs));
     font-weight: 600;
 }
 
@@ -590,8 +596,8 @@ select {
 .og-facts {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 26px 28px;
-    margin: 28px 0 30px;
+    gap: calc(26px * var(--dp-k)) calc(28px * var(--dp-k));
+    margin: calc(28px * var(--dp-k)) 0 calc(30px * var(--dp-k));
 }
 
 .og-facts > div {
@@ -603,13 +609,13 @@ select {
 }
 
 .og-facts dt {
-    font-size: calc(15.5px * var(--font-scale, 1));
+    font-size: calc(15.5px * var(--dp-fs));
     color: var(--muted);
 }
 
 .og-facts dd {
-    margin: 8px 0 0;
-    font-size: calc(17px * var(--font-scale, 1));
+    margin: calc(8px * var(--dp-k)) 0 0;
+    font-size: calc(17px * var(--dp-fs));
     font-weight: 600;
     color: var(--ink);
     overflow-wrap: anywhere;
@@ -622,11 +628,11 @@ select {
 }
 
 .og-note {
-    padding: 24px 28px;
+    padding: calc(24px * var(--dp-k)) calc(28px * var(--dp-k));
     border: 1px solid var(--line);
     border-radius: 16px;
     background: var(--og-tint);
-    font-size: calc(15.5px * var(--font-scale, 1));
+    font-size: calc(15.5px * var(--dp-fs));
     line-height: 2;
     color: var(--muted);
 }
@@ -639,22 +645,22 @@ select {
    POPUP - delete confirmation
    ===================================================================== */
 .og-confirm {
-    max-width: 540px;
+    max-width: calc(540px * var(--dp-k));
 }
 
 .og-delete .og-pop-head {
-    padding: 26px 38px 22px;
+    padding: calc(26px * var(--dp-k)) calc(38px * var(--dp-k)) calc(22px * var(--dp-k));
 }
 
 .og-del-head {
     align-items: flex-start;
-    gap: 18px;
+    gap: calc(18px * var(--dp-k));
 }
 
 .og-del-title-wrap {
     display: flex;
     align-items: flex-start;
-    gap: 14px;
+    gap: calc(14px * var(--dp-k));
     flex: 1;
     min-width: 0;
 }
@@ -663,8 +669,8 @@ select {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: calc(40px * var(--dp-k));
+    height: calc(40px * var(--dp-k));
     border-radius: 12px;
     background: color-mix(in srgb, var(--status-danger, #b3261e) 12%, var(--card, #fff));
     color: var(--status-danger, #b3261e);
@@ -672,13 +678,13 @@ select {
 }
 
 .og-del-icon svg {
-    width: 20px;
-    height: 20px;
+    width: calc(20px * var(--dp-k));
+    height: calc(20px * var(--dp-k));
 }
 
 .og-del-head h2 {
     margin: 0 0 4px;
-    font-size: calc(20px * var(--font-scale, 1));
+    font-size: calc(20px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: -0.2px;
     color: var(--ink);
@@ -686,18 +692,18 @@ select {
 
 .og-del-name {
     margin: 0;
-    font-size: calc(15px * var(--font-scale, 1));
+    font-size: calc(15px * var(--dp-fs));
     font-weight: 600;
     color: var(--status-danger, #b3261e);
 }
 
 .og-del-body {
-    padding: 24px 38px 26px;
+    padding: calc(24px * var(--dp-k)) calc(38px * var(--dp-k)) calc(26px * var(--dp-k));
 }
 
 .og-del-text {
     margin: 0;
-    font-size: calc(15px * var(--font-scale, 1));
+    font-size: calc(15px * var(--dp-fs));
     line-height: 1.6;
     color: var(--muted);
 }
@@ -708,8 +714,8 @@ select {
 }
 
 .og-del-foot {
-    padding: 16px 38px 22px;
-    gap: 10px;
+    padding: calc(16px * var(--dp-k)) calc(38px * var(--dp-k)) calc(22px * var(--dp-k));
+    gap: calc(10px * var(--dp-k));
 }
 
 .og-del-foot .pf-hbtn {
@@ -739,23 +745,10 @@ select {
 /* =====================================================================
    RESPONSIVE
    ===================================================================== */
-@media (max-width: 1180px) {
-    .og-kpis {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .og-kpi:nth-child(4) {
-        border-left: none;
-    }
-
-    .og-kpi:nth-child(n+4) {
-        border-top: 1px solid var(--line);
-    }
-}
 
 @media (max-width: 760px) {
     .og-page-title {
-        font-size: calc(32px * var(--font-scale, 1));
+        font-size: calc(32px * var(--dp-fs));
     }
 
     .og-kpis {
@@ -779,21 +772,21 @@ select {
     .og-pop-head,
     .og-pop-body,
     .og-pop-foot {
-        padding-left: 20px;
+        padding-left: calc(20px * var(--dp-k));
         padding-right: 20px;
     }
 
     .og-pop-name {
-        font-size: calc(26px * var(--font-scale, 1));
+        font-size: calc(26px * var(--dp-fs));
     }
 
     .og-facts {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 20px;
+        gap: calc(20px * var(--dp-k));
     }
 
     .og-overlay {
-        padding: 12px;
+        padding: calc(12px * var(--dp-k));
     }
 }
 
@@ -818,3 +811,295 @@ select {
         flex-direction: column-reverse;
     }
 }
+/* =====================================================================
+   RESPONSIVE PAGE (14" to 32")
+   The page content sits in .bu-wrap, which is the size container. Popups stay
+   outside it so they keep covering the screen.
+   ===================================================================== */
+.bu-wrap {
+  container: bu-page / inline-size;
+  min-width: 0;
+}
+
+/* header buttons: one row, top-right, sized with the page */
+.og-page-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: calc(8px * var(--dp-k));
+}
+
+.og-page-actions .pf-hbtn {
+  height: calc(36px * var(--dp-k)) !important;
+  min-height: 0 !important;
+  padding: 0 calc(14px * var(--dp-k)) !important;
+  gap: calc(6px * var(--dp-k)) !important;
+  font-size: calc(13px * var(--dp-fs)) !important;
+  white-space: nowrap;
+}
+
+/* ---------- KPI strip: one row, cards hide by priority ---------- */
+.og-kpis {
+  display: flex;
+  margin-bottom: calc(16px * var(--dp-k));
+  border-radius: 14px;
+}
+
+.og-kpi {
+  flex: 1 1 0;
+  padding: calc(16px * var(--dp-k)) calc(18px * var(--dp-k)) calc(14px * var(--dp-k));
+  border-top: 0;
+}
+
+.og-kpi > header span { font-size: calc(13px * var(--dp-fs)); }
+.og-kpi > header svg { width: calc(16px * var(--dp-k)); height: calc(16px * var(--dp-k)); }
+.og-kpi-main { margin-top: calc(12px * var(--dp-k)); }
+.og-kpi-main > b { font-size: calc(28px * var(--dp-fs)); }
+.og-kpi-side b { font-size: calc(14px * var(--dp-fs)); }
+.og-kpi-side span { font-size: calc(11.5px * var(--dp-fs)); }
+.og-kpi > p { margin-top: calc(10px * var(--dp-k)); font-size: calc(12px * var(--dp-fs)); }
+
+/* Inactive goes first, then People assigned, then Without a head */
+@container bu-page (max-width: 1200px) { .og-kpi:nth-child(3) { display: none; } }
+@container bu-page (max-width: 980px)  { .og-kpi:nth-child(4) { display: none; } }
+@container bu-page (max-width: 760px)  { .og-kpi:nth-child(5) { display: none; } }
+@container bu-page (max-width: 520px) {
+  .og-kpi-side { display: none; }
+  .og-kpi > p { display: none; }
+}
+
+/* ---------- table: fits the card, columns hide instead of scrolling ---------- */
+.og-scroll { overflow: visible !important; }
+
+.og-table--list {
+  min-width: 0 !important;
+}
+
+.og-table--list th,
+.og-table--list td {
+  width: auto !important;
+  padding: calc(13px * var(--dp-k)) calc(14px * var(--dp-k)) !important;
+  font-size: calc(13.5px * var(--dp-fs));
+}
+
+.og-table--list th {
+  font-size: calc(11px * var(--dp-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+.og-table--list th:first-child,
+.og-table--list td:first-child { padding-left: calc(20px * var(--dp-k)) !important; }
+.og-table--list th:last-child,
+.og-table--list td:last-child { padding-right: calc(20px * var(--dp-k)) !important; }
+
+/* column widths: name gets the most, the rest share what is left */
+.og-table--list th:nth-child(1) { width: 26% !important; }
+.og-table--list th:nth-child(2) { width: 10% !important; }
+.og-table--list th:nth-child(3) { width: 15% !important; }
+.og-table--list th:nth-child(4) { width: 17% !important; }
+.og-table--list th:nth-child(5) { width: 9% !important; }
+.og-table--list th:nth-child(6) { width: 10% !important; }
+.og-table--list th:nth-child(7) { width: calc(140px * var(--dp-k)) !important; }
+
+.og-table--list .og-name { font-size: calc(13.5px * var(--dp-fs)); }
+.og-table--list .og-desc { font-size: calc(12px * var(--dp-fs)); }
+.og-table--list .og-code { font-size: calc(12.5px * var(--dp-fs)); }
+.og-table--list .og-status { font-size: calc(13px * var(--dp-fs)); }
+.og-table--list .og-count-pill { height: calc(24px * var(--dp-k)); min-width: calc(28px * var(--dp-k)); font-size: calc(12px * var(--dp-fs)); }
+.og-table--list .og-person i { width: calc(24px * var(--dp-k)); height: calc(24px * var(--dp-k)); }
+.og-table--list .og-iconbtn { width: calc(30px * var(--dp-k)); height: calc(30px * var(--dp-k)); border-radius: 8px; }
+.og-table--list .og-iconbtn svg { width: calc(14px * var(--dp-k)); height: calc(14px * var(--dp-k)); }
+
+/* code · sits under · head line under the name - only once those columns are hidden */
+.dp-meta {
+  display: none;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: calc(12px * var(--dp-fs));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@container bu-page (max-width: 1100px) {
+  .og-table--list th:nth-child(3), .og-table--list td:nth-child(3) { display: none; }
+  .og-table--list .og-desc { display: none; }
+  .dp-meta { display: block; }
+  .dp-meta .dp-m-code, .dp-meta .dp-m-head { display: none; }
+}
+
+@container bu-page (max-width: 900px) {
+  .og-table--list th:nth-child(2), .og-table--list td:nth-child(2) { display: none; }
+  .dp-meta .dp-m-code { display: inline; }
+}
+
+@container bu-page (max-width: 720px) {
+  .og-table--list th:nth-child(5), .og-table--list td:nth-child(5) { display: none; }
+  .og-table--list th:nth-child(4), .og-table--list td:nth-child(4) { display: none; }
+  .dp-meta .dp-m-head { display: inline; }
+  .og-table--list th:nth-child(1) { width: auto !important; }
+  .og-table--list th:nth-child(6) { width: calc(84px * var(--dp-k)) !important; }
+}
+
+@container bu-page (max-width: 460px) {
+  .og-table--list th:nth-child(7) { width: calc(118px * var(--dp-k)) !important; }
+  .og-table--list td:nth-child(7) { text-overflow: clip !important; }
+  .og-table--list th:nth-child(7),
+  .og-table--list td:nth-child(7) { padding-left: 4px !important; }
+  .og-table--list th:nth-child(6),
+  .og-table--list td:nth-child(6) { padding-inline: 6px !important; }
+  .og-table--list .og-acts { gap: 2px !important; }
+  .og-table--list .og-iconbtn { border-color: transparent; }
+  .og-table--list th:first-child,
+  .og-table--list td:first-child { padding-left: calc(14px * var(--dp-k)) !important; }
+  .og-table--list th:last-child,
+  .og-table--list td:last-child { padding-right: calc(10px * var(--dp-k)) !important; }
+}
+
+/* =====================================================================
+   POPUPS AND DRAWER - same design, smaller text and width
+   ===================================================================== */
+.og-dialog { border-radius: 16px; }
+
+.og-pop { max-width: calc(640px * var(--dp-k)); }
+.og-pop--view { max-width: calc(720px * var(--dp-k)); }
+.og-confirm { max-width: calc(440px * var(--dp-k)); }
+
+.og-pop-head { padding: calc(18px * var(--dp-k)) calc(24px * var(--dp-k)) calc(16px * var(--dp-k)); }
+.og-pop-head h2 { font-size: calc(17px * var(--dp-pfs)); }
+.og-xbox { width: calc(36px * var(--dp-k)); height: calc(36px * var(--dp-k)); border-radius: 10px; }
+.og-xbox svg { width: calc(16px * var(--dp-k)); height: calc(16px * var(--dp-k)); }
+
+.og-pop-body { padding: calc(20px * var(--dp-k)) calc(24px * var(--dp-k)) calc(22px * var(--dp-k)); }
+/* eyebrow + department name: lighter and smaller so they no longer look heavy */
+.og-pop .og-eyebrow {
+  margin: 0 !important;
+  color: var(--muted) !important;
+  font-size: calc(10.5px * var(--dp-pfs)) !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+}
+
+.og-pop .og-pop-name {
+  margin: calc(4px * var(--dp-k)) 0 0 !important;
+  font-size: calc(19px * var(--dp-pfs)) !important;
+  font-weight: 600 !important;
+  letter-spacing: -.2px !important;
+  line-height: 1.3 !important;
+}
+
+.og-pop .og-facts dt {
+  font-size: calc(11.5px * var(--dp-pfs)) !important;
+}
+
+.og-pop .og-facts dd {
+  font-size: calc(13.5px * var(--dp-pfs)) !important;
+  font-weight: 550 !important;
+}
+
+@media (max-width: 760px) {
+  .og-pop .og-pop-name { font-size: calc(18px * var(--dp-pfs)) !important; }
+}
+.og-pill { padding: calc(5px * var(--dp-k)) calc(10px * var(--dp-k)); border-radius: 8px; font-size: calc(12.5px * var(--dp-pfs)); }
+
+.og-facts { gap: calc(16px * var(--dp-k)) calc(20px * var(--dp-k)); margin: calc(20px * var(--dp-k)) 0 calc(20px * var(--dp-k)); }
+.og-facts dt { font-size: calc(12px * var(--dp-pfs)); }
+.og-facts dd { margin-top: calc(4px * var(--dp-k)); font-size: calc(14px * var(--dp-pfs)); }
+
+.og-sublabel { margin-bottom: calc(8px * var(--dp-k)); font-size: calc(12.5px * var(--dp-pfs)); }
+.og-subtags { gap: calc(8px * var(--dp-k)); margin-bottom: calc(18px * var(--dp-k)); }
+.og-tag { gap: calc(8px * var(--dp-k)); padding: calc(5px * var(--dp-k)) calc(11px * var(--dp-k)); font-size: calc(13px * var(--dp-pfs)); }
+.og-tag small { font-size: calc(11px * var(--dp-pfs)); }
+
+.og-note { padding: calc(14px * var(--dp-k)) calc(16px * var(--dp-k)); border-radius: 12px; font-size: calc(13.5px * var(--dp-pfs)); line-height: 1.65; }
+
+.og-pop-foot { gap: calc(8px * var(--dp-k)); padding: calc(14px * var(--dp-k)) calc(24px * var(--dp-k)); }
+.og-pop-foot .pf-hbtn {
+  height: calc(36px * var(--dp-k)) !important;
+  min-height: 0 !important;
+  padding: 0 calc(14px * var(--dp-k)) !important;
+  font-size: calc(13px * var(--dp-pfs)) !important;
+}
+
+/* delete popup */
+.og-delete .og-pop-head { padding: calc(20px * var(--dp-k)) calc(24px * var(--dp-k)) calc(14px * var(--dp-k)); }
+.og-del-icon { width: calc(36px * var(--dp-k)); height: calc(36px * var(--dp-k)); border-radius: 10px; }
+.og-del-icon svg { width: calc(18px * var(--dp-k)); height: calc(18px * var(--dp-k)); }
+.og-del-head h2 { font-size: calc(17px * var(--dp-pfs)); }
+.og-del-name { font-size: calc(13.5px * var(--dp-pfs)); }
+.og-del-body { padding: 0 calc(24px * var(--dp-k)) calc(18px * var(--dp-k)); }
+.og-del-text { font-size: calc(13.5px * var(--dp-pfs)); }
+.og-del-foot { padding: calc(12px * var(--dp-k)) calc(24px * var(--dp-k)) calc(18px * var(--dp-k)); }
+
+/* create / edit drawer */
+.og-drawer--form { max-width: min(calc(460px * var(--dp-k)), 100vw); }
+.og-drawer--form .og-pop-head { padding: calc(18px * var(--dp-k)) calc(20px * var(--dp-k)) calc(16px * var(--dp-k)); }
+.og-drawer--form .og-pop-head h2 { margin-top: calc(4px * var(--dp-k)); font-size: calc(18px * var(--dp-pfs)); }
+.og-drawer--form .og-sub { margin-top: calc(4px * var(--dp-k)); font-size: calc(12.5px * var(--dp-pfs)); }
+.og-drawer .og-xbox { width: calc(34px * var(--dp-k)); height: calc(34px * var(--dp-k)); }
+.og-drawer--form .og-drawer-body { gap: calc(12px * var(--dp-k)); padding: calc(16px * var(--dp-k)) calc(20px * var(--dp-k)) calc(20px * var(--dp-k)); }
+.og-block { padding: calc(14px * var(--dp-k)) calc(16px * var(--dp-k)) calc(4px * var(--dp-k)); border-radius: 12px; }
+.og-block-title { margin-bottom: calc(12px * var(--dp-k)); font-size: calc(11px * var(--dp-pfs)); }
+.og-field { gap: calc(6px * var(--dp-k)); margin-bottom: calc(12px * var(--dp-k)); }
+.og-flabel { font-size: calc(12.5px * var(--dp-pfs)); }
+.og-count, .og-err, .og-hint { font-size: calc(11.5px * var(--dp-pfs)); }
+.og-input { height: calc(38px * var(--dp-k)); padding: 0 calc(12px * var(--dp-k)); border-radius: 10px; font-size: calc(13px * var(--dp-pfs)); }
+.og-area { height: auto; min-height: calc(88px * var(--dp-k)); padding: calc(9px * var(--dp-k)) calc(12px * var(--dp-k)); }
+.og-quick > span { font-size: calc(12px * var(--dp-pfs)); }
+.og-quick--stack .og-chip { height: calc(28px * var(--dp-k)); padding: 0 calc(10px * var(--dp-k)); font-size: calc(12px * var(--dp-pfs)); }
+.og-toggle--row { padding: calc(12px * var(--dp-k)) calc(16px * var(--dp-k)); border-radius: 12px; font-size: calc(13px * var(--dp-pfs)); }
+.og-toggle-text small { font-size: calc(11.5px * var(--dp-pfs)); }
+.og-drawer-foot { padding: calc(12px * var(--dp-k)) calc(20px * var(--dp-k)); }
+.og-req { font-size: calc(12px * var(--dp-pfs)); }
+
+/* KPI strip borders: one row, a line between cards (the old wrapped-grid borders are cancelled) */
+.og-kpi { border-top: 0 !important; border-left: 1px solid var(--line) !important; }
+.og-kpi:first-child { border-left: none !important; }
+
+/* address fact spans the full width in the details popup */
+.og-pop .og-facts .og-fact--wide { grid-column: 1 / -1; }
+
+/* =====================================================================
+   PAGE HEADER - laid out like the shared app-page-header on the other pages:
+   breadcrumb · title · description on the left, buttons top-right, 16px gap below
+   ===================================================================== */
+.og-page-head {
+  align-items: flex-start !important;
+  gap: calc(12px * var(--dp-k)) calc(20px * var(--dp-k)) !important;
+  margin: 0 0 calc(16px * var(--dp-k)) !important;
+}
+
+.og-page-text {
+  flex: 1 1 calc(360px * var(--dp-k));
+}
+
+.og-crumb {
+  margin: 0 0 calc(4px * var(--dp-k)) !important;
+  font-size: calc(11px * var(--dp-fs)) !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  line-height: 1.4;
+}
+
+.og-page-title {
+  margin: 0 !important;
+  font-size: calc(26px * var(--dp-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+
+.og-page-sub {
+  margin: calc(6px * var(--dp-k)) 0 0 !important;
+  font-size: calc(13.5px * var(--dp-fs)) !important;
+  line-height: 1.5;
+}
+
+.og-page-actions {
+  align-self: flex-start;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --dp-k: .95; } }
+@media (max-width: 1600px) { :host { --dp-k: .9; } }
+@media (max-width: 1440px) { :host { --dp-k: .86; } }
+@media (max-width: 1280px) { :host { --dp-k: .84; } }

@@ -1,3 +1,4 @@
+<div class="bu-wrap">
 <header class="og-page-head">
   <div class="og-page-text">
     <p class="og-crumb">Administration / Organisation</p>
@@ -94,6 +95,7 @@
               <div class="og-cell">
                 <button type="button" class="og-name" (click)="openView(o)">{{ o.name }}</button>
                 <span class="og-desc">{{ o.description || (o.city + ', ' + o.country) }}</span>
+                <span class="dp-meta"><span class="dp-m-code">{{ o.code }} · </span>{{ parentName(o) }}<span class="dp-m-head"> · {{ store.person(o.managerId)?.name || 'No manager' }}</span></span>
               </div>
             </td>
             <td><span class="og-code">{{ o.code }}</span></td>
@@ -130,6 +132,7 @@
     </table>
   </div>
 </section>
+</div><!-- /.bu-wrap -->
 
 <!-- ============================== popup: office details ============================== -->
 @if (viewing(); as v) {
