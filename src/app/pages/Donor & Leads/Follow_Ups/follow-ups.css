@@ -51,13 +51,38 @@
   align-self: flex-start;
   gap: calc(8px * var(--fus-k));
 }
+/* the header buttons: <ng-container actions> leaves no element in the page, so the projected
+   buttons are matched directly; icon + label stay centred whatever the shared header sets */
+:host ::ng-deep app-page-header button,
 :host ::ng-deep app-page-header [actions] :is(button, a),
 :host ::ng-deep app-page-header [slot="actions"] :is(button, a) {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: calc(7px * var(--fus-k));
+  box-sizing: border-box;
   height: calc(36px * var(--fus-k)) !important;
   min-height: 0 !important;
-  padding-block: 0 !important;
+  padding: 0 calc(14px * var(--fus-k)) !important;
   font-size: calc(13px * var(--fus-fs)) !important;
+  line-height: 1 !important;
   white-space: nowrap;
+  vertical-align: middle;
+}
+:host ::ng-deep app-page-header button svg,
+:host ::ng-deep app-page-header [actions] :is(button, a) svg,
+:host ::ng-deep app-page-header [slot="actions"] :is(button, a) svg {
+  display: block;
+  flex: none;
+  width: calc(15px * var(--fus-k));
+  height: calc(15px * var(--fus-k));
+  margin: 0 !important;
+}
+.fq-head-acts {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: calc(8px * var(--fus-k));
 }
 /* phones: the header actions drop under the title instead of squeezing it */
 @media (max-width: 700px) {
@@ -108,7 +133,7 @@
   justify-content: space-between;
   gap: calc(20px * var(--fus-k));
   margin-bottom: calc(14px * var(--fus-k));
-  padding: calc(22px * var(--fus-k)) calc(24px * var(--fus-k));
+  padding: calc(18px * var(--fus-k)) calc(22px * var(--fus-k));
 }
 
 .fq-me {
@@ -123,12 +148,12 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: calc(58px * var(--fus-k));
-  height: calc(58px * var(--fus-k));
+  width: calc(48px * var(--fus-k));
+  height: calc(48px * var(--fus-k));
   border-radius: calc(var(--fu-radius) + 2px);
   background: var(--fu-primary-soft);
   color: var(--fu-primary);
-  font-size: calc(17px * var(--fus-fs));
+  font-size: calc(15px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -148,7 +173,7 @@
 .fq-me-name h2 {
   margin: 0;
   color: var(--fu-heading);
-  font-size: calc(17.5px * var(--fus-fs));
+  font-size: calc(16px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -194,7 +219,7 @@
 .fq-next b,
 .fq-next-btn {
   color: var(--fu-heading);
-  font-size: calc(14.5px * var(--fus-fs));
+  font-size: calc(14px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -303,7 +328,7 @@
   align-items: center;
   gap: calc(8px * var(--fus-k));
   margin-bottom: -1px;
-  padding: calc(14px * var(--fus-k)) calc(16px * var(--fus-k)) calc(13px * var(--fus-k));
+  padding: calc(12px * var(--fus-k)) calc(14px * var(--fus-k)) calc(11px * var(--fus-k));
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
@@ -405,7 +430,7 @@
 .fq-card-head h3 {
   margin: 0;
   color: var(--fu-heading);
-  font-size: calc(14.5px * var(--fus-fs));
+  font-size: calc(14px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -426,6 +451,13 @@
 .fq-search {
   flex: 1 1 calc(260px * var(--fus-k));
   min-width: 0;
+}
+
+.fq-sort-lbl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fq-chev {
@@ -611,7 +643,7 @@
 .fq-week-sum b {
   margin-right: 4px;
   color: var(--fu-primary);
-  font-size: calc(16px * var(--fus-fs));
+  font-size: calc(15px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -644,7 +676,7 @@
 
 .fq-day b {
   color: var(--fu-heading);
-  font-size: calc(14.5px * var(--fus-fs));
+  font-size: calc(13.5px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -728,7 +760,7 @@
 
 .fq-big {
   color: var(--fu-heading);
-  font-size: calc(14.5px * var(--fus-fs));
+  font-size: calc(14px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -1139,7 +1171,7 @@
   padding: calc(16px * var(--fus-k)) calc(20px * var(--fus-k));
   border-top: 1px solid var(--fu-row);
   color: var(--fu-muted);
-  font-size: calc(13px * var(--fus-fs));
+  font-size: calc(12.5px * var(--fus-fs));
 }
 
 .fq-foot-left { display: flex; flex-wrap: wrap; align-items: center; gap: calc(14px * var(--fus-k)); }
@@ -1150,10 +1182,10 @@
   display: inline-flex;
   align-items: center;
   gap: calc(10px * var(--fus-k));
-  height: calc(40px * var(--fus-k));
-  padding: 0 calc(14px * var(--fus-k));
+  height: calc(34px * var(--fus-k));
+  padding: 0 calc(12px * var(--fus-k));
   border: 1px solid var(--fu-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--fu-card);
   color: var(--fu-muted);
   font-size: calc(13px * var(--fus-fs)) !important;
@@ -1167,7 +1199,7 @@
 .fq-rows.is-open svg { transform: rotate(180deg); }
 
 /* Pagination */
-.fq-pager { display: flex; align-items: center; gap: calc(8px * var(--fus-k)); margin-left: auto; }
+.fq-pager { display: flex; align-items: center; gap: calc(6px * var(--fus-k)); margin-left: auto; }
 
 .fq-pg {
   display: inline-grid;
@@ -1179,7 +1211,7 @@
   border-radius: 8px;
   background: var(--fu-card);
   color: var(--fu-heading);
-  font-size: calc(13.5px * var(--fus-fs)) !important;
+  font-size: calc(13px * var(--fus-fs)) !important;
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
@@ -1382,7 +1414,7 @@
 .fq-pl-nav h3 {
   margin: 0 6px;
   color: var(--fu-heading);
-  font-size: calc(16.5px * var(--fus-fs));
+  font-size: calc(15px * var(--fus-fs));
   font-weight: 600;
   white-space: nowrap;
 }
@@ -1424,7 +1456,7 @@
 .fq-pl-stats b {
   margin-right: 6px;
   color: var(--fu-primary);
-  font-size: calc(20px * var(--fus-fs));
+  font-size: calc(17px * var(--fus-fs));
   font-weight: 500;
 }
 
@@ -1674,7 +1706,7 @@
 .fq-dr-head h2 {
   margin: calc(8px * var(--fus-k)) 0 0;
   color: var(--fu-heading);
-  font-size: calc(17px * var(--fus-fs));
+  font-size: calc(16px * var(--fus-fs));
   font-weight: 600;
   line-height: 1.3;
   overflow-wrap: anywhere;
@@ -1726,7 +1758,7 @@
 
 .fq-dr-rows>div {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
+  grid-template-columns: calc(110px * var(--fus-k)) minmax(0, 1fr);
   gap: calc(14px * var(--fus-k));
   padding: calc(12px * var(--fus-k)) 0;
   border-bottom: 1px solid var(--fu-row);
@@ -1762,7 +1794,7 @@
 .fq-dr-sec h3 {
   margin: 0;
   color: var(--fu-heading);
-  font-size: calc(15px * var(--fus-fs));
+  font-size: calc(14px * var(--fus-fs));
   font-weight: 600;
 }
 
@@ -2262,4 +2294,48 @@
 @container fu (max-width: 440px) {
   .fq-vtab-list button svg { display: none; }
   .fq-vtab-list button em { padding: 0 4px; }
+}
+
+/* ---------- phones: shorter labels, compact tools and footer ---------- */
+@media (max-width: 560px) {
+  /* header: "New" instead of "New follow-up" */
+  .fq-long { display: none; }
+}
+@container fu (max-width: 560px) {
+  .fq-tools { flex-wrap: nowrap; }
+  .fq-tools .fu-dd { min-width: 0; }
+  .fq-tools .fu-dd > .fu-btn { max-width: calc(150px * var(--fus-k)); }
+  .fq-sort-ico { display: none; }
+  .fq-foot { padding: calc(12px * var(--fus-k)) calc(12px * var(--fus-k)); }
+  .fq-pager { gap: 4px; }
+  .fq-pg { min-width: calc(30px * var(--fus-k)); height: calc(30px * var(--fus-k)); padding: 0 6px; }
+  .fq-rows { height: calc(30px * var(--fus-k)); padding: 0 calc(10px * var(--fus-k)); }
+  .fq-rows .fq-long { display: none; }
+}
+@container fu (max-width: 440px) {
+  /* footer: "Showing 1–10 of 48" and the arrows + current page on one row */
+  .fq-foot { flex-wrap: nowrap; gap: calc(8px * var(--fus-k)); }
+  .fq-foot-left { flex-wrap: nowrap; min-width: 0; }
+  .fq-foot-left > span { white-space: nowrap; }
+  .fq-foot-left > .fu-dd,
+  .fq-pager .fq-pg-gap,
+  .fq-pager .fq-pg:not(.is-on):not([aria-label^="Previous"]):not([aria-label^="Next"]) { display: none; }
+  .fq-week-nav > span { min-width: 0; }
+}
+
+/* ---------- side cards: only beside the list ----------
+   Queue health · SLA monitor · Pending by age sit in the right column. When there is no room for
+   that column (narrow screens) or the calendar takes the full width, they hide instead of
+   stretching into a full-width row under the list. */
+.fq-grid.is-wide .fq-side { display: none; }
+/* laptops: keep the column beside the list (a little narrower) instead of dropping it below */
+@container fu (min-width: 901px) {
+  .fq-grid:not(.is-wide) { grid-template-columns: minmax(0, 1fr) minmax(0, calc(290px * var(--fus-k))); }
+  .fq-grid:not(.is-wide) .fq-side { display: grid; grid-template-columns: minmax(0, 1fr); }
+}
+@container fu (max-width: 1180px) and (min-width: 901px) {
+  .fq-grid:not(.is-wide) { grid-template-columns: minmax(0, 1fr) minmax(0, calc(250px * var(--fus-k))); }
+}
+@container fu (max-width: 900px) {
+  .fq-side { display: none; }
 }

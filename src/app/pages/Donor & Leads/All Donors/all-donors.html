@@ -10,7 +10,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('export')" /></svg>
       Export
     </button>
-  </ng-container> 
+  </ng-container>
 </app-page-header>
 
 <!-- ===== KPI strip ===== -->
@@ -89,11 +89,11 @@
     <div class="ad-view" role="group" aria-label="View">
       <button type="button" [class.is-on]="view() === 'table'" (click)="view.set('table')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('table')" /></svg>
-        Table
+        <span class="ad-long">Table</span>
       </button>
       <button type="button" [class.is-on]="view() === 'cards'" (click)="view.set('cards')">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('cards')" /></svg>
-        Cards
+        <span class="ad-long">Cards</span>
       </button>
     </div>
   </div>
@@ -114,7 +114,7 @@
                [value]="query()" (input)="setQuery($any($event.target).value)" aria-label="Search donors" />
       </label>
       <button type="button" class="ad-sort" (click)="toggleDir()" aria-label="Toggle sort direction">
-        <span>Sort <b>Last gift</b></span>
+        <span><span class="ad-long">Sort </span><b>Last gift</b></span>
         <svg viewBox="0 0 24 24" [class.is-up]="sortDir() === 'asc'" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
       </button>
     
@@ -244,10 +244,10 @@
                 <span [class]="'ad-status st-' + d.status.toLowerCase()">{{ d.status }}</span>
               </span>
             </div>
-            <button type="button" class="ad-check" role="checkbox" [attr.aria-checked]="isSelected(d)"
+            <!-- <button type="button" class="ad-check" role="checkbox" [attr.aria-checked]="isSelected(d)"
                     [attr.aria-label]="'Select ' + d.name" (click)="toggleSelect(d)">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-            </button>
+            </button> -->
           </div>
 
           <!-- lifetime | last gift -->
@@ -332,7 +332,7 @@
       <button type="button" class="ad-rows-btn" [class.is-open]="rowsOpen()"
               aria-haspopup="listbox" [attr.aria-expanded]="rowsOpen()" aria-label="Rows per page"
               (click)="toggleRows($event)">
-        <span>Rows <b>{{ pageSize() }}</b></span>
+        <span><span class="ad-long">Rows </span><b>{{ pageSize() }}</b></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
       </button>
 

@@ -7,10 +7,10 @@
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor &amp; Leads"  heading="Follow-ups" description="Every call, e-mail and visit the team owes a lead or donor - and whether it is on time.">
   <ng-container actions>
-   <div style="gap: 10px;display: flex;flex-wrap:wrap ;">
-     <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
-    <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> New follow-up</button>
-   </div>
+    <div class="fq-head-acts">
+      <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>New<span class="fq-long">&nbsp;follow-up</span></button>
+    </div>
   </ng-container>
 </app-page-header>
 
@@ -76,7 +76,7 @@
         </label>
         <div class="fu-dd" [class.is-open]="menu() === 'sort'">
           <button type="button" class="fu-btn" (click)="toggleMenu('sort', $event)" [attr.aria-expanded]="menu() === 'sort'">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg> {{ sortLabel() }} <svg class="fq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+            <svg class="fq-sort-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg><span class="fq-sort-lbl">{{ sortLabel() }}</span><svg class="fq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
           </button>
           @if (menu() === 'sort') {
             <ul class="fu-menu is-right" role="listbox" (click)="$event.stopPropagation()">
@@ -298,7 +298,7 @@
       <button type="button" class="fq-rows" [class.is-open]="menu() === 'rows'"
               aria-haspopup="listbox" [attr.aria-expanded]="menu() === 'rows'" aria-label="Rows per page"
               (click)="toggleMenu('rows', $event)">
-        <span>Rows <b>{{ rows() }}</b></span>
+        <span><span class="fq-long">Rows </span><b>{{ rows() }}</b></span>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
       </button>
       @if (menu() === 'rows') {

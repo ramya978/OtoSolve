@@ -6,58 +6,57 @@
        SIDE column : Profile · Consent · Activity                              (Activity grows to fill the gap)
      Follow-ups runs full width underneath.
      ===================================================================================================== -->
-<app-page-header breadcrumb="Donor &amp; Leads / Donor 360"  heading="Donor 360" description="Complete donor profile with gifts, campaigns and activity.">
+<app-page-header breadcrumb="Donor &amp; Leads / Donor 360"  heading="{{ d().name }}" description="Complete donor profile with gifts, campaigns and activity.">
   <ng-container actions>
+    <div class="dx-head-acts">
+      <div class="dx-group" role="group" aria-label="Donor actions">
+        <button type="button" (click)="timeline()" data-tip="Timeline" aria-label="Timeline">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('timeline')" /></svg>
+        </button>
+        <button type="button" (click)="schedule()" data-tip="Schedule follow-up" aria-label="Schedule follow-up">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg>
+        </button>
+        <button type="button" (click)="exportHistory()" data-tip="Export history" aria-label="Export history">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+        </button>
+        <button type="button" (click)="editProfile()" data-tip="Edit profile" aria-label="Edit profile">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
+        </button>
+        <button type="button" class="dx-spin" (click)="refresh()" data-tip="Refresh" aria-label="Refresh">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>
+        </button>
+      </div>
+      <button type="button" class="dx-btn is-primary" (click)="createIntent()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span>Create<span class="dx-long"> donation</span> intent</span>
+      </button>
+    </div>
   </ng-container>
 </app-page-header>
 
-<!-- ================= identity bar (flat, no card) ================= -->
+<!-- ================= identity bar (flat, no card) - actions now sit in the page header ================= -->
 <header class="dx-idbar">
-  <span class="dx-avatar" aria-hidden="true">{{ initials(d().name) }}</span>
 
   <div class="dx-who">
-    <div class="dx-name-row">
-      <h1>{{ d().name }}</h1>
+    <!-- <div class="dx-name-row">
+      <h1></h1>
       <span [class]="'dx-status st-' + d().status.toLowerCase()"><i></i>{{ d().status }}</span>
-    </div>
+      <span class="dx-upd">Updated {{ d().updated }}</span>
+    </div> -->
     <ul class="dx-inline">
-      <li>
+      <!-- <li>
         <button type="button" class="dx-code" (click)="copy(d().code)" [attr.aria-label]="'Copy donor ID ' + d().code">
           {{ d().code }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>
         </button>
-      </li>
+      </li> -->
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>{{ d().phone }}</li>
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ d().email }}</li>
       <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ d().owner }}</li>
       <li [class.is-ok]="d().consent.state === 'Granted'" [class.is-bad]="d().consent.state === 'Withdrawn'">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Consent {{ d().consent.state.toLowerCase() }}
       </li>
-      <li class="dx-upd">Updated {{ d().updated }}</li>
     </ul>
   </div>
 
-  <div class="dx-actions">
-    <div class="dx-group" role="group" aria-label="Donor actions">
-      <button type="button" (click)="timeline()" data-tip="Timeline" aria-label="Timeline">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('timeline')" /></svg>
-      </button>
-      <button type="button" (click)="schedule()" data-tip="Schedule follow-up" aria-label="Schedule follow-up">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg>
-      </button>
-      <button type="button" (click)="exportHistory()" data-tip="Export history" aria-label="Export history">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
-      </button>
-      <button type="button" (click)="editProfile()" data-tip="Edit profile" aria-label="Edit profile">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
-      </button>
-      <button type="button" class="dx-spin" (click)="refresh()" data-tip="Refresh" aria-label="Refresh">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>
-      </button>
-    </div>
-    <button type="button" class="dx-btn is-primary" (click)="createIntent()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Create donation intent
-    </button>
-  </div>
 </header>
 
 <div class="dx-layout">
