@@ -5,13 +5,11 @@
      ===================================================================================== -->
 <div class="ol-page">
   <app-page-header breadcrumb="Administration / Platform" heading="Organisations" description="Every organisation on the platform, from invitation to day-to-day work.">
-  <ng-container actions>
-    <button type="button" class="i-btn i-btn--primary" (click)="create()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
-  </ng-container>
-</app-page-header>
-
-
+    <ng-container actions>
+      <button type="button" class="i-btn i-btn--primary" (click)="create()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>Create</button>
+    </ng-container>
+  </app-page-header>
 
   <section class="i-card ol-main" aria-label="Organisations">
 
@@ -109,7 +107,7 @@
                   <td>
                     <span class="ol-org">
                       <span class="ol-av" aria-hidden="true">{{ initials(o.name) }}</span>
-                      <span class="ol-ct"><strong>{{ o.name }}</strong><small>{{ o.code }}</small></span>
+                      <span class="ol-ct"><strong>{{ o.name }}</strong><small>{{ o.code }}</small><span class="ol-meta">{{ o.domain }}</span></span>
                     </span>
                   </td>
                   <td class="ol-soft">{{ o.domain }}</td>
@@ -137,103 +135,103 @@
       }
 
       <!-- PAGINATION -->
-  <footer class="ol-foot">
+      <footer class="ol-foot">
 
-  <!-- Left: Record count and page size -->
-  <div class="ol-foot-left">
+      <!-- Left: Record count and page size -->
+      <div class="ol-foot-left">
 
-    <p class="ol-pagination-info">
-      Showing
-      <strong>{{ from() }}–{{ to() }}</strong>
-      of
-      <strong>{{ rows().length }}</strong>
-    </p>
+        <p class="ol-pagination-info">
+          Showing
+          <strong>{{ from() }}–{{ to() }}</strong>
+          of
+          <strong>{{ rows().length }}</strong>
+        </p>
 
-    <label class="ol-rows-control">
-      <span class="ol-sr">Rows per page</span>
+        <label class="ol-rows-control">
+          <span class="ol-sr">Rows per page</span>
 
-      <select
-        class="ol-rows-select"
-        [value]="pageSize()"
-        (change)="setPageSize($any($event.target).value)"
-        aria-label="Rows per page"
-      >
-        @for (size of pageSizes; track size) {
-          <option [value]="size">{{ size }}</option>
+          <select
+            class="ol-rows-select"
+            [value]="pageSize()"
+            (change)="setPageSize($any($event.target).value)"
+            aria-label="Rows per page"
+          >
+            @for (size of pageSizes; track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
+        </label>
+
+        @if (selected().size) {
+          <span class="ol-selected-info">
+            {{ selected().size }} selected
+          </span>
+
+          <button
+            type="button"
+            class="i-link ol-link"
+            (click)="clearSelection()"
+          >
+            Clear
+          </button>
         }
-      </select>
-    </label>
 
-    @if (selected().size) {
-      <span class="ol-selected-info">
-        {{ selected().size }} selected
-      </span>
+      </div>
 
-      <button
-        type="button"
-        class="i-link ol-link"
-        (click)="clearSelection()"
-      >
-        Clear
-      </button>
-    }
+      <!-- Right: Pagination buttons -->
+      <nav class="ol-pager" aria-label="Pagination">
 
-  </div>
-
-  <!-- Right: Pagination buttons -->
-  <nav class="ol-pager" aria-label="Pagination">
-
-    <!-- Previous -->
-    <button
-      type="button"
-      class="ol-page-btn ol-page-arrow"
-      aria-label="Previous page"
-      [disabled]="current() === 1"
-      (click)="goPage(current() - 1)"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path [attr.d]="icon('prev')" />
-      </svg>
-    </button>
-
-    <!-- Page numbers -->
-    @for (p of pageNumbers(); track $index) {
-
-      @if (p === '...') {
-        <span class="ol-page-ellipsis" aria-hidden="true">
-          ...
-        </span>
-      } @else {
+        <!-- Previous -->
         <button
           type="button"
-          class="ol-page-btn"
-          [class.is-active]="current() === p"
-          [attr.aria-current]="current() === p ? 'page' : null"
-          [attr.aria-label]="'Page ' + p"
-          (click)="goPage(p)"
+          class="ol-page-btn ol-page-arrow"
+          aria-label="Previous page"
+          [disabled]="current() === 1"
+          (click)="goPage(current() - 1)"
         >
-          {{ p }}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('prev')" />
+          </svg>
         </button>
-      }
 
-    }
+        <!-- Page numbers -->
+        @for (p of pageNumbers(); track $index) {
 
-    <!-- Next -->
-    <button
-      type="button"
-      class="ol-page-btn ol-page-arrow"
-      aria-label="Next page"
-      [disabled]="current() === pages()"
-      (click)="goPage(current() + 1)"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path [attr.d]="icon('next')" />
-      </svg>
-    </button>
+          @if (p === '...') {
+            <span class="ol-page-ellipsis" aria-hidden="true">
+              ...
+            </span>
+          } @else {
+            <button
+              type="button"
+              class="ol-page-btn"
+              [class.is-active]="current() === p"
+              [attr.aria-current]="current() === p ? 'page' : null"
+              [attr.aria-label]="'Page ' + p"
+              (click)="goPage(p)"
+            >
+              {{ p }}
+            </button>
+          }
 
-  </nav>
+        }
 
-</footer>
+        <!-- Next -->
+        <button
+          type="button"
+          class="ol-page-btn ol-page-arrow"
+          aria-label="Next page"
+          [disabled]="current() === pages()"
+          (click)="goPage(current() + 1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('next')" />
+          </svg>
+        </button>
+
+      </nav>
+
+    </footer>
 
     } @else {
       <div class="ol-pad">

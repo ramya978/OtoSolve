@@ -49,12 +49,25 @@
   gap: calc(8px * var(--ol-k));
 }
 :host ::ng-deep app-page-header [actions] :is(button, a),
-:host ::ng-deep app-page-header [slot="actions"] :is(button, a) {
+:host ::ng-deep app-page-header [slot="actions"] :is(button, a),
+.ol-page .i-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center;
+  gap: calc(7px * var(--ol-k)) !important;
   height: calc(36px * var(--ol-k)) !important;
   min-height: 0 !important;
-  padding-block: 0 !important;
+  padding: 0 calc(14px * var(--ol-k)) !important;
   font-size: calc(13px * var(--ol-fs)) !important;
+  line-height: 1 !important;
   white-space: nowrap;
+}
+/* icon and text centred on the same line */
+.ol-page .i-btn svg {
+  flex: none;
+  width: calc(15px * var(--ol-k));
+  height: calc(15px * var(--ol-k));
+  margin: 0 !important;
 }
 /* phones: the header actions drop under the title instead of squeezing it */
 @media (max-width: 700px) {
@@ -73,15 +86,6 @@
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.ol-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
 }
 
 /* toast */
@@ -138,7 +142,8 @@
 /* ---------- KPI widgets ---------- */
 .ol-kpis {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   border-bottom: 1px solid var(--i-line);
 }
 
@@ -147,7 +152,7 @@
   align-content: start;
   gap: calc(10px * var(--ol-k));
   min-width: 0;
-  padding: calc(20px * var(--ol-k)) calc(24px * var(--ol-k)) calc(18px * var(--ol-k));
+  padding: calc(18px * var(--ol-k)) calc(22px * var(--ol-k)) calc(16px * var(--ol-k));
   border-left: 1px solid var(--i-line);
 }
 
@@ -261,8 +266,8 @@
   flex: 1 1 calc(320px * var(--ol-k));
   max-width: calc(420px * var(--ol-k));
   min-width: 0;
-  height: calc(44px * var(--ol-k));
-  padding: 0 calc(14px * var(--ol-k));
+  height: calc(38px * var(--ol-k));
+  padding: 0 calc(12px * var(--ol-k));
   border: 1px solid var(--i-line);
   border-radius: 10px;
   background: var(--i-surface);
@@ -298,8 +303,8 @@
 
 .ol-select {
   box-sizing: border-box;
-  height: calc(44px * var(--ol-k));
-  min-width: calc(170px * var(--ol-k));
+  height: calc(38px * var(--ol-k));
+  min-width: calc(160px * var(--ol-k));
   padding: 0 calc(38px * var(--ol-k)) 0 calc(14px * var(--ol-k));
   border: 1px solid var(--i-line);
   border-radius: 10px;
@@ -351,15 +356,15 @@
 .ol-seg button {
   display: inline-flex;
   align-items: center;
-  gap: calc(8px * var(--ol-k));
-  height: calc(36px * var(--ol-k));
-  padding: 0 calc(14px * var(--ol-k));
+  gap: calc(7px * var(--ol-k));
+  height: calc(30px * var(--ol-k));
+  padding: 0 calc(12px * var(--ol-k));
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--i-muted);
   font: inherit;
-  font-size: calc(13.5px * var(--ol-fs));
+  font-size: calc(13px * var(--ol-fs));
   cursor: pointer;
 }
 
@@ -383,8 +388,8 @@
 .ol-av {
   display: grid;
   flex: none;
-  width: calc(44px * var(--ol-k));
-  height: calc(44px * var(--ol-k));
+  width: calc(40px * var(--ol-k));
+  height: calc(40px * var(--ol-k));
   place-items: center;
   border: 1px solid var(--i-line);
   border-radius: 11px;
@@ -473,7 +478,7 @@
 /* ---------- card grid ---------- */
 .ol-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(342px * var(--ol-k))), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(300px * var(--ol-k))), 1fr));
   gap: calc(16px * var(--ol-k));
   padding: calc(24px * var(--ol-k));
 }
@@ -578,17 +583,18 @@
 
 /* ---------- list view ---------- */
 .ol-tablewrap {
+  position: relative;
   overflow-x: auto;
 }
 
 .ol-table {
   width: 100%;
-  min-width: calc(980px * var(--ol-k));
+  min-width: 0;
   border-collapse: collapse;
 }
 
 .ol-table th {
-  padding: calc(11px * var(--ol-k)) calc(20px * var(--ol-k));
+  padding: calc(10px * var(--ol-k)) calc(16px * var(--ol-k));
   border-bottom: 1px solid var(--i-line);
   background: var(--cc-grid-head, var(--i-head-bg));
   color: var(--i-heading);
@@ -600,7 +606,7 @@
 }
 
 .ol-table td {
-  padding: calc(14px * var(--ol-k)) calc(20px * var(--ol-k));
+  padding: calc(12px * var(--ol-k)) calc(16px * var(--ol-k));
   border-bottom: 1px solid var(--i-soft);
   color: var(--i-heading);
   font-size: calc(13.5px * var(--ol-fs));
@@ -648,11 +654,11 @@
 .ol-ib {
   display: grid;
   flex: none;
-  width: calc(38px * var(--ol-k));
-  height: calc(38px * var(--ol-k));
+  width: calc(32px * var(--ol-k));
+  height: calc(32px * var(--ol-k));
   place-items: center;
   border: 1px solid var(--i-line);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--i-surface);
   color: var(--i-muted);
   cursor: pointer;
@@ -660,8 +666,8 @@
 }
 
 .ol-ib svg {
-  width: calc(17px * var(--ol-k));
-  height: calc(17px * var(--ol-k));
+  width: calc(15px * var(--ol-k));
+  height: calc(15px * var(--ol-k));
 }
 
 .ol-ib:hover {
@@ -673,68 +679,6 @@
 .ol-ib:focus-visible {
   outline: 2px solid var(--i-primary);
   outline-offset: 2px;
-}
-
-/* ---------- pagination ---------- */
-.ol-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: calc(12px * var(--ol-k));
-  padding: calc(14px * var(--ol-k)) calc(24px * var(--ol-k));
-  border-top: 1px solid var(--i-line);
-}
-
-.ol-foot p {
-  margin: 0;
-  color: var(--i-muted);
-  font-size: calc(13.5px * var(--ol-fs));
-}
-
-.ol-foot p b {
-  color: var(--i-heading);
-  font-weight: 600;
-}
-
-.ol-pager {
-  display: flex;
-  align-items: center;
-  gap: calc(8px * var(--ol-k));
-  color: var(--i-muted);
-  font-size: calc(13.5px * var(--ol-fs));
-}
-
-.ol-pager span {
-  margin-right: 6px;
-}
-
-.ol-pager button {
-  display: grid;
-  width: calc(36px * var(--ol-k));
-  height: calc(36px * var(--ol-k));
-  place-items: center;
-  border: 1px solid var(--i-line);
-  border-radius: 9px;
-  background: var(--i-surface);
-  color: var(--i-heading);
-  cursor: pointer;
-}
-
-.ol-pager button:hover:not(:disabled) {
-  border-color: var(--i-primary);
-  color: var(--i-primary);
-}
-
-.ol-pager button:disabled {
-  color: var(--i-muted);
-  cursor: not-allowed;
-  opacity: .5;
-}
-
-.ol-pager svg {
-  width: calc(16px * var(--ol-k));
-  height: calc(16px * var(--ol-k));
 }
 
 /* ---------- empty ---------- */
@@ -763,82 +707,41 @@
   font-weight: 600;
 }
 
-/* ---------- responsive ---------- */
-@container ol-page (max-width: 1100px) {
-  .ol-kpis {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
+/* ---------- as the page narrows: widgets hide first, then table columns ---------- */
+/* KPI widgets stay in one row; the 5th, 4th and 3rd hide in turn */
+@container ol-page (max-width: 1150px) { .ol-kpi:nth-child(n + 5) { display: none; } }
+@container ol-page (max-width: 900px)  { .ol-kpi:nth-child(n + 4) { display: none; } }
+@container ol-page (max-width: 640px)  { .ol-kpi:nth-child(n + 3) { display: none; } }
 
-  .ol-kpi:nth-child(4) {
-    border-left: 0;
-  }
-
-  .ol-kpi:nth-child(n + 4) {
-    border-top: 1px solid var(--i-line);
-  }
+/* list view: columns step aside one by one; the web address moves under the name */
+.ol-ct .ol-meta { display: none; overflow: hidden; color: var(--i-muted); font-size: calc(12px * var(--ol-fs)); text-overflow: ellipsis; white-space: nowrap; }
+@container ol-page (max-width: 1150px) { .ol-table :is(th, td):nth-child(5) { display: none; } }  /* created */
+@container ol-page (max-width: 960px)  { .ol-table :is(th, td):nth-child(2) { display: none; } .ol-ct .ol-meta { display: block; } }  /* web address */
+@container ol-page (max-width: 780px)  { .ol-table :is(th, td):nth-child(3) { display: none; } }  /* administrator */
+@container ol-page (max-width: 560px)  { .ol-table :is(th, td):nth-child(4) { display: none; } }  /* people */
+@container ol-page (max-width: 440px)  {
+  .ol-table :is(th, td) { padding-inline: calc(12px * var(--ol-k)); }
+  .ol-table .ol-av { display: none; }
 }
 
+/* narrower: search on its own row; status, clear and the Cards / List switch share the row under it */
 @container ol-page (max-width: 760px) {
-  .ol-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .ol-kpi:nth-child(n) {
-    border-left: 1px solid var(--i-line);
-    border-top: 1px solid var(--i-line);
-  }
-
-  .ol-kpi:nth-child(odd) {
-    border-left: 0;
-  }
-
-  .ol-kpi:nth-child(-n + 2) {
-    border-top: 0;
-  }
-
-  .ol-filters {
-    flex-basis: 100%;
-  }
-
-  .ol-search {
-    max-width: none;
-    flex-basis: 100%;
-  }
-
-  .ol-seg {
-    margin-left: auto;
-  }
+  .ol-tools { gap: calc(10px * var(--ol-k)); }
+  .ol-filters { display: contents; }
+  .ol-search { max-width: none; flex: 1 1 100%; }
+  .ol-select { flex: 0 1 calc(200px * var(--ol-k)); min-width: 0; }
+  .ol-seg { margin-left: auto; }
 }
 
 @container ol-page (max-width: 520px) {
-  .ol-kpis {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ol-kpi:nth-child(n) {
-    border-left: 0;
-    border-top: 1px solid var(--i-line);
-  }
-
-  .ol-kpi:first-child {
-    border-top: 0;
-  }
-
+  .ol-kpi { padding: calc(14px * var(--ol-k)) calc(14px * var(--ol-k)) calc(12px * var(--ol-k)); }
+  .ol-kpi-side { display: none; }
   .ol-tools,
   .ol-cards,
-  .ol-pad,
-  .ol-foot {
-    padding: calc(16px * var(--ol-k));
-  }
-
-  .ol-cards {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .ol-select {
-    flex: 1;
-    min-width: 0;
-  }
+  .ol-pad { padding: calc(14px * var(--ol-k)); }
+  .ol-cards { grid-template-columns: minmax(0, 1fr); }
+  .ol-select { flex: 1 1 0; }
+  .ol-seg button { padding: 0 calc(10px * var(--ol-k)); }
 }
 
 /* Pagination footer */
@@ -1014,21 +917,22 @@
 }
 
 /* Responsive */
-@media (max-width: 600px) {
+@container ol-page (max-width: 600px) {
   .ol-foot {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: calc(12px * var(--ol-k));
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: calc(10px * var(--ol-k));
     padding: calc(12px * var(--ol-k));
   }
 
   .ol-foot-left {
     width: 100%;
+    justify-content: space-between;
   }
+}
 
-  .ol-pager {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
+@container ol-page (max-width: 440px) {
+  /* only the current page number between the arrows */
+  .ol-page-btn:not(.is-active):not(.ol-page-arrow),
+  .ol-page-ellipsis { display: none; }
 }
