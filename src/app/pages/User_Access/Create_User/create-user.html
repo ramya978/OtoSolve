@@ -260,7 +260,7 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>Cancel</button>
   
     <button type="button" class="i-btn" (click)="saveDraft()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save as draft</button>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg><span class="cu-l-long">Save as draft</span><span class="cu-l-short">Draft</span></button>
     <button type="button" class="i-btn i-btn--primary" [disabled]="status() === 'sent'" (click)="create()">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>Create</button>
   </footer>
