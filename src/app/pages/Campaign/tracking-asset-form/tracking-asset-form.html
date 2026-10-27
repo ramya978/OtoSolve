@@ -3,6 +3,7 @@
      Split card: form on the left (type choice, campaign, medium, URL, dates, placement, actions) ·
      phone-style live preview on a tinted panel on the right · discard confirmation.
      ===================================================================================================== -->
+<div class="af-wrap">
 <form class="af-split" novalidate (submit)="$event.preventDefault(); save('submitted')">
   <!-- ===== left: the form ===== -->
   <div class="af-main">
@@ -101,10 +102,10 @@
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel
       </button>
       <button type="button" class="w-btn" (click)="save('draft')">
-        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Save draft
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> <span class="af-l-long">Save draft</span><span class="af-l-short">Draft</span>
       </button>
       <button type="submit" class="w-btn w-btn-primary">
-        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Submit for approval
+        <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> <span class="af-l-long">Submit for approval</span><span class="af-l-short">Submit</span>
       </button>
     </footer>
   </div>
@@ -183,6 +184,7 @@
     </div>
   </aside>
 </form>
+</div><!-- /.af-wrap -->
 
 <!-- leave with unsaved changes -->
 @if (confirmLeave()) {

@@ -2,13 +2,27 @@
    CREATE TRACKING ASSET - page styles. Shared tokens / fields / buttons: cw-shared.css
    ===================================================================================================== */
 :host {
-  container: af-page / inline-size;
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+     is zoomed, so fields, buttons and the phone preview never look oversized. */
+  --af-k: 1;
+  --af-fs: calc(var(--font-scale, 1) * var(--af-k));
+  display: block;
 }
+
+/* the size container sits on the page wrapper, not on :host - a container on :host would pin the
+   fixed discard dialog and its overlay to the page box instead of the screen */
+.af-wrap {
+  container: af-page / inline-size;
+  min-width: 0;
+}
+
+/* button labels: full on wide screens, short on narrow ones */
+.af-l-short { display: none; }
 
 /* ---------- split card: form | preview ---------- */
 .af-split {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(calc(300px * var(--af-k)), 1fr);
   overflow: hidden;
   border: 1px solid var(--w-line);
   border-radius: var(--w-radius);
@@ -23,19 +37,19 @@
 
 /* ---------- title ---------- */
 .af-title {
-  padding: 22px 26px 4px;
+  padding: calc(22px * var(--af-k)) calc(26px * var(--af-k)) 4px;
 }
 
 .af-crumb {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
 }
 
 .af-title h1 {
   margin: 2px 0 0;
   color: var(--w-heading);
   font-family: var(--font-heading, var(--w-font));
-  font-size: calc(clamp(20px, 1.7vw, 24px) * var(--font-scale, 1));
+  font-size: calc(clamp(20px, 1.7vw, 24px) * var(--af-fs));
   font-weight: 600;
   letter-spacing: -.3px;
 }
@@ -43,16 +57,16 @@
 .af-title p {
   margin: 4px 0 0;
   color: var(--w-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--af-fs));
 }
 
 /* ---------- fields in a two-column grid ---------- */
 .af-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 18px;
+  gap: calc(18px * var(--af-k)) calc(18px * var(--af-k));
   align-content: start;
-  padding: 20px 26px 24px;
+  padding: calc(20px * var(--af-k)) calc(26px * var(--af-k)) calc(24px * var(--af-k));
 }
 
 .af-full {
@@ -65,10 +79,10 @@
 .af-sec {
   display: flex !important;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--af-k));
   margin: 6px 0 -4px;
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--af-fs));
   font-weight: 600;
 }
 
@@ -77,8 +91,8 @@
 }
 
 .af-sec .w-ico {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--af-k));
+  height: calc(15px * var(--af-k));
   color: var(--w-primary-ink);
 }
 
@@ -94,15 +108,15 @@
 .af-types {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: calc(12px * var(--af-k));
 }
 
 .af-type {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: calc(12px * var(--af-k));
+  padding: calc(12px * var(--af-k)) calc(14px * var(--af-k));
   border: 1px solid var(--w-line);
   border-radius: 10px;
   background: var(--w-card);
@@ -131,8 +145,8 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: calc(36px * var(--af-k));
+  height: calc(36px * var(--af-k));
   border-radius: 50%;
   background: var(--w-soft);
   color: var(--w-muted);
@@ -140,8 +154,8 @@
 }
 
 .af-type-ico .w-ico {
-  width: 17px;
-  height: 17px;
+  width: calc(17px * var(--af-k));
+  height: calc(17px * var(--af-k));
 }
 
 .af-type.is-on .af-type-ico {
@@ -157,14 +171,14 @@
 
 .af-type strong {
   color: var(--w-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--af-fs));
   font-weight: 600;
 }
 
 .af-type small {
   overflow: hidden;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -173,8 +187,8 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 20px;
-  height: 20px;
+  width: calc(20px * var(--af-k));
+  height: calc(20px * var(--af-k));
   border: 1.5px solid var(--w-line);
   border-radius: 50%;
   color: transparent;
@@ -182,8 +196,8 @@
 }
 
 .af-type-tick .w-ico {
-  width: 11px;
-  height: 11px;
+  width: calc(11px * var(--af-k));
+  height: calc(11px * var(--af-k));
   stroke-width: 2.8;
 }
 
@@ -203,8 +217,8 @@
 }
 
 .af-inline-check input {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--af-k));
+  height: calc(14px * var(--af-k));
   margin: 0;
   accent-color: var(--w-primary);
 }
@@ -213,9 +227,9 @@
 .af-url {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 40px;
-  padding: 0 12px;
+  gap: calc(10px * var(--af-k));
+  height: calc(40px * var(--af-k));
+  padding: 0 calc(12px * var(--af-k));
   border: 1px solid var(--w-field);
   border-radius: var(--btn-radius, 8px);
   background: var(--w-card);
@@ -243,35 +257,35 @@
   background: none;
   color: var(--w-ink);
   font: inherit;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--af-fs));
   outline: none;
 }
 
 .af-url .w-ico {
   flex: none;
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--af-k));
+  height: calc(15px * var(--af-k));
 }
 
 /* ---------- live window strip ---------- */
 .af-window {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 16px;
-  padding: 10px 14px;
+  gap: calc(16px * var(--af-k));
+  padding: calc(10px * var(--af-k)) calc(14px * var(--af-k));
   border-radius: 10px;
   background: var(--w-soft);
 }
 
 .af-window-days {
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   white-space: nowrap;
 }
 
 .af-window-days strong {
   color: var(--w-heading);
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(16px * var(--af-fs));
   font-weight: 600;
 }
 
@@ -291,11 +305,11 @@
 }
 
 .af-window-state {
-  padding: 2px 10px;
+  padding: 2px calc(10px * var(--af-k));
   border-radius: 99px;
   background: var(--t-bg);
   color: var(--t-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   font-weight: 600;
   white-space: nowrap;
 }
@@ -306,15 +320,15 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  padding: 14px 26px;
+  gap: calc(8px * var(--af-k));
+  padding: calc(14px * var(--af-k)) calc(26px * var(--af-k));
   border-top: 1px solid var(--w-row);
 }
 
 .af-note {
   margin-right: auto;
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
 }
 
 /* ---------- right: tinted stage with a phone ---------- */
@@ -323,9 +337,9 @@
   grid-template-columns: minmax(0, 1fr); /* long text can't push the panel wider */
   justify-items: center;
   align-content: start;
-  gap: 18px;
+  gap: calc(18px * var(--af-k));
   min-width: 0;
-  padding: 20px 22px 24px;
+  padding: calc(20px * var(--af-k)) calc(22px * var(--af-k)) calc(24px * var(--af-k));
   border-left: 1px solid var(--w-line);
   background:
     radial-gradient(circle, color-mix(in srgb, var(--w-primary) 16%, transparent) 1px, transparent 1.5px) 0 0 / 16px 16px,
@@ -336,7 +350,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10px * var(--af-k));
   width: 100%;
 }
 
@@ -344,11 +358,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 4px 10px;
+  padding: 4px calc(10px * var(--af-k));
   border-radius: 99px;
   background: var(--w-card);
   color: var(--w-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   font-weight: 500;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--w-heading) 8%, transparent);
 }
@@ -368,16 +382,16 @@
 
 .af-stage-type {
   color: var(--w-primary-ink);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   font-weight: 600;
 }
 
 /* --- phone --- */
 .af-phone {
   position: relative;
-  width: 224px;
-  padding: 9px;
-  border-radius: 34px;
+  width: calc(224px * var(--af-k));
+  padding: calc(9px * var(--af-k));
+  border-radius: calc(34px * var(--af-k));
   background: linear-gradient(145deg, color-mix(in srgb, var(--w-heading) 85%, #fff), var(--w-heading));
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--w-heading) 60%, #000),
@@ -393,16 +407,16 @@
   background: var(--w-heading);
 }
 
-.af-phone-btn.is-power { top: 110px; right: -3px; height: 46px; }
-.af-phone-btn.is-vol { top: 90px; left: -3px; height: 60px; }
+.af-phone-btn.is-power { top: calc(110px * var(--af-k)); right: -3px; height: calc(46px * var(--af-k)); }
+.af-phone-btn.is-vol { top: calc(90px * var(--af-k)); left: -3px; height: calc(60px * var(--af-k)); }
 
 .af-phone-screen {
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  height: 400px;
+  height: calc(400px * var(--af-k));
   overflow: hidden;
-  border-radius: 26px;
+  border-radius: calc(26px * var(--af-k));
   background: var(--w-card);
 }
 
@@ -410,9 +424,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 18px 0;
+  padding: calc(8px * var(--af-k)) calc(18px * var(--af-k)) 0;
   color: var(--w-heading);
-  font-size: 10px;
+  font-size: calc(10px * var(--af-k));
 }
 
 .af-phone-status b {
@@ -420,8 +434,8 @@
 }
 
 .af-phone-status i {
-  width: 18px;
-  height: 8px;
+  width: calc(18px * var(--af-k));
+  height: calc(8px * var(--af-k));
   border: 1px solid var(--w-heading);
   border-radius: 3px;
   box-shadow: inset -6px 0 0 var(--w-card), inset 0 0 0 1px var(--w-card);
@@ -429,17 +443,17 @@
 }
 
 .af-phone-notch {
-  width: 64px;
-  height: 18px;
+  width: calc(64px * var(--af-k));
+  height: calc(18px * var(--af-k));
   border-radius: 99px;
   background: var(--w-heading);
 }
 
 .af-phone-home {
   justify-self: center;
-  width: 80px;
+  width: calc(80px * var(--af-k));
   height: 4px;
-  margin: 8px 0 8px;
+  margin: calc(8px * var(--af-k)) 0 calc(8px * var(--af-k));
   border-radius: 99px;
   background: color-mix(in srgb, var(--w-heading) 25%, transparent);
 }
@@ -449,22 +463,22 @@
   display: grid;
   justify-items: center;
   align-content: start;
-  gap: 12px;
+  gap: calc(12px * var(--af-k));
   min-height: 0;
-  padding: 12px 14px 0;
+  padding: calc(12px * var(--af-k)) calc(14px * var(--af-k)) 0;
   animation: af-in .25s ease-out;
 }
 
 .af-scr-app {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--af-k));
   width: 100%;
   min-width: 0;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--w-row);
   color: var(--w-heading);
-  font-size: 11px;
+  font-size: calc(11px * var(--af-k));
   font-weight: 600;
 }
 
@@ -485,18 +499,18 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--af-k));
+  height: calc(22px * var(--af-k));
   border-radius: 7px;
   background: var(--w-primary);
   color: var(--w-primary-on);
-  font-size: 11px;
+  font-size: calc(11px * var(--af-k));
 }
 
 /* QR with corner brackets */
 .af-scr-qr {
   position: relative;
-  padding: 10px;
+  padding: calc(10px * var(--af-k));
   margin-top: 4px;
 }
 
@@ -525,23 +539,23 @@
 
 .af-qr {
   display: block;
-  width: 138px;
-  height: 138px;
+  width: calc(138px * var(--af-k));
+  height: calc(138px * var(--af-k));
   shape-rendering: crispEdges;
 }
 
 .af-scr-cta {
-  padding: 7px 18px;
+  padding: 7px calc(18px * var(--af-k));
   border-radius: 99px;
   background: var(--w-primary);
   color: var(--w-primary-on);
-  font-size: 11px;
+  font-size: calc(11px * var(--af-k));
   font-weight: 600;
 }
 
 .af-scr-ref {
   color: var(--w-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--af-k));
   letter-spacing: .2px;
 }
 
@@ -550,23 +564,23 @@
   display: grid;
   justify-items: center;
   align-content: center;
-  gap: 8px;
+  gap: calc(8px * var(--af-k));
   color: var(--w-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--af-k));
 }
 
 .af-scr-empty span {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: calc(52px * var(--af-k));
+  height: calc(52px * var(--af-k));
   border: 1.5px dashed var(--w-field);
   border-radius: 14px;
 }
 
 .af-scr-empty .w-ico {
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--af-k));
+  height: calc(24px * var(--af-k));
 }
 
 .af-scr-empty p {
@@ -577,9 +591,9 @@
 .af-lp {
   display: grid;
   align-content: start;
-  gap: 9px;
+  gap: calc(9px * var(--af-k));
   min-height: 0;
-  padding: 10px 14px 0;
+  padding: calc(10px * var(--af-k)) calc(14px * var(--af-k)) 0;
   text-align: left;
   animation: af-in .25s ease-out;
 }
@@ -590,37 +604,37 @@
   justify-content: center;
   gap: 4px;
   overflow: hidden;
-  padding: 4px 8px;
+  padding: 4px calc(8px * var(--af-k));
   border-radius: 99px;
   background: var(--w-soft);
   color: var(--w-muted);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--af-k));
   white-space: nowrap;
 }
 
 .af-lp-url .w-ico {
   flex: none;
-  width: 10px;
-  height: 10px;
+  width: calc(10px * var(--af-k));
+  height: calc(10px * var(--af-k));
 }
 
 .af-lp-hero {
   display: grid;
   place-items: center;
-  height: 80px;
+  height: calc(80px * var(--af-k));
   border-radius: 12px;
   background: linear-gradient(135deg, var(--w-primary-soft), color-mix(in srgb, var(--w-primary) 30%, var(--white, #fff)));
   color: var(--w-primary-ink);
 }
 
 .af-lp-hero .w-ico {
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--af-k));
+  height: calc(24px * var(--af-k));
 }
 
 .af-lp strong {
   color: var(--w-heading);
-  font-size: 12px;
+  font-size: calc(12px * var(--af-k));
   line-height: 1.35;
 }
 
@@ -645,7 +659,7 @@
   border: 1px solid var(--w-line);
   border-radius: 6px;
   color: var(--w-ink);
-  font-size: 9.5px;
+  font-size: calc(9.5px * var(--af-k));
   text-align: center;
 }
 
@@ -657,11 +671,11 @@
 }
 
 .af-lp-btn {
-  padding: 8px 0;
+  padding: calc(8px * var(--af-k)) 0;
   border-radius: 99px;
   background: var(--w-primary);
   color: var(--w-primary-on);
-  font-size: 11px;
+  font-size: calc(11px * var(--af-k));
   font-weight: 600;
   text-align: center;
 }
@@ -686,9 +700,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: calc(12px * var(--af-k));
   min-width: 0;
-  padding: 9px 14px;
+  padding: calc(9px * var(--af-k)) calc(14px * var(--af-k));
 }
 
 .af-ticket > div + div {
@@ -699,15 +713,15 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--af-k));
   color: var(--w-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   white-space: nowrap;
 }
 
 .af-ticket dt .w-ico {
-  width: 14px;
-  height: 14px;
+  width: calc(14px * var(--af-k));
+  height: calc(14px * var(--af-k));
 }
 
 .af-ticket dd {
@@ -716,7 +730,7 @@
   margin: 0;
   overflow: hidden;
   color: var(--w-heading);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   font-weight: 500;
   text-align: right;
   text-overflow: ellipsis;
@@ -740,7 +754,7 @@
 /* --- ready checklist --- */
 .af-ready {
   width: 100%;
-  padding: 12px 14px;
+  padding: calc(12px * var(--af-k)) calc(14px * var(--af-k));
   border-radius: 12px;
   background: color-mix(in srgb, var(--w-card) 75%, transparent);
   border: 1px dashed color-mix(in srgb, var(--w-primary) 25%, var(--w-line));
@@ -748,7 +762,7 @@
 
 .af-ready-title {
   color: var(--w-heading);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--af-fs));
   font-weight: 600;
 }
 
@@ -756,7 +770,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 8px 0 0;
+  margin: calc(8px * var(--af-k)) 0 0;
   padding: 0;
   list-style: none;
 }
@@ -765,17 +779,17 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 9px;
+  padding: 3px calc(9px * var(--af-k));
   border-radius: 99px;
   background: var(--w-card);
   color: var(--w-muted);
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11px * var(--af-fs));
   transition: background-color .2s, color .2s;
 }
 
 .af-ready li i {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--af-k));
+  height: calc(12px * var(--af-k));
   border: 1.5px solid var(--w-field);
   border-radius: 50%;
   transition: background-color .2s, border-color .2s;
@@ -793,15 +807,37 @@
 }
 
 /* ---------- widths ---------- */
-@container af-page (max-width: 980px) {
+/* the type tiles' one-line descriptions hide when the form column gets tight */
+@container af-page (max-width: 1080px) {
+  .af-type small { display: none; }
+}
+
+/* preview moves under the form: phone on the left, summary and checklist beside it */
+@container af-page (max-width: 860px) {
   .af-split {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .af-stage {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+    justify-items: stretch;
+    column-gap: calc(24px * var(--af-k));
     border-left: 0;
     border-top: 1px solid var(--w-line);
   }
+
+  .af-stage-head { grid-column: 1 / -1; }
+  .af-phone { grid-row: 2 / span 2; }
+  .af-type small { display: block; }
+}
+
+/* phones: the phone mock-up hides; the summary and checklist stay */
+@container af-page (max-width: 520px) {
+  .af-stage { grid-template-columns: minmax(0, 1fr); }
+  .af-phone { display: none; }
+  .af-stage { grid-template-rows: none; }
 }
 
 @container af-page (max-width: 640px) {
@@ -828,6 +864,11 @@
   .af-note {
     width: 100%;
   }
+
+  .af-l-long { display: none; }
+  .af-l-short { display: inline; }
+
+  .af-main > app-page-header { padding-inline: calc(16px * var(--af-k)) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -837,3 +878,77 @@
     animation: none;
   }
 }
+/* ---------- footer buttons ---------- */
+.af-foot .w-btn {
+  height: calc(36px * var(--af-k));
+  padding: 0 calc(14px * var(--af-k));
+  font-size: calc(13px * var(--af-fs));
+  white-space: nowrap;
+}
+
+/* ---------- page header (shared app-page-header), inside the form card ----------
+   Its own sizes are large; here it follows the page density. !important because the header's
+   own styles are more specific. */
+.af-main > app-page-header {
+  display: block;
+  margin: 0 !important;
+  padding: calc(22px * var(--af-k)) calc(26px * var(--af-k)) 0 !important;
+}
+:host ::ng-deep .af-main > app-page-header > *,
+:host ::ng-deep .af-main > app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
+:host ::ng-deep app-page-header h1 {
+  font-size: calc(24px * var(--af-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.4px !important;
+  line-height: 1.25 !important;
+}
+:host ::ng-deep app-page-header p {
+  margin-top: calc(6px * var(--af-k)) !important;
+  font-size: calc(13px * var(--af-fs)) !important;
+  line-height: 1.5 !important;
+}
+:host ::ng-deep app-page-header nav,
+:host ::ng-deep app-page-header ol,
+:host ::ng-deep app-page-header [class*="crumb"],
+:host ::ng-deep app-page-header [class*="eyebrow"] {
+  font-size: calc(11px * var(--af-fs)) !important;
+  letter-spacing: 1px !important;
+}
+
+/* shared fields on this page follow the density too */
+.af-grid .w-label {
+  font-size: calc(12.5px * var(--af-fs));
+}
+
+.af-grid .w-label small {
+  font-size: calc(11.5px * var(--af-fs));
+}
+
+.af-grid .w-input {
+  height: calc(38px * var(--af-k));
+  font-size: calc(13px * var(--af-fs));
+}
+
+.af-grid .w-error {
+  font-size: calc(12px * var(--af-fs));
+}
+
+.af-grid cw-select ::ng-deep button,
+.af-grid cw-select ::ng-deep input,
+.af-grid cw-select ::ng-deep [role="combobox"],
+.af-grid cw-select ::ng-deep span {
+  font-size: calc(13px * var(--af-fs)) !important;
+}
+
+.af-grid cw-select ::ng-deep button[aria-haspopup],
+.af-grid cw-select ::ng-deep [role="combobox"] {
+  height: calc(38px * var(--af-k)) !important;
+  min-height: 0 !important;
+}
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --af-k: .95; } }
+@media (max-width: 1600px) { :host { --af-k: .9; } }
+@media (max-width: 1440px) { :host { --af-k: .86; } }
+@media (max-width: 1280px) { :host { --af-k: .84; } }
