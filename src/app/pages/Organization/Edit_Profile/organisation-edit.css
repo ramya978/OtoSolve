@@ -1,12 +1,20 @@
 /* Organisation — edit page. Uses iam-shared.css tokens. */
+:host {
+  /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when the browser
+     is zoomed, so labels, fields and cards never look oversized. */
+  --oe-k: 1;
+  --oe-fs: calc(var(--font-scale, 1) * var(--oe-k));
+  display: block;
+}
+
 .og-page {
   container: og-page / inline-size;
 }
 
 .oe-verified {
   display: inline-grid;
-  width: 24px;
-  height: 24px;
+  width: calc(24px * var(--oe-k));
+  height: calc(24px * var(--oe-k));
   margin-left: 8px;
   place-items: center;
   color: var(--i-success, #1a8f4c);
@@ -14,8 +22,8 @@
 }
 
 .oe-verified svg {
-  width: 22px;
-  height: 22px;
+  width: calc(22px * var(--oe-k));
+  height: calc(22px * var(--oe-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 1.9;
@@ -27,14 +35,14 @@
 .oe-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 20px;
-  padding: 12px 16px;
+  gap: calc(12px * var(--oe-k));
+  margin: 0 0 calc(20px * var(--oe-k));
+  padding: calc(12px * var(--oe-k)) calc(16px * var(--oe-k));
   border: 1px solid var(--i-line);
   border-radius: var(--i-radius);
   background: var(--i-tint);
   color: var(--i-muted);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--oe-fs));
   line-height: 1.5;
 }
 
@@ -45,8 +53,8 @@
 
 .oe-banner svg {
   flex: none;
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--oe-k));
+  height: calc(18px * var(--oe-k));
   fill: none;
   stroke: var(--i-warning);
   stroke-width: 2;
@@ -57,13 +65,13 @@
 /* layout */
 .oe-stack {
   display: grid;
-  gap: 20px;
+  gap: calc(20px * var(--oe-k));
 }
 
 .oe-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
+  gap: calc(20px * var(--oe-k));
 }
 
 .oe-pair>.oe-card {
@@ -78,16 +86,16 @@
 .oe-ch {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 24px;
+  gap: calc(14px * var(--oe-k));
+  padding: calc(18px * var(--oe-k)) calc(24px * var(--oe-k));
   border-bottom: 1px solid var(--i-line);
 }
 
 .oe-ico {
   display: grid;
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: calc(36px * var(--oe-k));
+  height: calc(36px * var(--oe-k));
   place-items: center;
   border-radius: 10px;
   background: var(--i-tint);
@@ -95,8 +103,8 @@
 }
 
 .oe-ico svg {
-  width: 18px;
-  height: 18px;
+  width: calc(18px * var(--oe-k));
+  height: calc(18px * var(--oe-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 1.9;
@@ -112,33 +120,33 @@
 .oe-ct h3 {
   margin: 0;
   color: var(--i-heading);
-  font-size: calc(15px * var(--font-scale, 1));
+  font-size: calc(15px * var(--oe-fs));
   font-weight: 600;
 }
 
 .oe-ct p {
   margin: 2px 0 0;
   color: var(--i-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--oe-fs));
 }
 
 .oe-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 4px calc(10px * var(--oe-k));
   border-radius: 999px;
   background: var(--i-hover);
   color: var(--i-muted);
-  font-size: calc(11.5px * var(--font-scale, 1));
+  font-size: calc(11.5px * var(--oe-fs));
   font-weight: 600;
   letter-spacing: .8px;
   text-transform: uppercase;
 }
 
 .oe-badge svg {
-  width: 12px;
-  height: 12px;
+  width: calc(12px * var(--oe-k));
+  height: calc(12px * var(--oe-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 2.2;
@@ -147,13 +155,13 @@
 }
 
 .oe-cb {
-  padding: 24px;
+  padding: calc(24px * var(--oe-k));
 }
 
 /* grids */
 .oe-grid {
   display: grid;
-  gap: 18px 20px;
+  gap: calc(18px * var(--oe-k)) calc(20px * var(--oe-k));
 }
 
 .oe-grid--4 {
@@ -174,8 +182,8 @@
 
 .oe-phone {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: calc(96px * var(--oe-k)) minmax(0, 1fr);
+  gap: calc(10px * var(--oe-k));
 }
 
 /* fields */
@@ -188,7 +196,7 @@
 
 .oe-label {
   color: var(--i-heading);
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13px * var(--oe-fs));
   font-weight: 500;
 }
 
@@ -207,21 +215,21 @@
 .oe-count {
   float: right;
   color: var(--i-muted);
-  font-size: calc(12px * var(--font-scale, 1));
+  font-size: calc(12px * var(--oe-fs));
   font-weight: 400;
 }
 
 .oe-input {
   box-sizing: border-box;
   width: 100%;
-  height: 42px;
-  padding: 0 14px;
+  height: calc(42px * var(--oe-k));
+  padding: 0 calc(14px * var(--oe-k));
   border: 1px solid var(--i-line);
   border-radius: 10px;
   background-color: #fff;
   color: var(--i-heading);
   font: inherit;
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14px * var(--oe-fs));
   outline: none;
   transition: border-color .15s, box-shadow .15s;
 }
@@ -240,20 +248,20 @@
 }
 
 .oe-select {
-  padding-right: 38px;
+  padding-right: calc(38px * var(--oe-k));
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
-  background-size: 16px;
+  background-size: calc(16px * var(--oe-k));
 }
 
 .oe-textarea {
   height: auto;
-  min-height: 92px;
-  padding: 11px 14px;
+  min-height: calc(92px * var(--oe-k));
+  padding: calc(11px * var(--oe-k)) calc(14px * var(--oe-k));
   line-height: 1.55;
   resize: vertical;
 }
@@ -287,22 +295,22 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 14px 20px;
+  gap: calc(12px * var(--oe-k));
+  padding: calc(14px * var(--oe-k)) calc(20px * var(--oe-k));
   /* box-shadow: 0 6px 24px rgba(20, 20, 40, .08); */
 }
 
 .oe-bar-note {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(8px * var(--oe-k));
   color: var(--i-muted);
-  font-size: calc(12.5px * var(--font-scale, 1));
+  font-size: calc(12.5px * var(--oe-fs));
 }
 
 .oe-bar-note svg {
-  width: 15px;
-  height: 15px;
+  width: calc(15px * var(--oe-k));
+  height: calc(15px * var(--oe-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -312,7 +320,7 @@
 
 .oe-bar-actions {
   display: flex;
-  gap: 10px;
+  gap: calc(10px * var(--oe-k));
 }
 
 .oe-bar-actions .i-btn:disabled {
@@ -321,6 +329,14 @@
 }
 
 /* responsive */
+/* the "Changes are saved…" note and card subtitles give way first */
+@container og-page (max-width: 700px) {
+  .oe-bar-note { display: none; }
+  .oe-bar { justify-content: flex-end; }
+  .oe-head .oe-l-long { display: none; }
+  .oe-head .oe-l-short { display: inline; }
+}
+
 @container og-page (max-width: 1100px) {
   .oe-grid--4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -341,7 +357,7 @@
 
   .oe-ch,
   .oe-cb {
-    padding-inline: 16px;
+    padding-inline: calc(16px * var(--oe-k));
   }
 
   .oe-grid--4,
@@ -357,8 +373,96 @@
     width: 100%;
   }
 
+  .oe-ct p {
+    display: none;
+  }
+
+  .oe-ico {
+    width: calc(30px * var(--oe-k));
+    height: calc(30px * var(--oe-k));
+  }
+
   .oe-bar-actions .i-btn {
     flex: 1;
     justify-content: center;
   }
 }
+/* ---------- heading: laid out like the shared app-page-header on the other pages ----------
+   eyebrow · title · description stacked on the left, buttons top-right on the eyebrow line,
+   same sizes and the same 16px gap below. !important beats iam-shared.css. */
+.oe-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: flex-start !important;
+  justify-content: space-between;
+  gap: calc(12px * var(--oe-k)) calc(20px * var(--oe-k)) !important;
+  margin: 0 0 calc(16px * var(--oe-k)) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: none !important;
+}
+
+.oe-head > div:first-child {
+  flex: 1 1 calc(360px * var(--oe-k));
+  min-width: 0;
+}
+
+.oe-head .i-eyebrow {
+  display: block;
+  margin: 0 0 calc(4px * var(--oe-k)) !important;
+  font-size: calc(11px * var(--oe-fs)) !important;
+  font-weight: 600 !important;
+  letter-spacing: 1px !important;
+  line-height: 1.4 !important;
+}
+
+.oe-head h1 {
+  display: flex;
+  align-items: center;
+  margin: 0 !important;
+  font-size: calc(26px * var(--oe-fs)) !important;
+  font-weight: 650 !important;
+  letter-spacing: -.5px !important;
+  line-height: 1.25 !important;
+}
+
+.oe-head h1 + p {
+  margin: calc(6px * var(--oe-k)) 0 0 !important;
+  color: var(--i-muted);
+  font-size: calc(13.5px * var(--oe-fs)) !important;
+  line-height: 1.5 !important;
+  overflow-wrap: anywhere;
+}
+
+.oe-head .i-head-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-self: flex-start !important;
+  gap: calc(8px * var(--oe-k));
+  margin: 0 !important;
+}
+
+.oe-head .i-btn,
+.oe-bar .i-btn {
+  height: calc(36px * var(--oe-k));
+  min-height: 0;
+  padding: 0 calc(14px * var(--oe-k));
+  gap: calc(6px * var(--oe-k));
+  font-size: calc(13px * var(--oe-fs));
+  white-space: nowrap;
+}
+
+.oe-head .i-btn svg,
+.oe-bar .i-btn svg {
+  width: calc(15px * var(--oe-k));
+  height: calc(15px * var(--oe-k));
+}
+
+.oe-l-short { display: none; }
+
+/* ---------- density by screen width ----------
+   CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
+@media (max-width: 1800px) { :host { --oe-k: .95; } }
+@media (max-width: 1600px) { :host { --oe-k: .9; } }
+@media (max-width: 1440px) { :host { --oe-k: .86; } }
+@media (max-width: 1280px) { :host { --oe-k: .84; } }
