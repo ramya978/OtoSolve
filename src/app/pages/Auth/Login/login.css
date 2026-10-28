@@ -2,6 +2,19 @@
    SIGN-IN SCREEN — split card: illustration on the left, sign-in form on the right.
    Only theme variables are used, so dark mode + accent colours follow Theme Settings automatically.
    ===================================================================================================== */
+/* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed */
+:host {
+  --lg-k: 1;
+  --lg-fs: calc(var(--font-scale, 1) * var(--lg-k));
+  display: block;
+}
+@media (max-width: 1800px) { :host { --lg-k: .95; } }
+@media (max-width: 1600px) { :host { --lg-k: .9; } }
+@media (max-width: 1440px) { :host { --lg-k: .86; } }
+@media (max-width: 1280px) { :host { --lg-k: .84; } }
+/* phones: full size again, fields are tapped with a finger */
+@media (max-width: 600px) { :host { --lg-k: 1; } }
+
 .lg-shell {
   min-height: 100dvh;
   display: grid;
@@ -18,9 +31,12 @@
 .lg-card {
   display: grid;
   /* grid-template-columns: minmax(0, 45fr) minmax(0, 55fr); */
-  width:min(700px, 100%);
-  border-radius: 22px;
+  /* one form column: a compact card, not a wide panel */
+  width: min(calc(440px * var(--lg-k)), 100%);
+  border: 1px solid var(--line);
+  border-radius: calc(16px * var(--lg-k));
   background: var(--white);
+  /* box-shadow: 0 18px 50px -28px color-mix(in srgb, #1b2030 30%, transparent); */
   /* box-shadow:
     0 34px 90px -34px color-mix(in srgb, #1b2030 38%, transparent),
     0 2px 10px color-mix(in srgb, #1b2030 7%, transparent); */
@@ -67,51 +83,51 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(30px, 4.5vw, 58px) clamp(26px, 5vw, 70px)
+  padding: calc(32px * var(--lg-k)) calc(34px * var(--lg-k)) calc(28px * var(--lg-k))
 }
 
 .lg-brand-row {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 9px;
-  margin-bottom: clamp(16px, 3vh, 30px)
+  justify-content: flex-start;
+  gap: calc(9px * var(--lg-k));
+  margin-bottom: calc(22px * var(--lg-k))
 }
 
 .lg-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: calc(30px * var(--lg-k));
+  height: calc(30px * var(--lg-k));
+  border-radius: calc(8px * var(--lg-k));
   background: var(--accent);
   color: var(--white);
-  font-size: 17px;
-  font-weight: 750;
+  font-size: calc(15px * var(--lg-fs));
+  font-weight: 600;
   letter-spacing: -.5px
 }
 
 .lg-brand-name {
   font-family: var(--font-heading);
-  font-size: 21px;
-  font-weight: 750;
-  letter-spacing: -.4px;
+  font-size: calc(17px * var(--lg-fs));
+  font-weight: 650;
+  letter-spacing: -.3px;
   color: var(--heading-color, var(--ink))
 }
 
 .lg-title {
   margin: 0;
   font-family: var(--font-heading);
-  font-size: clamp(24px, 2.6vw, 29px);
-  font-weight: 750;
-  letter-spacing: -.7px;
-  line-height: 1.2;
+  font-size: calc(22px * var(--lg-fs));
+  font-weight: 650;
+  letter-spacing: -.4px;
+  line-height: 1.25;
   color: var(--heading-color, var(--ink))
 }
 
 .lg-sub {
-  margin: 9px 0 0;
-  font-size: 13.5px;
+  margin: calc(6px * var(--lg-k)) 0 0;
+  font-size: calc(13px * var(--lg-fs));
   line-height: 1.55;
   color: var(--muted)
 }
@@ -121,9 +137,9 @@
 }
 
 form {
-  margin-top: 22px;
+  margin-top: calc(20px * var(--lg-k));
   display: grid;
-  gap: 15px
+  gap: calc(12px * var(--lg-k))
 }
 
 .lg-field {
@@ -133,15 +149,15 @@ form {
 
 .lg-input {
   width: 100%;
-  height: 46px;
-  padding: 0 14px;
+  height: calc(40px * var(--lg-k));
+  padding: 0 calc(12px * var(--lg-k));
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: calc(8px * var(--lg-k));
   outline: none;
   background: color-mix(in srgb, var(--accent) 6%, var(--white));
   color: var(--ink);
   font: inherit;
-  font-size: 14px;
+  font-size: calc(13.5px * var(--lg-fs));
   transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease
 }
 
@@ -164,17 +180,17 @@ form {
 }
 
 .lg-control .lg-input {
-  padding-right: 48px
+  padding-right: calc(44px * var(--lg-k))
 }
 
 .lg-eye {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: calc(6px * var(--lg-k));
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: calc(30px * var(--lg-k));
+  height: calc(30px * var(--lg-k));
   border-radius: 8px;
   color: var(--muted);
   transform: translateY(-50%);
@@ -187,8 +203,8 @@ form {
 }
 
 .lg-eye svg {
-  width: 18px;
-  height: 18px;
+  width: calc(16px * var(--lg-k));
+  height: calc(16px * var(--lg-k));
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
@@ -200,7 +216,7 @@ form {
 .lg-remember {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: calc(10px * var(--lg-k));
   margin-top: 2px;
   cursor: pointer
 }
@@ -220,13 +236,13 @@ form {
 }
 
 .lg-remember-title {
-  font-size: 13.5px;
-  font-weight: 650;
+  font-size: calc(13px * var(--lg-fs));
+  font-weight: 500;
   color: var(--ink)
 }
 
 .lg-remember-help {
-  font-size: 12.5px;
+  font-size: calc(12px * var(--lg-fs));
   line-height: 1.55;
   color: var(--muted)
 }
@@ -243,7 +259,7 @@ form {
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 13px;
+  font-size: calc(12.5px * var(--lg-fs));
   cursor: pointer
 }
 
@@ -259,15 +275,15 @@ form {
   justify-content: center;
   gap: 9px;
   width: 100%;
-  height: 47px;
-  margin-top: 4px;
+  height: calc(40px * var(--lg-k));
+  margin-top: 2px;
   border-radius: var(--btn-radius, 9px);
   background: var(--accent);
   color: var(--white);
   font: inherit;
-  font-size: 14.5px;
-  font-weight: 650;
-  letter-spacing: -.1px;
+  font-size: calc(13.5px * var(--lg-fs));
+  font-weight: 600;
+  letter-spacing: 0;
   cursor: pointer;
   transition: background-color .15s ease
 }
@@ -299,9 +315,10 @@ form {
 }
 
 .lg-foot {
-  margin-top: 18px;
+  margin: calc(18px * var(--lg-k)) 0 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: calc(11.5px * var(--lg-fs));
+  line-height: 1.5;
   text-align: center
 }
 
@@ -315,12 +332,12 @@ form {
   align-items: center;
   gap: 10px;
   width: min(420px, calc(100vw - 48px));
-  padding: 12px 16px;
+  padding: calc(10px * var(--lg-k)) calc(14px * var(--lg-k));
   border-radius: var(--btn-radius, 10px);
   border: 1px solid transparent;
   /* box-shadow: 0 10px 30px -6px #10131c40; */
   animation: lg-toast-in .28s cubic-bezier(0.16, 1, 0.3, 1);
-  font-size: 13px;
+  font-size: calc(12.5px * var(--lg-fs));
   line-height: 1.5;
   box-sizing: border-box;
   overflow: hidden;
@@ -337,9 +354,9 @@ form {
 
 .lg-toast-icon {
   flex: none;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: calc(28px * var(--lg-k));
+  height: calc(28px * var(--lg-k));
+  min-width: calc(28px * var(--lg-k));
   display: grid;
   place-items: center;
   border-radius: 8px;
@@ -352,8 +369,8 @@ form {
 }
 
 .lg-toast-icon svg {
-  width: 18px;
-  height: 18px
+  width: calc(16px * var(--lg-k));
+  height: calc(16px * var(--lg-k))
 }
 
 .lg-toast-body {
@@ -372,9 +389,9 @@ form {
 
 .lg-toast-dismiss {
   flex: none;
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
+  width: calc(28px * var(--lg-k));
+  height: calc(28px * var(--lg-k));
+  min-width: calc(28px * var(--lg-k));
   display: grid;
   place-items: center;
   padding: 0;
@@ -453,8 +470,7 @@ html[data-mode="dark"] .lg-card {
 /* ---- narrow screens: illustration folds away, the card stacks ---- */
 @media (max-width: 920px) {
   .lg-card {
-    grid-template-columns: 1fr;
-    width: min(560px, 100%)
+    grid-template-columns: 1fr
   }
 
   .lg-art {
@@ -468,14 +484,14 @@ html[data-mode="dark"] .lg-card {
   }
 
   .lg-form-side {
-    padding: 26px 20px 30px
+    padding: 26px 20px 24px
   }
 }
 
-/* short laptop windows (125%+ display scaling): pin the card to the top instead of
+/* very short windows (high display scaling): pin the card to the top instead of
    clipping both ends — the .content.route-page scroll container then keeps the form
-   reachable by scrolling */
-@media (min-width: 921px) and (max-height: 780px) {
+   reachable by scrolling. The compact card stays centred on normal laptop heights. */
+@media (min-width: 921px) and (max-height: 560px) {
   .lg-shell {
     place-items: start center;
     padding-block: 24px

@@ -84,10 +84,10 @@ export class App {
     { initialValue: this.router.url }
   );
 
-  /** True while the router shows the sign-in screen: the shell then hides sidebar + top bar. */
+  /** True while the router shows an auth / public donor screen: the shell then hides sidebar + top bar. */
   protected readonly onAuthScreen = computed(() => {
     const url = this.currentUrl();
-    return url.startsWith('/login') || url.startsWith('/auth/');
+    return url.startsWith('/login') || url.startsWith('/auth/') || url.startsWith('/give/result');
   });
 
   /** The signed-in user for the top bar and account menu (placeholders while signed out). */
