@@ -17,8 +17,9 @@
 
 .lg-shell {
   min-height: 100dvh;
-  display: grid;
-  place-items: center;
+display: flex;
+align-items: center;
+justify-content: center;
   padding: clamp(16px, 4vw, 44px);
   color: var(--ink);
   background:
@@ -86,12 +87,23 @@
   padding: calc(32px * var(--lg-k)) calc(34px * var(--lg-k)) calc(28px * var(--lg-k))
 }
 
+/* heading row: title left, logo right, the sign-in line underneath across the card */
+.lg-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: calc(12px * var(--lg-k))
+}
+
+.lg-head .lg-sub {
+  grid-column: 1 / -1;
+  margin-top: calc(10px * var(--lg-k))
+}
+
 .lg-brand-row {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: calc(9px * var(--lg-k));
-  margin-bottom: calc(22px * var(--lg-k))
+  gap: calc(8px * var(--lg-k))
 }
 
 .lg-mark {
@@ -493,7 +505,6 @@ html[data-mode="dark"] .lg-card {
    reachable by scrolling. The compact card stays centred on normal laptop heights. */
 @media (min-width: 921px) and (max-height: 560px) {
   .lg-shell {
-    place-items: start center;
     padding-block: 24px
   }
 }
@@ -502,4 +513,62 @@ html[data-mode="dark"] .lg-card {
   .lg-spinner {
     animation-duration: 1.6s
   }
+}
+
+
+/* =====================================================================================================
+   AUTH FRAME - same heading as the sign-in screen: page title on the left, OtoSolve logo on the right,
+   the line under the title across the card. Load after login.css (styleUrls: [... 'login.css', './auth-frame.css']).
+   The title is projected from each screen (forgot password, MFA ...), so it is reached with ::ng-deep.
+   ===================================================================================================== */
+:host {
+  --lg-k: 1;
+  --lg-fs: calc(var(--font-scale, 1) * var(--lg-k));
+  --af-pad-top: calc(32px * var(--lg-k));
+  --af-pad-x: calc(34px * var(--lg-k));
+  --af-line: calc(30px * var(--lg-k));        /* height of the title line = height of the logo tile */
+  display: block;
+}
+@media (max-width: 1800px) { :host { --lg-k: .95; } }
+@media (max-width: 1600px) { :host { --lg-k: .9; } }
+@media (max-width: 1440px) { :host { --lg-k: .86; } }
+@media (max-width: 1280px) { :host { --lg-k: .84; } }
+@media (max-width: 600px)  { :host { --lg-k: 1; } }
+@media (max-width: 460px)  { :host { --af-pad-top: 26px; --af-pad-x: 20px; } }
+
+.lg-frame {
+  position: relative;
+  padding: var(--af-pad-top) var(--af-pad-x) calc(28px * var(--lg-k)) !important;
+}
+
+/* logo: top-right, on the same line as the title */
+.lg-frame > .lg-brand-row {
+  position: absolute;
+  top: var(--af-pad-top);
+  right: var(--af-pad-x);
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--lg-k));
+  height: var(--af-line);
+  margin: 0;
+}
+
+/* title: centred on the logo line, keeps clear of the logo */
+.lg-frame ::ng-deep .lg-title {
+  display: flex;
+  align-items: center;
+  min-height: var(--af-line);
+  margin: 0;
+  padding-right: calc(124px * var(--lg-k));
+}
+
+/* space between the title and the line under it - same as the sign-in screen */
+.lg-frame ::ng-deep .lg-title + .lg-sub {
+  margin-top: calc(10px * var(--lg-k));
+}
+
+/* small phones: only the logo tile stays, so a longer title keeps one line */
+@media (max-width: 420px) {
+  .lg-frame > .lg-brand-row .lg-brand-name { display: none; }
+  .lg-frame ::ng-deep .lg-title { padding-right: calc(42px * var(--lg-k)); }
 }

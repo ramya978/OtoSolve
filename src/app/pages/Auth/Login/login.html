@@ -7,13 +7,15 @@
   
     <!-- right: form panel -->
     <section class="lg-form-side">
-      <header class="lg-brand-row">
-        <span class="lg-mark" aria-hidden="true">O</span>
-        <span class="lg-brand-name">OtoSolve</span>
+      <!-- heading: "Welcome Back" on the left, the logo on the right; the line below runs full width -->
+      <header class="lg-head">
+        <h1 class="lg-title">Welcome Back</h1>
+        <span class="lg-brand-row">
+          <span class="lg-mark" aria-hidden="true">O</span>
+          <span class="lg-brand-name">OtoSolve</span>
+        </span>
+        <p class="lg-sub">Sign in to access your dashboard, manage data, and explore analytics</p>
       </header>
-
-      <h1 class="lg-title">Welcome Back</h1>
-      <p class="lg-sub">Sign in to access your dashboard, manage data, and explore analytics</p>
 
       <!-- accessible toast: success or danger message with timed dismissal + dismiss control -->
       @if (toast(); as t) {
