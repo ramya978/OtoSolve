@@ -17,8 +17,8 @@
         <div class="pd-wl-id-text">
           <h1 class="pd-welcome-title">{{ greeting() }}, <span>{{ userFirstName() }}</span></h1>
           <p class="pd-welcome-sub">
-            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>All organisations</span>
-            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Platform Admin</span>
+            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>{{ viewerOrganisation() }}</span>
+            <span><svg class="pd-ico pd-ico-sm" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>{{ viewerRole() }}</span>
           </p>
         </div>
       </div>

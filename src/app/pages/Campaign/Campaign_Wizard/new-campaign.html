@@ -77,6 +77,55 @@
       </header>
 
       <div class="cp-grid">
+        <!-- campaign logo (optional) -->
+        <div class="cp-field cp-span">
+          <div class="cp-label-row">
+            <span class="cp-label" id="cp-logo-label">Campaign logo <span class="cp-opt">Optional</span></span>
+            <span class="cp-help" tabindex="0" data-tip="Shown on the campaign page, donation receipts and reports. A square image works best.">?</span>
+          </div>
+          <div class="cp-logo" [class.is-drag]="logoDrag()" [class.has-logo]="form().logo" [class.is-invalid]="logoError()"
+               (dragover)="onLogoDragOver($event)" (dragleave)="onLogoDragLeave($event)" (drop)="onLogoDrop($event)">
+            <input #logoInput class="cp-logo-input" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                   aria-labelledby="cp-logo-label" (change)="onLogoPick($event)" />
+
+            <button type="button" class="cp-logo-preview" [attr.aria-label]="form().logo ? 'Replace campaign logo' : 'Upload campaign logo'"
+                    (click)="logoInput.click()">
+              @if (form().logo) {
+                <img [src]="form().logo" alt="Campaign logo preview" />
+              } @else {
+                <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('image')" /></svg>
+              }
+            </button>
+
+            <div class="cp-logo-copy">
+              @if (form().logo) {
+                <b class="cp-logo-name">{{ form().logoName || 'Campaign logo' }}</b>
+                <small>{{ logoMeta() }}</small>
+              } @else {
+                <b>{{ logoDrag() ? 'Drop the image to upload' : 'Drag a logo here, or browse' }}</b>
+                <small>PNG, JPG, WebP or SVG · up to 2 MB · square, 512 × 512 px recommended</small>
+              }
+              <div class="cp-logo-acts">
+                <button type="button" class="cp-logo-btn" (click)="logoInput.click()">
+                  <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upload')" /></svg>
+                  {{ form().logo ? 'Replace' : 'Upload logo' }}
+                </button>
+                @if (form().logo) {
+                  <button type="button" class="cp-logo-btn is-danger" (click)="removeLogo()">
+                    <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
+                    Remove
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+          @if (logoError(); as err) {
+            <p class="cp-error" role="alert">{{ err }}</p>
+          } @else {
+            <p class="cp-hint">Shown on the campaign page, receipts and reports.</p>
+          }
+        </div>
+
         <!-- campaign name -->
         <div class="cp-field">
           <div class="cp-label-row">

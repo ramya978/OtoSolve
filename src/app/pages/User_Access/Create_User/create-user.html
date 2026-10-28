@@ -77,6 +77,49 @@
         </header>
 
         <div class="cu-grid">
+          <!-- profile photo (optional) -->
+          <div class="i-field cfull">
+            <span class="cu-lab"><span class="i-field-label" id="cu-photo-label">Profile photo <span class="cu-opt">Optional</span></span>
+              <span class="cu-q" title="Shown on their profile, in the directory and beside their actions in the audit trail.">?</span></span>
+            <div class="cu-photo" [class.is-drag]="photoDrag()" [class.has-photo]="photo()" [class.is-invalid]="photoError()"
+                 (dragover)="onPhotoDragOver($event)" (dragleave)="onPhotoDragLeave($event)" (drop)="onPhotoDrop($event)">
+              <input #photoInput class="cu-photo-input" type="file" accept="image/png,image/jpeg,image/webp"
+                     aria-labelledby="cu-photo-label" (change)="onPhotoPick($event)" />
+
+              <button type="button" class="cu-photo-avatar" [attr.aria-label]="photo() ? 'Replace profile photo' : 'Upload profile photo'"
+                      (click)="photoInput.click()">
+                @if (photo()) {
+                  <img [src]="photo()" alt="Profile photo preview" />
+                } @else if (photoInitials()) {
+                  <span class="cu-photo-initials">{{ photoInitials() }}</span>
+                } @else {
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('person')" /></svg>
+                }
+                <span class="cu-photo-cam" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="photoIcon('camera')" /></svg></span>
+              </button>
+
+              <div class="cu-photo-copy">
+                @if (photo()) {
+                  <strong class="cu-photo-name">{{ photoName() }}</strong>
+                  <small>{{ photoMeta() }}</small>
+                } @else {
+                  <strong>{{ photoDrag() ? 'Drop the photo to upload' : 'Drag a photo here, or browse' }}</strong>
+                  <small>PNG, JPG or WebP · up to 2 MB · a square photo of at least 96 × 96 px works best</small>
+                }
+                <span class="cu-photo-acts">
+                  <button type="button" class="cu-photo-btn" (click)="photoInput.click()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="photoIcon('upload')" /></svg>{{ photo() ? 'Replace' : 'Upload photo' }}</button>
+                  @if (photo()) {
+                    <button type="button" class="cu-photo-btn is-danger" (click)="removePhoto()">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="photoIcon('trash')" /></svg>Remove</button>
+                  }
+                </span>
+              </div>
+            </div>
+            @if (photoError()) { <span class="i-err" role="alert">{{ photoError() }}</span> }
+            @else { <span class="i-help">{{ photo() ? 'Shown on their profile and in the directory.' : 'Without a photo, their initials are shown.' }}</span> }
+          </div>
+
           <div class="i-field c2">
             <span class="cu-lab"><span class="i-field-label">Title</span>
               <span class="cu-q" title="Shown before the name in letters and e-mails.">?</span></span>

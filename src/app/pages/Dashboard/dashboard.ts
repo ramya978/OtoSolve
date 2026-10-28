@@ -2,6 +2,11 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DashboardCampaigns } from './dashboard-campaigns';
 import { PageHeader } from '../../Shared/layout/page-header/page-header';
+import { DashboardApiService } from '../../Service/dashboard-api.service';
+import { DashboardPage } from '../../Shared/models/dashboard-contract.model';
+import { NavigationService } from '../../Shared/services/navigation.service';
+import { AuthService } from '../../Shared/Auth/auth.service';
+import { AuthTokenService } from '../../Shared/services/auth-token.service';
 
 type Tone = 'primary' | 'success' | 'info' | 'warning' | 'danger' | 'neutral';
 
@@ -92,43 +97,61 @@ export class Dashboard {
     audit: '/app/platform/audit'
   };
 
-  /* ---------------------------------------------------------------- DATA */
-  protected readonly userFirstName = signal('Vikram');
+  private readonly dashboardApi = inject(DashboardApiService);
+  private readonly navigation = inject(NavigationService);
+  /** Same session sources the top bar (app.ts) reads, so the greeting always matches the header. */
+  private readonly auth = inject(AuthService);
+  private readonly tokens = inject(AuthTokenService);
+
+  /* ---------------------------------------------------------------- viewer (bound to the signed-in session) */
+  /** Values from the dashboard API - used only when the session has nothing for that field. */
+  private readonly apiViewer = signal<{ name: string; organisation: string; role: string }>({ name: '', organisation: '', role: '' });
+
+  /** Signed-in user's full name - the same value as the header account chip (userName). */
+  protected readonly userName = computed(() => this.auth.user()?.name?.trim() || this.apiViewer().name);
+
+  /** First name for the greeting ("Good evening, Asin"). */
+  protected readonly userFirstName = computed(() => this.userName().split(/\s+/)[0] ?? '');
+
+  /**
+   * Organisation the session is working in - the same Organisation the header switcher shows
+   * (tokens.tenant().tenantName). At platform scope there is none, so "All organisations".
+   */
+  protected readonly viewerOrganisation = computed(
+    () =>
+      this.tokens.tenant()?.tenantName?.trim() ||
+      this.navigation.organisationName() ||
+      this.apiViewer().organisation ||
+      'All organisations'
+  );
+
+  /** Viewer's role - the same value as the header account chip (userRole). */
+  protected readonly viewerRole = computed(() => this.auth.user()?.role?.trim() || this.apiViewer().role || '—');
 
   /** Organisations by status. */
-  protected readonly counts = signal({ onboarding: 2, inReview: 0, approved: 0, active: 2, suspended: 0, archived: 0 });
+  protected readonly counts = signal({ onboarding: 0, inReview: 0, approved: 0, active: 0, suspended: 0, archived: 0 });
 
   /** People on the platform. */
-  protected readonly people = signal({ total: 42, invited: 2, suspended: 0, twoStepPct: 0 });
+  protected readonly people = signal({ total: 0, invited: 0, suspended: 0, twoStepPct: 0 });
 
   /** Sign-in attempts in the last 14 days. */
-  protected readonly signIns = signal({ succeeded: 1, failed: 0, people: 1 });
+  protected readonly signIns = signal({ succeeded: 0, failed: 0, people: 0 });
 
   /** Successful sign-ins per day, oldest first (the last value is today). */
-  private readonly signInSeries = signal<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+  private readonly signInSeries = signal<number[]>([]);
 
   /** Failed sign-ins per day, same days as signInSeries. */
-  private readonly failedSeries = signal<number[]>([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  private readonly failedSeries = signal<number[]>([]);
 
   protected readonly attention = signal<Attention[]>([]);
 
-  protected readonly activity = signal<Activity[]>([
-    { title: 'Sign-in succeeded', source: 'System', area: 'Security', actor: 'Vikram Anand', time: 'just now', tone: 'success', icon: 'login' }
-  ]);
+  protected readonly activity = signal<Activity[]>([]);
 
-  private readonly largestRows = signal<LargeOrg[]>([
-    { code: 'TEN002', name: 'HelpAge India', subdomain: 'helpageindia', people: 21 },
-    { code: 'TEN001', name: 'Smile Foundation', subdomain: 'smilefoundation', people: 21 }
-  ]);
+  private readonly largestRows = signal<LargeOrg[]>([]);
 
   protected readonly mostActive = signal<{ name: string; signIns: number }[]>([]);
 
-  protected readonly newest = signal<OrgRow[]>([
-    { code: 'TEN004', name: 'Unity for Change', subdomain: 'unityforchange', status: 'Invited', people: 1, joined: '26 Oct, 1:14 PM', latest: true },
-    { code: 'TEN003', name: 'Global Relief Foundation', subdomain: 'globalrelief', status: 'Invited', people: 1, joined: '26 Oct, 1:14 PM' },
-    { code: 'TEN002', name: 'HelpAge India', subdomain: 'helpageindia', status: 'Active', people: 21, joined: '26 Oct, 1:14 PM' },
-    { code: 'TEN001', name: 'Smile Foundation', subdomain: 'smilefoundation', status: 'Active', people: 21, joined: '26 Oct, 1:14 PM' }
-  ]);
+  protected readonly newest = signal<OrgRow[]>([]);
 
   /* ---------------------------------------------------------------- clock */
   protected readonly now = signal(new Date());
@@ -407,6 +430,137 @@ export class Dashboard {
   constructor() {
     const timer = setInterval(() => this.now.set(new Date()), 30_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
+
+    // Load real dashboard data from the API (replaces static placeholder values)
+    this.dashboardApi.load().subscribe({
+      next: (page: DashboardPage) => this.applyPage(page),
+      error: () => { /* keep default empty values if the API is unreachable */ }
+    });
+  }
+
+  /** Maps the live API response (DashboardPage) onto the signals the cards, charts and tables read. */
+  private applyPage(page: DashboardPage): void {
+    if (!page) return;
+
+    // Viewer: name / organisation / role come from the signed-in session (same as the header).
+    // The API values are kept only as a fallback for anything the session does not carry.
+    this.apiViewer.set({
+      name: page.viewer?.displayName?.trim() ?? '',
+      organisation: page.viewer?.organisationName || page.viewer?.scopeLabel || '',
+      role: page.viewer?.roleNames?.[0] ?? ''
+    });
+
+    // Health panel slices -> organisation counts by status
+    const health = page.panels?.health;
+    if (health?.slices?.length) {
+      const c = { onboarding: 0, inReview: 0, approved: 0, active: 0, suspended: 0, archived: 0 };
+      for (const s of health.slices) {
+        const key = s.key.toLowerCase();
+        if (key === 'active') c.active = s.count;
+        else if (key === 'onboarding') c.onboarding = s.count;
+        else if (key === 'in-review' || key === 'inreview') c.inReview = s.count;
+        else if (key === 'approved') c.approved = s.count;
+        else if (key === 'suspended') c.suspended = s.count;
+        else if (key === 'archived' || key === 'archived-or-rejected') c.archived = s.count;
+      }
+      this.counts.set(c);
+    }
+
+    // Counters -> people and sign-ins
+    for (const counter of page.counters) {
+      const label = counter.label.toLowerCase();
+      if (label.includes('people') || label.includes('user') || label.includes('member')) {
+        this.people.set({ ...this.people(), total: counter.value });
+      }
+      if (label.includes('sign-in') || label.includes('signin') || label.includes('login')) {
+        this.signIns.set({ ...this.signIns(), succeeded: counter.value });
+      }
+      if (label.includes('failed') || label.includes('failure')) {
+        this.signIns.set({ ...this.signIns(), failed: counter.value });
+      }
+    }
+
+    // Trend panel -> daily sign-in series
+    const trend = page.panels?.trend;
+    if (trend?.points?.length) {
+      const ok: number[] = [];
+      const bad: number[] = [];
+      for (const p of trend.points) {
+        ok.push(p.value);
+        bad.push(Math.max(0, p.count - p.value));
+      }
+      this.signInSeries.set(ok);
+      this.failedSeries.set(bad);
+    }
+
+    // Activity panel -> recent activity feed
+    const activityPanel = page.panels?.activity;
+    if (activityPanel?.items?.length) {
+      const acts: Activity[] = activityPanel.items.map((item) => ({
+        title: item.action,
+        source: item.kindLabel,
+        area: 'Platform',
+        actor: item.actor,
+        time: this.relativeTime(item.occurredAtUtc),
+        tone: item.isFailure ? 'danger' : 'success',
+        icon: (item.icon as DashIcon) ?? 'login'
+      }));
+      this.activity.set(acts);
+    }
+
+    // Leaders / ranking panel -> largest orgs, most active, newest
+    const ranking = page.panels?.leaders ?? page.panels?.ranking;
+    if (ranking?.items?.length) {
+      const rows: LargeOrg[] = ranking.items.map((item) => ({
+        code: item.key,
+        name: item.label,
+        subdomain: item.key,
+        people: item.value
+      }));
+      this.largestRows.set(rows);
+
+      this.mostActive.set(ranking.items.map((item) => ({
+        name: item.label,
+        signIns: item.count
+      })));
+
+      this.newest.set(ranking.items.slice(0, 4).map((item) => ({
+        code: item.key,
+        name: item.label,
+        subdomain: item.key,
+        status: 'Active' as OrgStatus,
+        people: item.value,
+        joined: this.relativeTime(item.key)
+      })));
+    }
+
+    // Attention items -> attention rows
+    if (page.attention?.length) {
+      this.attention.set(page.attention.map((a) => ({
+        title: a.label,
+        detail: a.hint,
+        tone: 'neutral' as Tone,
+        icon: (a.icon as DashIcon) ?? 'alert',
+        route: a.route ?? ''
+      })));
+    }
+  }
+
+  /** Rough relative time string for activity timestamps. */
+  private relativeTime(utc: string): string {
+    try {
+      const d = new Date(utc);
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      const diffMins = Math.floor(diffMs / 60_000);
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return `${diffMins} min ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${Math.floor(diffHours / 24)}d ago`;
+    } catch {
+      return '';
+    }
   }
 
   /* ---------------------------------------------------------------- actions */
@@ -432,10 +586,19 @@ export class Dashboard {
     this.page.set(Math.min(Math.max(1, p), this.pageCount()));
   }
 
-  /** Wire this to your dashboard API reload. */
+  /** Reload live dashboard data from the API. */
   protected refresh(): void {
-    this.now.set(new Date());
-    this.updatedAt.set(new Date());
+    this.dashboardApi.load().subscribe({
+      next: (page: DashboardPage) => {
+        this.applyPage(page);
+        this.now.set(new Date());
+        this.updatedAt.set(new Date());
+      },
+      error: () => {
+        this.now.set(new Date());
+        this.updatedAt.set(new Date());
+      }
+    });
   }
 
   private formatTime(d: Date): string {

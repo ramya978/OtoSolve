@@ -618,6 +618,164 @@ input.cp-input:focus,
   color: var(--cp-danger)
 }
 
+/* optional tag beside a label */
+.cp-opt {
+  margin-left: 6px;
+  color: var(--cp-faint);
+  font-size: calc(11px * var(--cp-fs));
+  font-weight: 400
+}
+
+/* =====================================================================================================
+   CAMPAIGN LOGO - preview tile + drop area + actions
+   ===================================================================================================== */
+.cp-logo {
+  display: flex;
+  align-items: center;
+  gap: calc(16px * var(--cp-k));
+  padding: calc(14px * var(--cp-k));
+  border: 1px dashed var(--cp-field-line);
+  border-radius: var(--radius);
+  background: var(--cp-softer);
+  transition: border-color .15s, background-color .15s, box-shadow .15s
+}
+
+.cp-logo:hover {
+  border-color: var(--cp-field-hover)
+}
+
+.cp-logo.is-drag {
+  border-color: var(--cp-primary);
+  background: var(--cp-soft);
+  box-shadow: 0 0 0 3px var(--cp-ring)
+}
+
+.cp-logo.has-logo {
+  border-style: solid;
+  border-color: var(--cp-line);
+  background: var(--white)
+}
+
+.cp-logo.is-invalid {
+  border-color: var(--cp-danger)
+}
+
+.cp-logo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap
+}
+
+.cp-logo-preview {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(76px * var(--cp-k));
+  height: calc(76px * var(--cp-k));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--cp-line);
+  border-radius: calc(12px * var(--cp-k));
+  /* light checkerboard so transparent logos stay visible */
+  background:
+    conic-gradient(var(--panel2, #f4f6f9) 25%, var(--white) 0 50%, var(--panel2, #f4f6f9) 0 75%, var(--white) 0) 0 0 / 14px 14px;
+  color: var(--cp-faint);
+  transition: border-color .15s, box-shadow .15s
+}
+
+.cp-logo:not(.has-logo) .cp-logo-preview {
+  background: var(--white)
+}
+
+.cp-logo-preview:hover {
+  border-color: var(--cp-primary);
+  box-shadow: 0 0 0 3px var(--cp-ring)
+}
+
+.cp-logo-preview .cp-ico {
+  width: calc(26px * var(--cp-k));
+  height: calc(26px * var(--cp-k));
+  stroke-width: 1.4
+}
+
+.cp-logo-preview img {
+  width: 100%;
+  height: 100%;
+  padding: calc(6px * var(--cp-k));
+  object-fit: contain
+}
+
+.cp-logo-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0
+}
+
+.cp-logo-copy b {
+  color: var(--cp-heading);
+  font-size: calc(13px * var(--cp-fs));
+  font-weight: 600
+}
+
+.cp-logo-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.cp-logo-copy small {
+  color: var(--cp-muted);
+  font-size: calc(11.5px * var(--cp-fs));
+  font-variant-numeric: tabular-nums
+}
+
+.cp-logo-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(8px * var(--cp-k));
+  margin-top: calc(8px * var(--cp-k))
+}
+
+.cp-logo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(30px * var(--cp-k));
+  padding: 0 calc(11px * var(--cp-k));
+  border: 1px solid var(--cp-line);
+  border-radius: var(--btn-radius);
+  background: var(--white);
+  color: var(--cp-ink);
+  font-size: calc(12px * var(--cp-fs));
+  font-weight: 550;
+  transition: background-color .15s, border-color .15s, color .15s
+}
+
+.cp-logo-btn .cp-ico {
+  width: calc(14px * var(--cp-k));
+  height: calc(14px * var(--cp-k))
+}
+
+.cp-logo-btn:hover {
+  border-color: var(--cp-primary);
+  background: var(--cp-hover);
+  color: var(--cp-strong)
+}
+
+.cp-logo-btn.is-danger {
+  color: var(--cp-danger)
+}
+
+.cp-logo-btn.is-danger:hover {
+  border-color: var(--cp-danger);
+  background: var(--cp-danger-soft);
+  color: var(--cp-danger)
+}
+
 /* prefix / suffix fields (INR, days) */
 .cp-affix {
   display: flex;
@@ -1728,6 +1886,16 @@ input.cp-input:focus,
 
   .cp-cal {
     width: min(284px, calc(100vw - 48px))
+  }
+
+  .cp-logo {
+    align-items: flex-start;
+    gap: calc(12px * var(--cp-k))
+  }
+
+  .cp-logo-preview {
+    flex-basis: calc(64px * var(--cp-k));
+    height: calc(64px * var(--cp-k))
   }
 }
 

@@ -63,6 +63,17 @@ const REQUIRED: Record<Exclude<SectionKey, 'review'>, (keyof UserForm)[]> = {
 
 const JUSTIFY_MAX = 1000;
 
+/** Profile photo rules (optional field). */
+const PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
+const PHOTO_MIN_PX = 96;
+/** Line icons used only by the photo field (24 × 24, stroke). */
+const PHOTO_ICONS: Record<'camera' | 'upload' | 'trash', string> = {
+  camera: 'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+  upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6'
+};
+
 /** What each grantable data scope does, in a sentence (the names come from the server). */
 const SCOPE_HINT: Record<string, string> = {
   organisation: 'Everything in this organisation that their role allows.',
@@ -193,6 +204,94 @@ export class CreateUser implements OnInit {
 
   icon(name: string): string {
     return IAM_ICONS[name] ?? '';
+  }
+
+  // ---------------------------------------------------------------- profile photo (optional)
+  /** The chosen photo as a data URL (null = none), with its file name, size and pixel size. */
+  readonly photo = signal<string | null>(null);
+  readonly photoName = signal('');
+  readonly photoSize = signal(0);
+  readonly photoDims = signal<{ w: number; h: number } | null>(null);
+  readonly photoDrag = signal(false);
+  readonly photoError = signal('');
+
+  /** Initials shown in the round preview until a photo is chosen. */
+  readonly photoInitials = computed(() => {
+    const f = this.form();
+    const name = f.displayName.trim() || [f.firstName.trim(), f.lastName.trim()].filter(Boolean).join(' ');
+    return name ? initialsOf(name) : '';
+  });
+
+  /** "84 KB · 600 × 600 px" under the file name. */
+  readonly photoMeta = computed(() => {
+    const d = this.photoDims();
+    const bytes = this.photoSize();
+    const size = !bytes ? '' : bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    return [size, d ? `${d.w} × ${d.h} px` : ''].filter(Boolean).join(' · ');
+  });
+
+  photoIcon(name: 'camera' | 'upload' | 'trash'): string {
+    return PHOTO_ICONS[name];
+  }
+
+  onPhotoPick(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // the same file can be chosen again after Remove
+    if (file) this.readPhoto(file);
+  }
+
+  onPhotoDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    this.photoDrag.set(true);
+  }
+
+  onPhotoDragLeave(event: DragEvent): void {
+    const to = event.relatedTarget as Node | null;
+    if (!to || !(event.currentTarget as HTMLElement).contains(to)) this.photoDrag.set(false);
+  }
+
+  onPhotoDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.photoDrag.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.readPhoto(file);
+  }
+
+  removePhoto(): void {
+    this.photo.set(null);
+    this.photoName.set('');
+    this.photoSize.set(0);
+    this.photoDims.set(null);
+    this.photoError.set('');
+  }
+
+  private readPhoto(file: File): void {
+    if (!PHOTO_TYPES.includes(file.type)) { this.photoError.set('Use a PNG, JPG or WebP image.'); return; }
+    if (file.size > PHOTO_MAX_BYTES) { this.photoError.set('This image is larger than 2 MB. Choose a smaller one.'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result ?? '');
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (w < PHOTO_MIN_PX || h < PHOTO_MIN_PX) {
+          this.photoError.set(`This image is only ${w} × ${h} px. Use at least ${PHOTO_MIN_PX} × ${PHOTO_MIN_PX} px.`);
+          return;
+        }
+        this.photoError.set('');
+        this.photo.set(url);
+        this.photoName.set(file.name);
+        this.photoSize.set(file.size);
+        this.photoDims.set({ w, h });
+        if (this.status() !== 'editing') this.status.set('editing');
+      };
+      img.onerror = () => this.photoError.set('This file could not be read as an image.');
+      img.src = url;
+    };
+    reader.onerror = () => this.photoError.set('This file could not be read. Try another one.');
+    reader.readAsDataURL(file);
   }
 
   // ---------------------------------------------------------------- editing
@@ -327,7 +426,8 @@ export class CreateUser implements OnInit {
 
   private submit(sendInvitation: boolean): void {
     const f = this.form();
-    const request: CreateUserRequest = {
+    // profileImage: the optional photo as a data URL - rename / remove to match your user API
+    const request: CreateUserRequest & { profileImage?: string | null } = {
       title: f.title.trim() || null,
       firstName: f.firstName.trim(),
       lastName: f.lastName.trim(),
@@ -353,6 +453,7 @@ export class CreateUser implements OnInit {
       credentialSetupMethod: 'invitationLink',
       sendInvitation,
       invitationMessage: f.message.trim() || null,
+      profileImage: this.photo(),
     };
     this.submitting.set(true);
     this.serverError.set('');
@@ -392,6 +493,7 @@ export class CreateUser implements OnInit {
 
   startAnother(): void {
     this.form.set({ ...EMPTY, ...this.defaults() });
+    this.removePhoto();
     this.touched.set(new Set());
     this.tried.set(false);
     this.displayEdited = false;

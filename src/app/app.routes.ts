@@ -67,6 +67,7 @@ import { OrgDepartments } from './pages/Organization/Department/departments';
 import { OrgSettings } from './pages/Organization/Settings/settings';
 import { ActivateAccount } from './pages/Auth/Account_Activate/activate-account';
 import { Dashboard } from './pages/Dashboard/dashboard';
+import { Attendance } from './pages/Attendance/attendance';
 import { WhatsappMessages } from './pages/Communications/Whatsapp-Messages/whatsapp-messages';
 import { NumberVerification } from './pages/Communications/Number-Verification/number-verification';
 
@@ -102,7 +103,10 @@ const REAL_SCREENS: Record<string, unknown> = {
   'app/administration/audit': AuditTrail,
   'app/administration/access/my-security': MySecurity,
   'app/administration/access/my-security/mfa-enrol': MySecurity,
-  'app/administration/users/bulk-actions': BulkUsers
+  'app/administration/users/bulk-actions': BulkUsers,
+
+  // Attendance
+  'app/attendance': Attendance,
 
 };
 
@@ -117,7 +121,9 @@ const menuRoutes: Routes = flatten(MENU_DATA)
 
 const APP_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'app/dashboard' },
-{path:'app/dashboard',component:Dashboard},
+  { path: 'app/dashboard', component: Dashboard },
+  // Attendance (static route)
+  { path: 'app/attendance', component: Attendance, title: 'Attendance', data: { name: 'Attendance', route: '/app/attendance' } },
   // Campaign Routes
   {
     path: 'app/fundraising/campaigns/campaign-detail/:code',

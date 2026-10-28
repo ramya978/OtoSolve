@@ -28,7 +28,7 @@ type FieldKey =
 type IconName =
   | 'plus' | 'back' | 'check' | 'close' | 'chevron' | 'calendar' | 'help' | 'info' | 'arrow' | 'eye' | 'pen'
   | 'search' | 'fund' | 'donor' | 'receipt' | 'user' | 'left' | 'right' | 'alert' | 'clock'
-  | 'alignLeft' | 'alignCenter' | 'alignRight';
+  | 'alignLeft' | 'alignCenter' | 'alignRight' | 'image' | 'upload' | 'trash';
 
 export interface CampaignForm {
   name: string;
@@ -52,6 +52,11 @@ export interface CampaignForm {
   remPeriod: Period;
   publicDescription: string;
   terms: string;
+  /** Campaign logo as a data URL (null = no logo). Optional. */
+  logo: string | null;
+  /** Original file name and size of the logo, for the field's caption. */
+  logoName: string;
+  logoSize: number;
 }
 
 /** What the page emits on launch. */
@@ -127,8 +132,13 @@ const ZIP = /^[A-Za-z0-9 -]{3,10}$/;
 const EMPTY_FORM: CampaignForm = {
   name: '', code: '', startDate: null, endDate: null, amount: '', target: '', fund: '', ownerId: null,
   purpose: '', country: null, state: null, city: null, zip: '', activation: 'manual', daysBefore: '',
-  remHour: null, remMinute: null, remPeriod: 'AM', publicDescription: '', terms: ''
+  remHour: null, remMinute: null, remPeriod: 'AM', publicDescription: '', terms: '',
+  logo: null, logoName: '', logoSize: 0
 };
+
+/** Campaign logo rules. */
+const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const LOGO_MAX_BYTES = 2 * 1024 * 1024;
 
 const ICONS: Record<IconName, string> = {
   plus: 'M12 5v14M5 12h14',
@@ -153,7 +163,10 @@ const ICONS: Record<IconName, string> = {
   clock: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2',
   alignLeft: 'M4 6h16M4 10h10M4 14h16M4 18h10',
   alignCenter: 'M4 6h16M7 10h10M4 14h16M7 18h10',
-  alignRight: 'M4 6h16M10 10h10M4 14h16M10 18h10'
+  alignRight: 'M4 6h16M10 10h10M4 14h16M10 18h10',
+  image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
+  upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
+  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6'
 };
 
 /** Local yyyy-mm-dd (no timezone shift). */
@@ -263,6 +276,16 @@ export class NewCampaign {
   });
   protected readonly blockLabel = signal<Record<EditorKey, string>>({ purpose: 'Normal', publicDescription: 'Normal', terms: 'Normal' });
   protected readonly toast = signal<{ text: string; tone: 'ok' | 'warn' } | null>(null);
+  /** Campaign logo field: drag-over highlight, last problem, and the image's pixel size. */
+  protected readonly logoDrag = signal(false);
+  protected readonly logoError = signal<string | null>(null);
+  protected readonly logoDims = signal<{ w: number; h: number } | null>(null);
+  /** "48 KB · 512 × 512 px" under the logo name. */
+  protected readonly logoMeta = computed(() => {
+    const d = this.logoDims();
+    const parts = [this.fileSize(this.form().logoSize), d ? `${d.w} × ${d.h} px` : ''].filter(Boolean);
+    return parts.length ? parts.join(' · ') : 'Saved with this campaign';
+  });
   private toastTimer: ReturnType<typeof setTimeout> | undefined;
 
   private readonly editorEls = viewChildren<ElementRef<HTMLElement>>('ed');
@@ -438,8 +461,12 @@ export class NewCampaign {
           country: d.countryName, state: d.stateName, city: d.cityName, zip: d.zipCode ?? '',
           activation: d.lifecycleActivation, daysBefore: String(d.daysBeforeStart ?? ''),
           remHour: String(((h24 + 11) % 12) + 1).padStart(2, '0'), remMinute: hm ? hm[2] : '00', remPeriod: h24 < 12 ? 'AM' : 'PM',
-          publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? ''
+          publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '',
+          // the saved logo (if the API returns one) is shown in the field; a new upload replaces it
+          logo: (d as CampaignDetail & { logoUrl?: string | null }).logoUrl ?? null,
+          logoName: (d as CampaignDetail & { logoUrl?: string | null }).logoUrl ? 'Current logo' : '', logoSize: 0
         });
+        this.logoDims.set(null);
         this.editorText.set({ purpose: d.purpose, publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '' });
         setTimeout(() => {
           const els = this.editorEls();
@@ -573,6 +600,76 @@ export class NewCampaign {
 
   protected setPeriod(value: Period): void {
     this.patch({ remPeriod: value });
+  }
+
+  // =================================================================================================
+  // campaign logo (optional): click to browse or drop a file; PNG / JPG / WebP / SVG up to 2 MB
+  // =================================================================================================
+  protected onLogoPick(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // the same file can be picked again after Remove
+    if (file) this.readLogo(file);
+  }
+
+  protected onLogoDragOver(event: DragEvent): void {
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    this.logoDrag.set(true);
+  }
+
+  protected onLogoDragLeave(event: DragEvent): void {
+    const to = event.relatedTarget as Node | null;
+    if (!to || !(event.currentTarget as HTMLElement).contains(to)) this.logoDrag.set(false);
+  }
+
+  protected onLogoDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.logoDrag.set(false);
+    const file = event.dataTransfer?.files?.[0];
+    if (file) this.readLogo(file);
+  }
+
+  protected removeLogo(): void {
+    this.patch({ logo: null, logoName: '', logoSize: 0 });
+    this.logoDims.set(null);
+    this.logoError.set(null);
+  }
+
+  /** "48 KB", "1.2 MB" */
+  protected fileSize(bytes: number): string {
+    if (!bytes) return '';
+    return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  }
+
+  private readLogo(file: File): void {
+    if (!LOGO_TYPES.includes(file.type)) {
+      this.logoError.set('Use a PNG, JPG, WebP or SVG image.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      this.logoError.set(`This image is ${this.fileSize(file.size)}. Keep the logo under 2 MB.`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const url = String(reader.result ?? '');
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if (file.type !== 'image/svg+xml' && (w < 64 || h < 64)) {
+          this.logoError.set(`This image is only ${w} × ${h} px. Use at least 64 × 64 px (512 × 512 looks best).`);
+          return;
+        }
+        this.logoError.set(null);
+        this.logoDims.set(w && h ? { w, h } : null);
+        this.patch({ logo: url, logoName: file.name, logoSize: file.size });
+      };
+      img.onerror = () => this.logoError.set('This file could not be read as an image.');
+      img.src = url;
+    };
+    reader.onerror = () => this.logoError.set('This file could not be read. Try another one.');
+    reader.readAsDataURL(file);
   }
 
   // =================================================================================================
@@ -859,6 +956,8 @@ export class NewCampaign {
       zipCode: f.zip.trim(), lifecycleActivation: f.activation, daysBeforeStart: Number(f.daysBefore),
       reminderTime: `${String(h24).padStart(2, '0')}:${f.remMinute ?? '00'}`,
       publicDescription: t.publicDescription.trim(), termsAndNotice: t.terms.trim(),
+      // campaign logo as a data URL (null = none). Rename / remove to match your campaign API.
+      logo: f.logo,
     };
     this.saving.set(true);
     const done = (code: string): void => {
@@ -898,6 +997,8 @@ export class NewCampaign {
     this.submitted.set(false);
     this.previewing.set(new Set());
     this.blockLabel.set({ purpose: 'Normal', publicDescription: 'Normal', terms: 'Normal' });
+    this.logoDims.set(null);
+    this.logoError.set(null);
     this.closeMenu();
     this.goTo('basic');
     // FULL-PAGE FLOW: back to the register list page.

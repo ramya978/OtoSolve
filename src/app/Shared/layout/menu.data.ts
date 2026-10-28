@@ -42,6 +42,21 @@ export const MENU_DATA: MenuItem[] = [
     "isGroupOnly": false,
     "hasChildren": false
   },
+  {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "code": "ATTENDANCE",
+    "name": "Attendance",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/attendance",
+    "icon": "calendar",
+    "displayOrder": 20,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
+  },
   // {
   //   "id": "15594ef1-5266-59f8-bad2-69d7ea5cfbec",
   //   "code": "WORKSPACE",

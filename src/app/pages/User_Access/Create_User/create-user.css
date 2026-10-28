@@ -137,6 +137,110 @@
 .cu-warn { color: var(--i-warning); }
 .i-help b { color: var(--i-ink); }
 
+/* profile photo: round preview (initials until a photo is chosen) + drop area + actions */
+.cu-opt { margin-left: 6px; color: var(--i-muted); font-size: calc(11px * var(--cu-fs)); font-weight: 400; }
+
+.cu-photo {
+  display: flex;
+  align-items: center;
+  gap: calc(16px * var(--cu-k));
+  padding: calc(14px * var(--cu-k)) calc(16px * var(--cu-k));
+  border: 1px dashed color-mix(in srgb, var(--i-muted) 35%, var(--i-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--i-primary) 4%, #fff);
+  transition: border-color .15s, background-color .15s, box-shadow .15s;
+}
+
+.cu-photo:hover { border-color: color-mix(in srgb, var(--i-muted) 60%, var(--i-line)); }
+.cu-photo.is-drag { border-color: var(--i-primary); background: var(--i-tint); box-shadow: 0 0 0 3px color-mix(in srgb, var(--i-primary) 18%, transparent); }
+.cu-photo.has-photo { border-style: solid; border-color: var(--i-line); background: var(--i-surface, #fff); }
+.cu-photo.is-invalid { border-color: var(--i-danger, #c0392b); }
+
+.cu-photo-input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.cu-photo-avatar {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(72px * var(--cu-k));
+  height: calc(72px * var(--cu-k));
+  min-width: calc(72px * var(--cu-k));
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: visible;
+  isolation: isolate;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--i-tint);
+  box-shadow: 0 0 0 1px var(--i-line), 0 4px 12px -6px rgb(16 19 28 / 25%);
+  color: var(--i-primary-ink, var(--i-primary));
+  transition: box-shadow .15s;
+}
+
+.cu-photo-avatar:hover { box-shadow: 0 0 0 2px var(--i-primary), 0 4px 12px -6px rgb(16 19 28 / 25%); }
+/* the photo is always cropped to the circle, whatever its shape (tall phone photos included).
+   !important because global img rules (height: auto / max-width) would otherwise stretch it. */
+.cu-photo-avatar img {
+  position: absolute !important;
+  inset: 0 !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+}
+.cu-photo-avatar > svg { width: calc(28px * var(--cu-k)); height: calc(28px * var(--cu-k)); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: .7; }
+.cu-photo-initials { font-size: calc(22px * var(--cu-fs)); font-weight: 600; letter-spacing: .5px; }
+
+.cu-photo-cam {
+  position: absolute;
+  z-index: 1;
+  right: -2px;
+  bottom: -2px;
+  display: grid;
+  place-items: center;
+  width: calc(24px * var(--cu-k));
+  height: calc(24px * var(--cu-k));
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--i-primary);
+  color: #fff;
+}
+
+.cu-photo-cam svg { width: calc(12px * var(--cu-k)); height: calc(12px * var(--cu-k)); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.cu-photo-copy { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
+.cu-photo-copy strong { color: var(--i-heading); font-size: calc(13px * var(--cu-fs)); font-weight: 600; }
+.cu-photo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cu-photo-copy small { color: var(--i-muted); font-size: calc(11.5px * var(--cu-fs)); font-variant-numeric: tabular-nums; }
+.cu-photo-acts { display: flex; flex-wrap: wrap; gap: calc(8px * var(--cu-k)); margin-top: calc(8px * var(--cu-k)); }
+
+.cu-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(30px * var(--cu-k));
+  padding: 0 calc(11px * var(--cu-k));
+  border: 1px solid var(--i-line);
+  border-radius: var(--i-btn-radius, 7px);
+  background: var(--i-surface, #fff);
+  color: var(--i-heading);
+  font-size: calc(12px * var(--cu-fs));
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+
+.cu-photo-btn svg { width: calc(14px * var(--cu-k)); height: calc(14px * var(--cu-k)); fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.cu-photo-btn:hover { border-color: var(--i-primary); background: var(--i-hover); color: var(--i-primary-ink, var(--i-primary)); }
+.cu-photo-btn.is-danger { color: var(--i-danger, #c0392b); }
+.cu-photo-btn.is-danger:hover { border-color: var(--i-danger, #c0392b); background: color-mix(in srgb, var(--i-danger, #c0392b) 8%, #fff); color: var(--i-danger, #c0392b); }
+
 /* review */
 .cu-review { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(14px * var(--cu-k)); }
 .cu-rcard { min-width: 0; border: 1px solid var(--i-line); border-radius: 10px; background: var(--i-surface); }
@@ -245,6 +349,9 @@
   .cu-progress { display: none; }
   .cu-actions { position: static; flex-wrap: wrap; }
   .cu-actions .i-btn { flex: 1; }
+  .cu-photo { align-items: flex-start; gap: calc(12px * var(--cu-k)); padding: calc(12px * var(--cu-k)); }
+  .cu-photo-avatar { width: calc(60px * var(--cu-k)); height: calc(60px * var(--cu-k)); }
+  .cu-photo-initials { font-size: calc(18px * var(--cu-fs)); }
 }
 
 /* ---------- section index on narrow pages: one compact step bar ----------
