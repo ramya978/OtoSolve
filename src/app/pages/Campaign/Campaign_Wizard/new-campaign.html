@@ -1,4 +1,6 @@
 <div class="cp-wrap">
+  <app-loader [fullPage]="true" [message]="'Loading campaign…'" *ngIf="store.loading()"></app-loader>
+
 <app-page-header breadcrumb="Fundraising / Campaigns" heading="Campaigns" description="A campaign groups donations under one fund or programme, with its own target, dates and public wording.">
   <ng-container actions>
     <button type="button" class="cp-btn btn-secondary" (click)="goBack()">

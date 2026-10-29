@@ -1,7 +1,9 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MasterListBase } from '../../../Shared/Masters/master-list.base';
 import { MsSelect } from '../../../Shared/Masters/ms-select';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { COUNTRY } from './countries.config';
 
 /**
@@ -12,7 +14,7 @@ import { COUNTRY } from './countries.config';
  */
 @Component({
   selector: 'app-countries',
-  imports: [MsSelect, PageHeader],
+  imports: [CommonModule, MsSelect, PageHeader, Loader],
   templateUrl: './countries.html',
   styleUrls: ['../../../Shared/Masters/masters-shared.css', '../../../Shared/Masters/master-list.css', './countries.css', '../../../Shared/layout/page-header/page-header.css'],
   host: { '[style.--ml-metric-count]': 'metrics().length' }

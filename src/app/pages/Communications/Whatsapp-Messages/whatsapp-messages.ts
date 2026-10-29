@@ -1,9 +1,12 @@
 import { Component, DestroyRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { WatiMessageDto, WhatsAppApiService, WhatsAppOverviewDto, WatiTemplateDto, WatiRecipientDto, WatiRecipientFacetsDto, SelectedRecipientDto, SendReviewDto, WatiRecipientFilterDto, SendBroadcastDto, ParameterBindingDto } from '../../../Service/whatsapp-api.service';
 import { rowsOf, totalOf, when, VERIFY_PATH, csv, saveBlob } from '../../../Shared/services/wa-utils';
+import { FormsModule } from '@angular/forms';
 
 
 type Tab = 'send' | 'log';
@@ -53,7 +56,7 @@ const statusOf = (m: WatiMessageDto): MsgStatus => {
 /** WhatsApp Messages: send an approved template to checked numbers, then follow delivery, reads and replies. */
 @Component({
   selector: 'app-whatsapp-messages',
-  imports: [PageHeader],
+  imports: [CommonModule, PageHeader, Loader, FormsModule],
   templateUrl: './whatsapp-messages.html',
   styleUrls: ['../wa-shared.css', './whatsapp-messages.css', '../../../Shared/layout/page-header/page-header.css']
 })

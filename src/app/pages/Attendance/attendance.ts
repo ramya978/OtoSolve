@@ -1,5 +1,10 @@
-import { Component, computed, HostListener, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { PageHeader } from '../../Shared/layout/page-header/page-header';
+import { firstValueFrom } from 'rxjs';
+import { UserDirectoryApiService } from '../../Service/user-directory-api.service';
+import { IamAdminApiService } from '../../Service/iam-admin-api.service';
+import { LoaderService } from '../../Shared/services/loader.service';
+import { UserListItemResponse, DepartmentResponse } from '../../Shared/models/iam-contract.model';
 
 /* =====================================================================================================
    ATTENDANCE - daily register · monthly report · PDF preview / download
@@ -13,7 +18,7 @@ import { PageHeader } from '../../Shared/layout/page-header/page-header';
 
 /* ---------------------------------------------------------------- types */
 export type Status = 'P' | 'HD' | 'L' | 'A' | 'U' | 'WO' | 'H' | 'F';
-export type View = 'daily' | 'report' | 'pdf';
+export type View = 'daily' | 'timeline' | 'report' | 'pdf';
 export type Tone = 'blue' | 'violet' | 'teal' | 'amber' | 'rose' | 'neutral';
 
 export interface Employee { id: string; name: string; department: string; role: string; initials: string; tone: Tone; }
@@ -51,9 +56,46 @@ export const EMPLOYEES: Employee[] = ([
 
 export const DEPARTMENTS = ['Engineering', 'Operations', 'Administration'];
 
+// Read-only directory API. Attendance changes remain browser-local until a write API is supplied.
+type ApiObject = Record<string, any>;
+function apiList(payload: any, names: string[]): ApiObject[] {
+  if (Array.isArray(payload)) return payload;
+  for (const obj of [payload, payload?.data, payload?.result, payload?.response, payload?.data?.data]) {
+    if (Array.isArray(obj)) return obj;
+    if (obj && typeof obj === 'object') for (const name of names) if (Array.isArray(obj[name])) return obj[name];
+  }
+  return [];
+}
+function depDisplay(d: any): string {
+  if (typeof d === 'string') return d;
+  return String(d?.name ?? d?.departmentName ?? d?.department_name ?? d?.title ?? '').trim();
+}
+function mapDepartment(u: ApiObject, byId: Map<string,string>): string {
+  const dep = u['department'] ?? u['departmentDetails'] ?? u['department_details'] ?? u['department_name'] ?? u['departmentName'];
+  if (dep && typeof dep === 'object') {
+    const name = depDisplay(dep);
+    if (name) return name;
+  }
+  const id = u['departmentId'] ?? u['department_id'] ?? u['department']?.['id'] ?? u['department']?.['uuid'] ?? dep;
+  return byId.get(String(id ?? '')) ?? (typeof dep === 'string' && !/^[0-9a-f-]{20,}$/i.test(dep) ? dep : 'Unassigned');
+}
+function mapUser(u: ApiObject, byId: Map<string,string>, index: number): Employee | null {
+  const rawId = u['id'] ?? u['userId'] ?? u['user_id'] ?? u['uuid'] ?? u['employeeId'] ?? u['employee_id'];
+  if (rawId === undefined || rawId === null || rawId === '') return null;
+  const first = String(u['firstName'] ?? u['first_name'] ?? u['firstname'] ?? '').trim();
+  const last = String(u['lastName'] ?? u['last_name'] ?? u['lastname'] ?? '').trim();
+  const name = String(u['name'] ?? u['fullName'] ?? u['full_name'] ?? u['displayName'] ?? [first,last].filter(Boolean).join(' ') ?? '').trim() || String(u['email'] ?? rawId);
+  const initials = name.split(/\s+/).slice(0,2).map(x=>x[0]?.toUpperCase() ?? '').join('').slice(0,2);
+  return { id:String(rawId), name, department:mapDepartment(u,byId), role:String(u['designation']?.['name'] ?? u['designation'] ?? u['role']?.['name'] ?? u['jobTitle'] ?? u['job_title'] ?? u['position'] ?? 'Employee'), initials, tone: (['blue','violet','teal','amber','rose'] as Tone[])[index%5] };
+}
+
+
 export const PERIODS: Record<string, Period> = {
+  '2026-06': { label: 'June 2026', cutoff: '2026-06-30', holiday: '', holidayName: '' },
+  '2026-07': { label: 'July 2026', cutoff: '2026-07-31', holiday: '', holidayName: '' },
+  '2026-08': { label: 'August 2026', cutoff: '2026-08-31', holiday: '', holidayName: '' },
   '2026-09': { label: 'September 2026', cutoff: '2026-09-30', holiday: '2026-09-17', holidayName: 'Sample company holiday' },
-  '2026-10': { label: 'October 2026', cutoff: '2026-10-09', holiday: '2026-10-02', holidayName: 'Sample company holiday' },
+  '2026-10': { label: 'October 2026', cutoff: '2026-10-29', holiday: '2026-10-02', holidayName: 'Sample company holiday' },
 };
 
 export const LABELS: Record<Status, string> = {
@@ -62,8 +104,8 @@ export const LABELS: Record<Status, string> = {
 
 export const TONES: Record<Status, Tone> = { P: 'teal', HD: 'amber', L: 'violet', A: 'rose', U: 'neutral', WO: 'neutral', H: 'blue', F: 'neutral' };
 
-const MIN_DATE = '2026-09-01';
-const MAX_DATE = '2026-10-09';
+const MIN_DATE = '2026-06-01';
+const MAX_DATE = '2026-10-29';
 const STORAGE_KEY = 'precision-attendance-v1';
 /** today's date (local) as YYYY-MM-DD */
 export const todayIso = () => { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); };
@@ -130,6 +172,38 @@ export function createSeed(): Record<string, AttRecord> {
   ];
   EMPLOYEES.forEach((e, i) => data[key('2026-09-30', e.id)] = sep[i]);
   return data;
+}
+
+/** Demo-only attendance for employees returned by Users API. Never passed off as backend attendance. */
+export function employeeDemoRecord(date: string, employeeId: string): AttRecord {
+  const kind = dayKind(date);
+  if (kind !== 'W') return record(kind);
+  let h = 2166136261;
+  for (const c of `${date}|${employeeId}`) {
+    h ^= c.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  const n = h >>> 0;
+  const choice = n % 100;
+  if (choice < 6) return record('A', { note: 'Demo: absence recorded' });
+  if (choice < 13) return record('L', { note: 'Demo: approved leave' });
+  if (choice < 21) {
+    const afternoon = (n % 2) === 0;
+    return record('HD', {
+      session: afternoon ? 'PM' : 'AM',
+      in: afternoon ? '14:00' : '09:00', out: afternoon ? '18:00' : '13:00',
+      break: 0, note: 'Demo: half-day attendance',
+    });
+  }
+  if (choice < 25) return record('U', { note: 'Demo: awaiting confirmation' });
+  const offset = ((n >>> 8) % 39) - 8;
+  const start = 540 + offset;
+  const end = start + 535 + ((n >>> 17) % 37);
+  return record('P', {
+    in: clock(start), out: clock(end), break: 45 + ((n >>> 21) % 4) * 5,
+    mode: n % 7 === 0 ? 'Remote' : 'Office',
+    note: offset > 10 ? 'Demo: late arrival' : '',
+  });
 }
 
 export function netMinutes(r: AttRecord): number | null {
@@ -238,8 +312,15 @@ interface Metric { label: string; value: string; unit?: string; context: string;
   styleUrls: ['./attendance.css'],
 })
 export class Attendance {
+  private readonly userApi = inject(UserDirectoryApiService);
+  private readonly deptApi = inject(IamAdminApiService);
+
   /* constants for the template */
-  readonly departments = DEPARTMENTS;
+  get departments(): string[] { return this.departmentList(); }
+  readonly departmentList = signal<string[]>([]);
+  readonly directoryEmployees = signal<Employee[]>([]);
+  readonly directoryLoading = signal(true);
+  readonly directoryError = signal('');
   readonly periods = PERIODS;
   readonly monthKeys = Object.keys(PERIODS);
   readonly labels = LABELS;
@@ -253,7 +334,7 @@ export class Attendance {
   readonly rate = rateText;
 
   /* records */
-  private readonly seed = createSeed();
+  private readonly seed: Record<string, AttRecord> = {}; // Live directory: do not display fictional seed attendance
   readonly data = signal<Record<string, AttRecord>>(structuredClone(this.seed));
   private saved: Record<string, AttRecord> = structuredClone(this.seed);
   readonly stored = signal(false);
@@ -262,12 +343,12 @@ export class Attendance {
   readonly view = signal<View>('daily');
   /** opens on today when today is inside the register range, else on the latest sample day */
   readonly today = todayIso();
-  readonly date = signal(this.today >= MIN_DATE && this.today <= MAX_DATE ? this.today : '2026-09-30');
-  readonly month = signal('2026-09');
+  readonly date = signal(this.today >= MIN_DATE && this.today <= MAX_DATE ? this.today : MAX_DATE);
+  readonly month = signal('2026-10');
   readonly department = signal('all');
   readonly search = signal('');
   readonly statusFilter = signal<'all' | 'U' | 'issues'>('all');
-  readonly selected = signal<string | null>('EMP-1003');
+  readonly selected = signal<string | null>(null);
   readonly checked = signal<Set<string>>(new Set());
   readonly dirty = signal<Set<string>>(new Set());
   readonly layout = signal<'grid' | 'summary'>('grid');
@@ -276,6 +357,79 @@ export class Attendance {
   readonly busyPdf = signal(false);
   readonly toast = signal<string | null>(null);
   readonly editorOpen = signal(false);
+  readonly addOpen = signal(false);
+  readonly addScope = signal<'department' | 'individual'>('department');
+  readonly addDepartment = signal('');
+  readonly addEmployee = signal(''); // legacy single-selection value (not used by bulk picker)
+  readonly addSelectedEmployees = signal<string[]>([]);
+  readonly addEmployeeSearch = signal('');
+  readonly addStatus = signal<Status>('P');
+  readonly addIn = signal('09:00');
+  readonly addOut = signal('18:00');
+  readonly addMode = signal<'Office' | 'Remote'>('Office');
+  readonly addNote = signal('');
+  readonly addError = signal('');
+  readonly timelineFilter = signal<'all' | 'P' | 'A' | 'L'>('all');
+  readonly timelineSelectedId = signal<string>('');
+  readonly timelineHours = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '00:00 +1', '04:00 +1', '08:00 +1'];
+  readonly timelineSelected = computed(() => this.employees().find(e => e.id === this.timelineSelectedId()) ?? this.employees()[0] ?? null);
+  // Display uses a continuous 32-hour axis (midnight to next-day 08:00).
+  // Shift assignments are demonstration defaults until the shifts API is connected.
+  timelineShift(e: Employee) {
+    const r = this.rec(e);
+    const start = minutes(r.in);
+    if (start !== null && start < 510) return { label: 'Early shift', time: '06:00 – 14:00', tone: 'early', start: 360, end: 840 };
+    if (start !== null && start >= 1200) return { label: 'Night shift', time: '22:00 – 06:00 +1', tone: 'night', start: 1320, end: 1800 };
+    if (start !== null && start >= 780) return { label: 'Evening shift', time: '14:00 – 22:00', tone: 'evening', start: 840, end: 1320 };
+    return { label: 'General shift', time: '09:00 – 18:00', tone: 'general', start: 540, end: 1080 };
+  }
+  timelinePlanLeft(e: Employee) { return this.timelineShift(e).start / 1920 * 100; }
+  timelinePlanWidth(e: Employee) { const sh = this.timelineShift(e); return (sh.end - sh.start) / 1920 * 100; }
+  timelineActualLeft(r: AttRecord) { return Math.max(0, Math.min(100, (minutes(r.in) ?? 0) / 1920 * 100)); }
+  timelineActualWidth(r: AttRecord) {
+    const a = minutes(r.in), b = minutes(r.out);
+    if (a === null || b === null) return 0;
+    const end = b <= a ? b + 1440 : b;
+    return Math.max(0, Math.min(1920 - a, end - a) / 1920 * 100);
+  }
+  timelineBreakLeft(r: AttRecord) {
+    const a = minutes(r.in), b = minutes(r.out);
+    if (a === null || b === null || !r.break) return 0;
+    const end = b <= a ? b + 1440 : b;
+    return (a + (end - a) / 2 - r.break / 2) / 1920 * 100;
+  }
+  timelineBreakWidth(r: AttRecord) { return Math.max(0, r.break) / 1920 * 100; }
+  timelinePlanBreakLeft(e: Employee) {
+    const s = this.timelineShift(e);
+    return (s.start + (s.end - s.start) / 2 - 15) / 1920 * 100;
+  }
+  editTimelineEmployee(e: Employee) { this.setView('daily'); this.openEditor(e); }
+
+  readonly addCandidates = computed(() => this.directoryEmployees().filter(e => this.addDepartment() === 'all' || e.department === this.addDepartment()));
+  readonly addVisibleCandidates = computed(() => {
+    const q = this.addEmployeeSearch().trim().toLowerCase();
+    return this.addCandidates().filter(e => !q || `${e.name} ${e.id} ${e.department}`.toLowerCase().includes(q));
+  });
+  readonly addSelectedCount = computed(() => this.addScope() === 'department' ? this.addCandidates().length : this.addSelectedEmployees().length);
+  readonly addAllVisibleSelected = computed(() => this.addVisibleCandidates().length > 0 && this.addVisibleCandidates().every(e => this.addSelectedEmployees().includes(e.id)));
+  toggleAddEmployee(id: string, checked: boolean) {
+    this.addSelectedEmployees.update(ids => checked ? [...new Set([...ids, id])] : ids.filter(x => x !== id));
+    this.addError.set('');
+  }
+  selectVisibleAddEmployees() {
+    const ids = this.addVisibleCandidates().map(e => e.id);
+    this.addSelectedEmployees.update(current => [...new Set([...current, ...ids])]);
+    this.addError.set('');
+  }
+  clearAddEmployees() { this.addSelectedEmployees.set([]); this.addError.set(''); }
+  toggleAllVisibleAddEmployees(checked: boolean) {
+    if (checked) this.selectVisibleAddEmployees();
+    else {
+      const visible = new Set(this.addVisibleCandidates().map(e => e.id));
+      this.addSelectedEmployees.update(current => current.filter(id => !visible.has(id)));
+    }
+  }
+  readonly timelineEmployees = computed(() => this.employees().filter(e => this.timelineFilter() === 'all' || this.rec(e).status === this.timelineFilter()));
   private toastTimer?: ReturnType<typeof setTimeout>;
 
   /* editor fields */
@@ -291,6 +445,51 @@ export class Attendance {
   constructor() {
     this.loadStored();
     this.refreshEditor();
+    void this.loadDirectory();
+  }
+
+  /** Fetch users and departments; never overwrite browser attendance with fabricated API attendance. */
+  async loadDirectory() {
+    this.directoryLoading.set(true); this.directoryError.set('');
+    
+    try {
+      // Users API (same as Users page) + Departments API (same as Departments page)
+      const [userResponse, deptResponse] = await Promise.all([
+        firstValueFrom(this.userApi.searchUsers({ pageIndex: 0, pageSize: 1000 })),
+        firstValueFrom(this.deptApi.getDepartments()),
+      ]);
+
+      const userRows = apiList(userResponse, ['items', 'users', 'employees', 'results', 'content', 'records']);
+      const byId = new Map<string,string>();
+      for (const dep of deptResponse) {
+        const name = depDisplay(dep as ApiObject);
+        const id = (dep as ApiObject)?.['id'] ?? (dep as ApiObject)?.['departmentId'] ?? (dep as ApiObject)?.['department_id'] ?? (dep as ApiObject)?.['uuid'];
+        if (name && id != null) byId.set(String(id), name);
+      }
+      const users = userRows.map((u, i) => mapUser(u as ApiObject, byId, i)).filter((u): u is Employee => u !== null);
+      if (!Array.isArray(userRows) || (userRows.length && !users.length)) throw new Error('Users response format could not be mapped.');
+      const departments = [...new Set([...deptResponse.map(depDisplay), ...users.map(u => u.department)].filter(Boolean))];
+      // Keep records already stored in this browser; fresh user IDs start unmarked.
+      const current={...this.data()};
+      for (const month of Object.keys(PERIODS)) for (const date of datesOf(month)) for (const user of users) {
+        const k=key(date,user.id);
+        if (!current[k]) current[k] = employeeDemoRecord(date, user.id);
+      }
+      this.data.set(current);
+      this.saved=structuredClone(current);
+      this.directoryEmployees.set(users);
+      this.departmentList.set(departments);
+      if (this.department()!=='all' && !departments.includes(this.department())) this.department.set('all');
+      if (!departments.includes(this.addDepartment())) this.addDepartment.set(departments[0]??'');
+      if (!users.some(u=>u.id===this.addEmployee())) this.addEmployee.set(users[0]?.id??'');
+      if (!users.some(u=>u.id===this.selected())) this.selected.set(users[0]?.id??null);
+      if (!users.some(u=>u.id===this.timelineSelectedId())) this.timelineSelectedId.set(users[0]?.id??'');
+      this.refreshEditor();
+    } catch(err) {
+      this.directoryError.set((err instanceof Error ? err.message : String(err)) + '. Retry the Users / Departments API.');
+      this.directoryEmployees.set([]);
+      this.departmentList.set([]);
+    } finally { this.directoryLoading.set(false); }
   }
 
   /** the editor shows the selected employee's record for the chosen date */
@@ -303,12 +502,12 @@ export class Attendance {
   /* ------------------------------------------------ derived */
   readonly employees = computed(() => {
     const dep = this.department(), q = this.search().toLowerCase();
-    return EMPLOYEES.filter(e => (dep === 'all' || e.department === dep) && (!q || (e.name + ' ' + e.id).toLowerCase().includes(q)));
+    return this.directoryEmployees().filter(e => (dep === 'all' || e.department === dep) && (!q || (e.name + ' ' + e.id).toLowerCase().includes(q)));
   });
 
   readonly editable = computed(() => dayKind(this.date()) === 'W');
 
-  rec(e: Employee): AttRecord { return this.data()[key(this.date(), e.id)]; }
+  rec(e: Employee): AttRecord { return this.data()[key(this.date(), e.id)] ?? record((dayKind(this.date()) === 'W' ? 'U' : dayKind(this.date()) === 'F' ? 'F' : dayKind(this.date())) as Status); }
   isIssue(r: AttRecord) { return r.status === 'U' || lateMinutes(r) > 0 || netMinutes(r) === null; }
 
   readonly visible = computed(() => {
@@ -397,7 +596,7 @@ export class Attendance {
 
   readonly departmentRows = computed(() => {
     const r = this.report();
-    return DEPARTMENTS.map((dep, i) => {
+    return this.departmentList().map((dep, i) => {
       const es = r.employees.filter(e => e.department === dep);
       if (!es.length) return null;
       const d = buildReport(this.data(), es, this.month()).total;
@@ -485,7 +684,7 @@ export class Attendance {
 
   /** calendar tile beside the date: month on the strip, day (or month) large */
   readonly tile = computed(() => {
-    if (this.view() === 'daily') {
+    if (this.view() === 'daily' || this.view() === 'timeline') {
       const d = dateObj(this.date());
       return { top: d.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' }).toUpperCase(), big: String(d.getUTCDate()) };
     }
@@ -513,7 +712,7 @@ export class Attendance {
       const kind = dayKind(iso);
       const ok = iso >= MIN_DATE && iso <= MAX_DATE;
       let state: 'done' | 'open' | '' = '';
-      if (ok && kind === 'W') state = EMPLOYEES.some(e => data[key(iso, e.id)]?.status === 'U') ? 'open' : 'done';
+      if (ok && kind === 'W') state = this.directoryEmployees().some(e => data[key(iso, e.id)]?.status === 'U') ? 'open' : 'done';
       return {
         iso, day: d.getUTCDate(), out: iso.slice(0, 7) !== m, ok, state,
         off: kind === 'WO', holiday: kind === 'H', sel: iso === sel, today: iso === this.today,
@@ -583,6 +782,43 @@ export class Attendance {
 
   /* ------------------------------------------------ actions */
   setView(v: View) { this.view.set(v); }
+  openAdd() {
+    this.addScope.set('individual');
+    this.addError.set('');
+    this.addDepartment.set(this.department() === 'all' ? 'all' : this.department());
+    this.addSelectedEmployees.set([]);
+    this.addEmployeeSearch.set('');
+    const first = this.directoryEmployees().find(e => e.department === this.addDepartment());
+    if (first) this.addEmployee.set(first.id);
+    this.addOpen.set(true);
+  }
+  onAddDepartment(d: string) {
+    this.addDepartment.set(d);
+    const first = this.directoryEmployees().find(e => e.department === d);
+    if (first) this.addEmployee.set(first.id);
+  }
+  onAddStatus(s: Status) {
+    this.addStatus.set(s);
+    if (s === 'P') { this.addIn.set('09:00'); this.addOut.set('18:00'); }
+    else if (s === 'HD') { this.addIn.set('09:00'); this.addOut.set('13:00'); }
+  }
+  submitAdd(ev: Event) {
+    ev.preventDefault();
+    if (!this.editable()) { this.addError.set('This date is not an editable working day.'); return; }
+    const targets = this.addScope() === 'department' ? this.addCandidates() : this.directoryEmployees().filter(e => this.addSelectedEmployees().includes(e.id));
+    if (!targets.length) { this.addError.set('Select at least one employee or choose a department with employees.'); return; }
+    const status = this.addStatus();
+    const entry = record(status, {
+      mode: this.addMode(), note: this.addNote().slice(0, 180),
+      ...(status === 'P' || status === 'HD' ? { in: this.addIn(), out: this.addOut(), break: status === 'P' ? 60 : 0 } : {}),
+    });
+    const error = validate(entry);
+    if (error) { this.addError.set(error); return; }
+    targets.forEach(e => this.setRecord(key(this.date(), e.id), { ...entry }));
+    this.save();
+    this.addOpen.set(false);
+    this.notify(targets.length + ' employee attendance record(s) saved.');
+  }
 
   /** previous / next day inside the reporting range */
   shiftDay(n: number) {
@@ -708,7 +944,12 @@ export class Attendance {
     if (!this.dirty().size) return;
     try {
       const overrides: Record<string, AttRecord> = {};
-      for (const [k, r] of Object.entries(this.data())) if (JSON.stringify(r) !== JSON.stringify(this.seed[k])) overrides[k] = r;
+      for (const [k, r] of Object.entries(this.data())) {
+        const baseKind = dayKind(k.slice(0, 10));
+        const employeeId = k.slice(11);
+        const initial = employeeDemoRecord(k.slice(0, 10), employeeId);
+        if (JSON.stringify(r) !== JSON.stringify(initial)) overrides[k] = r;
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ schema: 1, records: overrides }));
       this.saved = structuredClone(this.data());
       this.dirty.set(new Set());
@@ -725,7 +966,7 @@ export class Attendance {
       if (!raw || raw.schema !== 1 || !raw.records || typeof raw.records !== 'object') return;
       const data = structuredClone(this.data());
       for (const [k, r] of Object.entries<any>(raw.records)) {
-        if (this.seed[k] && dayKind(k.slice(0, 10)) === 'W' && r && typeof r === 'object' && !validate(r) && typeof r.note === 'string' && r.note.length <= 180) {
+        if (/^\d{4}-\d{2}-\d{2}\|.+$/.test(k) && dayKind(k.slice(0, 10)) === 'W' && r && typeof r === 'object' && !validate(r) && typeof r.note === 'string' && r.note.length <= 180) {
           data[k] = { status: r.status, in: r.in || '', out: r.out || '', break: Number(r.break) || 0, mode: r.mode, session: r.session === 'PM' ? 'PM' : 'AM', note: r.note };
         }
       }

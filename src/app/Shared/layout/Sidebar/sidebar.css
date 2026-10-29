@@ -90,7 +90,7 @@
   background-size: cover;
   background-position: center;
   border-right: 1px solid var(--line, var(--nav-line));
-
+z-index: 11111;
   /* Hide scrollbar */
   scrollbar-width: none;      /* Firefox */
   -ms-overflow-style: none;   /* IE and Edge */

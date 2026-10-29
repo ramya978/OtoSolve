@@ -1,4 +1,6 @@
 <div class="cd-wrap">
+  <app-loader [fullPage]="true" [message]="'Loading campaign…'" *ngIf="store.loading()"></app-loader>
+
 <app-page-header breadcrumb="Campaigns / Campaign detail" heading="Campaign detail" description="Review the campaign's raised amount, revenue trend, donors and tracking assets.">
   <ng-container actions>
   <div class="cd-head-acts">

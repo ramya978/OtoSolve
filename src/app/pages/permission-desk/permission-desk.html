@@ -1,0 +1,88 @@
+<div class="pd">
+  <app-page-header breadcrumb="People / Attendance Operations" heading="Permission desk"
+    description="Review employee time-away requests and keep every decision organised.">
+    <ng-container actions><button type="button" class="pd-button primary" (click)="openPermission()">+ New request</button></ng-container>
+  </app-page-header>
+
+  <section class="pd-overview">
+    <div class="pd-intro"><span class="pd-overline">WORKFORCE / REQUEST MANAGEMENT</span><h2>Time away, clearly managed.</h2><p>One workspace for employee permissions, review notes and approval history.</p></div>
+    <div class="pd-statline">
+      <button type="button" class="pd-metric" (click)="setFilter('all')"><span>All requests</span><strong>{{ counts().all }}</strong><small>In the workspace</small></button>
+      <button type="button" class="pd-metric" (click)="setFilter('pending')"><span><i class="pd-dot pending"></i> Awaiting review</span><strong>{{ counts().pending }}</strong><small>Need a decision</small></button>
+      <button type="button" class="pd-metric" (click)="setFilter('approved')"><span><i class="pd-dot approved"></i> Approved</span><strong>{{ counts().approved }}</strong><small>Authorised</small></button>
+      <button type="button" class="pd-metric" (click)="setFilter('declined')"><span><i class="pd-dot declined"></i> Declined</span><strong>{{ counts().declined }}</strong><small>Not authorised</small></button>
+    </div>
+  </section>
+
+  <div class="pd-layout">
+    <aside class="pd-sidebar">
+      <div class="pd-side-heading">WORKSPACE</div>
+      @for (f of filters; track f.value) {
+        <button type="button" class="pd-side-link" [class.current]="statusFilter === f.value" (click)="setFilter(f.value)">
+          <span>{{ f.label }}</span><b>{{ counts()[f.value] }}</b>
+        </button>
+      }
+      <div class="pd-side-divider"></div>
+      <div class="pd-side-heading">DEPARTMENT</div>
+      <select [(ngModel)]="departmentFilter" (ngModelChange)="resetPage()" aria-label="Department filter"><option value="all">All departments</option>@for (d of departments(); track d) {<option [value]="d">{{ d }}</option>}</select>
+      <div class="pd-side-heading pd-side-gap">PERMISSION TYPE</div>
+      <select [(ngModel)]="typeFilter" (ngModelChange)="resetPage()" aria-label="Permission type filter"><option value="all">All types</option>@for (t of typeOptions; track t) {<option [value]="t">{{ t }}</option>}</select>
+      <div class="pd-side-note"><span class="pd-note-icon">i</span><p>20 fictional employees and 20 simulated requests are loaded locally. These are not real approvals; edits stay in this browser.</p></div>
+    </aside>
+
+    <section class="pd-main" aria-label="Permission requests">
+      <header class="pd-content-head"><div><span class="pd-overline">REQUEST REGISTER</span><h2>{{ statusFilter === 'all' ? 'All permissions' : (statusFilter | titlecase) + ' permissions' }}</h2><p>{{ filtered.length }} matching requests across your organisation</p></div><button type="button" class="pd-button light" (click)="exportCsv()">↓ Export CSV</button></header>
+      <div class="pd-toolbar"><label class="pd-search"><span>⌕</span><input type="search" [(ngModel)]="search" (ngModelChange)="resetPage()" placeholder="Search employee, reason or request ID" aria-label="Search requests"></label><select [(ngModel)]="sortBy" (ngModelChange)="resetPage()" aria-label="Sort requests"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select><button type="button" class="pd-button plain" (click)="clearFilters()">Clear filters</button></div>
+      <div class="pd-table-scroll"><table class="pd-table"><thead><tr><th>EMPLOYEE</th><th>REQUEST</th><th>DATE</th><th>TIME AWAY</th><th>STATUS</th><th></th></tr></thead><tbody>
+        @for (p of visibleRequests; track p.id) {
+          <tr [class.selected]="selectedId() === p.id" (click)="select(p)">
+            <td><div class="pd-employee"><span class="pd-avatar">{{ initials(p.employeeId) }}</span><div><strong>{{ person(p.employeeId)?.name || p.employeeId }}</strong><small [title]="person(p.employeeId)?.department">{{ person(p.employeeId)?.department }}</small></div></div></td>
+            <td><strong class="pd-request-title">{{ p.type }}</strong><small class="pd-truncate" [title]="p.reason">{{ p.reason }}</small></td>
+            <td><strong>{{ dateLabel(p.date) }}</strong><small>{{ dayLabel(p.date) }}</small></td>
+            <td><strong>{{ p.start }} – {{ p.end }}</strong><small>{{ duration(p) }}</small></td>
+            <td><span class="pd-status" [class]="'pd-status ' + p.status"><i></i>{{ p.status | titlecase }}</span></td>
+            <td><button class="pd-view" type="button" (click)="select(p);$event.stopPropagation()">View <span>›</span></button></td>
+          </tr>
+        } @empty {<tr><td colspan="6"><div class="pd-empty"><strong>No requests match</strong><p>Adjust filters or create a new request.</p><button type="button" class="pd-button light" (click)="clearFilters()">Reset filters</button></div></td></tr>}
+      </tbody></table></div>
+      <footer class="pd-table-footer" aria-label="Permission list pagination">
+        <div class="pd-page-summary">
+          <span>Showing <strong>{{ showingFrom }}–{{ showingTo }}</strong> of <strong>{{ filtered.length }}</strong></span>
+          <label class="pd-rows-control">Rows
+            <select [ngModel]="pageSize" (ngModelChange)="changePageSize($event)" aria-label="Rows per page">
+              @for (n of pageSizeOptions; track n) { <option [ngValue]="n">{{ n }}</option> }
+            </select>
+          </label>
+        </div>
+        <nav class="pd-pagination" aria-label="Pagination">
+          <button type="button" class="pd-page-arrow" aria-label="Previous page" [disabled]="page <= 1" (click)="changePage(-1)">‹</button>
+          @for (number of pageNumbers; track number) {
+            <button type="button" class="pd-page-number" [class.active]="page === number" [attr.aria-current]="page === number ? 'page' : null" [attr.aria-label]="'Page ' + number" (click)="goToPage(number)">{{ number }}</button>
+          }
+          <button type="button" class="pd-page-arrow" aria-label="Next page" [disabled]="page >= pageCount" (click)="changePage(1)">›</button>
+        </nav>
+      </footer>
+    </section>
+
+    <aside class="pd-inspector" aria-label="Selected request details">
+      @if (selected; as p) {
+        <div class="pd-inspector-head"><div><span class="pd-overline">REQUEST INSPECTOR</span><h2>Permission details</h2></div><span class="pd-status" [class]="'pd-status ' + p.status"><i></i>{{ p.status | titlecase }}</span></div>
+        <div class="pd-person-block"><span class="pd-avatar big">{{ initials(p.employeeId) }}</span><div><h3>{{ selectedPerson?.name || p.employeeId }}</h3><p>{{ selectedPerson?.department || 'Unassigned' }}</p><small>{{ p.employeeId }}</small></div></div>
+        <div class="pd-inspector-section"><span class="pd-inspector-label">REQUEST OVERVIEW</span><div class="pd-field"><span>Type</span><strong>{{ p.type }}</strong></div><div class="pd-field"><span>Requested date</span><strong>{{ dateLabel(p.date) }}</strong></div><div class="pd-field"><span>Time window</span><strong>{{ p.start }} – {{ p.end }}</strong></div><div class="pd-field"><span>Duration</span><strong>{{ duration(p) }}</strong></div></div>
+        <div class="pd-reason"><span class="pd-inspector-label">EMPLOYEE REASON</span><p>{{ p.reason }}</p></div>
+        @if (p.note) {<div class="pd-reason"><span class="pd-inspector-label">REVIEW NOTE</span><p>{{ p.note }}</p></div>}
+        @if (isDemo(p)) {<div class="pd-demo-tag">DEMO RECORD · Not submitted to backend</div>}
+        <div class="pd-review-actions">
+          @if (p.status === 'pending') {<button type="button" class="pd-button approve" (click)="decidePermission(p,'approved')">✓ Approve request</button><button type="button" class="pd-button decline" (click)="decidePermission(p,'declined')">Decline request</button>}
+          @if (p.status === 'approved') {<button type="button" class="pd-button decline" (click)="decidePermission(p,'cancelled')">Cancel approval</button>}
+          @if (p.status === 'declined') {<button type="button" class="pd-button approve" (click)="decidePermission(p,'approved')">Reconsider &amp; approve</button>}
+          <button type="button" class="pd-button light" (click)="openPermission(p)">Edit request details</button>
+        </div>
+      } @else {<div class="pd-inspector-empty"><span>◫</span><h3>Select a request</h3><p>Choose a row in the register to review all its details and make a decision.</p></div>}
+    </aside>
+  </div>
+
+  @if (editing()) {<div class="pd-overlay" (click)="close()"><section class="pd-drawer" role="dialog" aria-modal="true" aria-label="Permission request editor" (click)="$event.stopPropagation()"><header><div><span class="pd-overline">REQUEST EDITOR</span><h2>{{ form.id ? 'Edit permission' : 'New permission' }}</h2><p>Capture a request with the right employee and time window.</p></div><button type="button" class="pd-x" aria-label="Close" (click)="close()">×</button></header>
+    <form (ngSubmit)="savePermission()"><label>Employee<select name="employeeId" [(ngModel)]="form.employeeId" required><option value="">Choose employee</option>@for (e of people(); track e.id) {<option [value]="e.id">{{ e.name }} · {{ e.department }}</option>}</select></label><label>Permission date<input name="date" type="date" [(ngModel)]="form.date" required></label><div class="pd-form-grid"><label>From<input name="from" type="time" [(ngModel)]="form.start" required></label><label>To<input name="to" type="time" [(ngModel)]="form.end" required></label></div><label>Type<select name="type" [(ngModel)]="form.type">@for (t of typeOptions; track t) {<option [value]="t">{{ t }}</option>}</select></label><label>Reason<textarea name="reason" rows="4" [(ngModel)]="form.reason" required placeholder="Why is time away requested?"></textarea></label><label>Review note<textarea name="note" rows="3" [(ngModel)]="form.note" placeholder="Optional note from reviewer"></textarea></label><p class="pd-form-hint">These changes are stored in this browser. No backend permission save API is connected.</p><footer><button type="button" class="pf-hbtn btn-secondary" (click)="close()">Cancel</button><button type="submit" class="pd-button primary">Save permission</button></footer></form>
+  </section></div>}
+</div>

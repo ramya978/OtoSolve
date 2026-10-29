@@ -1,7 +1,9 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PaymentApiService } from '../../../Service/payment-api.service';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { GeoMasterService } from '../../../Shared/services/geo-master.service';
 import { GatewayCheckoutService } from '../../../Shared/services/gateway-checkout.service';
 import { ToastService } from '../../../Shared/services/toast.service';
@@ -91,7 +93,7 @@ const QUICK_AMOUNTS = [500, 1000, 2500, 5000];
 @Component({
   selector: 'app-new-donation',
   standalone: true,
-   imports: [PageHeader],
+   imports: [CommonModule, PageHeader, Loader],
   templateUrl: './new-donation.html',
   styleUrls: ['./new-donation.css', '../../../Shared/layout/page-header/page-header.css']
 })
@@ -138,6 +140,7 @@ export class NewDonation implements OnInit {
   protected readonly menu = signal<NdMenu>(null);
   protected readonly tried = signal(false);
   protected readonly saving = signal(false);
+  protected readonly loading = signal(false);
   protected readonly pledgeId = signal<string | null>(null);
   protected readonly toast = signal('');
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
@@ -209,6 +212,7 @@ export class NewDonation implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loading.set(true);
     this.api.getPublicCampaigns().subscribe({
       next: (list) => {
         this.campaigns = list;
@@ -228,6 +232,7 @@ export class NewDonation implements OnInit {
       this.countryRows.set(list.filter((c) => c.status === 'active').map((c) => ({ id: c.id, name: c.name, dial: c.phoneCountryCode ?? '', raw: c })));
       this.loadStates();
     });
+    this.loading.set(false);
   }
 
   private loadStates(): void {

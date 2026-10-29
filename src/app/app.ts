@@ -1,5 +1,6 @@
 import { Component, DestroyRef, HostListener, ViewEncapsulation, computed, effect, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { NavigationEnd, NavigationStart, Router, RouterOutlet } from '@angular/router';
 import { filter, map } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Sidebar } from './Shared/layout/Sidebar/sidebar';
@@ -13,6 +14,7 @@ import { OrganisationContextService } from './Shared/services/organisation-conte
 import { NavigationService } from './Shared/services/navigation.service';
 import { ToastService } from './Shared/services/toast.service';
 import { apiErrorMessage } from './Shared/models/api-response.model';
+import { LoaderService } from './Shared/services/loader.service';
 
 export interface Organisation {
   id: string;
@@ -64,7 +66,7 @@ const SIDEBAR_KEY = 'ydot-sidebar-collapsed';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Sidebar, Footer, ThemeSettings],
+  imports: [CommonModule, RouterOutlet, Sidebar, Footer, ThemeSettings],
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
   encapsulation: ViewEncapsulation.None
@@ -74,6 +76,7 @@ export class App {
 
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
+  protected readonly loaderService = inject(LoaderService);
 
   /** The routed URL as a signal — no extra wiring needed to know where we are. */
   private readonly currentUrl = toSignal(
@@ -82,6 +85,19 @@ export class App {
       map((event) => event.urlAfterRedirects)
     ),
     { initialValue: this.router.url }
+  );
+
+  /** True while the router is navigating between pages (menu click → route change). */
+  protected readonly navigating = toSignal(
+    this.router.events.pipe(
+      map((event) => {
+        if (event instanceof NavigationStart) return true;
+        if (event instanceof NavigationEnd) return false;
+        return null;
+      }),
+      filter((v): v is boolean => v !== null)
+    ),
+    { initialValue: false }
   );
 
   /** True while the router shows an auth / public donor screen: the shell then hides sidebar + top bar. */

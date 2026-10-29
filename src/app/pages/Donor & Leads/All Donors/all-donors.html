@@ -3,6 +3,8 @@
      Breadcrumb · title + refresh/export · KPI strip · needs-attention bar · donors card
      (tabs, search, sort, Table ⇄ Cards) · table with per-row actions · pager · toast.
      ===================================================================================================== -->
+<app-loader [fullPage]="true" [message]="'Loading donors…'" *ngIf="loading()"></app-loader>
+
 <app-page-header breadcrumb="Donor & Leads "  heading="{{ heading }}" description="View, search and manage all donor records across your organisation.">
   <ng-container actions>
    

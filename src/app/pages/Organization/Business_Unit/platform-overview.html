@@ -3,6 +3,8 @@
      heading · summary strip card · one card: tabs (Overview · Organisations · Onboarding) + panel
      ===================================================================================== -->
 <div class="pl-page">
+  <app-loader [fullPage]="true" [message]="'Loading platform…'" *ngIf="loading()"></app-loader>
+
   <header class="i-head">
     <div>
       <span class="i-eyebrow">Administration / Platform</span>

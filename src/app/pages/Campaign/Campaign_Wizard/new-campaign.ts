@@ -1,8 +1,9 @@
 import { Component, DestroyRef, ElementRef, HostListener, afterNextRender, computed, inject, signal, viewChildren } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { CommonModule, NgTemplateOutlet } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Footer } from '../../../Shared/layout/Footer/footer';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { CampaignApiService } from '../../../Service/campaign-api.service';
@@ -180,7 +181,7 @@ const fromIso = (iso: string): Date => {
 
 @Component({
   selector: 'app-new-campaign',
-  imports: [NgTemplateOutlet, RouterLink, PageHeader],
+  imports: [CommonModule, NgTemplateOutlet, PageHeader, Loader],
   templateUrl: './new-campaign.html',
   styleUrls: ['./new-campaign.css', '../../../Shared/layout/page-header/page-header.css']
 })
@@ -189,7 +190,7 @@ export class NewCampaign {
   private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly store = inject(CampaignWorkspaceStore);
+  protected readonly store = inject(CampaignWorkspaceStore);
   private readonly api = inject(CampaignApiService);
   private readonly geo = inject(GeoMasterService);
   private readonly people = inject(PeopleDirectoryService);

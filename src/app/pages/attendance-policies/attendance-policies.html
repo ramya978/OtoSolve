@@ -1,0 +1,293 @@
+<app-page-header breadcrumb="People / Attendance Operations" heading="Attendance policies"
+  description="Define how work hours, sessions and exceptions are evaluated.">
+  <ng-container actions>
+    <div class="ap-head-actions">
+     <button type="button" class="ap-btn btn-secondary" [disabled]="!people().length" (click)="openAssign()">+
+        Assign policy</button>
+      <button type="button" class="ap-btn ap-btn-primary" (click)="openPolicy()">+ Create policy</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ap">
+  @if (apiError()) { <div class="ap-alert" role="alert">{{ apiError() }} <button type="button"
+      (click)="loadPeople()">Retry</button></div> }
+  @if (toast()) { <div class="ap-toast" role="status">{{toast()}} <button type="button" aria-label="Dismiss"
+      (click)="toast.set('')">×</button></div> }
+
+  <section class="ap-overview">
+    <div class="ap-overview-lead">
+      <div class="ap-kicker"><span class="ap-signal"></span> POLICY CONTROL CENTER</div>
+      <h2>Attendance rulebook</h2>
+      <p>One place for shift rules, time compliance and employee coverage.</p>
+      <span class="ap-demo-hint">Policy rules and assignments use demo data; employees are loaded from the Users
+        API.</span>
+    </div>
+    <div class="ap-overview-metrics">
+      <div class="ap-metric">
+        <div class="ap-metric-label">Total policies <span class="ap-metric-symbol">▦</span></div>
+        <strong>{{total()}}</strong><small>Rules in library</small>
+      </div>
+      <div class="ap-metric">
+        <div class="ap-metric-label">Active policies <span class="ap-dot teal"></span></div>
+        <strong>{{activeCount()}}</strong><small>Available for assignment</small>
+      </div>
+      <div class="ap-metric">
+        <div class="ap-metric-label">Disabled <span class="ap-dot muted"></span></div>
+        <strong>{{disabledCount()}}</strong><small>Retained for reference</small>
+      </div>
+      <div class="ap-metric">
+        <div class="ap-metric-label">Employees covered <span class="ap-dot blue"></span></div>
+        <strong>{{assignedCount()}}<span class="ap-denom"> / {{people().length}}</span></strong><small>{{loading() ?
+          'Loading directory…' : 'Latest effective policy'}}</small>
+      </div>
+    </div>
+  </section>
+
+  <div class="ap-main-tabs" role="tablist" aria-label="Policy workspace">
+    <button type="button" role="tab" [class.selected]="tab()==='library'" [attr.aria-selected]="tab()==='library'"
+      (click)="setTab('library')">
+      Policy library <span>{{total()}}</span>
+    </button>
+    <button type="button" role="tab" [class.selected]="tab()==='assignments'"
+      [attr.aria-selected]="tab()==='assignments'" (click)="setTab('assignments')">
+      Employee assignments <span>{{people().length}}</span>
+    </button>
+  </div>
+
+  @if (tab()==='library') {
+  <div class="ap-workspace">
+    <section class="ap-card ap-list-panel">
+      <div class="ap-section-heading">
+        <div>
+          <div class="ap-eyebrow">CONFIGURED RULES</div>
+          <h3>Policy library</h3>
+          <p>Review effective rules, usage and configuration.</p>
+        </div>
+        <div class="ap-showing">{{filteredPolicies().length}} policies found</div>
+      </div>
+      <div class="ap-toolbar">
+        <div class="ap-filters" aria-label="Policy status">
+          <button type="button" [class.active]="policyFilter()==='all'" (click)="setFilter('all')">All
+            <b>{{total()}}</b></button>
+          <button type="button" [class.active]="policyFilter()==='active'" (click)="setFilter('active')">Active
+            <b>{{activeCount()}}</b></button>
+          <button type="button" [class.active]="policyFilter()==='disabled'" (click)="setFilter('disabled')">Disabled
+            <b>{{disabledCount()}}</b></button>
+        </div>
+        <label class="ap-search"><span class="ap-search-icon">⌕</span><input type="search"
+            placeholder="Search policy or code" [ngModel]="search()" (ngModelChange)="setSearch($event)" /></label>
+        <select aria-label="Filter policy category" [ngModel]="category()" (ngModelChange)="setCategory($event)">
+          <option value="all">All categories</option>@for(c of categories; track c){<option [value]="c">{{c}}</option>}
+        </select>
+      </div>
+      <div class="ap-table-wrap">
+        <table class="ap-table">
+          <thead>
+            <tr>
+              <th>POLICY</th>
+              <th>CATEGORY</th>
+              <th>DAILY RULES</th>
+              <th>ASSIGNED</th>
+              <th>STATUS</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(p of pagedPolicies(); track p.id){
+            <tr [class.is-selected]="selectedPolicy()?.id===p.id" (click)="selectedId.set(p.id)">
+              <td>
+                <div class="ap-policy-cell">
+                  <div class="ap-policy-mark" [class.inactive]="!p.active">{{p.code.slice(0,2)}}</div>
+                  <div class="ap-policy-name"><strong>{{p.name}}</strong><small>{{p.code}} · Version
+                      {{p.version}}</small></div>
+                </div>
+              </td>
+              <td><span class="ap-category">{{p.category}}</span></td>
+              <td>
+                <div class="ap-rules"><strong>{{p.minHours}}h minimum</strong><small>{{p.maxSessions}} sessions ·
+                    {{p.graceMinutes}}m grace</small></div>
+              </td>
+              <td><strong>{{assignedTo(p.id)}}</strong><small class="ap-subtext">employees</small></td>
+              <td><span class="ap-status" [class.off]="!p.active"><i></i>{{p.active?'Active':'Disabled'}}</span></td>
+              <td><button type="button" class="ap-icon-button" [attr.aria-label]="'Open '+p.name"
+                  (click)="selectedId.set(p.id); $event.stopPropagation()">→</button></td>
+            </tr>
+            } @empty {<tr>
+              <td colspan="6" class="ap-empty">No policies match these filters.</td>
+            </tr>}
+          </tbody>
+        </table>
+      </div>
+      <div class="ap-pagination">
+        <div class="ap-pagination-left"><span>Showing <b>{{showingStart()}}–{{showingEnd()}}</b> of
+            <b>{{rowCount()}}</b></span><label>Rows <select [ngModel]="pageSize()"
+              (ngModelChange)="setPageSize(+$event)">@for(n of pageSizes;track n){<option [ngValue]="n">{{n}}</option>
+              }</select></label></div>
+        <nav aria-label="Policy pagination" class="ap-page-nav"><button type="button" aria-label="Previous page"
+            [disabled]="page()<=1" (click)="changePage(page()-1)">‹</button>@for(n of pageNumbers();track n){<button
+            type="button" [class.current]="page()===n" (click)="changePage(n)">{{n}}</button>}<button type="button"
+            aria-label="Next page" [disabled]="page()>=pageCount()" (click)="changePage(page()+1)">›</button></nav>
+      </div>
+    </section>
+
+    <aside class="ap-card ap-inspector">
+      @if(selectedPolicy(); as p){
+      <div class="ap-inspector-head">
+        <div><span class="ap-eyebrow">POLICY INSPECTOR</span>
+          <h3>Configuration details</h3>
+        </div><span class="ap-status" [class.off]="!p.active"><i></i>{{p.active?'Active':'Disabled'}}</span>
+      </div>
+      <div class="ap-inspector-body">
+        <div class="ap-inspector-identity">
+          <div class="ap-policy-mark large" [class.inactive]="!p.active">{{p.code.slice(0,2)}}</div>
+          <div>
+            <h2>{{p.name}}</h2>
+            <p>{{p.code}} · v{{p.version}} · {{p.category}}</p>
+          </div>
+        </div>
+        <p class="ap-description">{{p.description}}</p>
+        <div class="ap-divider"></div>
+        <div class="ap-eyebrow">ATTENDANCE RULES</div>
+        <div class="ap-detail-list">
+          <div><span>Minimum work hours</span><strong>{{p.minHours}} hours</strong></div>
+          <div><span>Maximum sessions</span><strong>{{p.maxSessions}} per day</strong></div>
+          <div><span>Grace period</span><strong>{{p.graceMinutes}} minutes</strong></div>
+          <div><span>Check-out required</span><strong>{{p.requiresCheckout?'Required':'Optional'}}</strong></div>
+          <div><span>Business-duty credit</span><strong>{{p.creditBusinessDuty?'Allowed':'Not allowed'}}</strong></div>
+          <div><span>Weekly off</span><strong>{{p.weeklyOff}}</strong></div>
+          <div><span>Effective from</span><strong>{{fmtDate(p.effectiveDate)}}</strong></div>
+        </div>
+        <div class="ap-coverage"><span>Employee coverage</span><strong>{{assignedTo(p.id)}} employees</strong>
+          <p>Effective assignments from the directory.</p>
+        </div>
+      </div>
+      <div class="ap-inspector-actions"><button type="button" class="ap-btn ap-btn-primary" (click)="openPolicy(p)">Edit
+          policy</button><button type="button" class="ap-btn ap-btn-secondary"
+          (click)="togglePolicy(p)">{{p.active?'Disable':'Enable'}}</button></div>
+      } @else {<div class="ap-empty">Select a policy to view its configuration.</div>}
+    </aside>
+  </div>
+  } @else {
+  <section class="ap-card ap-assignments-panel">
+    <div class="ap-section-heading">
+      <div>
+        <div class="ap-eyebrow">EMPLOYEE COVERAGE</div>
+        <h3>Policy assignments</h3>
+        <p>Users API employees with assigned demo policies. Local changes take precedence.</p>
+      </div>
+    </div>
+    <div class="ap-toolbar"><label class="ap-search"><span class="ap-search-icon">⌕</span><input type="search"
+          placeholder="Search employee or ID" [ngModel]="employeeSearch()"
+          (ngModelChange)="setEmployeeSearch($event)" /></label><select aria-label="Department" [ngModel]="dept()"
+        (ngModelChange)="setDepartment($event)">
+        <option value="all">All departments</option>@for(d of departments();track d){<option [value]="d">{{d}}</option>}
+      </select><span class="ap-toolbar-note">{{loading()?'Loading employees…':people().length+' API employees'}}</span>
+    </div>
+    <div class="ap-table-wrap">
+      <table class="ap-table ap-employee-table">
+        <thead>
+          <tr>
+            <th>EMPLOYEE</th>
+            <th>DEPARTMENT</th>
+            <th>CURRENT POLICY</th>
+            <th>EFFECTIVE FROM</th>
+            <th>SOURCE</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for(e of pagedPeople();track e.id){<tr>
+            <td>
+              <div class="ap-policy-cell">
+                <div class="ap-person-mark">{{e.initials}}</div>
+                <div class="ap-policy-name"><strong>{{e.name}}</strong><small>{{e.id}}</small></div>
+              </div>
+            </td>
+            <td><span class="ap-ellipsis" [title]="e.department">{{e.department}}</span></td>
+            <td><strong>{{policyFor(e.id)?.name ?? 'Unassigned'}}</strong></td>
+            <td>{{fmtDate(assignmentFor(e.id)?.effectiveDate ?? '')}}</td>
+            <td><span class="ap-source"
+                [class.local]="assignmentFor(e.id)?.source==='local'">{{assignmentFor(e.id)?.source==='local'?'Local':'Demo'}}</span>
+            </td>
+            <td><button type="button" class="ap-small-action" (click)="openAssign(e.id)">Change policy</button></td>
+          </tr>}
+          @empty {<tr>
+            <td colspan="6" class="ap-empty">{{loading()?'Loading employee directory…':'No matching employees. Check the
+              Users API connection.'}}</td>
+          </tr>}
+        </tbody>
+      </table>
+    </div>
+    <div class="ap-pagination">
+      <div class="ap-pagination-left"><span>Showing <b>{{showingStart()}}–{{showingEnd()}}</b> of
+          <b>{{rowCount()}}</b></span><label>Rows <select [ngModel]="pageSize()"
+            (ngModelChange)="setPageSize(+$event)">@for(n of pageSizes;track n){<option [ngValue]="n">{{n}}</option>
+            }</select></label></div>
+      <nav aria-label="Employee pagination" class="ap-page-nav"><button type="button" [disabled]="page()<=1"
+          (click)="changePage(page()-1)">‹</button>@for(n of pageNumbers();track n){<button type="button"
+          [class.current]="page()===n" (click)="changePage(n)">{{n}}</button>}<button type="button"
+          [disabled]="page()>=pageCount()" (click)="changePage(page()+1)">›</button></nav>
+    </div>
+  </section>
+  }
+
+  @if(dialog()) {
+  <div class="ap-overlay" (click)="close()">
+    <section class="ap-drawer" role="dialog" aria-modal="true"
+      [attr.aria-label]="dialog()==='policy'?'Policy editor':'Assign a policy'" (click)="$event.stopPropagation()">
+      <header class="ap-drawer-head">
+        <div><span class="ap-eyebrow">ATTENDANCE CONFIGURATION</span>
+          <h2>{{dialog()==='policy'?(editingId()?'Edit attendance policy':'Create attendance policy'):'Assign employee
+            policy'}}</h2>
+          <p>{{dialog()==='policy'?'Set the daily rules that shape attendance.':'Choose a policy and its effective
+            date.'}}</p>
+        </div><button type="button" aria-label="Close" class="ap-close" (click)="close()">×</button>
+      </header>
+      @if(dialog()==='policy') {
+      <div class="ap-form">
+        <div class="ap-form-label">POLICY IDENTITY</div><label>Policy name<input type="text" maxlength="80"
+            [(ngModel)]="policyForm.name" placeholder="e.g. General office attendance" /></label>
+        <div class="ap-form-row"><label>Policy code<input type="text" maxlength="12" [(ngModel)]="policyForm.code"
+              placeholder="OFC" /></label><label>Category<select [(ngModel)]="policyForm.category">@for(c of
+              categories;track c){<option [value]="c">{{c}}</option>}</select></label></div><label>Description<textarea
+            rows="3" maxlength="300" [(ngModel)]="policyForm.description"
+            placeholder="Describe when this policy is used..."></textarea></label>
+        <div class="ap-form-label">WORKING TIME RULES</div>
+        <div class="ap-form-row"><label>Minimum hours / day<input type="number" min="0" max="24" step="0.5"
+              [(ngModel)]="policyForm.minHours" /></label><label>Max daily sessions<input type="number" min="1" max="8"
+              [(ngModel)]="policyForm.maxSessions" /></label></div>
+        <div class="ap-form-row"><label>Grace period (min)<input type="number" min="0" max="180"
+              [(ngModel)]="policyForm.graceMinutes" /></label><label>Weekly off<select
+              [(ngModel)]="policyForm.weeklyOff">
+              <option>Sunday</option>
+              <option>Saturday</option>
+              <option>Rotational</option>
+            </select></label></div><label>Effective date<input type="date"
+            [(ngModel)]="policyForm.effectiveDate" /></label><label class="ap-switch"><input type="checkbox"
+            [(ngModel)]="policyForm.requiresCheckout" /><span>Check-out is required<small>Employees must provide a
+              closing punch.</small></span></label><label class="ap-switch"><input type="checkbox"
+            [(ngModel)]="policyForm.creditBusinessDuty" /><span>Credit approved business-duty time<small>Count approved
+              offsite work towards attendance.</small></span></label>
+      </div>
+      <footer class="ap-drawer-foot"><button type="button" class="ap-btn btn-secondary"
+          (click)="close()">Cancel</button><button type="button" class="ap-btn ap-btn-primary"
+          (click)="savePolicy()">{{editingId()?'Save changes':'Create policy'}}</button></footer>
+      } @else {
+      <div class="ap-form">
+        <div class="ap-form-label">ASSIGNMENT DETAILS</div><label>Employee<select [(ngModel)]="assignEmployee">@for(e of
+            people();track e.id){<option [value]="e.id">{{e.name}} · {{e.department}}</option>
+            }</select></label><label>Attendance policy<select [(ngModel)]="assignPolicy">@for(p of policies();track
+            p.id){@if(p.active){<option [value]="p.id">{{p.name}}</option>}}</select></label><label>Effective from<input
+            type="date" [(ngModel)]="assignDate" /></label>
+        <div class="ap-form-tip">This assignment is saved locally. Existing assignments remain in history, and the most
+          recent effective policy is displayed.</div>
+      </div>
+      <footer class="ap-drawer-foot"><button type="button" class="ap-btn btn-secondary"
+          (click)="close()">Cancel</button><button type="button" class="ap-btn ap-btn-primary"
+          (click)="saveAssignment()">Assign policy</button></footer>
+      }
+    </section>
+  </div>
+  }
+</div>

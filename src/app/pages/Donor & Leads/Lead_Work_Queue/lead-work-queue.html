@@ -3,6 +3,8 @@
      Header card (title, search, filters toggle, sort, export, capture) · filter row with custom dropdowns ·
      summary tabs · lead table with animated row actions · pager · floating bulk-action bar · toast.
      ===================================================================================================== -->
+<app-loader [fullPage]="true" [message]="'Loading leads…'" *ngIf="loading()"></app-loader>
+
 <app-page-header breadcrumb="Donor &amp; Leads" [breadcrumbRoute]="'/app/donor-leads/lead-work-queue'" heading="{{ heading }}" description="Manage leads assigned to you.">
   <ng-container actions>
    <div style="display: flex;flex-wrap:wrap ;gap: 10px;">

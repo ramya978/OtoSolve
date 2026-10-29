@@ -1,0 +1,17 @@
+﻿@if (fullPage()) {
+  <div class="ld-backdrop" role="status" aria-live="polite">
+    <div class="ld-wrap">
+      <div class="ld-spinner ld-{{ size() }}" aria-hidden="true"></div>
+      @if (message()) {
+        <p class="ld-message">{{ message() }}</p>
+      }
+    </div>
+  </div>
+} @else {
+  <div class="ld-inline" role="status" aria-live="polite">
+    <div class="ld-spinner ld-{{ size() }}" aria-hidden="true"></div>
+    @if (message()) {
+      <p class="ld-message">{{ message() }}</p>
+    }
+  </div>
+}

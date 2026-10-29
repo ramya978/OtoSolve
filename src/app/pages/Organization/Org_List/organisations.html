@@ -4,6 +4,8 @@
      card grid or list · pagination
      ===================================================================================== -->
 <div class="ol-page">
+  <app-loader [fullPage]="true" [message]="'Loading organisations…'" *ngIf="loading()"></app-loader>
+
   <app-page-header breadcrumb="Administration / Platform" heading="Organisations" description="Every organisation on the platform, from invitation to day-to-day work.">
     <ng-container actions>
       <button type="button" class="i-btn i-btn--primary" (click)="create()">

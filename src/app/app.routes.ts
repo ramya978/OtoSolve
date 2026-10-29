@@ -70,6 +70,11 @@ import { Dashboard } from './pages/Dashboard/dashboard';
 import { Attendance } from './pages/Attendance/attendance';
 import { WhatsappMessages } from './pages/Communications/Whatsapp-Messages/whatsapp-messages';
 import { NumberVerification } from './pages/Communications/Number-Verification/number-verification';
+import { ShiftPlannerComponent } from './pages/shift-planner/shift-planner';
+import { ShiftTemplatesComponent } from './pages/shift-templates/shift-templates';
+import { PermissionDeskComponent } from './pages/permission-desk/permission-desk';
+import { AttendancePoliciesComponent } from './pages/attendance-policies/attendance-policies';
+import { IndividualAttendance } from './pages/Individual_attendance/user_attendance';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -107,6 +112,14 @@ const REAL_SCREENS: Record<string, unknown> = {
 
   // Attendance
   'app/attendance': Attendance,
+
+  // Shift & Attendance admin
+  'app/shift-planner': ShiftPlannerComponent,
+  'app/shift-templates': ShiftTemplatesComponent,
+  'app/permission-desk': PermissionDeskComponent,
+  'app/attendance-policies': AttendancePoliciesComponent,
+  'app/individual-attendance': IndividualAttendance,
+
 
 };
 

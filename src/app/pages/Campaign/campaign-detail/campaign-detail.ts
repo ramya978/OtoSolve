@@ -1,8 +1,10 @@
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CwPageHead } from '../../../Shared/Campaign/cw-page-head';
 import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { CW_ICONS, CwIcon } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
@@ -48,7 +50,7 @@ const DEFAULT_TERMS =
 
 @Component({
   selector: 'app-campaign-detail',
-  imports: [CwSelect, RouterLink, PageHeader],
+  imports: [CommonModule, CwSelect, RouterLink, PageHeader, Loader],
   templateUrl: './campaign-detail.html',
   styleUrls: ['../../../Shared/Campaign/cw-shared.css', './campaign-detail.css', '../../../Shared/layout/page-header/page-header.css']
 })

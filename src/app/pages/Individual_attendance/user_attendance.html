@@ -1,0 +1,164 @@
+<app-page-header breadcrumb="People / User attendance" heading="User attendance"
+  description="A clear, personal record of attendance, shift hours and daily punches.">
+  <ng-container actions><button class="ua-button ua-button-primary" [disabled]="!person()" (click)="exportCsv()">↓
+      Export attendance CSV</button></ng-container>
+</app-page-header>
+<main class="ua-page">
+  @if (loading()) {<div class="ua-message">Loading employees and departments…</div>}
+  @if (error()) {<div class="ua-message ua-error">Unable to load users: {{ error() }} <button
+      (click)="loadDirectory()">Retry</button></div>}
+
+  @if (person(); as employee) {
+  <section class="ua-hero">
+    <div class="ua-identity"><span class="ua-avatar">{{ employee.initials }}</span>
+      <div><span class="ua-eyebrow">EMPLOYEE ATTENDANCE PROFILE</span>
+        <h2>{{ employee.name }}</h2>
+        <p>{{ employee.role }} <span class="ua-separator">/</span> <span class="ua-ellip"
+            [title]="employee.department">{{ employee.department }}</span></p><small>{{ employee.id }}</small>
+      </div>
+    </div>
+    <div class="ua-hero-right">
+      <div><small>Attendance rate</small><strong>{{ summary().rate }}%</strong>
+        <div class="ua-progress"><i [style.width.%]="summary().rate"></i></div>
+      </div>
+      <div><small>Total work time</small><strong>{{ worked(summary().worked) }}</strong></div>
+    </div>
+  </section>
+  <section class="ua-metrics">
+    <div class="ua-metric"><span class="ua-metric-icon ua-metric-green">✓</span>
+      <div><small>Present</small><strong>{{ summary().present }}</strong><span>days recorded</span></div>
+    </div>
+    <div class="ua-metric"><span class="ua-metric-icon ua-metric-red">×</span>
+      <div><small>Absent</small><strong>{{ summary().absent }}</strong><span>days missed</span></div>
+    </div>
+    <div class="ua-metric"><span class="ua-metric-icon ua-metric-orange">½</span>
+      <div><small>Half days</small><strong>{{ summary().half }}</strong><span>partial shifts</span></div>
+    </div>
+    <div class="ua-metric"><span class="ua-metric-icon ua-metric-purple">↗</span>
+      <div><small>Approved leave</small><strong>{{ summary().leave }}</strong><span>leave days</span></div>
+    </div>
+    <div class="ua-metric"><span class="ua-metric-icon ua-metric-blue">◷</span>
+      <div><small>Weekly off</small><strong>{{ summary().off }}</strong><span>rest days</span></div>
+    </div>
+  </section>
+  <div class="ua-tabs" role="tablist" aria-label="Employee attendance views">
+    <button role="tab" [class.active]="panel()==='ledger'" [attr.aria-selected]="panel()==='ledger'"
+      (click)="panel.set('ledger')">Daily attendance ledger</button>
+    <button role="tab" [class.active]="panel()==='calendar'" [attr.aria-selected]="panel()==='calendar'"
+      (click)="panel.set('calendar')">Monthly calendar</button>
+
+  </div>
+  <div class="ua-body-grid">
+    <section class="ua-panel ua-main-panel">
+      @if (panel()==='ledger') {
+      <div class="ua-section-head">
+        <div><span class="ua-eyebrow">DAILY RECORDS</span>
+          <h3>Daily attendance ledger</h3>
+          <p>Individual punches, attendance status and working hours.</p>
+        </div>
+        <div class="ua-list-tools">
+          <!-- <select [value]="selectedId()"
+          (change)="selectEmployee($any($event.target).value)">
+          @for (e of people(); track e.id) {<option [value]="e.id">{{ e.name }}</option>}
+        </select> -->
+          <select aria-label="Filter status" [value]="statusFilter()"
+            (change)="statusFilter.set($any($event.target).value)">
+            
+            <option value="all">All statuses</option>@for (s of statusOptions; track s) {<option [value]="s">{{
+              labels[s] }}</option>}
+          </select>
+          
+          <input type="search" placeholder="Search date or status" [value]="search()"
+            (input)="search.set($any($event.target).value)" />
+            <div class="ua-month-controls">
+      <div><button aria-label="Previous month" (click)="moveMonth(-1)">‹</button><strong>{{ monthLabel()
+          }}</strong><button aria-label="Next month" (click)="moveMonth(1)">›</button></div>
+    </div>
+          </div>
+      </div>
+      <div class="ua-scroll">
+        <table class="ua-table">
+          <thead>
+            <tr>
+              <th>DATE</th>
+              <th>ATTENDANCE</th>
+              <th>FIRST IN</th>
+              <th>LAST OUT</th>
+              <th>HOURS</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (d of filteredDays();track d.date) {<tr [class.chosen]="focusDay()?.date===d.date"
+              (click)="selectDay(d.date)">
+              <td><strong>{{ d.number }} {{ monthLabel().slice(0,3) }}</strong><small>{{ d.weekday }}</small></td>
+              <td><span class="ua-code" [attr.data-code]="d.status">{{ d.status==='L'?'PL':d.status }}</span><span
+                  class="ua-status-label">{{ d.label }}</span></td>
+              <td>{{ displayTime(d.entry.in) }}</td>
+              <td>{{ displayTime(d.entry.out) }}</td>
+              <td class="ua-strong">{{ worked(d.minutes) }}</td>
+            </tr>}
+            @empty {<tr>
+              <td colspan="6" class="ua-empty">No matching attendance days.</td>
+            </tr>}
+          </tbody>
+        </table>
+      </div>
+      }
+      @if (panel()==='calendar') {
+      <div class="ua-section-head">
+        <div><span class="ua-eyebrow">MONTH AT A GLANCE</span>
+          <h3>Monthly calendar</h3>
+          <p>Select any day to see its punches and status.</p>
+        </div><span class="ua-count">{{ days().length }} days</span>
+      </div>
+      <div class="ua-calendar">@for (day of weekdays;track day){<div class="ua-weekday">{{ day }}</div>}
+        @for (p of calendarPadding();track p){<div></div>}
+        @for (d of days();track d.date){<button class="ua-calendar-day" [class.chosen]="focusDay()?.date===d.date"
+          (click)="selectDay(d.date)"><span>{{ d.number }}</span><strong [attr.data-code]="d.status">{{
+            d.status==='L'?'PL':d.status }}</strong><small>{{ d.entry.in||'—' }}</small></button>}
+      </div>
+      }
+      @if (panel()==='timeline') {
+      <div class="ua-section-head">
+        <div><span class="ua-eyebrow">DAILY WORK WINDOWS</span>
+          <h3>Attendance timeline</h3>
+          <p>One employee · whole month · scheduled versus recorded work.</p>
+        </div>
+      </div>
+      <div class="ua-time-labels"><span>DATE</span>
+        <div><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+        <span>WORKED</span>
+      </div>
+      <div class="ua-time-list">@for (d of days();track d.date){<button class="ua-time-row"
+          [class.chosen]="focusDay()?.date===d.date" (click)="selectDay(d.date)"><span class="ua-time-date"><b>{{
+              d.number }} {{ monthLabel().slice(0,3) }}</b><small>{{ d.weekday }}</small></span><span
+            class="ua-time-track"><i class="ua-scheduled" [style.left.%]="position('09:00')"
+              [style.width.%]="span('09:00','18:00')"></i>@if (d.minutes){<i class="ua-recorded"
+              [style.left.%]="position(d.entry.in)" [style.width.%]="span(d.entry.in,d.entry.out)"></i>}@else{<em>{{
+              d.label }}</em>}</span><span class="ua-time-sum"><b>{{ worked(d.minutes) }}</b><small>{{
+              d.status==='L'?'PL':d.status }}</small></span></button>}</div>
+      <div class="ua-time-legend"><span><i class="ua-leg-plan"></i>Illustrative 09:00–18:00 shift</span><span><i
+            class="ua-leg-actual"></i>Recorded / demo punches</span></div>
+      }
+    </section>
+    <aside class="ua-panel ua-aside">@if (focusDay();as d){<div class="ua-aside-top"><span class="ua-eyebrow">DAY
+          INSPECTION</span>
+        <h3>{{ d.number }} {{ monthLabel().slice(0,3) }}</h3>
+        <p>{{ d.weekday }} · {{ d.date }}</p><span class="ua-code" [attr.data-code]="d.status">{{ d.label }}</span>
+      </div>
+      <div class="ua-aside-body">
+        <div><small>Check in</small><strong>{{ displayTime(d.entry.in) }}</strong></div>
+        <div><small>Check out</small><strong>{{ displayTime(d.entry.out) }}</strong></div>
+        <div><small>Net working time</small><strong>{{ worked(d.minutes) }}</strong></div>
+        <div><small>Late arrival</small><strong>{{ d.late ? d.late+' min' : '—' }}</strong></div>
+      </div>
+      <div class="ua-aside-note"><small>ATTENDANCE NOTE</small>
+        <p>{{ d.entry.note||'No notes for this day.' }}</p>
+      </div>
+      <div class="ua-aside-foot"><span class="ua-dot"></span> {{ d.entry.source==='saved'?'Saved register
+        record':'Sample attendance data' }}</div>}
+    </aside>
+  </div>
+
+  } @else if (!loading()) {<div class="ua-message">No employees available from the Users API.</div>}
+</main>

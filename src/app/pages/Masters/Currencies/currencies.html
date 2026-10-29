@@ -4,6 +4,7 @@
      and filters, sortable table with row actions (view · edit · activate · delete) and a pager.
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-currency">
+  <app-loader [fullPage]="true" [message]="'Loading currencies…'" *ngIf="store.loading()"></app-loader>
 
   <app-page-header breadcrumb="Master data / Finance" heading="Currencies" description="ISO 4217 currencies for billing and payments, with their symbol, decimals and rounding.">
     <div class="cu-head-acts" actions>

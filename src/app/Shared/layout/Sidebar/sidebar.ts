@@ -66,7 +66,7 @@ export class Sidebar implements AfterViewInit {
   readonly menu = computed<MenuItem[]>(() => {
     const explicit = this.menuOverride();
     if (explicit) return explicit;
-    if (this.navigation.failed()) return MENU_DATA;
+    // if (this.navigation.failed()) return MENU_DATA;
     return this.navigation.menu() as unknown as MenuItem[];
   });
 

@@ -4,6 +4,8 @@
      compact list · pager · record detail drawer · invite / edit drawer
      ===================================================================================== -->
 <div class="us-page">
+  <app-loader [fullPage]="true" [message]="'Loading users…'" *ngIf="loaderService.shouldShow()"></app-loader>
+
   <app-page-header breadcrumb="Users &amp; Access / People" heading="Everyone who can sign in" description="People in this organisation with their role, unit and access — as cards or a compact list.">
   <ng-container actions>
      <div class="us-head-acts">

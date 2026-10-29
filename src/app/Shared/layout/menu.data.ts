@@ -1,4 +1,4 @@
-/* =====================================================================================================
+﻿/* =====================================================================================================
    SIDEBAR MENU DATA - API menu structure:
    menu -> subMenu -> childSubMenu.
    Replace MENU_DATA with the API response when it is wired up.
@@ -1574,51 +1574,85 @@ export const MENU_DATA: MenuItem[] = [
     ],
     "isGroupOnly": true,
     "hasChildren": true
+  },
+  {
+    "id": "8e3f4a12-b7c9-4d1e-8f3a-2b6c5d7e9f01",
+    "code": "SHIFT_PLANNER",
+    "name": "Shift Planner",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/shift-planner",
+    "icon": "calendar",
+    "section": "Administration",
+    "displayOrder": 110,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
+  },
+    {
+    "id": "8e3f4a12-b7c9-4d1e-8f3a-2b6c5d7e9f01",
+    "code": "INDIVIDUAL_ATTENDANCE",
+    "name": "individual Attendance",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/individual-attendance",
+    "icon": "calendar",
+    "section": "Administration",
+    "displayOrder": 110,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
+  },
+  {
+    "id": "9f4a5b23-c8d0-4e2f-9a4b-3c7d6e8f0a12",
+    "code": "SHIFT_TEMPLATES",
+    "name": "Shift Templates",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/shift-templates",
+    "icon": "layers",
+    "section": "Administration",
+    "displayOrder": 120,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
+  },
+  {
+    "id": "a0b1c2d3-e4f5-6a7b-8c9d-0e1f2a3b4c5d",
+    "code": "PERMISSION_DESK",
+    "name": "Permission Desk",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/permission-desk",
+    "icon": "user-check",
+    "section": "Administration",
+    "displayOrder": 130,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
+  },
+  {
+    "id": "b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e",
+    "code": "ATTENDANCE_POLICIES",
+    "name": "Attendance Policies",
+    "level": "menu",
+    "moduleCode": "HR",
+    "route": "/app/attendance-policies",
+    "icon": "file-text",
+    "section": "Administration",
+    "displayOrder": 140,
+    "opensInNewTab": false,
+    "isLandingPage": false,
+    "children": [],
+    "isGroupOnly": false,
+    "hasChildren": false
   }
-  
-  // {
-  //   "id": "737cb5c3-f002-507e-b660-94516f5f2336",
-  //   "code": "UX_PREVIEWS",
-  //   "name": "UX Previews",
-  //   "level": "menu",
-  //   "moduleCode": "UX",
-  //   "icon": "star",
-  //   "displayOrder": 140,
-  //   "opensInNewTab": false,
-  //   "isLandingPage": false,
-  //   "children": [
-  //     {
-  //       "id": "4e79b134-90de-51ac-ac4c-c64603f25984",
-  //       "code": "UX_ROLE_AWARE_SHELL",
-  //       "name": "Role-aware App Shell",
-  //       "level": "subMenu",
-  //       "moduleCode": "UX",
-  //       "route": "/app/ux/role-aware-application-shell",
-  //       "icon": "layers",
-  //       "displayOrder": 10,
-  //       "opensInNewTab": false,
-  //       "isLandingPage": false,
-  //       "children": [],
-  //       "isGroupOnly": false,
-  //       "hasChildren": false
-  //     },
-  //     {
-  //       "id": "f926c261-daf9-5c76-86c0-6f892123a8eb",
-  //       "code": "UX_SAVED_VIEW_BUILDER",
-  //       "name": "Saved View Builder",
-  //       "level": "subMenu",
-  //       "moduleCode": "UX",
-  //       "route": "/app/ux/saved-view-builder",
-  //       "icon": "sliders",
-  //       "displayOrder": 20,
-  //       "opensInNewTab": false,
-  //       "isLandingPage": false,
-  //       "children": [],
-  //       "isGroupOnly": false,
-  //       "hasChildren": false
-  //     }
-  //   ],
-  //   "isGroupOnly": true,
-  //   "hasChildren": true
-  // }
 ];

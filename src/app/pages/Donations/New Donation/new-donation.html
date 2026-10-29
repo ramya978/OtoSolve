@@ -4,6 +4,7 @@
      → Gift & cause · About you · Receipt address · Confirm & pay   |   Donation overview (live summary)
      ===================================================================================================== -->
 <div class="nd">
+  <app-loader [fullPage]="true" [message]="'Loading donation form…'" *ngIf="loading()"></app-loader>
   <!-- ===== page header ===== -->
   <app-page-header breadcrumb="Donations / New donation" heading="New donation" description="Choose a cause, enter your gift and receipt details.">
   <ng-container actions>

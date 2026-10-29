@@ -1,9 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CW_PATHS } from '../../Shared/Campaign/cw-paths';
 import { Activity, Donation, daysBetween, fmtDate, inr, todayIso } from '../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../Shared/Campaign/cw.store';
 import { PageHeader } from '../../Shared/layout/page-header/page-header';
+import { Loader } from '../../Shared/layout/Loader/loader';
 
 type Tone = 'primary' | 'success' | 'info' | 'warning' | 'danger' | 'neutral' | 'purple';
 type Lifecycle = 'draft' | 'submitted' | 'scheduled' | 'active' | 'paused' | 'closing' | 'closed';
@@ -102,12 +104,12 @@ const inrShort = (v: number): string => {
 @Component({
   selector: 'app-dashboard-campaigns',
   standalone: true,
-  imports: [RouterLink],
+  imports: [CommonModule, RouterLink, Loader],
   templateUrl: './dashboard-campaigns.html',
   styleUrls: ['./dashboard-campaigns.css']
 })
 export class DashboardCampaigns {
-  private readonly store = inject(CampaignWorkspaceStore);
+  protected readonly store = inject(CampaignWorkspaceStore);
   private readonly router = inject(Router);
 
   protected readonly paths = CW_PATHS;

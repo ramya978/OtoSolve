@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
@@ -15,6 +16,8 @@ import { iamToday } from '../../../Shared/IAM/iam-data';
 import { UserSearchFilter } from '../../../Shared/models/user-directory.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
+import { LoaderService } from '../../../Shared/services/loader.service';
 
 type View = 'cards' | 'list';
 
@@ -65,7 +68,7 @@ const ACT_DONE: Record<ActKind, string> = {
  *  record detail drawer and an invite / edit drawer. */
 @Component({
   selector: 'app-iam-users',
-  imports: [IamSelect,PageHeader],
+  imports: [CommonModule, IamSelect,PageHeader, Loader],
   templateUrl: './users.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './users.css']
 })
@@ -76,6 +79,7 @@ export class Users implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly geo = inject(GeoMasterService);
   private readonly security = inject(SecurityApiService);
+  private readonly loaderService = inject(LoaderService);
 
   readonly users = this.store.users;
   readonly loading = this.store.loading;

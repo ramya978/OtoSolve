@@ -4,6 +4,7 @@
      and filters, sortable table with row actions (view · edit · activate · delete) and a pager.
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-country">
+  <app-loader [fullPage]="true" [message]="'Loading countries…'" *ngIf="store.loading()"></app-loader>
 
   <app-page-header breadcrumb="Master data / Geography" heading="Countries" description="The nations used for addresses, dialling codes and default currencies across the workspace.">
     <div class="co-head-acts" actions>

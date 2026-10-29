@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { LeadListItem } from '../../../Shared/models/donor-contract.model';
@@ -6,6 +7,7 @@ import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 export type LeadStage = 'New' | 'Assigned' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost';
 export type LeadTemp = 'Cold' | 'Warm' | 'Hot';
 export type LeadPotential = 'Low' | 'Medium' | 'High';
@@ -104,7 +106,7 @@ interface Opt { value: string; label: string; }
 
 @Component({
   selector: 'app-lead-work-queue',
-  imports: [PageHeader],
+  imports: [CommonModule, PageHeader, Loader],
   templateUrl: './lead-work-queue.html',
   styleUrl: './lead-work-queue.css',
 })

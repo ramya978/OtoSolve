@@ -1,0 +1,67 @@
+<div class="st-page" (keydown.escape)="close()">
+  <app-page-header breadcrumb="People / Attendance Operations" heading="Shift templates"
+    description="Define work schedules, breaks and grace rules for your teams.">
+    <ng-container actions><button type="button" class="st-button st-primary" (click)="openShift()"><span class="st-plus">＋</span> Create template</button></ng-container>
+  </app-page-header>
+
+  @if (toast()) {<div class="st-notice" role="status"><span>{{toast()}}</span><button type="button" (click)="toast.set('')" aria-label="Dismiss">×</button></div>}
+
+  <!-- Compact operational header: no redundant hero/large whitespace -->
+  <section class="st-dashboard" aria-label="Shift template overview">
+    <div class="st-dashboard-main">
+      <div class="st-dashboard-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 10h18M8 15h3M14 15h3"/></svg></div>
+      <div class="st-dashboard-copy"><span class="st-dashboard-eyebrow">WORKFORCE / SHIFT CONFIGURATION</span><h2>Shift library</h2><p>Reusable schedules, ready for your team's roster.</p></div>
+    
+    </div>
+    <div class="st-dashboard-stats" aria-label="Template statistics">
+      <div class="st-dashboard-stat"><span class="st-stat-icon st-stat-all">▦</span><div><small>Total templates</small><strong>{{shifts().length}}</strong></div></div>
+      <div class="st-dashboard-stat"><span class="st-stat-icon st-stat-active"><i></i></span><div><small>Active shifts</small><strong>{{activeCount()}}</strong></div></div>
+      <div class="st-dashboard-stat"><span class="st-stat-icon st-stat-archived"><i></i></span><div><small>Archived</small><strong>{{archivedCount()}}</strong></div></div>
+    </div>
+  </section>
+
+  <section class="st-library" aria-label="Shift templates">
+    <div class="st-library-heading st-library-heading-new">
+      <div><h2>All shift templates <span class="st-heading-count">{{visibleShifts.length}}</span></h2><p>Manage timings, breaks and arrival grace periods.</p></div>
+      <div class="st-library-tools">
+        <label class="st-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" placeholder="Search shifts..." [(ngModel)]="templateSearch" aria-label="Search shift templates"></label>
+      </div>
+    </div>
+    <div class="st-toolbar st-toolbar-new">
+      <div class="st-filter-tabs" role="group" aria-label="Template status">
+        <button type="button" [class.selected]="templateFilter==='all'" (click)="templateFilter='all';showArchived=true">All <b>{{shifts().length}}</b></button>
+        <button type="button" [class.selected]="templateFilter==='active'" (click)="templateFilter='active'">Active <b>{{activeCount()}}</b></button>
+        <button type="button" [class.selected]="templateFilter==='archived'" (click)="templateFilter='archived'">Archived <b>{{archivedCount()}}</b></button>
+      </div>
+      <span class="st-toolbar-tip"><span class="st-toolbar-bullet"></span> Template changes are versioned</span>
+    </div>
+    <div class="st-list-labels" aria-hidden="true"><span>SHIFT DETAILS</span><span>WORK WINDOW</span><span>CONFIGURATION</span><span>STATUS</span><span>ACTIONS</span></div>
+    <div class="st-rows">
+      @for (s of visibleShifts; track s.id) {
+        <article class="st-shift" [class.st-inactive]="!s.active">
+          <div class="st-identity"><div class="st-symbol" [class]="'tone-'+s.color"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.4 2"/></svg></div><div class="st-name"><h3 [title]="s.name">{{s.name}}</h3><span>Version {{s.version}} <i>·</i> {{shiftUsage(s.id)}} assigned {{shiftUsage(s.id)===1?'day':'days'}}</span></div></div>
+          <div class="st-schedule"><div class="st-time-label"><strong>{{s.start}}</strong><span class="st-arrow">→</span><strong>{{s.end}}</strong>@if(overnight(s)){<span class="st-next">+1 day</span>}</div><div class="st-ruler"><div class="st-tick-lines"></div><div class="st-window" [class]="'tone-'+s.color" [style.left.%]="shiftLeft(s)" [style.width.%]="shiftFirstWidth(s)"></div>@if(shiftWrapWidth(s)>0){<div class="st-window" [class]="'tone-'+s.color" [style.left.%]="0" [style.width.%]="shiftWrapWidth(s)"></div>}</div><div class="st-hours"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div></div>
+          <div class="st-rules"><div><span>Duration</span><strong>{{durationText(s.start,s.end)}}</strong></div><div><span>Break</span><strong>{{s.breakMinutes}} min</strong></div><div><span>Grace</span><strong>{{s.graceMinutes}} min</strong></div></div>
+          <div class="st-state"><span class="st-status" [class.archived]="!s.active"><i></i>{{s.active?'Active':'Archived'}}</span></div>
+          <div class="st-actions"><button type="button" class="st-edit" (click)="openShift(s)">Edit <span>↗</span></button><button type="button" class="st-secondary-action" (click)="archiveShift(s)">{{s.active?'Archive':'Restore'}}</button></div>
+        </article>
+      } @empty {
+        <div class="st-empty"><span class="st-empty-symbol">◷</span><h3>No matching shift templates</h3><p>Try a different search or create a new template.</p><button type="button" class="st-button st-primary" (click)="openShift()">+ Create template</button></div>
+      }
+    </div>
+    <div class="st-library-bottom"><span><span class="st-legend-dot"></span> Time bars represent planned hours across a 24-hour day</span><span>Overnight shifts wrap into the following day</span></div>
+  </section>
+
+  @if(dialog==='shift') {
+    <div class="st-backdrop" (click)="close()"></div>
+    <aside class="st-drawer" role="dialog" aria-modal="true" aria-labelledby="st-drawer-heading">
+      <header class="st-drawer-header"><div><span class="st-kicker">SHIFT LIBRARY / {{editingId?'EDIT':'CREATE'}}</span><h2 id="st-drawer-heading">{{editingId?'Edit shift template':'New shift template'}}</h2><p>Configure the working hours and attendance parameters.</p></div><button type="button" class="st-close" (click)="close()" aria-label="Close drawer">×</button></header>
+      <div class="st-drawer-body">
+        <div class="st-form-section"><div class="st-form-section-title"><span class="st-section-number">01</span><div><h3>Basic information</h3><p>Give this schedule a clear, recognizable name.</p></div></div><label class="st-field"><span>Template name <b>*</b></span><input type="text" [(ngModel)]="shiftForm.name" maxlength="80" placeholder="e.g. General shift"></label><label class="st-field"><span>Shift color</span><select [(ngModel)]="shiftForm.color"><option value="blue">Ocean blue</option><option value="teal">Emerald teal</option><option value="violet">Soft violet</option><option value="amber">Warm amber</option></select></label></div>
+        <div class="st-form-section"><div class="st-form-section-title"><span class="st-section-number">02</span><div><h3>Working window</h3><p>Overnight schedules are supported automatically.</p></div></div><div class="st-field-row"><label class="st-field"><span>Start time <b>*</b></span><input type="time" [(ngModel)]="shiftForm.start"></label><label class="st-field"><span>End time <b>*</b></span><input type="time" [(ngModel)]="shiftForm.end"></label></div><div class="st-live-preview"><span>SHIFT DURATION</span><strong>{{durationText(shiftForm.start,shiftForm.end)}}</strong>@if(overnight(shiftForm)){<small>Next-day check-out</small>}</div></div>
+        <div class="st-form-section"><div class="st-form-section-title"><span class="st-section-number">03</span><div><h3>Attendance rules</h3><p>Define breaks and arrival flexibility.</p></div></div><div class="st-field-row"><label class="st-field"><span>Break duration (minutes)</span><input type="number" min="0" max="300" [(ngModel)]="shiftForm.breakMinutes"></label><label class="st-field"><span>Grace period (minutes)</span><input type="number" min="0" max="180" [(ngModel)]="shiftForm.graceMinutes"></label></div><p class="st-form-hint">Editing a template creates a new version. Existing assignments keep their saved shift details.</p></div>
+      </div>
+      <footer class="st-drawer-footer"><button type="button" class="st-button" (click)="close()">Cancel</button><button type="button" class="st-button st-primary" (click)="saveShift()">{{editingId?'Save changes':'Create template'}}</button></footer>
+    </aside>
+  }
+</div>

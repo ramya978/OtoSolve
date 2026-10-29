@@ -4,6 +4,7 @@
      and filters, sortable table with row actions (view · edit · activate · delete) and a pager.
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-city">
+  <app-loader [fullPage]="true" [message]="'Loading cities…'" *ngIf="store.loading()"></app-loader>
 
   <app-page-header breadcrumb="Master data / Geography" heading="Cities" description="Cities mapped to their state and country, used for addresses, reporting and analytics.">
     <div class="ci-head-acts" actions>

@@ -8,31 +8,46 @@
        PDF     : paper preview (page 1 summary · page 2 day-by-day) · download
      → attendance rules · toast.   Logic: attendance.ts · styles: attendance.css
      ===================================================================================================== -->
-<app-page-header breadcrumb="People / Attendance" heading="Attendance" description="Mark the day. Resolve exceptions. Share a report everyone can read.">
+<app-page-header breadcrumb="People / Attendance" heading="Attendance"
+  description="Mark the day. Resolve exceptions. Share a report everyone can read.">
   <ng-container actions>
     <div class="at-head-acts">
-      <button type="button" class="at-btn is-primary" [disabled]="busyPdf() || !employees().length" (click)="download()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span>{{ busyPdf() ? 'Preparing…' : 'Download PDF' }}</span>
+      <button type="button" class="at-btn is-primary" [disabled]="busyPdf() || !employees().length"
+        (click)="download()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('download')" />
+        </svg><span>{{ busyPdf() ? 'Preparing…' : 'Download PDF' }}</span>
       </button>
+
+      <button type="button" class="at-btn is-primary" (click)="openAdd()">+ Add attendance</button>
     </div>
   </ng-container>
 </app-page-header>
 
 <div class="at">
 
+  @if (directoryLoading()) { <div class="at-api-state" role="status">Loading employees and departments…</div> }
+ 
   <!-- ================================================================ OVERVIEW WIDGET -->
   <section class="at-ov" aria-label="Attendance overview">
     <!-- top: view switch · filters -->
     <div class="at-ov-top">
       <div class="at-views" role="tablist" aria-label="Attendance views">
-        <button type="button" role="tab" [class.is-on]="view() === 'daily'" [attr.aria-selected]="view() === 'daily'" (click)="setView('daily')">Daily<span class="at-long">&nbsp;register</span></button>
-        <button type="button" role="tab" [class.is-on]="view() === 'report'" [attr.aria-selected]="view() === 'report'" (click)="setView('report')">Monthly<span class="at-long">&nbsp;report</span></button>
-        <button type="button" role="tab" [class.is-on]="view() === 'pdf'" [attr.aria-selected]="view() === 'pdf'" (click)="setView('pdf')">PDF<span class="at-long">&nbsp;preview</span></button>
+        <button type="button" role="tab" [class.is-on]="view() === 'daily'" [attr.aria-selected]="view() === 'daily'"
+          (click)="setView('daily')">Daily<span class="at-long">&nbsp;register</span></button>
+        <button type="button" role="tab" [class.is-on]="view() === 'timeline'"
+          [attr.aria-selected]="view() === 'timeline'" (click)="setView('timeline')">Attendance timeline</button>
+        <button type="button" role="tab" [class.is-on]="view() === 'report'" [attr.aria-selected]="view() === 'report'"
+          (click)="setView('report')">Monthly<span class="at-long">&nbsp;report</span></button>
+        <button type="button" role="tab" [class.is-on]="view() === 'pdf'" [attr.aria-selected]="view() === 'pdf'"
+          (click)="setView('pdf')">PDF<span class="at-long">&nbsp;preview</span></button>
       </div>
       <div class="at-filters">
         <label class="at-ctl at-f-dept">
           <span class="at-sr">Department</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('building')" /></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('building')" />
+          </svg>
           <select (change)="onDepartment($any($event.target).value)">
             <option value="all" [selected]="department() === 'all'">All departments</option>
             @for (d of departments; track d) { <option [value]="d" [selected]="department() === d">{{ d }}</option> }
@@ -40,8 +55,11 @@
         </label>
         <label class="at-ctl at-f-search">
           <span class="at-sr">Find an employee</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
-          <input type="search" placeholder="Search name or employee ID" [value]="search()" (input)="onSearch($any($event.target).value)" />
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('search')" />
+          </svg>
+          <input type="search" placeholder="Search name or employee ID" [value]="search()"
+            (input)="onSearch($any($event.target).value)" />
         </label>
       </div>
     </div>
@@ -50,131 +68,181 @@
     <div class="at-ov-body">
       <!-- period: calendar tile · date · one joined stepper -->
       <div class="at-period">
-        <div class="at-tile" [class.is-month]="view() !== 'daily'" aria-hidden="true"><span>{{ tile().top }}</span><b>{{ tile().big }}</b></div>
+        <div class="at-tile" [class.is-month]="view() !== 'daily' && view() !== 'timeline'" aria-hidden="true"><span>{{
+            tile().top }}</span><b>{{ tile().big }}</b></div>
         <div class="at-period-text">
-          @if (view() === 'daily') {
-            <span class="at-eyebrow">{{ dayTitle().weekday }}@if (isToday()) { <b class="at-today-tag">Today</b> }</span>
-            <strong class="at-period-title">{{ dayTitle().date }}</strong>
-            <div class="at-dp-anchor">
-              <div class="at-stepper" role="group" aria-label="Change date">
-                <button type="button" aria-label="Previous day" [disabled]="!canShiftDay(-1)" (click)="shiftDay(-1)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg></button>
-                <button type="button" class="at-stepper-pick" [class.is-open]="pickerOpen()" aria-haspopup="dialog" [attr.aria-expanded]="pickerOpen()" (click)="togglePicker()">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg><span>{{ dateChip() }}</span>
-                </button>
-                <button type="button" aria-label="Next day" [disabled]="!canShiftDay(1)" (click)="shiftDay(1)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
-              </div>
+          @if (view() === 'daily' || view() === 'timeline') {
+          <span class="at-eyebrow">{{ dayTitle().weekday }}@if (isToday()) { <b class="at-today-tag">Today</b> }</span>
+          <strong class="at-period-title">{{ dayTitle().date }}</strong>
+          <div class="at-dp-anchor">
+            <div class="at-stepper" role="group" aria-label="Change date">
+              <button type="button" aria-label="Previous day" [disabled]="!canShiftDay(-1)" (click)="shiftDay(-1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg></button>
+              <button type="button" class="at-stepper-pick" [class.is-open]="pickerOpen()" aria-haspopup="dialog"
+                [attr.aria-expanded]="pickerOpen()" (click)="togglePicker()">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path [attr.d]="icon('calendar')" />
+                </svg><span>{{ dateChip() }}</span>
+              </button>
+              <button type="button" aria-label="Next day" [disabled]="!canShiftDay(1)" (click)="shiftDay(1)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 18l6-6-6-6" />
+                </svg></button>
+            </div>
 
-              @if (pickerOpen()) {
-                <div class="at-dp" role="dialog" aria-label="Choose attendance date">
-                  <div class="at-dp-head">
-                    <button type="button" class="at-dp-nav" aria-label="Previous month" [disabled]="!canPickerShift(-1)" (click)="pickerShift(-1)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg></button>
-                    <strong>{{ pickerTitle() }}</strong>
-                    <button type="button" class="at-dp-nav" aria-label="Next month" [disabled]="!canPickerShift(1)" (click)="pickerShift(1)">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
-                  </div>
-                  <div class="at-dp-grid">
-                    @for (w of dpWeek; track w.label) { <span class="at-dp-wd" [class.is-off]="w.off">{{ w.label }}</span> }
-                    @for (d of pickerDays(); track d.iso) {
-                      <button type="button" class="at-dp-day" [class.is-out]="d.out" [class.is-off]="d.off" [class.is-holiday]="d.holiday"
-                        [class.is-sel]="d.sel" [class.is-today]="d.today" [disabled]="!d.ok" [attr.aria-label]="d.label"
-                        [attr.aria-pressed]="d.sel" (click)="pick(d.iso)">
-                        {{ d.day }}
-                        @if (d.state) { <i [class]="'is-' + d.state"></i> }
-                      </button>
-                    }
-                  </div>
-                  <div class="at-dp-foot">
-                    <span class="at-dp-key"><i class="is-done"></i>Complete</span>
-                    <span class="at-dp-key"><i class="is-open"></i>Pending</span>
-                    <span class="at-dp-key"><i class="is-hol"></i>Holiday</span>
-                    <button type="button" class="at-dp-today" [disabled]="!todayInRange" [attr.title]="todayInRange ? null : 'Today is outside this register'" (click)="goToday()">Today</button>
-                  </div>
-                </div>
-              }
+            @if (pickerOpen()) {
+            <div class="at-dp" role="dialog" aria-label="Choose attendance date">
+              <div class="at-dp-head">
+                <button type="button" class="at-dp-nav" aria-label="Previous month" [disabled]="!canPickerShift(-1)"
+                  (click)="pickerShift(-1)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg></button>
+                <strong>{{ pickerTitle() }}</strong>
+                <button type="button" class="at-dp-nav" aria-label="Next month" [disabled]="!canPickerShift(1)"
+                  (click)="pickerShift(1)">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg></button>
+              </div>
+              <div class="at-dp-grid">
+                @for (w of dpWeek; track w.label) { <span class="at-dp-wd" [class.is-off]="w.off">{{ w.label }}</span> }
+                @for (d of pickerDays(); track d.iso) {
+                <button type="button" class="at-dp-day" [class.is-out]="d.out" [class.is-off]="d.off"
+                  [class.is-holiday]="d.holiday" [class.is-sel]="d.sel" [class.is-today]="d.today" [disabled]="!d.ok"
+                  [attr.aria-label]="d.label" [attr.aria-pressed]="d.sel" (click)="pick(d.iso)">
+                  {{ d.day }}
+                  @if (d.state) { <i [class]="'is-' + d.state"></i> }
+                </button>
+                }
+              </div>
+              <div class="at-dp-foot">
+                <span class="at-dp-key"><i class="is-done"></i>Complete</span>
+                <span class="at-dp-key"><i class="is-open"></i>Pending</span>
+                <span class="at-dp-key"><i class="is-hol"></i>Holiday</span>
+                <button type="button" class="at-dp-today" [disabled]="!todayInRange"
+                  [attr.title]="todayInRange ? null : 'Today is outside this register'"
+                  (click)="goToday()">Today</button>
+              </div>
             </div>
+            }
+          </div>
           } @else {
-            <span class="at-eyebrow">Reporting month</span>
-            <strong class="at-period-title">{{ periods[month()].label }}</strong>
-            <div class="at-stepper" role="group" aria-label="Change month">
-              <button type="button" aria-label="Previous month" [disabled]="month() === monthKeys[0]" (click)="shiftMonth(-1)">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg></button>
-              <span class="at-stepper-pick is-static">Through {{ shortDate(periods[month()].cutoff) }}</span>
-              <button type="button" aria-label="Next month" [disabled]="month() === monthKeys[monthKeys.length - 1]" (click)="shiftMonth(1)">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
-            </div>
+          <span class="at-eyebrow">Reporting month</span>
+          <strong class="at-period-title">{{ periods[month()].label }}</strong>
+          <div class="at-stepper" role="group" aria-label="Change month">
+            <button type="button" aria-label="Previous month" [disabled]="month() === monthKeys[0]"
+              (click)="shiftMonth(-1)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg></button>
+            <span class="at-stepper-pick is-static">Through {{ shortDate(periods[month()].cutoff) }}</span>
+            <button type="button" aria-label="Next month" [disabled]="month() === monthKeys[monthKeys.length - 1]"
+              (click)="shiftMonth(1)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 18l6-6-6-6" />
+              </svg></button>
+          </div>
           }
         </div>
         <span class="at-period-scope">
-          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('userCheck')" /></svg>{{ plural(employees().length, 'employee') }}</span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('userCheck')" />
+            </svg>{{ plural(employees().length, 'employee') }}</span>
           <span [class.is-unsaved]="dirty().size"><i></i>{{ saveText() }}</span>
         </span>
       </div>
 
       <!-- status panel: bar + chips, then who is marked (daily) / which days are complete (monthly) -->
-      @let parts = view() === 'daily' ? dayBreak() : monthBreak();
+      @let parts = (view() === 'daily' || view() === 'timeline') ? dayBreak() : monthBreak();
       @let dt = doneTiles();
       @let di = doneInfo();
       <div class="at-break">
         <div class="at-break-head">
-          <span>{{ view() === 'daily' ? 'Status today' : 'Employee-days this month' }}</span>
-          @if (view() === 'daily') {
-            @if (di.pct) { <em [class.is-warn]="di.warn">{{ di.big }} marked · {{ di.pct }}</em> }
+          <span>{{ (view() === 'daily' || view() === 'timeline') ? 'Status on selected day' : 'Employee-days this month'
+            }}</span>
+          @if (view() === 'daily' || view() === 'timeline') {
+          @if (di.pct) { <em [class.is-warn]="di.warn">{{ di.big }} marked · {{ di.pct }}</em> }
           } @else {
-            <b>{{ report().total.credit.toFixed(1) }} days credit</b>
+          <b>{{ report().total.credit.toFixed(1) }} days credit</b>
           }
         </div>
         <div class="at-bar" role="img" [attr.aria-label]="'Attendance split'">
           @for (p of parts; track p.code) {
-            @if (p.count) { <i [class]="'is-' + p.tone" [style.width.%]="p.pct" [attr.title]="p.label + ': ' + p.count"></i> }
+          @if (p.count) { <i [class]="'is-' + p.tone" [style.width.%]="p.pct"
+            [attr.title]="p.label + ': ' + p.count"></i> }
           }
         </div>
         <ul class="at-legend-list">
           @for (p of parts; track p.code) {
-            <li><i [class]="'is-' + p.tone"></i><span>{{ p.label }}</span><b>{{ p.count }}</b><em>{{ p.pct.toFixed(0) }}%</em></li>
+          <li><i [class]="'is-' + p.tone"></i><span>{{ p.label }}</span><b>{{ p.count }}</b><em>{{ p.pct.toFixed(0)
+              }}%</em></li>
           }
         </ul>
         @if (dt.tiles.length) {
-          <div class="at-done" [class.is-month]="view() !== 'daily'">
-            <span class="at-done-label">{{ view() === 'daily' ? 'Team' : 'Working days' }}</span>
-            <ul class="at-done-grid" [attr.aria-label]="di.title">
-              @for (x of dt.tiles; track x.i) {
-                <li [class]="'at-done-tile is-' + x.state" [attr.title]="x.label" [attr.aria-label]="x.label">{{ x.text }}</li>
-              }
-            </ul>
-            <span class="at-done-chip" [class.is-warn]="di.warn">{{ di.chip }}</span>
-          </div>
+        <div class="at-done" [class.is-month]="view() !== 'daily' && view() !== 'timeline'">
+          <span class="at-done-label">{{ (view() === 'daily' || view() === 'timeline') ? 'Team' : 'Working days'
+            }}</span>
+          <ul class="at-done-grid" [attr.aria-label]="di.title">
+            @for (x of dt.tiles; track x.i) {
+            <li [class]="'at-done-tile is-' + x.state" [attr.title]="x.label" [attr.aria-label]="x.label">{{ x.text }}
+            </li>
+            }
+          </ul>
+          <span class="at-done-chip" [class.is-warn]="di.warn">{{ di.chip }}</span>
+        </div>
         }
       </div>
 
       <!-- needs attention: three short rows -->
       <div class="at-attn">
         <span class="at-attn-title">Needs attention</span>
-        @if (view() === 'daily') {
-          <button type="button" class="at-attn-row" data-tone="amber" (click)="setFilter('issues')">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
-            <span class="at-attn-label">Late arrivals</span><b>{{ dailyTotals().late }}</b>
-            <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
-          <button type="button" class="at-attn-row" data-tone="rose" (click)="setFilter('issues')">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clockAlert')" /></svg></span>
-            <span class="at-attn-label">Missing punch</span><b>{{ dailyTotals().missing }}</b>
-            <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
-          <button type="button" class="at-attn-row" data-tone="blue" (click)="setFilter('U')">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('circle')" /></svg></span>
-            <span class="at-attn-label">Unmarked</span><b>{{ dailyTotals().U }}</b>
-            <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg></button>
+        @if (view() === 'daily' || view() === 'timeline') {
+        <button type="button" class="at-attn-row" data-tone="amber" (click)="setFilter('issues')">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('clock')" />
+            </svg></span>
+          <span class="at-attn-label">Late arrivals</span><b>{{ dailyTotals().late }}</b>
+          <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" />
+          </svg></button>
+        <button type="button" class="at-attn-row" data-tone="rose" (click)="setFilter('issues')">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('clockAlert')" />
+            </svg></span>
+          <span class="at-attn-label">Missing punch</span><b>{{ dailyTotals().missing }}</b>
+          <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" />
+          </svg></button>
+        <button type="button" class="at-attn-row" data-tone="blue" (click)="setFilter('U')">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('circle')" />
+            </svg></span>
+          <span class="at-attn-label">Unmarked</span><b>{{ dailyTotals().U }}</b>
+          <svg class="at-attn-go" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9 18l6-6-6-6" />
+          </svg></button>
         } @else {
-          <div class="at-attn-row" data-tone="blue">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clipboard')" /></svg></span>
-            <span class="at-attn-label">Outstanding records</span><b>{{ report().total.U }}</b></div>
-          <div class="at-attn-row" data-tone="rose">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clockAlert')" /></svg></span>
-            <span class="at-attn-label">Missing punch</span><b>{{ report().total.missing }}</b></div>
-          <div class="at-attn-row" data-tone="amber">
-            <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg></span>
-            <span class="at-attn-label">Late arrivals</span><b>{{ report().total.late }}</b></div>
+        <div class="at-attn-row" data-tone="blue">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('clipboard')" />
+            </svg></span>
+          <span class="at-attn-label">Outstanding records</span><b>{{ report().total.U }}</b>
+        </div>
+        <div class="at-attn-row" data-tone="rose">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('clockAlert')" />
+            </svg></span>
+          <span class="at-attn-label">Missing punch</span><b>{{ report().total.missing }}</b>
+        </div>
+        <div class="at-attn-row" data-tone="amber">
+          <span class="at-attn-ico"><svg viewBox="0 0 24 24" aria-hidden="true">
+              <path [attr.d]="icon('clock')" />
+            </svg></span>
+          <span class="at-attn-label">Late arrivals</span><b>{{ report().total.late }}</b>
+        </div>
         }
       </div>
     </div>
@@ -182,409 +250,700 @@
 
   <!-- ================================================================ DAILY -->
   @if (view() === 'daily') {
-    <section class="at-card at-register">
-      <header class="at-reg-head">
-        <div class="at-reg-title">
-          <h2>Daily register</h2>
-          <span [class]="'at-chip ' + registerState().tone">{{ registerState().text }}</span>
-        </div>
-        <div class="at-status-filters" aria-label="Filter daily status">
-          <button type="button" [attr.aria-pressed]="statusFilter() === 'all'" (click)="setFilter('all')">All <b>{{ employees().length }}</b></button>
-          <button type="button" [attr.aria-pressed]="statusFilter() === 'U'" (click)="setFilter('U')">Unmarked <b>{{ dailyTotals().U }}</b></button>
-          <button type="button" [attr.aria-pressed]="statusFilter() === 'issues'" (click)="setFilter('issues')">Needs review <b>{{ issuesCount() }}</b></button>
-        </div>
-      </header>
+  <section class="at-card at-register">
+    <header class="at-reg-head">
+      <div class="at-reg-title">
+        <h2>Daily register</h2>
+        <span [class]="'at-chip ' + registerState().tone">{{ registerState().text }}</span>
+      </div>
+      <div class="at-status-filters" aria-label="Filter daily status">
+        <button type="button" [attr.aria-pressed]="statusFilter() === 'all'" (click)="setFilter('all')">All <b>{{
+            employees().length }}</b></button>
+        <button type="button" [attr.aria-pressed]="statusFilter() === 'U'" (click)="setFilter('U')">Unmarked <b>{{
+            dailyTotals().U }}</b></button>
+        <button type="button" [attr.aria-pressed]="statusFilter() === 'issues'" (click)="setFilter('issues')">Needs
+          review <b>{{ issuesCount() }}</b></button>
+      </div>
+    </header>
 
-      @if (!editable()) {
-        <div class="at-nonworking">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('coffee')" /></svg><span>{{ nonWorkingText() }}</span>
-        </div>
+    @if (!editable()) {
+    <div class="at-nonworking">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('coffee')" />
+      </svg><span>{{ nonWorkingText() }}</span>
+    </div>
+    }
+
+    <!-- tools: bulk mark present -->
+    <div class="at-reg-tools">
+      <span class="at-reg-count">{{ checkedCount() ? checkedCount() + ' selected' : visible().length + ' of ' +
+        employees().length + ' employees shown' }}</span>
+      <button type="button" class="at-btn at-btn-sm" [disabled]="!editable() || !checkedCount()"
+        (click)="markSelectedPresent()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('checkCheck')" />
+        </svg><span>Mark<span class="at-long">&nbsp;selected</span> present</span>
+      </button>
+    </div>
+
+    <table class="at-table at-daily-table">
+      <thead>
+        <tr>
+          <th class="c-sel">
+            <input type="checkbox" aria-label="Select all visible employees" [checked]="allChecked()"
+              [indeterminate]="someChecked()" [disabled]="!editable() || !visible().length"
+              (change)="toggleAll($any($event.target).checked)" />
+          </th>
+          <th class="c-emp">Employee</th>
+          <th class="c-st">Attendance</th>
+          <th class="c-in">Check-in</th>
+          <th class="c-out">Check-out</th>
+          <th class="c-hrs">Hours</th>
+          <th class="c-mode">Work mode</th>
+          <th class="c-rev">Review</th>
+          <th class="c-edit"><span class="at-sr">Edit</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (e of visible(); track e.id) {
+        @let r = rec(e);
+        @let rv = reviewOf(r);
+        <tr [class.is-selected]="editorOpen() && selectedEmployee()?.id === e.id"
+          [class.is-checked]="checked().has(e.id)">
+          <td class="c-sel">
+            <input type="checkbox" [attr.aria-label]="'Select ' + e.name" [checked]="checked().has(e.id)"
+              [disabled]="!editable()" (change)="toggleCheck(e.id, $any($event.target).checked)" />
+          </td>
+          <td class="c-emp">
+            <div class="at-person">
+              <span [class]="'at-avatar ' + e.tone">{{ e.initials }}</span>
+              <span><strong>{{ e.name }}</strong><small>{{ e.id }} · {{ e.department }}</small></span>
+            </div>
+          </td>
+          <td class="c-st"><span [class]="'at-status ' + tone(r.status)">{{ label(r.status) }}</span></td>
+          <td class="c-in at-punch">{{ isActive(r) && r.in ? r.in : '—' }}</td>
+          <td class="c-out at-punch" [class.is-missing]="isActive(r) && !r.out">{{ isActive(r) ? (r.out || 'Missing') :
+            '—' }}</td>
+          <td class="c-hrs at-hours">{{ isActive(r) ? duration(net(r)) : '—' }}</td>
+          <td class="c-mode">
+            @if (isActive(r)) {
+            <span class="at-mode"><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="icon(r.mode === 'Remote' ? 'laptop' : 'building')" />
+              </svg>{{ r.mode }}</span>
+            } @else { <span class="at-mode">—</span> }
+          </td>
+          <td class="c-rev">
+            @if (editable()) {
+            <span class="at-review" [class.is-ok]="rv.ok"><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="icon(rv.icon)" />
+              </svg>{{ rv.text }}</span>
+            } @else { <span class="at-review is-ok">—</span> }
+          </td>
+          <td class="c-edit">
+            <button type="button" class="at-row-edit" [disabled]="!editable()"
+              [attr.aria-label]="'Edit attendance for ' + e.name" (click)="openEditor(e)">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path [attr.d]="icon('pen')" />
+              </svg>
+            </button>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="9" class="at-empty">No employees match these filters. Try another name, department or status.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+
+    <footer class="at-savebar" [class.has-changes]="dirty().size">
+      <div>
+        <span class="at-save-dot"></span>
+        <span>{{ dirty().size ? plural(dirty().size, 'unsaved change') : 'All changes saved' }}</span>
+        <small>· Late flags are separate from attendance status</small>
+      </div>
+      <button type="button" class="at-btn is-primary" [disabled]="!dirty().size" (click)="save()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('save')" />
+        </svg><span>Save<span class="at-long">&nbsp;register</span></span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- ---------------- details panel ---------------- -->
+  @if (editorOpen()) {
+  <div class="at-scrim" (click)="closeEditor()"></div>
+  <aside class="at-drawer" role="dialog" aria-modal="true" aria-labelledby="at-drawer-title">
+    <header class="at-drawer-head">
+      @if (selectedEmployee(); as e) {
+      <span [class]="'at-avatar lg ' + e.tone">{{ e.initials }}</span>
+      <div>
+        <h2 id="at-drawer-title">{{ e.name }}</h2><small>{{ e.role }} · {{ e.id }}</small>
+      </div>
+      }
+      <button type="button" class="at-x" aria-label="Close" (click)="closeEditor()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('x')" />
+        </svg></button>
+    </header>
+    <p class="at-drawer-date"><svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('calendar')" />
+      </svg>{{ longDate(date()) }}</p>
+
+    <form class="at-form" (submit)="applyEntry($event)" novalidate>
+      <label class="at-field">
+        <span>Attendance status</span>
+        <select id="at-edit-status" [disabled]="!canEdit()" (change)="onEditStatus($any($event.target).value)">
+          @for (s of editableStatuses; track s) { <option [value]="s" [selected]="eStatus() === s">{{ label(s) }}
+          </option> }
+        </select>
+      </label>
+
+      @if (editorActive()) {
+      <div class="at-e-grid">
+        <label class="at-field"><span>Check-in</span>
+          <input type="time" [disabled]="!canEdit()" [value]="eIn()"
+            (input)="eIn.set($any($event.target).value)" /></label>
+        <label class="at-field"><span>Check-out</span>
+          <input type="time" [disabled]="!canEdit()" [value]="eOut()"
+            (input)="eOut.set($any($event.target).value)" /></label>
+        <label class="at-field"><span>Break · minutes</span>
+          <input type="number" min="0" max="480" step="5" [disabled]="!canEdit()" [value]="eBreak()"
+            (input)="eBreak.set(+$any($event.target).value)" /></label>
+        <label class="at-field"><span>Work mode</span>
+          <select [disabled]="!canEdit()" (change)="eMode.set($any($event.target).value)">
+            <option value="Office" [selected]="eMode() === 'Office'">Office</option>
+            <option value="Remote" [selected]="eMode() === 'Remote'">Remote</option>
+          </select></label>
+      </div>
       }
 
-      <!-- tools: bulk mark present -->
-      <div class="at-reg-tools">
-        <span class="at-reg-count">{{ checkedCount() ? checkedCount() + ' selected' : visible().length + ' of ' + employees().length + ' employees shown' }}</span>
-        <button type="button" class="at-btn at-btn-sm" [disabled]="!editable() || !checkedCount()" (click)="markSelectedPresent()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('checkCheck')" /></svg><span>Mark<span class="at-long">&nbsp;selected</span> present</span>
-        </button>
+      @if (eStatus() === 'HD') {
+      <label class="at-field">
+        <span>Half-day session</span>
+        <select [disabled]="!canEdit()" (change)="onSession($any($event.target).value)">
+          <option value="AM" [selected]="eSession() === 'AM'">Morning · 09:00–13:00</option>
+          <option value="PM" [selected]="eSession() === 'PM'">Afternoon · 14:00–18:00</option>
+        </select>
+      </label>
+      }
+
+      <label class="at-field">
+        <span>Note / reason <small>Optional</small></span>
+        <textarea rows="3" maxlength="180" placeholder="Add a short attendance note" [disabled]="!canEdit()"
+          [value]="eNote()" (input)="eNote.set($any($event.target).value)"></textarea>
+      </label>
+
+      <div class="at-calc">
+        @if (editorActive()) {
+        <span>Net work hours</span><strong>{{ duration(editorNet()) }}</strong>
+        @if (editorLate()) { <span class="is-late">Late {{ editorLate() }}m</span> }
+        } @else {
+        <span>{{ label(eStatus()) }}</span><strong>{{ editorOther() }}</strong>
+        }
       </div>
 
-      <table class="at-table at-daily-table">
-        <thead>
-          <tr>
-            <th class="c-sel">
-              <input type="checkbox" aria-label="Select all visible employees" [checked]="allChecked()" [indeterminate]="someChecked()"
-                     [disabled]="!editable() || !visible().length" (change)="toggleAll($any($event.target).checked)" />
-            </th>
-            <th class="c-emp">Employee</th>
-            <th class="c-st">Attendance</th>
-            <th class="c-in">Check-in</th>
-            <th class="c-out">Check-out</th>
-            <th class="c-hrs">Hours</th>
-            <th class="c-mode">Work mode</th>
-            <th class="c-rev">Review</th>
-            <th class="c-edit"><span class="at-sr">Edit</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (e of visible(); track e.id) {
-            @let r = rec(e);
-            @let rv = reviewOf(r);
-            <tr [class.is-selected]="editorOpen() && selectedEmployee()?.id === e.id" [class.is-checked]="checked().has(e.id)">
-              <td class="c-sel">
-                <input type="checkbox" [attr.aria-label]="'Select ' + e.name" [checked]="checked().has(e.id)" [disabled]="!editable()"
-                       (change)="toggleCheck(e.id, $any($event.target).checked)" />
-              </td>
-              <td class="c-emp">
-                <div class="at-person">
-                  <span [class]="'at-avatar ' + e.tone">{{ e.initials }}</span>
-                  <span><strong>{{ e.name }}</strong><small>{{ e.id }} · {{ e.department }}</small></span>
-                </div>
-              </td>
-              <td class="c-st"><span [class]="'at-status ' + tone(r.status)">{{ label(r.status) }}</span></td>
-              <td class="c-in at-punch">{{ isActive(r) && r.in ? r.in : '—' }}</td>
-              <td class="c-out at-punch" [class.is-missing]="isActive(r) && !r.out">{{ isActive(r) ? (r.out || 'Missing') : '—' }}</td>
-              <td class="c-hrs at-hours">{{ isActive(r) ? duration(net(r)) : '—' }}</td>
-              <td class="c-mode">
-                @if (isActive(r)) {
-                  <span class="at-mode"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(r.mode === 'Remote' ? 'laptop' : 'building')" /></svg>{{ r.mode }}</span>
-                } @else { <span class="at-mode">—</span> }
-              </td>
-              <td class="c-rev">
-                @if (editable()) {
-                  <span class="at-review" [class.is-ok]="rv.ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(rv.icon)" /></svg>{{ rv.text }}</span>
-                } @else { <span class="at-review is-ok">—</span> }
-              </td>
-              <td class="c-edit">
-                <button type="button" class="at-row-edit" [disabled]="!editable()" [attr.aria-label]="'Edit attendance for ' + e.name" (click)="openEditor(e)">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('pen')" /></svg>
-                </button>
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="9" class="at-empty">No employees match these filters. Try another name, department or status.</td></tr>
-          }
-        </tbody>
-      </table>
+      @if (eError()) { <p class="at-form-error" role="alert">{{ eError() }}</p> }
 
-      <footer class="at-savebar" [class.has-changes]="dirty().size">
-        <div>
-          <span class="at-save-dot"></span>
-          <span>{{ dirty().size ? plural(dirty().size, 'unsaved change') : 'All changes saved' }}</span>
-          <small>· Late flags are separate from attendance status</small>
-        </div>
-        <button type="button" class="at-btn is-primary" [disabled]="!dirty().size" (click)="save()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg><span>Save<span class="at-long">&nbsp;register</span></span>
+      <div class="at-drawer-foot">
+        <button type="button" class="at-btn" (click)="closeEditor()">Cancel</button>
+        <button type="submit" class="at-btn is-primary" [disabled]="!canEdit()">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('check')" />
+          </svg><span>Apply</span>
         </button>
-      </footer>
-    </section>
+      </div>
+      <small class="at-hint">Applied changes stay in the register until you press Save register.</small>
+    </form>
+  </aside>
+  }
+  }
 
-    <!-- ---------------- details panel ---------------- -->
-    @if (editorOpen()) {
-      <div class="at-scrim" (click)="closeEditor()"></div>
-      <aside class="at-drawer" role="dialog" aria-modal="true" aria-labelledby="at-drawer-title">
-        <header class="at-drawer-head">
-          @if (selectedEmployee(); as e) {
-            <span [class]="'at-avatar lg ' + e.tone">{{ e.initials }}</span>
-            <div><h2 id="at-drawer-title">{{ e.name }}</h2><small>{{ e.role }} · {{ e.id }}</small></div>
-          }
-          <button type="button" class="at-x" aria-label="Close" (click)="closeEditor()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
-        </header>
-        <p class="at-drawer-date"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>{{ longDate(date()) }}</p>
+  <!-- ================================================================ ATTENDANCE TIMELINE: SHIFT GRID -->
+  @if (view() === 'timeline') {
+  <section class="at-shift-workspace">
+    <div class="at-shift-main at-card">
+      <header class="at-shift-heading">
+        <div>
+          <h2>People &amp; shift timeline</h2>
+          <p>{{ shortDate(date()) }} · Plan above, actual time below · Select an employee to review</p>
+        </div>
 
-        <form class="at-form" (submit)="applyEntry($event)" novalidate>
-          <label class="at-field">
-            <span>Attendance status</span>
-            <select id="at-edit-status" [disabled]="!canEdit()" (change)="onEditStatus($any($event.target).value)">
-              @for (s of editableStatuses; track s) { <option [value]="s" [selected]="eStatus() === s">{{ label(s) }}</option> }
-            </select>
-          </label>
-
-          @if (editorActive()) {
-            <div class="at-e-grid">
-              <label class="at-field"><span>Check-in</span>
-                <input type="time" [disabled]="!canEdit()" [value]="eIn()" (input)="eIn.set($any($event.target).value)" /></label>
-              <label class="at-field"><span>Check-out</span>
-                <input type="time" [disabled]="!canEdit()" [value]="eOut()" (input)="eOut.set($any($event.target).value)" /></label>
-              <label class="at-field"><span>Break · minutes</span>
-                <input type="number" min="0" max="480" step="5" [disabled]="!canEdit()" [value]="eBreak()" (input)="eBreak.set(+$any($event.target).value)" /></label>
-              <label class="at-field"><span>Work mode</span>
-                <select [disabled]="!canEdit()" (change)="eMode.set($any($event.target).value)">
-                  <option value="Office" [selected]="eMode() === 'Office'">Office</option>
-                  <option value="Remote" [selected]="eMode() === 'Remote'">Remote</option>
-                </select></label>
+      </header>
+      <div class="at-shift-toolbar">
+        <div class="at-tl-filters">
+          <button type="button" [class.active]="timelineFilter() === 'all'" (click)="timelineFilter.set('all')">All
+            people <b>{{ employees().length }}</b></button>
+          <button type="button" [class.active]="timelineFilter() === 'P'" (click)="timelineFilter.set('P')">Present
+            <b>{{ dailyTotals().P }}</b></button>
+          <button type="button" [class.active]="timelineFilter() === 'A'" (click)="timelineFilter.set('A')">Absent <b>{{
+              dailyTotals().A }}</b></button>
+          <button type="button" [class.active]="timelineFilter() === 'L'" (click)="timelineFilter.set('L')">Leave <b>{{
+              dailyTotals().L }}</b></button>
+        </div>
+        <div class="at-shift-legend"><span><i class="plan"></i>Plan</span><span><i class="work"></i>Work</span><span><i
+              class="gap"></i>Gap</span><span><i class="leave"></i>Leave</span></div>
+      </div>
+      <div class="at-shift-scroll">
+        <div class="at-shift-grid">
+          <div class="at-shift-grid-head">
+            <span>EMPLOYEE</span><span>ASSIGNED SHIFT</span>
+            <div class="at-shift-hours">@for (hr of timelineHours; track hr) { <span>{{ hr }}</span> }</div>
+            <span>TIME ACCOUNT</span><span>REVIEW</span>
+          </div>
+          @for (e of timelineEmployees(); track e.id) {
+          @let r = rec(e);
+          <button type="button" class="at-shift-row" [class.is-selected]="timelineSelected()?.id === e.id"
+            (click)="timelineSelectedId.set(e.id)">
+            <div class="at-shift-person"><span [class]="'at-avatar ' + e.tone">{{ e.initials }}</span><span><strong>{{
+                  e.name }}</strong><small class="dept-ellipsis" [title]="e.department">
+  {{ e.department }}
+</small></span></div>
+            <div class="at-shift-assignment"><b [class]="'at-shift-tag ' + timelineShift(e).tone">{{
+                timelineShift(e).label }}</b><small>{{ timelineShift(e).time }}</small></div>
+            <div class="at-shift-track">
+              <div class="at-shift-lines">@for (hr of timelineHours; track hr) { <i></i> }</div>
+              <span [class]="'at-shift-plan '+timelineShift(e).tone" [style.left.%]="timelinePlanLeft(e)"
+                [style.width.%]="timelinePlanWidth(e)"></span>
+              <span class="at-shift-plan-break" [style.left.%]="timelinePlanBreakLeft(e)"></span>
+              @if (isActive(r) && r.in) {
+              <span class="at-shift-actual" [style.left.%]="timelineActualLeft(r)"
+                [style.width.%]="timelineActualWidth(r)" [class.is-half]="r.status === 'HD'"></span>
+              @if (r.break > 0 && timelineActualWidth(r) > 0) { <span class="at-shift-work-break"
+                [style.left.%]="timelineBreakLeft(r)" [style.width.%]="timelineBreakWidth(r)"></span> }
+              } @else if (r.status === 'L' || r.status === 'A') {
+              <span [class]="'at-shift-away ' + (r.status === 'L' ? 'leave' : 'absent')"
+                [style.left.%]="timelinePlanLeft(e)" [style.width.%]="timelinePlanWidth(e)">{{ label(r.status) }}</span>
+              }
             </div>
-          }
-
-          @if (eStatus() === 'HD') {
-            <label class="at-field">
-              <span>Half-day session</span>
-              <select [disabled]="!canEdit()" (change)="onSession($any($event.target).value)">
-                <option value="AM" [selected]="eSession() === 'AM'">Morning · 09:00–13:00</option>
-                <option value="PM" [selected]="eSession() === 'PM'">Afternoon · 14:00–18:00</option>
-              </select>
-            </label>
-          }
-
-          <label class="at-field">
-            <span>Note / reason <small>Optional</small></span>
-            <textarea rows="3" maxlength="180" placeholder="Add a short attendance note" [disabled]="!canEdit()"
-                      [value]="eNote()" (input)="eNote.set($any($event.target).value)"></textarea>
-          </label>
-
-          <div class="at-calc">
-            @if (editorActive()) {
-              <span>Net work hours</span><strong>{{ duration(editorNet()) }}</strong>
-              @if (editorLate()) { <span class="is-late">Late {{ editorLate() }}m</span> }
-            } @else {
-              <span>{{ label(eStatus()) }}</span><strong>{{ editorOther() }}</strong>
-            }
-          </div>
-
-          @if (eError()) { <p class="at-form-error" role="alert">{{ eError() }}</p> }
-
-          <div class="at-drawer-foot">
-            <button type="button" class="at-btn" (click)="closeEditor()">Cancel</button>
-            <button type="submit" class="at-btn is-primary" [disabled]="!canEdit()">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg><span>Apply</span>
-            </button>
-          </div>
-          <small class="at-hint">Applied changes stay in the register until you press Save register.</small>
-        </form>
-      </aside>
-    }
+            <div class="at-shift-account"><strong>{{ isActive(r) ? duration(net(r)) : '—' }}</strong><small>{{
+                isActive(r) ? 'worked' : label(r.status) }}</small></div>
+            <div class="at-shift-review"><span [class]="'at-status ' + tone(r.status)">{{ label(r.status) }}</span>@if
+              (late(r)) { <small>Late {{ late(r) }}m</small> }</div>
+          </button>
+          } @empty { <div class="at-timeline-empty">No employees found for the selected filter.</div> }
+        </div>
+      </div>
+      <footer class="at-shift-foot"><span>{{ timelineEmployees().length }} of {{ employees().length }} employees shown ·
+          Click any row to review</span><span>Actual attendance is shown as the green bar</span></footer>
+    </div>
+    <aside class="at-shift-side at-card">
+      <header class="at-shift-side-head">
+        <h2>Attendance detail</h2>
+      </header>
+      @if (timelineSelected(); as e) {
+      @let r = rec(e);
+      <div class="at-shift-side-person"><span [class]="'at-avatar lg ' + e.tone">{{ e.initials }}</span>
+        <div><strong>{{ e.name }}</strong><small>{{ e.id }} · {{ e.department }}</small></div>
+      </div>
+      <div class="at-shift-side-plan"><span>{{ timelineShift(e).label }}</span><b>{{ timelineShift(e).time }}</b></div>
+      <div class="at-shift-side-section">
+        <span class="at-kicker">ATTENDANCE STATUS</span>
+        <div [class]="'at-status ' + tone(r.status)">{{ label(r.status) }}</div>
+        <div class="at-shift-times">
+          <div><small>Check-in</small><strong>{{ r.in || '—' }}</strong></div>
+          <div><small>Check-out</small><strong>{{ r.out || '—' }}</strong></div>
+        </div>
+        <div class="at-shift-times">
+          <div><small>Net worked</small><strong>{{ isActive(r) ? duration(net(r)) : '—' }}</strong></div>
+          <div><small>Work mode</small><strong>{{ isActive(r) ? r.mode : '—' }}</strong></div>
+        </div>
+        <div class="at-shift-side-note"><small>Attendance note</small>
+          <p>{{ r.note || 'No note added.' }}</p>
+        </div>
+        <button type="button" class="at-btn is-primary at-shift-save" [disabled]="!editable()"
+          (click)="editTimelineEmployee(e)">Edit attendance details</button>
+        <p class="at-shift-helper">Edit check-in, check-out, break, status and notes using the existing attendance
+          editor.</p>
+      </div>
+      } @else { <p class="at-timeline-empty">Select an employee to see their attendance details.</p> }
+      <div class="at-shift-side-bottom">
+        <h2>Quick actions</h2><button type="button" class="at-btn" (click)="openAdd()">+ Add department / individual
+          attendance</button>
+      </div>
+    </aside>
+  </section>
   }
 
   <!-- ================================================================ MONTHLY -->
   @if (view() === 'report') {
-    <section class="at-card at-report">
-      <header class="at-reg-head">
-        <div class="at-reg-title">
-          <h2>Monthly register</h2>
-          <span [class]="'at-chip ' + reportState().tone">{{ reportState().text }}</span>
-        </div>
-        <div class="at-status-filters" aria-label="Monthly report layout">
-          <button type="button" [attr.aria-pressed]="layout() === 'grid'" (click)="layout.set('grid')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('grid')" /></svg>Day-by-day</button>
-          <button type="button" [attr.aria-pressed]="layout() === 'summary'" (click)="layout.set('summary')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>Summary</button>
-        </div>
-      </header>
-
-      <div class="at-legend">
-        @for (c of legendCodes; track c) {
-          <span class="at-legend-item"><b [class]="'at-code ' + tone(c)">{{ c }}</b>{{ label(c) }}</span>
-        }
-        <span class="at-legend-item"><span class="at-late-dot"></span>Dot = late</span>
-        <span class="at-legend-tip">Click a working day to edit it</span>
+  <section class="at-card at-report">
+    <header class="at-reg-head">
+      <div class="at-reg-title">
+        <h2>Monthly register</h2>
+        <span [class]="'at-chip ' + reportState().tone">{{ reportState().text }}</span>
       </div>
+      <div class="at-status-filters" aria-label="Monthly report layout">
+        <button type="button" [attr.aria-pressed]="layout() === 'grid'" (click)="layout.set('grid')">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('grid')" />
+          </svg>Day-by-day</button>
+        <button type="button" [attr.aria-pressed]="layout() === 'summary'" (click)="layout.set('summary')">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path [attr.d]="icon('list')" />
+          </svg>Summary</button>
+      </div>
+    </header>
 
-      @if (layout() === 'grid') {
-        <div class="at-grid-wrap">
-          <table class="at-month">
-            <thead>
-              <tr>
-                <th class="m-name">Employee</th>
-                @for (d of report().dates; track d) {
-                  <th [class.is-off]="isOffDay(d)" [attr.title]="longDate(d)">{{ dayNo(d) }}<small>{{ dayLetter(d) }}</small></th>
-                }
-                <th class="m-tot">P</th><th class="m-tot">HD</th><th class="m-tot">L</th><th class="m-tot">A</th><th class="m-tot">U</th><th class="m-rate">Rate</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (e of report().employees; track e.id; let i = $index) {
-                @let s = report().rows[i];
-                <tr>
-                  <td class="m-name"><span class="at-month-emp"><strong>{{ e.name }}</strong><small>{{ e.id }}</small></span></td>
-                  @for (d of report().dates; track d) {
-                    @let c = cell(d, e);
-                    <td [class.is-off]="isOffDay(d)">
-                      <button type="button" [class]="'at-day ' + tone(c.status) + (c.status === 'U' ? ' is-unmarked' : '')" [disabled]="isOffDay(d)"
-                              [attr.title]="e.name + ' · ' + shortDate(d) + ' · ' + label(c.status) + (late(c) ? ' · Late ' + late(c) + ' minutes' : '')"
-                              [attr.aria-label]="'Edit ' + e.name + ' on ' + shortDate(d) + ': ' + label(c.status)" (click)="openDay(d, e)">
-                        {{ c.status === 'F' ? '—' : c.status }}@if (late(c)) { <i class="at-late-dot"></i> }
-                      </button>
-                    </td>
-                  }
-                  <td class="m-tot">{{ s.P }}</td><td class="m-tot">{{ s.HD }}</td><td class="m-tot">{{ s.L }}</td><td class="m-tot">{{ s.A }}</td><td class="m-tot">{{ s.U }}</td>
-                  <td class="m-rate">{{ rate(s) }}</td>
-                </tr>
-              } @empty {
-                <tr><td class="at-empty" [attr.colspan]="report().dates.length + 7">No employees match the current filters.</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      } @else {
-        <table class="at-table at-summary">
-          <thead>
-            <tr>
-              <th>Employee</th><th class="s-dept">Department</th><th class="s-sched">Scheduled</th><th class="s-p">Present</th><th class="s-hd">Half-day</th>
-              <th class="s-l">Leave</th><th class="s-a">Absent</th><th class="s-u">Unmarked</th><th class="s-late">Late</th><th class="s-hrs">Work hours</th><th class="s-rate">Rate</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (s of report().rows; track s.id; let i = $index) {
-              @let e = report().employees[i];
-              <tr>
-                <td><div class="at-person"><span [class]="'at-avatar ' + e.tone">{{ e.initials }}</span><span><strong>{{ e.name }}</strong><small>{{ e.id }} · {{ e.department }}</small></span></div></td>
-                <td class="s-dept">{{ s.department }}</td><td class="s-sched">{{ s.scheduled }}</td><td class="s-p">{{ s.P }}</td><td class="s-hd">{{ s.HD }}</td>
-                <td class="s-l">{{ s.L }}</td><td class="s-a">{{ s.A }}</td><td class="s-u">{{ s.U }}</td><td class="s-late">{{ s.late }}</td><td class="s-hrs">{{ duration(s.minutes) }}</td>
-                <td class="s-rate"><span class="at-rate-mark"><i><b [style.width.%]="s.rate > 100 ? 100 : s.rate"></b></i>{{ rate(s) }}</span></td>
-              </tr>
-            }
-          </tbody>
-          <tfoot>
-            @let t = report().total;
-            <tr>
-              <td>Total · {{ plural(report().employees.length, 'employee') }}</td>
-              <td class="s-dept">All in scope</td><td class="s-sched">{{ t.scheduled }}</td><td class="s-p">{{ t.P }}</td><td class="s-hd">{{ t.HD }}</td>
-              <td class="s-l">{{ t.L }}</td><td class="s-a">{{ t.A }}</td><td class="s-u">{{ t.U }}</td><td class="s-late">{{ t.late }}</td><td class="s-hrs">{{ duration(t.minutes) }}</td>
-              <td class="s-rate"><span class="at-rate-mark"><i><b [style.width.%]="t.rate > 100 ? 100 : t.rate"></b></i>{{ rate(t) }}</span></td>
-            </tr>
-          </tfoot>
-        </table>
+    <div class="at-legend">
+      @for (c of legendCodes; track c) {
+      <span class="at-legend-item"><b [class]="'at-code ' + tone(c)">{{ c }}</b>{{ label(c) }}</span>
       }
-
-      <div class="at-method">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calculator')" /></svg>
-        <span><strong>Attendance rate:</strong> (Present + ½ × Half-day) ÷ (Scheduled workdays − Approved leave). Weekly off and holidays are excluded. Rates remain provisional while records are unmarked.</span>
-      </div>
-    </section>
-
-    <div class="at-report-bottom">
-      <section class="at-card at-pad">
-        <div class="at-small-head"><h2>By department</h2><span>Current report scope</span></div>
-        @for (d of departmentRows(); track d.dep) {
-          <div class="at-dept-row">
-            <span>{{ d.dep }}<small>{{ plural(d.count, 'employee') }} · {{ d.credit }} days credit</small></span>
-            <i><b [style.width.%]="d.width" [style.background]="d.color"></b></i>
-            <strong>{{ d.rate }}</strong>
-          </div>
-        } @empty {
-          <p class="at-hint">No employees match the current scope.</p>
-        }
-      </section>
-
-      <section class="at-card at-pad">
-        <div class="at-small-head"><h2>Before you share</h2><span class="at-chip blue">Report checks</span></div>
-        @for (c of checks(); track c.text) {
-          <div class="at-check" [class.is-ok]="c.ok">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>
-            <span>{{ c.text }}</span><strong>{{ c.value }}</strong>
-          </div>
-        }
-        <div class="at-bottom-acts">
-          <button type="button" class="at-text-btn" (click)="setView('pdf')">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>Preview PDF</button>
-          <button type="button" class="at-btn is-primary" [disabled]="busyPdf() || !employees().length" (click)="download()">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span>Download PDF</span></button>
-        </div>
-      </section>
+      <span class="at-legend-item"><span class="at-late-dot"></span>Dot = late</span>
+      <span class="at-legend-tip">Click a working day to edit it</span>
     </div>
+
+    @if (layout() === 'grid') {
+    <div class="at-grid-wrap">
+      <table class="at-month">
+        <thead>
+          <tr>
+            <th class="m-name">Employee</th>
+            @for (d of report().dates; track d) {
+            <th [class.is-off]="isOffDay(d)" [attr.title]="longDate(d)">{{ dayNo(d) }}<small>{{ dayLetter(d) }}</small>
+            </th>
+            }
+            <th class="m-tot">P</th>
+            <th class="m-tot">HD</th>
+            <th class="m-tot">L</th>
+            <th class="m-tot">A</th>
+            <th class="m-tot">U</th>
+            <th class="m-rate">Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (e of report().employees; track e.id; let i = $index) {
+          @let s = report().rows[i];
+          <tr>
+            <td class="m-name"><span class="at-month-emp"><strong>{{ e.name }}</strong><small>{{ e.role }}</small></span>
+            </td>
+            @for (d of report().dates; track d) {
+            @let c = cell(d, e);
+            <td [class.is-off]="isOffDay(d)">
+              <button type="button" [class]="'at-day ' + tone(c.status) + (c.status === 'U' ? ' is-unmarked' : '')"
+                [disabled]="isOffDay(d)"
+                [attr.title]="e.name + ' · ' + shortDate(d) + ' · ' + label(c.status) + (late(c) ? ' · Late ' + late(c) + ' minutes' : '')"
+                [attr.aria-label]="'Edit ' + e.name + ' on ' + shortDate(d) + ': ' + label(c.status)"
+                (click)="openDay(d, e)">
+                {{ c.status === 'F' ? '—' : c.status }}@if (late(c)) { <i class="at-late-dot"></i> }
+              </button>
+            </td>
+            }
+            <td class="m-tot">{{ s.P }}</td>
+            <td class="m-tot">{{ s.HD }}</td>
+            <td class="m-tot">{{ s.L }}</td>
+            <td class="m-tot">{{ s.A }}</td>
+            <td class="m-tot">{{ s.U }}</td>
+            <td class="m-rate">{{ rate(s) }}</td>
+          </tr>
+          } @empty {
+          <tr>
+            <td class="at-empty" [attr.colspan]="report().dates.length + 7">No employees match the current filters.</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <table class="at-table at-summary">
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th class="s-dept">Department</th>
+          <th class="s-sched">Scheduled</th>
+          <th class="s-p">Present</th>
+          <th class="s-hd">Half-day</th>
+          <th class="s-l">Leave</th>
+          <th class="s-a">Absent</th>
+          <th class="s-u">Unmarked</th>
+          <th class="s-late">Late</th>
+          <th class="s-hrs">Work hours</th>
+          <th class="s-rate">Rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of report().rows; track s.id; let i = $index) {
+        @let e = report().employees[i];
+        <tr>
+          <td>
+            <div class="at-person"><span [class]="'at-avatar ' + e.tone">{{ e.initials }}</span><span><strong>{{ e.name
+                  }}</strong><small>{{ e.id }} · {{ e.department }}</small></span></div>
+          </td>
+          <td class="s-dept">{{ s.department }}</td>
+          <td class="s-sched">{{ s.scheduled }}</td>
+          <td class="s-p">{{ s.P }}</td>
+          <td class="s-hd">{{ s.HD }}</td>
+          <td class="s-l">{{ s.L }}</td>
+          <td class="s-a">{{ s.A }}</td>
+          <td class="s-u">{{ s.U }}</td>
+          <td class="s-late">{{ s.late }}</td>
+          <td class="s-hrs">{{ duration(s.minutes) }}</td>
+          <td class="s-rate"><span class="at-rate-mark"><i><b [style.width.%]="s.rate > 100 ? 100 : s.rate"></b></i>{{
+              rate(s) }}</span></td>
+        </tr>
+        }
+      </tbody>
+      <tfoot>
+        @let t = report().total;
+        <tr>
+          <td>Total · {{ plural(report().employees.length, 'employee') }}</td>
+          <td class="s-dept">All in scope</td>
+          <td class="s-sched">{{ t.scheduled }}</td>
+          <td class="s-p">{{ t.P }}</td>
+          <td class="s-hd">{{ t.HD }}</td>
+          <td class="s-l">{{ t.L }}</td>
+          <td class="s-a">{{ t.A }}</td>
+          <td class="s-u">{{ t.U }}</td>
+          <td class="s-late">{{ t.late }}</td>
+          <td class="s-hrs">{{ duration(t.minutes) }}</td>
+          <td class="s-rate"><span class="at-rate-mark"><i><b [style.width.%]="t.rate > 100 ? 100 : t.rate"></b></i>{{
+              rate(t) }}</span></td>
+        </tr>
+      </tfoot>
+    </table>
+    }
+
+    <div class="at-method">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path [attr.d]="icon('calculator')" />
+      </svg>
+      <span><strong>Attendance rate:</strong> (Present + ½ × Half-day) ÷ (Scheduled workdays − Approved leave). Weekly
+        off and holidays are excluded. Rates remain provisional while records are unmarked.</span>
+    </div>
+  </section>
+
+
   }
 
   <!-- ================================================================ PDF -->
   @if (view() === 'pdf') {
-    @let r = report();
-    @let t = r.total;
-    <section class="at-card at-pdf">
-      <header class="at-reg-head">
-        <div class="at-reg-title">
-          <h2>Share-ready report</h2>
-          <span class="at-chip neutral">Landscape A4 · 2 pages</span>
-        </div>
-        <div class="at-status-filters" aria-label="Report page">
-          <button type="button" [attr.aria-pressed]="pdfPage() === 1" (click)="pdfPage.set(1)">1 · Summary</button>
-          <button type="button" [attr.aria-pressed]="pdfPage() === 2" (click)="pdfPage.set(2)">2 · Day-by-day</button>
-        </div>
-      </header>
-
-      <div class="at-paper-wrap">
-        <div class="at-paper">
-          <div class="at-paper-mast"><span class="at-paper-brand">OTOSOLVE <small>/ PEOPLE OPERATIONS</small></span><span>ATT-{{ month().replace('-', '') }} · ATTENDANCE REPORT</span></div>
-          <h2 class="at-paper-title">{{ pdfPage() === 1 ? 'Monthly attendance report' : 'Day-by-day attendance register' }}</h2>
-          <p class="at-paper-sub">{{ r.period.label }} · Through {{ shortDate(r.period.cutoff) }} · {{ plural(r.employees.length, 'employee') }} · {{ scopeLabel() }}</p>
-
-          @if (pdfPage() === 1) {
-            <div class="at-paper-kpis">
-              <div><span>ATTENDANCE RATE</span><strong class="is-blue">{{ rate(t) }}</strong></div>
-              <div><span>ATTENDANCE CREDIT</span><strong class="is-teal">{{ t.credit.toFixed(1) }} days</strong></div>
-              <div><span>APPROVED LEAVE</span><strong class="is-violet">{{ t.L }} days</strong></div>
-              <div><span>UNMARKED RECORDS</span><strong class="is-amber">{{ t.U }}</strong></div>
-            </div>
-            <div class="at-paper-section">01 / EMPLOYEE SUMMARY</div>
-            <table class="at-paper-table">
-              <thead><tr><th>Employee</th><th>Department</th><th>Sched.</th><th>P</th><th>HD</th><th>L</th><th>A</th><th>U</th><th>Late</th><th>Hours</th><th>Rate</th></tr></thead>
-              <tbody>
-                @for (s of r.rows; track s.id) {
-                  <tr><td><strong>{{ s.name }}</strong></td><td>{{ s.department }}</td><td>{{ s.scheduled }}</td><td>{{ s.P }}</td><td>{{ s.HD }}</td><td>{{ s.L }}</td><td>{{ s.A }}</td><td>{{ s.U }}</td><td>{{ s.late }}</td><td>{{ compactDuration(s.minutes) }}</td><td>{{ rate(s) }}</td></tr>
-                }
-              </tbody>
-              <tfoot><tr><td>Total</td><td>{{ plural(r.employees.length, 'employee') }}</td><td>{{ t.scheduled }}</td><td>{{ t.P }}</td><td>{{ t.HD }}</td><td>{{ t.L }}</td><td>{{ t.A }}</td><td>{{ t.U }}</td><td>{{ t.late }}</td><td>{{ compactDuration(t.minutes) }}</td><td>{{ rate(t) }}</td></tr></tfoot>
-            </table>
-            <div class="at-paper-notes">
-              <strong>{{ t.U || r.meta.draftCount ? 'Provisional report. ' : 'Review notes. ' }}</strong>{{ t.U }} unmarked records · {{ t.missing }} incomplete punches excluded from hours · {{ t.late }} late arrivals.
-              {{ r.meta.draftCount ? r.meta.draftCount + ' unsaved edits included.' : 'No unsaved edits in this report.' }}<br />
-              Method: (Present + ½ × Half-day) ÷ (Scheduled workdays − Approved leave). Weekly off and holidays are excluded.
-            </div>
-            <div class="at-paper-sign"><span>Prepared for: Attendance review</span><span>Reviewed by: ________________________</span></div>
-          } @else {
-            <div class="at-paper-legend">
-              @for (c of legendCodes; track c) { <span><b [class]="'at-code ' + tone(c)">{{ c }}</b> {{ label(c) }}</span> }
-              <span>Dot = late</span>
-            </div>
-            <table class="at-paper-table at-paper-grid">
-              <thead>
-                <tr><th>EMPLOYEE / ID</th>@for (d of r.dates; track d) { <th>{{ dayNo(d) }}<small>{{ dayLetter(d) }}</small></th> }</tr>
-              </thead>
-              <tbody>
-                @for (e of r.employees; track e.id) {
-                  <tr>
-                    <td><strong>{{ e.name }}</strong><small>{{ e.id }}</small></td>
-                    @for (d of r.dates; track d) {
-                      @let c = cell(d, e);
-                      <td><span [class]="tone(c.status)">{{ c.status === 'F' ? '—' : c.status }}@if (late(c)) { <i class="at-late-dot"></i> }</span></td>
-                    }
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <div class="at-paper-notes">
-              P = 1 attendance day · HD = 0.5 day · U remains outstanding · A dash marks dates after the report cutoff.<br />
-              Company holiday: {{ shortDate(r.period.holiday) }}. Late = arrival more than 10 minutes after the session start.
-            </div>
-          }
-          <div class="at-paper-foot"><span>Attendance rules as configured · No payroll calculation</span><span>Page {{ pdfPage() }} of 2</span></div>
-        </div>
+  @let r = report();
+  @let t = r.total;
+  <section class="at-card at-pdf">
+    <header class="at-reg-head">
+      <div class="at-reg-title">
+        <h2>Share-ready report</h2>
+        <span class="at-chip neutral">Landscape A4 · 2 pages</span>
       </div>
+      <div class="at-status-filters" aria-label="Report page">
+        <button type="button" [attr.aria-pressed]="pdfPage() === 1" (click)="pdfPage.set(1)">1 · Summary</button>
+        <button type="button" [attr.aria-pressed]="pdfPage() === 2" (click)="pdfPage.set(2)">2 · Day-by-day</button>
+      </div>
+    </header>
 
-      <footer class="at-savebar">
-        <div><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('fileCheck')" /></svg><span>The PDF uses the same records and totals as this preview.</span></div>
-        <button type="button" class="at-btn is-primary" [disabled]="busyPdf() || !employees().length" (click)="download()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span>Download PDF</span></button>
-      </footer>
-    </section>
+    <div class="at-paper-wrap">
+      <div class="at-paper">
+        <div class="at-paper-mast"><span class="at-paper-brand">OTOSOLVE <small>/ PEOPLE
+              OPERATIONS</small></span><span>ATT-{{ month().replace('-', '') }} · ATTENDANCE REPORT</span></div>
+        <h2 class="at-paper-title">{{ pdfPage() === 1 ? 'Monthly attendance report' : 'Day-by-day attendance register'
+          }}</h2>
+        <p class="at-paper-sub">{{ r.period.label }} · Through {{ shortDate(r.period.cutoff) }} · {{
+          plural(r.employees.length, 'employee') }} · {{ scopeLabel() }}</p>
+
+        @if (pdfPage() === 1) {
+        <div class="at-paper-kpis">
+          <div><span>ATTENDANCE RATE</span><strong class="is-blue">{{ rate(t) }}</strong></div>
+          <div><span>ATTENDANCE CREDIT</span><strong class="is-teal">{{ t.credit.toFixed(1) }} days</strong></div>
+          <div><span>APPROVED LEAVE</span><strong class="is-violet">{{ t.L }} days</strong></div>
+          <div><span>UNMARKED RECORDS</span><strong class="is-amber">{{ t.U }}</strong></div>
+        </div>
+        <div class="at-paper-section">01 / EMPLOYEE SUMMARY</div>
+        <table class="at-paper-table">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Department</th>
+              <th>Sched.</th>
+              <th>P</th>
+              <th>HD</th>
+              <th>L</th>
+              <th>A</th>
+              <th>U</th>
+              <th>Late</th>
+              <th>Hours</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of r.rows; track s.id) {
+            <tr>
+              <td><strong>{{ s.name }}</strong></td>
+              <td>{{ s.department }}</td>
+              <td>{{ s.scheduled }}</td>
+              <td>{{ s.P }}</td>
+              <td>{{ s.HD }}</td>
+              <td>{{ s.L }}</td>
+              <td>{{ s.A }}</td>
+              <td>{{ s.U }}</td>
+              <td>{{ s.late }}</td>
+              <td>{{ compactDuration(s.minutes) }}</td>
+              <td>{{ rate(s) }}</td>
+            </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Total</td>
+              <td>{{ plural(r.employees.length, 'employee') }}</td>
+              <td>{{ t.scheduled }}</td>
+              <td>{{ t.P }}</td>
+              <td>{{ t.HD }}</td>
+              <td>{{ t.L }}</td>
+              <td>{{ t.A }}</td>
+              <td>{{ t.U }}</td>
+              <td>{{ t.late }}</td>
+              <td>{{ compactDuration(t.minutes) }}</td>
+              <td>{{ rate(t) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="at-paper-notes">
+          <strong>{{ t.U || r.meta.draftCount ? 'Provisional report. ' : 'Review notes. ' }}</strong>{{ t.U }} unmarked
+          records · {{ t.missing }} incomplete punches excluded from hours · {{ t.late }} late arrivals.
+          {{ r.meta.draftCount ? r.meta.draftCount + ' unsaved edits included.' : 'No unsaved edits in this report.'
+          }}<br />
+          Method: (Present + ½ × Half-day) ÷ (Scheduled workdays − Approved leave). Weekly off and holidays are
+          excluded.
+        </div>
+        <div class="at-paper-sign"><span>Prepared for: Attendance review</span><span>Reviewed by:
+            ________________________</span></div>
+        } @else {
+        <div class="at-paper-legend">
+          @for (c of legendCodes; track c) { <span><b [class]="'at-code ' + tone(c)">{{ c }}</b> {{ label(c) }}</span> }
+          <span>Dot = late</span>
+        </div>
+        <table class="at-paper-table at-paper-grid">
+          <thead>
+            <tr>
+              <th>EMPLOYEE / ID</th>@for (d of r.dates; track d) { <th>{{ dayNo(d) }}<small>{{ dayLetter(d) }}</small>
+              </th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (e of r.employees; track e.id) {
+            <tr>
+              <td><strong>{{ e.name }}</strong><small>{{ e.id }}</small></td>
+              @for (d of r.dates; track d) {
+              @let c = cell(d, e);
+              <td><span [class]="tone(c.status)">{{ c.status === 'F' ? '—' : c.status }}@if (late(c)) { <i
+                    class="at-late-dot"></i> }</span></td>
+              }
+            </tr>
+            }
+          </tbody>
+        </table>
+        <div class="at-paper-notes">
+          P = 1 attendance day · HD = 0.5 day · U remains outstanding · A dash marks dates after the report
+          cutoff.<br />
+          Company holiday: {{ shortDate(r.period.holiday) }}. Late = arrival more than 10 minutes after the session
+          start.
+        </div>
+        }
+        <div class="at-paper-foot"><span>Attendance rules as configured · No payroll calculation</span><span>Page {{
+            pdfPage() }} of 2</span></div>
+      </div>
+    </div>
+
+    <footer class="at-savebar">
+      <div><svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('fileCheck')" />
+        </svg><span>The PDF uses the same records and totals as this preview.</span></div>
+      <button type="button" class="at-btn is-primary" [disabled]="busyPdf() || !employees().length"
+        (click)="download()">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path [attr.d]="icon('download')" />
+        </svg><span>Download PDF</span></button>
+    </footer>
+  </section>
   }
 
   <!-- ================================================================ rules -->
-  <footer class="at-foot">
-    <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shieldCheck')" /></svg>Shift 09:00 – 18:00 · 60-minute unpaid break · 10-minute arrival grace · Mon–Fri · Office / Remote</span>
-    <button type="button" class="at-text-btn" [attr.aria-expanded]="policyOpen()" (click)="policyOpen.set(!policyOpen())">{{ policyOpen() ? 'Hide' : 'View' }} attendance rules</button>
-  </footer>
+ 
   @if (policyOpen()) {
-    <div class="at-policy">
-      <strong>Rules used on this page</strong>
-      <p>Monday–Friday are scheduled workdays. Company holidays are 17 September and 2 October 2026. Full days use 09:00–18:00 with a 60-minute break; half-days use a morning or afternoon session. Arrival more than 10 minutes after the session start is flagged late. Present counts as 1 day and half-day as 0.5. Approved leave is excluded from required days. Unmarked records are outstanding and are not converted to absence. Work hours exclude incomplete punches. These settings are not a payroll or statutory policy.</p>
-    </div>
+  <div class="at-policy">
+    <strong>Rules used on this page</strong>
+    <p>Monday–Friday are scheduled workdays. Company holidays are 17 September and 2 October 2026. Full days use
+      09:00–18:00 with a 60-minute break; half-days use a morning or afternoon session. Arrival more than 10 minutes
+      after the session start is flagged late. Present counts as 1 day and half-day as 0.5. Approved leave is excluded
+      from required days. Unmarked records are outstanding and are not converted to absence. Work hours exclude
+      incomplete punches. These settings are not a payroll or statutory policy.</p>
+  </div>
   }
 </div>
 
+@if (addOpen()) {
+<div class="at-scrim" (click)="addOpen.set(false)"></div>
+<aside class="at-drawer at-add-drawer" role="dialog" aria-modal="true" aria-labelledby="at-add-title">
+  <header class="at-drawer-head">
+    <div><span class="at-kicker">NEW ENTRY</span>
+      <h2 id="at-add-title">Add attendance</h2><small>Mark attendance for a department or multiple employees</small>
+    </div>
+    <button type="button" class="at-x" aria-label="Close" (click)="addOpen.set(false)">×</button>
+  </header>
+  <form class="at-form" (submit)="submitAdd($event)">
+    <div class="at-scope-switch"><button type="button" [class.active]="addScope() === 'department'"
+        (click)="addScope.set('department')">Department wise</button><button type="button"
+        [class.active]="addScope() === 'individual'" (click)="addScope.set('individual')">Select employees</button></div>
+    <label class="at-field"><span>Attendance date</span><input type="date" [value]="date()" [min]="minDate"
+        [max]="maxDate" (change)="onDate($any($event.target).value)" /></label>
+    <label class="at-field"><span>Department</span><select [value]="addDepartment()" (change)="onAddDepartment($any($event.target).value)">
+        <option value="all">All departments ({{ directoryEmployees().length }} employees)</option>
+        @for (d of departments; track d) { <option [value]="d">{{ d }}</option> }
+      </select></label>
+    @if (addScope() === 'individual') {
+      <div class="at-add-employee-picker">
+        <div class="at-add-picker-head"><span>Choose employees <b>{{ addSelectedEmployees().length }} selected</b></span>
+          <button type="button" class="at-add-clear" (click)="clearAddEmployees()" [disabled]="!addSelectedEmployees().length">Clear selection</button>
+        </div>
+        <label class="at-add-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search employee name or ID" [value]="addEmployeeSearch()" (input)="addEmployeeSearch.set($any($event.target).value)" />
+        </label>
+        <div class="at-add-pick-tools">
+          <label class="at-add-checkall"><input type="checkbox" [checked]="addAllVisibleSelected()" (change)="toggleAllVisibleAddEmployees($any($event.target).checked)" /> Select all shown</label>
+          <span>{{ addVisibleCandidates().length }} shown</span>
+        </div>
+        <div class="at-add-employee-list" role="group" aria-label="Choose multiple employees">
+          @for (e of addVisibleCandidates(); track e.id) {
+            <label class="at-add-employee" [class.is-selected]="addSelectedEmployees().includes(e.id)">
+              <input type="checkbox" [checked]="addSelectedEmployees().includes(e.id)" (change)="toggleAddEmployee(e.id, $any($event.target).checked)" />
+              <span class="at-add-avatar">{{ e.initials }}</span>
+              <span class="at-add-employee-info"><strong>{{ e.name }}</strong><small>{{ e.department }} · {{ e.id }}</small></span>
+            </label>
+          } @empty { <p class="at-add-no-employees">No employees found for this filter.</p> }
+        </div>
+        @if (addSelectedEmployees().length) { <div class="at-add-selected-hint">Selections stay checked when you switch departments.</div> }
+      </div>
+    }
+    <label class="at-field"><span>Attendance status</span><select (change)="onAddStatus($any($event.target).value)">@for
+        (s of editableStatuses; track s) { <option [value]="s" [selected]="addStatus() === s">{{ label(s) }}</option>
+        }</select></label>
+    @if (addStatus() === 'P' || addStatus() === 'HD') {
+    <div class="at-e-grid"><label class="at-field"><span>Check-in</span><input type="time" [value]="addIn()"
+          (input)="addIn.set($any($event.target).value)" /></label><label class="at-field"><span>Check-out</span><input
+          type="time" [value]="addOut()" (input)="addOut.set($any($event.target).value)" /></label></div>
+    <label class="at-field"><span>Work mode</span><select (change)="addMode.set($any($event.target).value)">
+        <option value="Office" [selected]="addMode() === 'Office'">Office</option>
+        <option value="Remote" [selected]="addMode() === 'Remote'">Remote</option>
+      </select></label>
+    }
+    <label class="at-field"><span>Notes (optional)</span><textarea rows="3" maxlength="180" [value]="addNote()"
+        (input)="addNote.set($any($event.target).value)" placeholder="Reason or important details"></textarea></label>
+    <div class="at-add-summary"><strong>{{ addSelectedCount() }} {{ addSelectedCount() === 1 ? 'employee' : 'employees' }}</strong> will be updated
+      <span>{{ addScope() === 'department' ? (addDepartment() === 'all' ? 'Across all departments' : addDepartment()) : 'Selected employees · all departments' }}</span>
+    </div>
+    @if (addError()) {<p class="at-form-error" role="alert">{{ addError() }}</p>}
+    <div class="at-drawer-foot"><button type="button" class="at-btn" (click)="addOpen.set(false)">Cancel</button><button
+        type="submit" class="at-btn is-primary" [disabled]="!addSelectedCount()">Save attendance</button></div>
+  </form>
+</aside>
+}
+
 @if (toast(); as msg) {
-  <div class="at-toast" role="status" aria-live="polite">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('circleCheck')" /></svg>
-    <span>{{ msg }}</span>
-    <button type="button" aria-label="Dismiss message" (click)="toast.set(null)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
-  </div>
+<div class="at-toast" role="status" aria-live="polite">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path [attr.d]="icon('circleCheck')" />
+  </svg>
+  <span>{{ msg }}</span>
+</div>
 }

@@ -4,6 +4,7 @@
      and filters, sortable table with row actions (view · edit · activate · delete) and a pager.
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-timezone">
+  <app-loader [fullPage]="true" [message]="'Loading time zones…'" *ngIf="store.loading()"></app-loader>
 
   <app-page-header breadcrumb="Master data / Scheduling" heading="Time zones" description="IANA time zones offered for organisations, states and scheduling, with their UTC offsets.">
     <div class="tz-head-acts" actions>

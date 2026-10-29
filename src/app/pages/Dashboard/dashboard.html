@@ -1,5 +1,8 @@
 <div class="pd">
 
+  <!-- full-page loader while dashboard data is being fetched -->
+  <app-loader [fullPage]="true" [message]="'Loading dashboard…'" *ngIf="navigation.loading()"></app-loader>
+
   <!-- ===== ROW 1: welcome + statistics ===== -->
   <section class="pd-row pd-r1">
     <article class="pd-card pd-welcome">

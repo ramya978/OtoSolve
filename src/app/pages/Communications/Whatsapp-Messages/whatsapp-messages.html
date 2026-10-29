@@ -4,6 +4,8 @@
      Send : one panel - recipients table (left) + message (right) → review → send
      Log  : funnel strip + filters + table + detail drawer
      ===================================================================================================== -->
+<app-loader [fullPage]="true" [message]="'Loading messages…'" *ngIf="poolLoading() || messagesLoading() || templatesLoading()"></app-loader>
+
 <app-page-header breadcrumb="Communications / WhatsApp messages" heading="WhatsApp Messages"
                  description="Send an approved template to checked numbers, then follow delivery, reads and replies.">
   <ng-container actions>

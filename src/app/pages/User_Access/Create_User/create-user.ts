@@ -1,9 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
 import { IamDateRange, IamRange } from '../../../Shared/IAM/iam-date-range';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
+import { LoaderService } from '../../../Shared/services/loader.service';
 import {
   IAM_PATHS, IamOption, iamToday,
   fmtDate, initialsOf
@@ -99,18 +100,19 @@ export class CreateUser implements OnInit {
   private readonly store = inject(IamDirectoryStore);
   private readonly api = inject(UserAdminApiService);
   private readonly toast = inject(ToastService);
+  private readonly loaderService = inject(LoaderService);
   private readonly geo = inject(GeoMasterService);
   private readonly enums = inject(EnumOptionsService);
   readonly submitting = signal(false);
   readonly serverError = signal('');
 
   ngOnInit(): void {
+    this.loaderService.startLoading();
     this.store.load();
     // Titles, dialling prefixes, languages and time zones come from the server catalogues, not from lists in this file.
     this.enums.getAll().subscribe({
       next: (e) => {
         this.titleList.set((e.personTitles ?? []).map((o) => String(o.value ?? '')).filter(Boolean));
-        // Only the two scopes that name no record can be granted here; narrower ones go through an access request.
         const scopes = (e.dataScopeTypes ?? []).filter((o) => SCOPE_HINT[String(o.value ?? '').toLowerCase()]);
         if (scopes.length) {
           this.scopeList.set(scopes.map((o) => {
@@ -153,6 +155,13 @@ export class CreateUser implements OnInit {
         if (home && !this.form().timeZone) this.form.update((f) => ({ ...f, timeZone: f.timeZone || (home.ianaKey ?? '') }));
       },
       error: () => undefined
+    });
+
+    // When store.loading goes false, data has arrived (or errored)
+    effect(() => {
+      if (!this.store.loading()) {
+        this.loaderService.dataReceived();
+      }
     });
   }
 
@@ -468,6 +477,7 @@ export class CreateUser implements OnInit {
             : delivered ? `${user.displayName} has been e-mailed an invitation link.`
             : user.deliveryMessage || `${user.displayName} was created, but the invitation e-mail could not be sent.`,
           delivered || !sendInvitation ? 'success' : 'warning');
+        this.loaderService.startLoading();
         this.store.load();
       },
       error: (e) => {

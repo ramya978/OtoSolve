@@ -4,6 +4,7 @@
      and filters, sortable table with row actions (view · edit · activate · delete) and a pager.
      ===================================================================================================== -->
 <section class="ml-view" aria-labelledby="ml-title-state">
+  <app-loader [fullPage]="true" [message]="'Loading states…'" *ngIf="store.loading()"></app-loader>
 
   <app-page-header breadcrumb="Master data / Geography" heading="States" description="States, provinces and territories grouped by country, with their tax and postal rules.">
     <div class="st-head-acts" actions>

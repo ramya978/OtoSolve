@@ -1,7 +1,9 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { PaymentApiService } from '../../../Service/payment-api.service';
 import { PaymentActivityRow, PaymentActivitySummary } from '../../../Shared/models/payment.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
@@ -95,7 +97,7 @@ const TONE_COLORS: Record<string, string> = {
 
 @Component({
   selector: 'app-payments-receipts',
-  imports:[PageHeader],
+  imports:[CommonModule, PageHeader, Loader],
   templateUrl: './payments-receipts.html',
   styleUrls: ['./payments-receipts.css', '../../../Shared/layout/page-header/page-header.css']
 })

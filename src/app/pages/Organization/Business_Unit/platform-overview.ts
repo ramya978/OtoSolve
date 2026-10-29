@@ -1,8 +1,10 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { PlatformRecord, Stage } from '../../../Shared/Organization/platform.data';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
 import { ToastService } from '../../../Shared/services/toast.service';
+import { Loader } from '../../../Shared/layout/Loader/loader';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { BusinessUnitResponse, OrganisationStatisticsResponse } from '../../../Shared/models/iam-contract.model';
 
@@ -19,6 +21,8 @@ const ICONS: Record<string, string> = {
  *  (Overview, Organisations, Onboarding). */
 @Component({
   selector: 'app-org-platform',
+  standalone: true,
+  imports: [CommonModule, Loader],
   templateUrl: './platform-overview.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './platform-overview.css']
 })
@@ -28,11 +32,13 @@ export class PlatformOverview implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly bu = signal<BusinessUnitResponse | null>(null);
   private readonly stats = signal<OrganisationStatisticsResponse | null>(null);
+  protected readonly loading = signal(false);
 
   /** list of all organisations (change to your route) */
   static readonly ORGANISATIONS_PATH = '/app/administration/organisation/directory';
 
   ngOnInit(): void {
+    this.loading.set(true);
     this.api.getBusinessUnit().subscribe({
       next: (b) => this.bu.set(b),
       error: (e: unknown) => this.toast.error('Platform not loaded', apiErrorMessage(e, 'The platform record could not be loaded.'))
@@ -41,6 +47,7 @@ export class PlatformOverview implements OnInit {
       next: (st) => this.stats.set(st),
       error: (e: unknown) => this.toast.error('Counts not loaded', apiErrorMessage(e, 'The organisation counts could not be loaded.'))
     });
+    this.loading.set(false);
   }
 
   get platform(): PlatformRecord {

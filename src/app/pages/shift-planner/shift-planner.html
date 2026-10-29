@@ -1,0 +1,84 @@
+<div class="am">
+  <app-page-header breadcrumb="People / Attendance Operations" heading="Shift planner"
+    description="Plan weekly rosters and assign shifts">
+    <ng-container actions>
+      <div class="at-head-acts">
+   <button class="at-btn is-primary" (click)="openAssign()">+ Assign employees</button>
+      </div>
+    </ng-container>
+  </app-page-header>
+  @if(apiError()) {<div class="am-alert">{{apiError()}} <button type="button" (click)="loadPeople()">Retry</button>
+  </div>}
+
+
+  <section class="am-card">
+    <div class="am-card-head">
+      <div>
+        <div class="am-eyebrow">WEEKLY ROSTER</div>
+        <h2>Shift planner</h2>
+        <p>Choose a day or employee to assign a shift.</p>
+      </div>
+      <div class="am-actions"><button class="at-btn" (click)="changeWeek(-1)">‹ Previous</button><input type="date"
+          [(ngModel)]="week" aria-label="Week date"><button class="at-btn" (click)="changeWeek(1)">Next
+          ›</button></div>
+    </div>
+    <div class="am-toolbar"><label>Department <select [(ngModel)]="dept">
+          <option value="all">All departments</option>@for(d of departments();track d){<option [value]="d">{{d}}
+          </option>}
+        </select></label><label>Search <input [(ngModel)]="search" placeholder="Name or employee ID"></label><span
+        class="am-muted">{{filteredPeople().length}} employees</span></div>
+    <div class="am-scroll">
+      <table class="am-table roster">
+        <thead>
+          <tr>
+            <th>Employee</th>@for(d of days();track d;let i=$index){<th>
+              <span>{{weekdays[i]}}</span><small>{{d.slice(5)}}</small></th>}
+          </tr>
+        </thead>
+        <tbody>@for(e of filteredPeople();track e.id){<tr>
+            <td>
+              <div class="am-person"><span
+                  class="am-avatar">{{e.name.slice(0,2).toUpperCase()}}</span><span><strong>{{e.name}}</strong><small
+                    [title]="e.department">{{e.department}}</small></span></div>
+            </td>@for(d of days();track d){<td>@if (shiftFor(e.id,d); as a){<div class="am-shift-cell"
+                [class]="'tone-'+(a.shiftId==='SH-EARLY'?'teal':a.shiftId==='SH-EVENING'?'amber':a.shiftId==='SH-NIGHT'?'violet':'blue')">
+                <strong>{{a.shiftName}}</strong><small>{{a.start}} – {{a.end}}</small>
+                <div><button title="Change shift" (click)="openAssign(e.id,d)">Edit</button><button
+                    title="Remove assignment" (click)="removeAssignment(a)">×</button></div>
+              </div>}@else{<button class="am-empty-slot" (click)="openAssign(e.id,d)">+ Assign</button>}</td>}
+          </tr>}@empty{<tr>
+            <td colspan="8" class="am-empty">{{loading()?'Loading employees…':'No employees found. Check the API or
+              filters.'}}</td>
+          </tr>}</tbody>
+      </table>
+    </div>
+  </section>
+  @if(dialog){<div class="am-overlay" (click)="close()">
+    <section class="am-drawer" role="dialog" aria-modal="true" aria-label="Edit attendance settings"
+      (click)="$event.stopPropagation()">
+      <header class="am-drawer-head">
+        <div>
+          <div class="am-eyebrow">SHIFT PLANNER</div>
+          <h2>{{dialog==='shift'?'Shift template':dialog==='assign'?'Assign employees':dialog==='permission'?'Permission
+            request':dialog==='policy'?'Attendance policy':'Assign policy'}}</h2>
+        </div><button class="am-close" (click)="close()" aria-label="Close">×</button>
+      </header>
+      <div class="am-form">
+        @if(dialog==='assign'){<label>Shift template <select [(ngModel)]="assignForm.shiftId">@for(s of
+            activeShifts();track s.id){<option [value]="s.id">{{s.name}} · {{s.start}}–{{s.end}}</option>
+            }</select></label>
+        <div class="am-form-row"><label>From date <input type="date"
+              [(ngModel)]="assignForm.from"></label><label>Through date <input type="date"
+              [(ngModel)]="assignForm.to"></label></div><label class="am-check"><input type="checkbox"
+            [(ngModel)]="assignForm.weekends"> Include weekends</label><label class="am-check"><input type="checkbox"
+            [(ngModel)]="assignForm.replace"> Replace existing assignments</label>
+        <div class="am-list-title"><strong>Select employees ({{assignForm.employeeIds.length}})</strong><button
+            class="am-link" (click)="selectAllEmployees()">Select all visible</button></div>
+        <div class="am-employee-pick">@for(e of filteredPeople();track e.id){<label><input type="checkbox"
+              [checked]="assignForm.employeeIds.includes(e.id)"
+              (change)="toggleEmployee(e.id,$any($event.target).checked)"><span>{{e.name}}<small>{{e.department}}</small></span></label>}
+        </div><button class="at-btn is-primary" (click)="saveAssignment()">Save assignments</button>}
+      </div>
+    </section>
+  </div>}
+</div>

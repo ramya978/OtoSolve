@@ -1,10 +1,12 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DashboardCampaigns } from './dashboard-campaigns';
 import { PageHeader } from '../../Shared/layout/page-header/page-header';
 import { DashboardApiService } from '../../Service/dashboard-api.service';
 import { DashboardPage } from '../../Shared/models/dashboard-contract.model';
 import { NavigationService } from '../../Shared/services/navigation.service';
+import { Loader } from '../../Shared/layout/Loader/loader';
 import { AuthService } from '../../Shared/Auth/auth.service';
 import { AuthTokenService } from '../../Shared/services/auth-token.service';
 
@@ -84,7 +86,7 @@ const PLOT_SPAN = 78;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [RouterLink, DashboardCampaigns],
+  imports: [CommonModule, RouterLink, DashboardCampaigns, Loader],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.css']
 })
@@ -98,7 +100,7 @@ export class Dashboard {
   };
 
   private readonly dashboardApi = inject(DashboardApiService);
-  private readonly navigation = inject(NavigationService);
+  protected readonly navigation = inject(NavigationService);
   /** Same session sources the top bar (app.ts) reads, so the greeting always matches the header. */
   private readonly auth = inject(AuthService);
   private readonly tokens = inject(AuthTokenService);
