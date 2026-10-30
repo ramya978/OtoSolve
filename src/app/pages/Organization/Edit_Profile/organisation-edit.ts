@@ -74,22 +74,21 @@ export class OrganisationEdit implements OnInit {
   }
   readonly maxAbout = 1000;
 
-  private opts(rows: string[], fallback: string[]): string[] { return rows.length ? rows : fallback; }
-  get types(): string[] { return this.opts(this.typeRows(), ['Non-profit / NGO', 'Company', 'Trust', 'Society', 'Government', 'Education']); }
+  get types(): string[] { return this.typeRows(); }
   get dialCodes(): string[] {
     const codes = this.countryRows().map((c) => c.phoneCountryCode ?? '').filter(Boolean).map((c) => (c.startsWith('+') ? c : '+' + c));
-    return this.opts([...new Set(codes)], ['+91', '+1', '+44', '+61', '+65', '+971']);
+    return [...new Set(codes)];
   }
-  get timezones(): string[] { return this.opts(this.tzRows(), ['Asia/Kolkata', 'UTC', 'Europe/London', 'America/New_York', 'Asia/Singapore']); }
-  get currencies(): string[] { return this.opts(this.currencyRows(), ['INR', 'USD', 'EUR', 'GBP', 'SGD']); }
-  get languages(): string[] { return this.opts(this.languageRows(), ['en-IN', 'en-US', 'en-GB', 'hi-IN', 'ta-IN']); }
-  get countries(): string[] { return this.opts(this.countryRows().map((c) => c.name), ['India', 'United States', 'United Kingdom', 'Singapore']); }
+  get timezones(): string[] { return this.tzRows(); }
+  get currencies(): string[] { return this.currencyRows(); }
+  get languages(): string[] { return this.languageRows(); }
+  get countries(): string[] { return this.countryRows().map((c) => c.name); }
   get states(): string[] { return this.stateRows().map((r) => r.name); }
   get cities(): string[] { return this.cityRows().map((r) => r.name); }
 
   readonly form = signal<Form>({
     name: '', legalName: '', type: '', established: '', regNo: '', taxId: '', pan: '', gst: '', about: '',
-    person: '', email: '', dial: '+91', phone: '', website: '', timezone: '', currency: '', language: '',
+    person: '', email: '', dial: '', phone: '', website: '', timezone: '', currency: '', language: '',
     line1: '', line2: '', country: '', state: '', city: '', postcode: ''
   });
 
@@ -110,7 +109,7 @@ export class OrganisationEdit implements OnInit {
       name: d.name ?? '', legalName: d.legalName ?? d.name ?? '', type: d.organisationType ?? '',
       established: (d.establishedOn ?? '').slice(0, 10), regNo: d.registrationNumber ?? '', taxId: d.taxIdentificationNumber ?? '',
       pan: d.panNumber ?? '', gst: d.gstNumber ?? '', about: d.description ?? '',
-      person: d.contactPersonName ?? '', email: d.contactEmail ?? '', dial: d.contactPhoneCountryCode || '+91',
+      person: d.contactPersonName ?? '', email: d.contactEmail ?? '', dial: d.contactPhoneCountryCode ?? '',
       phone: d.contactPhone ?? '', website: d.websiteUrl ?? '', timezone: d.timeZone ?? '', currency: d.defaultCurrency ?? '',
       language: d.defaultCulture ?? '', line1: d.addressLine1 ?? '', line2: d.addressLine2 ?? '', country: d.country ?? '',
       state: d.state ?? '', city: d.city ?? '', postcode: d.postalCode ?? ''

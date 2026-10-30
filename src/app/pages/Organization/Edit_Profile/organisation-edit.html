@@ -109,6 +109,7 @@
               <span class="oe-label">Telephone</span>
               <div class="oe-phone">
                 <select class="oe-input oe-select" aria-label="Country code" (change)="set('dial', $any($event.target).value)">
+                  <option value="" [selected]="!form().dial">Select</option>
                   @for (o of withCurrent(dialCodes, 'dial'); track o) { <option [value]="o" [selected]="o === form().dial">{{ o }}</option> }
                 </select>
                 <input class="oe-input" type="tel" aria-label="Phone number" [value]="form().phone" (input)="set('phone', $any($event.target).value)" />
@@ -132,18 +133,21 @@
             <label class="oe-field oe-span2">
               <span class="oe-label">Time zone</span>
               <select class="oe-input oe-select" (change)="set('timezone', $any($event.target).value)">
+                <option value="" [selected]="!form().timezone">Select</option>
                 @for (o of withCurrent(timezones, 'timezone'); track o) { <option [value]="o" [selected]="o === form().timezone">{{ o }}</option> }
               </select>
             </label>
             <label class="oe-field">
               <span class="oe-label">Currency</span>
               <select class="oe-input oe-select" (change)="set('currency', $any($event.target).value)">
+                <option value="" [selected]="!form().currency">Select</option>
                 @for (o of withCurrent(currencies, 'currency'); track o) { <option [value]="o" [selected]="o === form().currency">{{ o }}</option> }
               </select>
             </label>
             <label class="oe-field">
               <span class="oe-label">Language</span>
               <select class="oe-input oe-select" (change)="set('language', $any($event.target).value)">
+                <option value="" [selected]="!form().language">Select</option>
                 @for (o of withCurrent(languages, 'language'); track o) { <option [value]="o" [selected]="o === form().language">{{ o }}</option> }
               </select>
             </label>
@@ -172,18 +176,21 @@
           <label class="oe-field">
             <span class="oe-label">Country</span>
             <select class="oe-input oe-select" (change)="set('country', $any($event.target).value)">
+              <option value="" [selected]="!form().country">Select</option>
               @for (o of withCurrent(countries, 'country'); track o) { <option [value]="o" [selected]="o === form().country">{{ o }}</option> }
             </select>
           </label>
           <label class="oe-field">
             <span class="oe-label">State or province</span>
             <select class="oe-input oe-select" (change)="set('state', $any($event.target).value)">
+              <option value="" [selected]="!form().state">Select</option>
               @for (o of withCurrent(states, 'state'); track o) { <option [value]="o" [selected]="o === form().state">{{ o }}</option> }
             </select>
           </label>
           <label class="oe-field">
             <span class="oe-label">City</span>
             <select class="oe-input oe-select" (change)="set('city', $any($event.target).value)">
+              <option value="" [selected]="!form().city">Select</option>
               @for (o of withCurrent(cities, 'city'); track o) { <option [value]="o" [selected]="o === form().city">{{ o }}</option> }
             </select>
           </label>
