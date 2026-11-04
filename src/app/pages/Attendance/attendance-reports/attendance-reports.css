@@ -1,0 +1,170 @@
+/* Reports - only what the shared attendance kit does not cover */
+.rp-group {
+  display: grid;
+  gap: 10px;
+}
+
+.rp-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.rp-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 108px;
+  padding: 16px 40px 16px 18px;
+  border: 1px solid var(--ak-line);
+  border-radius: 13px;
+  background: var(--ak-card);
+  text-align: left;
+  transition: border-color .15s, background-color .15s;
+}
+
+.rp-card:hover {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+}
+
+.rp-card b {
+  color: var(--ak-heading);
+  font-size: 14.5px;
+}
+
+.rp-card span {
+  color: var(--ak-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.rp-card i {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--ak-primary);
+  font-style: normal;
+}
+
+.rp-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.rp-month {
+  display: grid;
+  grid-template-columns: 34px auto 34px;
+  align-items: center;
+  height: 38px;
+  overflow: hidden;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+}
+
+.rp-month button {
+  height: 100%;
+  border: 0;
+  background: none;
+  color: var(--ak-muted);
+  font-size: 18px;
+}
+
+.rp-month button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.rp-month strong {
+  min-width: 130px;
+  padding: 0 10px;
+  border-inline: 1px solid var(--ak-line);
+  line-height: 36px;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* muster roll: the only table allowed to scroll sideways, inside its card */
+.rp-muster {
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.rp-muster th,
+.rp-muster td {
+  padding: 4px 2px;
+  border-bottom: 1px solid var(--ak-row);
+  text-align: center;
+}
+
+.rp-muster thead th {
+  background: var(--ak-tint);
+  color: var(--ak-muted);
+  font-weight: 600;
+}
+
+.rp-muster th b,
+.rp-muster th small {
+  display: block;
+}
+
+.rp-muster th small {
+  font-size: 9.5px;
+  font-weight: 400;
+}
+
+.rp-muster th.is-off {
+  color: #a3afbf;
+}
+
+.rp-name {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 170px;
+  padding: 6px 12px !important;
+  background: var(--ak-card);
+  text-align: left !important;
+}
+
+thead .rp-name {
+  background: var(--ak-tint);
+}
+
+.rp-name b,
+.rp-name small {
+  display: block;
+  white-space: nowrap;
+}
+
+.rp-name small {
+  color: var(--ak-muted);
+  font-size: 10.5px;
+}
+
+.rp-code {
+  min-width: 26px !important;
+  height: 22px !important;
+  padding: 0 3px !important;
+  font-size: 10px !important;
+}
+
+.rp-sum {
+  min-width: 38px;
+  padding: 4px 8px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .rp-title {
+    flex-wrap: wrap;
+  }
+
+  .rp-name {
+    min-width: 120px;
+  }
+}

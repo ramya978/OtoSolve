@@ -1,0 +1,96 @@
+/* Field hub - only what the shared attendance kit does not cover */
+.fh-fill {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+}
+
+.fh-fill-title {
+  color: var(--ak-muted);
+  font-size: 13px;
+}
+
+.fh-fill-title b {
+  color: var(--ak-heading);
+}
+
+.fh-fill ak-select {
+  min-width: 170px;
+}
+
+.fh-fill-input {
+  width: 200px;
+}
+
+.fh-table .fh-sel {
+  width: 44px;
+}
+
+.fh-table td ak-select {
+  min-width: 130px;
+}
+
+.fh-project {
+  min-width: 120px;
+  min-height: 34px;
+  padding: 5px 9px;
+}
+
+/* an edited cell gets a theme-coloured left rule */
+.fh-table td.fh-dirty {
+  box-shadow: inset 3px 0 0 var(--ak-primary);
+}
+
+.fh-foot-on {
+  background: var(--ak-soft);
+}
+
+.fh-error {
+  color: var(--ak-rose);
+}
+
+@media (max-width: 640px) {
+  .fh-fill {
+    padding: 14px;
+  }
+
+  .fh-fill ak-select,
+  .fh-fill-input,
+  .fh-fill>.ak-btn {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .fh-table td ak-select {
+    min-width: 108px;
+  }
+}
+
+/* keep names readable: the employee column never shrinks below this */
+.fh-table th:nth-child(2),
+.fh-table td:nth-child(2) {
+  min-width: 200px;
+}
+
+.fh-table td ak-select {
+  min-width: 118px;
+}
+
+@media (max-width: 1560px) {
+  .fh-table .fh-src {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .fh-table th:nth-child(2),
+  .fh-table td:nth-child(2) {
+    min-width: 150px;
+  }
+
+  .fh-table td ak-select {
+    min-width: 104px;
+  }
+}

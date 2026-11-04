@@ -1,0 +1,152 @@
+<!-- APPROVAL FLOW - who approves · approvers per department · waiting now · cover for absent approvers -->
+<app-page-header breadcrumb="Set up / Approval flow" heading="Approval flow"
+  description="Choose who approves leave and attendance requests, at how many levels, and what happens when nobody replies.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      @if (tab() === 'flows' && dirty()) { <button type="button" class="ak-btn" (click)="resetFlows()">Undo changes</button> }
+      @if (tab() === 'flows') { <button type="button" class="ak-btn is-primary" [disabled]="!dirty()" (click)="saveFlows()">Save approval flow</button> }
+      @if (tab() === 'waiting') { <button type="button" class="ak-btn is-primary" (click)="runSla()">Run timeout rules now</button> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <div class="ak-seg af-tabs" role="tablist" aria-label="Approval flow views">
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'flows'" (click)="tab.set('flows')">Who approves</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'approvers'" (click)="tab.set('approvers')">Approvers by department</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'waiting'" (click)="tab.set('waiting')">Waiting now @if (lateCount()) {<b>{{ lateCount() }}</b>}</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'cover'" (click)="tab.set('cover')">Cover for absent approvers</button>
+  </div>
+
+  @if (tab() === 'flows') {
+  <div class="ak-split">
+    <div class="ak-stack">
+      @for (k of kinds; track k.k) {
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>{{ k.title }} approval</h2><p>{{ k.text }}</p></div></header>
+        <div class="af-levels">
+          @for (l of levels(k.k); track $index; let i = $index) {
+          <div class="af-level">
+            <span class="af-num">Level {{ i + 1 }}</span>
+            <ak-select [options]="roleOptions" [value]="l.role" (valueChange)="setRole(k.k, i, $event)" ariaLabel="Approver" />
+            @if (k.k === 'leave') {
+            <span class="af-cond">@if (i === 0) {Always asked} @else {Only if <input class="ak-input af-min" type="number" min="0" max="30" [value]="l.minDays" (input)="setMin(k.k, i, +$any($event.target).value)" aria-label="Minimum days" /> days or more}</span>
+            } @else { <span class="af-cond">Always asked</span> }
+            <button type="button" class="af-del" [disabled]="levels(k.k).length <= 1" [attr.aria-label]="'Remove level ' + (i + 1)" (click)="removeLevel(k.k, i)">×</button>
+          </div>
+          }
+          @if (levels(k.k).length < 3) { <button type="button" class="ak-link af-add" (click)="addLevel(k.k)">+ Add a level</button> }
+        </div>
+        <div class="af-rules">
+          <div class="ak-field"><span>Reply within</span><ak-select class="is-block" [options]="slaOptions" [value]="'' + draft()[k.k].slaHours" (valueChange)="setSla(k.k, $event)" /></div>
+          <div class="ak-field"><span>If no one replies</span><ak-select class="is-block" [options]="timeoutOptions" [value]="draft()[k.k].onTimeout" (valueChange)="setOnTimeout(k.k, $event)" /></div>
+        </div>
+      </section>
+      }
+    </div>
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Try it</h2><p>Who would be asked, with the settings on the left</p></div></header>
+        <div class="ak-form">
+          <div class="ak-seg">
+            <button type="button" [attr.aria-pressed]="tryKind() === 'leave'" (click)="tryKind.set('leave')">Leave</button>
+            <button type="button" [attr.aria-pressed]="tryKind() === 'request'" (click)="tryKind.set('request')">Attendance request</button>
+          </div>
+          <div class="ak-field"><span>Person</span><ak-select class="is-block" [options]="peopleOptions()" [value]="tryPerson() || samplePerson()" [searchable]="true" (valueChange)="tryPerson.set($event)" /></div>
+          @if (tryKind() === 'leave') { <label class="ak-field"><span>Days of leave</span><input type="number" min="0.5" max="30" step="0.5" [value]="tryDays()" (input)="tryDays.set(+$any($event.target).value)" /></label> }
+          <ol class="af-chain">
+            @for (s of preview(); track $index; let i = $index) {<li><i>{{ i + 1 }}</i><span><b>{{ s.name }}</b><small>{{ roleLabel[s.role] }}</small></span></li>}
+          </ol>
+        </div>
+      </section>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>How it works</h2></div></header>
+        <ol class="af-how">
+          <li>The reporting manager is asked first. More levels are added only when the rule says so.</li>
+          <li>Each approver sees only what is waiting for them, on their Approvals page.</li>
+          <li>If someone does not reply in time, the timeout rule decides what happens - nothing gets stuck.</li>
+          <li>HR can approve or reject at any level from the Leave or Attendance page. It is kept in the audit trail.</li>
+        </ol>
+      </section>
+    </div>
+  </div>
+  }
+
+  @if (tab() === 'approvers') {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head"><div><h2>Approvers by department</h2><p>Leave a choice empty to use the default shown in grey</p></div></header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Department</th><th>Reporting manager</th><th>Department head</th></tr></thead>
+        <tbody>
+          @for (d of departments(); track d.d) {
+          <tr>
+            <td><b>{{ d.d }}</b><small class="af-sub">{{ d.people.length }} people</small></td>
+            <td><ak-select [options]="d.people" [value]="d.manager" [placeholder]="'Default: ' + d.autoManager" [searchable]="true" (valueChange)="setRoleFor(d.d, 'manager', $event)" ariaLabel="Reporting manager" /></td>
+            <td><ak-select [options]="d.people" [value]="d.head" [placeholder]="'Default: ' + d.autoHead" [searchable]="true" align="right" (valueChange)="setRoleFor(d.d, 'head', $event)" ariaLabel="Department head" /></td>
+          </tr>
+          } @empty { <tr><td colspan="3" class="ak-empty">No departments loaded.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  }
+
+  @if (tab() === 'waiting') {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head"><div><h2>Waiting now</h2><p>{{ waiting().length }} pending · {{ lateCount() }} past the reply time</p></div></header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Request</th><th>Employee</th><th>Waiting on</th><th class="ak-num">Waiting</th></tr></thead>
+        <tbody>
+          @for (w of waiting(); track w.id) {
+          <tr>
+            <td><b>{{ w.what }}</b><small class="af-sub">{{ w.id }} · {{ w.kind === 'leave' ? 'Leave' : 'Attendance' }}</small></td>
+            <td>{{ w.who }}</td>
+            <td>{{ w.step?.name || 'HR' }}<small class="af-sub">{{ roleLabel[w.step?.role || 'hr'] }}</small></td>
+            <td class="ak-num"><span class="ak-pill" [attr.data-tone]="w.late ? 'rose' : w.hours > 12 ? 'amber' : 'teal'">{{ w.hours < 1 ? 'Just now' : w.hours + ' h' }}{{ w.late ? ' · overdue' : '' }}</span></td>
+          </tr>
+          } @empty { <tr><td colspan="4" class="ak-empty">Nothing is waiting for approval.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  }
+
+  @if (tab() === 'cover') {
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Cover arrangements</h2><p>Requests go to the covering person during these dates</p></div></header>
+      <div class="ak-table-wrap">
+        <table class="ak-table">
+          <thead><tr><th>Away</th><th>Covered by</th><th>Dates</th><th class="ak-num"><span class="af-sr">Remove</span></th></tr></thead>
+          <tbody>
+            @for (c of covers(); track c.id) {
+            <tr>
+              <td><b>{{ c.fromName }}</b></td><td>{{ c.toName }}</td>
+              <td class="ak-nowrap">{{ short(c.fromDate) }} → {{ short(c.toDate) }} @if (c.active) {<span class="ak-pill" data-tone="teal">Now</span>}</td>
+              <td class="ak-num"><button type="button" class="ak-link" (click)="hr.removeDelegation(c.id)">Remove</button></td>
+            </tr>
+            } @empty { <tr><td colspan="4" class="ak-empty">No cover arranged.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Add cover</h2><p>For leave, travel or long meetings</p></div></header>
+      <div class="ak-form">
+        <div class="ak-field"><span>Who is away</span><ak-select class="is-block" [options]="peopleOptions()" [value]="cFrom()" placeholder="Choose approver" [searchable]="true" (valueChange)="cFrom.set($event); error.set('')" /></div>
+        <div class="ak-field"><span>Who covers</span><ak-select class="is-block" [options]="peopleOptions()" [value]="cTo()" placeholder="Choose person" [searchable]="true" (valueChange)="cTo.set($event); error.set('')" /></div>
+        <div class="ak-form-grid">
+          <div class="ak-field"><span>From</span><ak-date [value]="cStart()" [stepper]="false" (valueChange)="cStart.set($event)" /></div>
+          <div class="ak-field"><span>To</span><ak-date [value]="cEnd()" [min]="cStart()" [stepper]="false" align="right" (valueChange)="cEnd.set($event)" /></div>
+        </div>
+        @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+        <div class="ak-foot"><button type="button" class="ak-btn is-primary" (click)="addCover()">Add cover</button></div>
+      </div>
+    </section>
+  </div>
+  }
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

@@ -1,0 +1,104 @@
+<!-- ATTENDANCE OVERVIEW - attention · day figures · distribution · locations · review · requests · quick links -->
+<app-page-header breadcrumb="People / Attendance overview" heading="Overview"
+  description="Your people operations for the day, in one clear view.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <ak-date [value]="date()" [min]="minDate" [max]="data.today" align="right" (valueChange)="date.set($event)" />
+      <button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button>
+      <button type="button" class="ak-btn is-primary" (click)="data.go('register')">Open register</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees and departments…</div> }
+  @if (data.error()) { <div class="ak-state is-error">Unable to load users: {{ data.error() }} <button type="button" class="ak-link" (click)="data.ensure(true)">Retry</button></div> }
+
+  @let s = stats();
+  @if (s.unmarked || s.missing || flow.pendingCount()) {
+  <div class="ak-banner" data-tone="amber">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg>
+    <span><b>Needs attention {{ isToday() ? 'today' : 'on ' + short(date()) }}:</b> {{ s.unmarked }} unmarked · {{ s.missing }} missing punch-out · {{ s.late }} late · {{ flow.pendingCount() }} pending requests</span>
+    <button type="button" class="ak-btn is-sm" (click)="data.go('register')">Review now</button>
+  </div>
+  }
+
+  <div class="ak-kpis">
+    <div class="ak-kpi"><small>Present</small><strong>{{ s.present }} / {{ s.total }}</strong><span>{{ s.live }} on shift right now</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></span></div>
+    <div class="ak-kpi"><small>Late arrivals</small><strong>{{ s.late }}</strong><span>After shift start + grace</span>
+      <span class="ak-kpi-ico" data-tone="amber"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" /></svg></span></div>
+    <div class="ak-kpi"><small>Missing punch-out</small><strong>{{ s.missing }}</strong><span>Incomplete in / out records</span>
+      <span class="ak-kpi-ico" data-tone="rose"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg></span></div>
+    <div class="ak-kpi"><small>Unmarked</small><strong>{{ s.unmarked }}</strong><span>Needs an HR decision</span>
+      <span class="ak-kpi-ico" data-tone="blue"><svg viewBox="0 0 24 24"><path d="M9 2h6v4H9zM16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /></svg></span></div>
+  </div>
+
+  <div class="ak-split is-even">
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Attendance distribution</h2><p>{{ dateText() }}</p></div><span class="ak-muted ov-small">{{ s.off }} off / holiday</span></header>
+      <div class="ak-pad ov-dist">
+        @for (x of distribution(); track x.label) {
+        <div class="ov-dist-row" [attr.data-tone]="x.tone">
+          <div><b>{{ x.label }}</b><span>{{ x.count }} <small>employees</small></span></div>
+          <div class="ak-bar"><i [style.width.%]="x.pct"></i></div>
+        </div>
+        }
+        <p class="ov-note">Late is a flag, not a status. Unmarked is never counted as absent.</p>
+      </div>
+    </section>
+
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Location coverage</h2><p>Where people are working</p></div><button type="button" class="ak-btn is-sm" (click)="data.go('locations')">Manage</button></header>
+      <ul class="ak-rows ov-loc">
+        @for (l of coverage(); track l.name) {
+        <li>
+          <span class="ov-loc-name"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /></svg><span>{{ l.name }}<small>{{ l.type }}</small></span></span>
+          <span class="ov-loc-bar"><span class="ak-bar"><i [style.width.%]="l.pct"></i></span><b>{{ l.count }}</b></span>
+        </li>
+        } @empty { <li class="ak-muted">No one is marked at work on this day.</li> }
+      </ul>
+    </section>
+  </div>
+
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Employees needing review</h2><p>Unmarked, late and missing punches</p></div><button type="button" class="ak-btn is-sm" (click)="data.go('register')">Open register</button></header>
+      <div class="ak-table-wrap">
+        <table class="ak-table">
+          <thead><tr><th>Employee</th><th>Status</th><th class="ak-hide-sm">In / out</th><th class="ak-hide-md">Location</th><th>Issue</th></tr></thead>
+          <tbody>
+            @for (x of review(); track x.e.id) {
+            <tr>
+              <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span><span><strong>{{ x.e.name }}</strong><small>{{ x.e.id }} · {{ x.e.department }}</small></span></div></td>
+              <td><span class="ak-pill" [attr.data-tone]="tone[x.v.rec.status]">{{ labels[x.v.rec.status] }}</span></td>
+              <td class="ak-hide-sm ak-nowrap">{{ x.v.rec.in ? x.v.rec.in + ' – ' + (x.v.rec.out || (x.v.live ? 'on shift' : '—')) : '—' }}</td>
+              <td class="ak-hide-md ak-muted">{{ x.location }}</td>
+              <td><span class="ak-pill is-plain" [attr.data-tone]="x.issue.startsWith('Late') ? 'amber' : x.issue === 'Not marked' ? 'blue' : 'rose'">{{ x.issue }}</span></td>
+            </tr>
+            } @empty { <tr><td colspan="5" class="ak-empty">Nothing to review for this day.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Pending requests</h2><p>{{ flow.pendingCount() }} waiting for a decision</p></div></header>
+        <ul class="ak-rows">
+          @for (r of pending(); track r.id) {
+          <li><span><b>{{ r.employeeName }}</b><small>{{ r.type }} · {{ short(r.date) }}</small></span><button type="button" class="ak-link" (click)="data.go('register')">Review →</button></li>
+          } @empty { <li class="ak-muted">No pending requests.</li> }
+        </ul>
+      </section>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Quick actions</h2><p>Common HR workflows</p></div></header>
+        <ul class="ak-rows">
+          @for (q of quick; track q.link) {
+          <li><span><b>{{ q.title }}</b><small>{{ q.text }}</small></span><button type="button" class="ak-btn is-sm" (click)="data.go(q.link)">Open</button></li>
+          }
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,72 @@
+<!-- REPORTS - catalogue of month-end reports · one report with month, filters and export -->
+<app-page-header breadcrumb="People / Reports" heading="Reports"
+  description="Pick a report, choose the month, then view or export it.">
+  <ng-container actions>
+    @if (def()) {
+    <div class="ak-head-acts">
+      <div class="rp-month" role="group" aria-label="Month">
+        <button type="button" aria-label="Previous month" [disabled]="!canMonth(-1)" (click)="moveMonth(-1)">‹</button>
+        <strong>{{ label() }}</strong>
+        <button type="button" aria-label="Next month" [disabled]="!canMonth(1)" (click)="moveMonth(1)">›</button>
+      </div>
+      <button type="button" class="ak-btn is-primary" (click)="exportCsv()">↓ Export CSV</button>
+    </div>
+    }
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (!def()) {
+  @for (g of groups; track g.g) {
+  <section class="rp-group">
+    <h2 class="ak-h2">{{ g.g }}</h2>
+    <div class="rp-cards">
+      @for (r of g.list; track r.id) {
+      <button type="button" class="rp-card" (click)="open(r)"><b>{{ r.name }}</b><span>{{ r.text }}</span><i aria-hidden="true">→</i></button>
+      }
+    </div>
+  </section>
+  }
+  } @else {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div class="rp-title"><button type="button" class="ak-btn is-sm" (click)="selected.set(null)">‹ All reports</button><div><h2>{{ def()?.name }}</h2><p>{{ label() }} · {{ def()?.text }}</p></div></div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search name or ID" aria-label="Search" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        <ak-select [options]="deptOptions()" [value]="department()" align="right" (valueChange)="department.set($event)" ariaLabel="Department" />
+      </div>
+    </header>
+
+    @if (selected() === 'muster') {
+    <div class="ak-table-wrap rp-muster-wrap">
+      <table class="rp-muster">
+        <thead><tr><th class="rp-name">Employee</th>@for (d of days(); track d) {<th [class.is-off]="isOff(d)"><b>{{ dayNo(d) }}</b><small>{{ dayLetter(d) }}</small></th>}<th class="rp-sum">P</th><th class="rp-sum">A</th><th class="rp-sum">%</th></tr></thead>
+        <tbody>
+          @for (r of muster(); track r.e.id) {
+          <tr>
+            <td class="rp-name"><b>{{ r.e.name }}</b><small>{{ r.e.department }}</small></td>
+            @for (c of r.cells; track $index; let i = $index) {<td><span class="ak-code rp-code" [attr.data-tone]="tone[c]" [attr.title]="cellTitle(r.e.name, days()[i], c)">{{ code(c) }}</span></td>}
+            <td class="rp-sum">{{ r.s.P + r.s.HD / 2 }}</td><td class="rp-sum">{{ r.s.A }}</td><td class="rp-sum"><b>{{ r.s.rate.toFixed(0) }}</b></td>
+          </tr>
+          } @empty { <tr><td [attr.colspan]="days().length + 4" class="ak-empty">No employees match.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="ak-card-foot"><span>P present · HD half day · PL paid leave · A absent · U unmarked · H holiday · “·” weekly off. Scroll sideways inside the table for all days.</span></footer>
+    } @else {
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr>@for (c of table().cols; track c.k) {<th [class.ak-num]="c.num" [class.ak-hide-sm]="c.hide === 'sm'" [class.ak-hide-md]="c.hide === 'md'" [class.ak-hide-lg]="c.hide === 'lg'">{{ c.label }}</th>}</tr></thead>
+        <tbody>
+          @for (r of table().rows; track $index) {
+          <tr>@for (c of table().cols; track c.k; let first = $first) {<td [class.ak-num]="c.num" [class.ak-strong]="first" [class.ak-hide-sm]="c.hide === 'sm'" [class.ak-hide-md]="c.hide === 'md'" [class.ak-hide-lg]="c.hide === 'lg'">{{ r[c.k] }}</td>}</tr>
+          } @empty { <tr><td [attr.colspan]="table().cols.length" class="ak-empty">Nothing to report for {{ label() }}.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="ak-card-foot"><span>{{ table().rows.length }} row{{ table().rows.length === 1 ? '' : 's' }}</span></footer>
+    }
+  </section>
+  }
+</div>

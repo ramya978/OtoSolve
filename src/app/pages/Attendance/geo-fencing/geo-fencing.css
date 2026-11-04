@@ -1,0 +1,183 @@
+/* Geo-fencing - only what the shared attendance kit does not cover */
+.gf-tabs {
+  justify-self: start;
+}
+
+.gf-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* on / off switch */
+.gf-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 14px 0 10px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gf-switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.gf-switch i {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 10px;
+  background: #cfd7e2;
+  transition: background-color .15s;
+}
+
+.gf-switch i::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .15s;
+}
+
+.gf-switch input:checked+i {
+  background: var(--ak-primary);
+}
+
+.gf-switch input:checked+i::after {
+  transform: translateX(14px);
+}
+
+.gf-switch input:focus-visible+i {
+  outline: 3px solid color-mix(in srgb, var(--ak-primary) 30%, #fff);
+  outline-offset: 2px;
+}
+
+.gf-zones li {
+  border-left: 3px solid transparent;
+}
+
+.gf-zones li.is-off {
+  opacity: .5;
+}
+
+.gf-zone {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gf-zone b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.gf-zone small {
+  color: var(--ak-muted);
+  font-size: 12px;
+}
+
+.gf-map {
+  position: relative;
+  padding: 12px 16px 16px;
+}
+
+.gf-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--ak-line);
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.gf-ring {
+  fill: color-mix(in srgb, var(--ak-primary) 14%, transparent);
+  stroke: var(--ak-primary);
+  stroke-width: 1.5;
+}
+
+.gf-dot {
+  fill: var(--ak-primary);
+  stroke: none;
+}
+
+.gf-test {
+  fill: var(--ak-rose);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.gf-map text {
+  fill: var(--ak-ink);
+  stroke: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gf-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--ak-muted);
+  font-size: 13px;
+}
+
+.gf-results {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gf-results li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  font-size: 12.5px;
+}
+
+.gf-results li[data-tone="teal"] {
+  border-color: color-mix(in srgb, var(--ak-teal) 30%, #fff);
+  background: var(--ak-teal-bg);
+  color: var(--ak-teal);
+}
+
+.gf-results span {
+  color: inherit;
+  opacity: .85;
+}
+
+.gf-past td {
+  color: var(--ak-muted);
+}
+
+.gf-range {
+  width: 100%;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  accent-color: var(--ak-primary);
+}

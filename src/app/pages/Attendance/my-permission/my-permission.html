@@ -1,0 +1,46 @@
+<!-- MY PERMISSION - allowance · ask for short time off · history -->
+<app-page-header breadcrumb="My workspace / Permission" heading="Permission"
+  [description]="'Short time off during the day - arrive late, leave early or step out. Up to ' + rules().perMonth + ' a month, ' + hm(rules().maxMinutes) + ' each.'">
+  <ng-container actions>
+    <div class="ak-head-acts"><ak-select [options]="peopleOptions()" [value]="hr.meId()" [searchable]="true" icon="user" align="right" (valueChange)="hr.setMe($event); setKind(kind())" ariaLabel="Viewing as" /></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <div class="ak-split">
+    <section class="ak-card">
+      <header class="ak-card-head">
+        <div><h2>Ask for permission</h2><p>{{ monthName() }}: {{ used() }} of {{ rules().perMonth }} used</p></div>
+        <div class="mp-meter" [attr.aria-label]="used() + ' of ' + rules().perMonth + ' used'">@for (i of meter(); track i) {<i [class.is-on]="i < used()"></i>}</div>
+      </header>
+      <form class="ak-form" (submit)="$event.preventDefault(); send()" novalidate>
+        <div class="mp-kinds" role="radiogroup" aria-label="Kind">
+          @for (k of kinds; track k.k) {<button type="button" role="radio" [attr.aria-checked]="kind() === k.k" [class.is-on]="kind() === k.k" (click)="setKind(k.k)"><b>{{ k.label }}</b><small>{{ k.text }}</small></button>}
+        </div>
+        <div class="ak-field"><span>Day</span><ak-date [value]="date()" [min]="data.today" [max]="maxDate" (valueChange)="setDate($event)" /></div>
+        <div class="ak-form-grid">
+          <label class="ak-field"><span>From</span><input type="time" [value]="from()" (input)="from.set($any($event.target).value); error.set('')" /></label>
+          <label class="ak-field"><span>To</span><input type="time" [value]="to()" (input)="to.set($any($event.target).value); error.set('')" /></label>
+        </div>
+        <p class="ak-sub">Your shift: {{ shift()?.name }} {{ shift()?.start }} – {{ shift()?.end }} · this permission: <b [class.mp-bad]="minutes() > rules().maxMinutes">{{ hm(minutes()) }}</b></p>
+        <label class="ak-field"><span>Reason</span><textarea rows="3" maxlength="200" placeholder="e.g. Doctor appointment" [value]="reason()" (input)="reason.set($any($event.target).value); error.set('')"></textarea></label>
+        @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+        <div class="ak-foot"><button type="submit" class="ak-btn is-primary" [disabled]="used() >= rules().perMonth">Send request</button></div>
+      </form>
+    </section>
+
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>My permissions</h2><p>{{ mine().length }} requests</p></div></header>
+      <ul class="ak-rows mp-list">
+        @for (r of mine(); track r.id) {
+        <li>
+          <span><b>{{ short(r.date) }} · {{ r.from }}–{{ r.to }}</b><small>{{ dur(r) }} · {{ r.reason }}</small><small>{{ where(r) }}{{ r.reviewNote ? ' · “' + r.reviewNote + '”' : '' }}</small></span>
+          <span class="mp-r"><span class="ak-pill" [attr.data-tone]="statusTone(r.status)">{{ r.status }}</span>@if (r.status === 'Pending') {<button type="button" class="ak-link" (click)="withdraw(r)">Withdraw</button>}</span>
+        </li>
+        } @empty { <li class="ak-muted">No permission requests yet.</li> }
+      </ul>
+    </section>
+  </div>
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

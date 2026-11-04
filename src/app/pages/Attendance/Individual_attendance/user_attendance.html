@@ -1,0 +1,314 @@
+<!-- =====================================================================================================
+     MY ATTENDANCE - employee side of the attendance flow (layout follows the OtoSolve HR reference)
+     Page header (viewing as · Export CSV · Raise request)
+     → punch bar (shift · clock · status · worked / in / out / break · work-time bar · location · Punch button)
+     → missed punches (last two weeks)
+     → stats strip (today · week · month · overtime · attendance rate)
+     → month: calendar / list / my requests      + day details · today's punches
+     → request drawer · toast.      Logic: user_attendance.ts · styles: attendance-kit.css + user_attendance.css
+     ===================================================================================================== -->
+<app-page-header breadcrumb="People / My attendance" heading="My attendance"
+  description="Punch in, see every day at a glance and fix a missed punch.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      @if (people().length > 1) {
+      <ak-select class="ua-viewing" [options]="personOptions()" [value]="selectedId()" (valueChange)="selectEmployee($event)"
+        [searchable]="true" icon="user" align="right" ariaLabel="Demo: view attendance as" placeholder="Choose employee" />
+      }
+      <button type="button" class="ak-btn" [disabled]="!person()" (click)="exportCsv()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>Export CSV</button>
+      <button type="button" class="ak-btn is-primary" [disabled]="!person()" (click)="openRequest()">+ Raise request</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<main class="ak ua">
+  @if (loading()) {<div class="ak-state" role="status">Loading your attendance…</div>}
+  @if (error()) {<div class="ak-state is-error">Unable to load users: {{ error() }} <button type="button" class="ak-link" (click)="loadDirectory()">Retry</button></div>}
+
+  @if (person(); as employee) {
+  <!-- ================================================================ PUNCH BAR -->
+  <section class="ak-card ua-hero" aria-label="Punch in and out">
+    <div class="ua-hero-time">
+      <span class="ak-eyebrow">{{ greeting() }}, {{ firstName() }} · {{ shift.name }} {{ shift.start }} – {{ shift.end }}</span>
+      <div class="ua-clock" aria-live="off"><b>{{ clock().hm }}</b><span>:{{ clock().s }}</span></div>
+      <p class="ua-hero-date">{{ todayLabel() }}</p>
+      <div class="ua-hero-state" [attr.data-tone]="punchHeadline().tone">
+        <i [class.is-live]="punchState() === 'working'"></i><b>{{ punchHeadline().title }}</b><span>{{ punchHeadline().sub }}</span>
+      </div>
+    </div>
+
+    <div class="ua-hero-day">
+      <div class="ua-chips">
+        @for (c of todayChips(); track c.label) {<div class="ua-chip"><small>{{ c.label }}</small><b>{{ c.value }}</b></div>}
+      </div>
+      @let b = bar();
+      <div class="ua-track-wrap">
+        <div class="ua-track" role="img" aria-label="Today's work and break periods between 06:00 and 22:00">
+          <i class="ua-track-shift" [style.left.%]="b.shiftLeft" [style.width.%]="b.shiftWidth"></i>
+          @for (g of b.segments; track $index) {<i class="ua-track-seg" [attr.data-kind]="g.kind" [style.left.%]="g.left" [style.width.%]="g.width" [attr.title]="g.title"></i>}
+          @if (b.showNow) {<i class="ua-track-now" [style.left.%]="b.nowLeft"></i>}
+        </div>
+        <div class="ua-track-axis">@for (t of axisHours; track t) {<span>{{ t }}</span>}</div>
+        <div class="ua-track-legend"><span class="is-shift">Shift</span><span class="is-work">Work</span><span class="is-break">Break</span></div>
+      </div>
+    </div>
+
+    <div class="ua-hero-side">
+      <ak-select class="is-block" [options]="locationOptions" [value]="location()" (valueChange)="location.set($event)"
+        icon="pin" ariaLabel="Work location" [disabled]="punchState() === 'working' || punchState() === 'break'" />
+      <button type="button" class="ua-punch" [attr.data-tone]="mainAction().tone" [disabled]="checking()" (click)="punch(mainAction().kind)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4M14 13.12c0 2.38 0 6.38-1 8.88M17.29 21.02c.12-.6.43-2.3.5-3.02M2 12a10 10 0 0 1 18-6M2 16h.01M21.8 16c.2-2 .131-5.354 0-6M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2M8.65 22c.21-.66.45-1.32.57-2M9 6.8a6 6 0 0 1 9 5.2v2" /></svg>
+        <span>{{ checking() ? 'Checking location…' : mainAction().label }}</span>
+      </button>
+      @if (punchState() === 'working') {
+      <button type="button" class="ak-btn ua-break" (click)="punch('break-start')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 8h1a4 4 0 1 1 0 8h-1M3 8h14v9a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4zM6 2v2M10 2v2M14 2v2" /></svg>Start break</button>
+      }
+      <small class="ua-rule" [class.is-off]="!hr.methodOn('Web punch')">{{ !hr.methodOn('Web punch') ? 'Web punching is switched off by HR' : hr.geoEnforced() ? 'Your location is checked when you punch' : 'Punching from ' + location() }}</small>
+    </div>
+  </section>
+
+  <!-- ================================================================ MISSED PUNCHES -->
+  @if (missed().length) {
+  <section class="ua-alert" role="alert">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></svg>
+    <div>
+      <b>{{ missed().length === 1 ? 'One day needs a fix' : missed().length + ' days need a fix' }}</b>
+      <p>Raise a correction so your pay is right. Tap a day to start.</p>
+      <div class="ua-alert-days">
+        @for (m of missed(); track m.date) {<button type="button" class="ak-btn is-sm" (click)="fixDay(m.date)">{{ m.text }}</button>}
+      </div>
+    </div>
+  </section>
+  }
+
+  <!-- ================================================================ STATS STRIP -->
+  <section class="ua-stats" aria-label="Hours and attendance">
+    @for (s of stats(); track s.key) {
+    <div class="ua-stat" [attr.data-tone]="s.tone" [class.ak-hide-lg]="s.hide === 'lg'" [class.ak-hide-sm]="s.hide === 'sm'">
+      <small><span class="ak-kpi-ico" aria-hidden="true">
+        @switch (s.icon) {
+        @case ('clock') {<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" /></svg>}
+        @case ('week') {<svg viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" /></svg>}
+        @case ('month') {<svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9" /></svg>}
+        @case ('bolt') {<svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" /></svg>}
+        @default {<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>}
+        }
+      </span>{{ s.label }}</small>
+      <strong>{{ s.value }}</strong>
+      <span class="ua-stat-sub">{{ s.sub }}</span>
+      @if (s.pct >= 0) {<div class="ak-bar" [attr.data-tone]="s.tone"><i [style.width.%]="s.pct"></i></div>}
+    </div>
+    }
+  </section>
+
+  <!-- ================================================================ MONTH + DAY DETAILS -->
+  <div class="ua-grid">
+    <section class="ak-card ua-month">
+      <header class="ua-month-head">
+        <div class="ua-month-nav">
+          <button type="button" class="ak-btn ua-icon-btn" aria-label="Previous month" [disabled]="!canMonth(-1)" (click)="moveMonth(-1)">
+            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg></button>
+          <h2>{{ monthLabel() }}</h2>
+          <button type="button" class="ak-btn ua-icon-btn" aria-label="Next month" [disabled]="!canMonth(1)" (click)="moveMonth(1)">
+            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg></button>
+          @if (month() !== today().slice(0, 7)) {<button type="button" class="ak-btn is-sm" (click)="thisMonth()">This month</button>}
+        </div>
+        <div class="ak-seg" role="tablist" aria-label="Month view">
+          <button type="button" role="tab" [attr.aria-pressed]="view() === 'calendar'" (click)="view.set('calendar')">Calendar</button>
+          <button type="button" role="tab" [attr.aria-pressed]="view() === 'list'" (click)="view.set('list')">List</button>
+          <button type="button" role="tab" [attr.aria-pressed]="view() === 'requests'" (click)="view.set('requests')">Requests@if (myPending()) {<b>{{ myPending() }}</b>}</button>
+        </div>
+      </header>
+
+      @if (view() === 'calendar') {
+      <div class="ua-legend ak-hide-sm">
+        @for (l of legend; track l.label) {<span [attr.data-tone]="l.tone"><i></i>{{ l.label }}</span>}
+      </div>
+      <div class="ua-cal">
+        @for (w of weekdays; track w) {<div class="ua-wd" [class.is-off]="w === 'Sat' || w === 'Sun'">{{ w }}</div>}
+        @for (p of calendarPadding(); track p) {<div class="ua-cell is-blank" aria-hidden="true"></div>}
+        @for (d of days(); track d.date) {
+        <button type="button" class="ua-cell" [attr.data-tone]="tone(d.status)" [class.is-future]="d.future" [class.is-today]="d.date === today()"
+          [class.is-on]="focusDay()?.date === d.date" [class.is-off]="d.status === 'WO'" [attr.aria-label]="longDay(d.date) + ', ' + cellLabel(d)" (click)="selectDay(d.date)">
+          <span class="ua-num">{{ d.number }}</span>
+          @if (!d.future || d.status === 'WO') {<span class="ua-tag">{{ cellLabel(d) }}</span>}
+          @if (dayRange(d)) {<small>{{ dayRange(d) }}</small>}
+        </button>
+        }
+      </div>
+      }
+
+      @if (view() === 'list') {
+      <div class="ua-list-tools">
+        <ak-select [options]="statusOptions" [value]="statusFilter()" (valueChange)="setStatusFilter($event)" ariaLabel="Filter by status" />
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" /></svg>
+          <input type="search" placeholder="Search date, status or place" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+      </div>
+      <div class="ak-table-wrap">
+        <table class="ak-table ua-table">
+          <thead><tr>
+            <th>Date</th><th>Status</th><th>In</th><th>Out</th>
+            <th class="ak-hide-md">Break</th><th class="ak-hide-sm">Late</th><th class="ak-hide-lg">Overtime</th><th class="ak-hide-lg">Location</th>
+            <th class="ak-num">Hours</th>
+          </tr></thead>
+          <tbody>
+            @for (d of filteredDays(); track d.date) {
+            <tr class="is-click" [class.is-on]="focusDay()?.date === d.date" (click)="selectDay(d.date)">
+              <td class="ak-nowrap"><b>{{ d.number }} {{ monthShort() }}</b> <span class="ak-muted">{{ d.weekday }}</span>@if (d.date === today()) {<em class="ua-today">Today</em>}</td>
+              <td><span class="ak-pill" [attr.data-tone]="tone(d.status)">{{ cellLabel(d) }}</span></td>
+              <td>{{ displayTime(d.rec.in) }}</td>
+              <td class="ak-nowrap">{{ outText(d) }}</td>
+              <td class="ak-hide-md">{{ d.rec.break ? d.rec.break + ' min' : '—' }}</td>
+              <td class="ak-hide-sm" [class.ua-warn]="d.late">{{ d.late ? d.late + ' min' : '—' }}</td>
+              <td class="ak-hide-lg">{{ d.overtime ? worked(d.overtime) : '—' }}</td>
+              <td class="ak-hide-lg">{{ d.location || '—' }}</td>
+              <td class="ak-num ak-strong">{{ worked(d.minutes) }}</td>
+            </tr>
+            } @empty {<tr><td colspan="9" class="ak-empty">No days match this filter.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+      }
+
+      @if (view() === 'requests') {
+      <div class="ak-table-wrap">
+        <table class="ak-table ua-table">
+          <thead><tr><th>Request</th><th>Date</th><th class="ak-hide-sm">Time</th><th class="ak-hide-md">Reason</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            @for (r of myRequests(); track r.id) {
+            <tr>
+              <td><b>{{ r.type }}</b><small class="ua-sub">{{ r.id }}</small></td>
+              <td class="ak-nowrap">{{ shortDate(r.date) }}</td>
+              <td class="ak-hide-sm ak-nowrap">{{ requestTime(r) }}<small class="ua-sub">{{ r.location }}</small></td>
+              <td class="ak-hide-md"><span class="ua-why" [attr.title]="r.reason">{{ r.reason }}</span>
+                @if (r.reviewNote) {<small class="ua-sub">HR: {{ r.reviewNote }}</small>}</td>
+              <td><span class="ak-pill" [attr.data-tone]="requestTone(r.status)">{{ r.status }}</span>@if (rqWhere(r)) {<small class="ua-sub">{{ rqWhere(r) }}</small>}</td>
+              <td class="ak-num">@if (r.status === 'Pending') {<button type="button" class="ak-link" (click)="withdraw(r)">Withdraw</button>}</td>
+            </tr>
+            } @empty {
+            <tr><td colspan="6" class="ak-empty"><b>No requests yet</b><br>Missed a punch or worked from home? Raise a request and your manager will review it.<br>
+              <button type="button" class="ak-btn is-sm ua-gap" (click)="openRequest()">Raise a request</button></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      }
+    </section>
+
+    <aside class="ua-side">
+      <!-- day details -->
+      @if (focusDay(); as d) {
+      <section class="ak-card ua-day">
+        <header class="ua-day-head">
+          <div><h2>{{ longDay(d.date) }}</h2><small>{{ sourceLabel(d.source) }}</small></div>
+          <span class="ak-pill" [attr.data-tone]="tone(d.status)">{{ cellLabel(d) }}</span>
+        </header>
+        @if (d.future) {
+        <p class="ua-day-note">This day has not happened yet. You can still plan work from home, on duty, a half day or a permission for it.</p>
+        } @else {
+        <dl class="ua-facts">
+          <div><dt>Shift</dt><dd>{{ shift.name }}</dd></div>
+          <div><dt>In</dt><dd>{{ displayTime(d.rec.in) }}</dd></div>
+          <div><dt>Out</dt><dd>{{ outText(d) }}</dd></div>
+          <div><dt>Worked</dt><dd>{{ worked(d.minutes) }}</dd></div>
+          <div><dt>Break</dt><dd>{{ d.rec.break ? d.rec.break + ' min' : '—' }}</dd></div>
+          <div><dt>Late</dt><dd [class.ua-warn]="d.late">{{ d.late ? d.late + ' min' : '—' }}</dd></div>
+          @if (d.overtime) {<div><dt>Overtime</dt><dd>{{ worked(d.overtime) }}</dd></div>}
+          @if (d.location) {<div><dt>Location</dt><dd>{{ d.location }}</dd></div>}
+        </dl>
+        @if (d.rec.note) {<p class="ua-day-note">{{ d.rec.note }}</p>}
+        }
+        <div class="ua-day-acts">
+          @if (!d.future) {<button type="button" class="ak-btn is-sm" (click)="openRequest('Punch correction', d.date)">Fix this day</button>}
+          <button type="button" class="ak-btn is-sm" (click)="openRequest(d.future ? 'Work from home' : 'Permission', d.date)">{{ d.future ? 'Plan work from home' : 'Ask permission' }}</button>
+        </div>
+      </section>
+      }
+
+      <!-- today's punches -->
+      <section class="ak-card ua-log">
+        <header class="ua-day-head"><h2>Today's punches</h2><small>{{ todayPunches().length }} {{ todayPunches().length === 1 ? 'punch' : 'punches' }}</small></header>
+        <ol>
+          @for (p of todayPunches(); track $index) {
+          <li [attr.data-kind]="p.kind"><i></i><b>{{ p.at }}</b><span>{{ p.label }}<small>{{ p.location }}</small></span></li>
+          } @empty {<li class="ua-log-empty">Nothing yet. Tap Punch in to start your day.</li>}
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  } @else if (!loading()) {<div class="ak-state">No employees available from the Users API.</div>}
+</main>
+
+<!-- ================================================================ REQUEST DRAWER -->
+@if (rqOpen()) {
+<div class="ak-scrim" (click)="closeRequest()"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="ua-rq-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">New request</span>
+      <h2 id="ua-rq-title">Raise an attendance request</h2>
+      <p>Your manager or HR reviews it and the result shows here.</p>
+    </div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="closeRequest()">×</button>
+  </header>
+
+  <form class="ak-form" (submit)="submitRequest($event)" novalidate>
+    <div class="ak-field">
+      <span>Request type</span>
+      <div class="ua-types" role="radiogroup" aria-label="Request type">
+        @for (t of requestTypes; track t.type) {
+        <button type="button" role="radio" class="ua-type" [class.is-on]="rqType() === t.type" [attr.aria-checked]="rqType() === t.type"
+          (click)="setRqType(t.type)"><b>{{ t.type }}</b><small>{{ t.hint }}</small></button>
+        }
+      </div>
+    </div>
+
+    <div class="ak-field">
+      <span>Date</span>
+      <ak-date [value]="rqDate()" [min]="rqMin()" [max]="rqMax()" (valueChange)="setRqDate($event)" />
+      <small class="ua-sub">{{ rqDayNote() }}</small>
+    </div>
+
+    @if (rqType() === 'Half day') {
+    <div class="ak-field">
+      <span>Session</span>
+      <div class="ak-seg">
+        <button type="button" [attr.aria-pressed]="rqFrom() < '13:00'" (click)="setHalf(false)">Morning · 09:00–13:00</button>
+        <button type="button" [attr.aria-pressed]="rqFrom() >= '13:00'" (click)="setHalf(true)">Afternoon · 14:00–18:00</button>
+      </div>
+    </div>
+    } @else if (rqNeedsTime()) {
+    <div class="ak-form-grid">
+      <label class="ak-field"><span>{{ rqType() === 'Punch correction' ? 'Correct check-in' : 'From' }}</span>
+        <input type="time" [value]="rqFrom()" (input)="rqFrom.set($any($event.target).value)" /></label>
+      <label class="ak-field"><span>{{ rqType() === 'Punch correction' ? 'Correct check-out' : 'To' }}</span>
+        <input type="time" [value]="rqTo()" (input)="rqTo.set($any($event.target).value)" /></label>
+    </div>
+    }
+
+    @if (rqNeedsLocation()) {
+    <div class="ak-field">
+      <span>Work location</span>
+      <ak-select class="is-block" [options]="locationOptions" [value]="rqLocation()" (valueChange)="rqLocation.set($event)" icon="pin" ariaLabel="Request location" />
+    </div>
+    }
+
+    <label class="ak-field">
+      <span>Reason</span>
+      <textarea rows="3" maxlength="240" placeholder="Tell your manager what happened" [value]="rqReason()"
+        (input)="rqReason.set($any($event.target).value); rqError.set('')"></textarea>
+    </label>
+
+    @if (rqError()) {<p class="ak-form-error" role="alert">{{ rqError() }}</p>}
+
+    <footer class="ak-foot">
+      <button type="button" class="ak-btn" (click)="closeRequest()">Cancel</button>
+      <button type="submit" class="ak-btn is-primary">Send for approval</button>
+    </footer>
+  </form>
+</aside>
+}
+
+@if (toast(); as msg) {<div class="ak-toast" role="status" aria-live="polite"><span>{{ msg }}</span></div>}

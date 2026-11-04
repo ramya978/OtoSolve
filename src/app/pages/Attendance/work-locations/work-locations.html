@@ -1,0 +1,84 @@
+<!-- WORK LOCATIONS - figures · location list · who is where today · add / edit drawer -->
+<app-page-header breadcrumb="People / Work locations" heading="Work locations"
+  description="Offices, remote work, client sites and field work - and who is where today.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <button type="button" class="ak-btn" (click)="data.go('bulk')">Move employees</button>
+      <button type="button" class="ak-btn is-primary" (click)="add()">+ Add location</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @let k = kpis();
+  <div class="ak-kpis">
+    <div class="ak-kpi"><small>Active locations</small><strong>{{ k.active }}</strong><span>{{ k.total - k.active }} inactive</span>
+      <span class="ak-kpi-ico" data-tone="blue"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /></svg></span></div>
+    <div class="ak-kpi"><small>Offices</small><strong>{{ k.offices }}</strong><span>Branches and headquarters</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18zM10 6h4M10 10h4M10 14h4" /></svg></span></div>
+    <div class="ak-kpi"><small>Working remotely today</small><strong>{{ k.remote }}</strong><span>From home</span>
+      <span class="ak-kpi-ico" data-tone="violet"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10" /></svg></span></div>
+    <div class="ak-kpi"><small>Client / field today</small><strong>{{ k.field }}</strong><span>Outside the offices</span>
+      <span class="ak-kpi-ico" data-tone="amber"><svg viewBox="0 0 24 24"><path d="M3 7h18v13H3zM8 7V4h8v3" /></svg></span></div>
+  </div>
+
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head">
+        <div><h2>Location directory</h2><p>Default = employees assigned here · Today = at work here today</p></div>
+        <ak-select [options]="typeOptions" [value]="typeFilter()" align="right" (valueChange)="typeFilter.set($event)" ariaLabel="Location type" />
+      </header>
+      <div class="ak-table-wrap">
+        <table class="ak-table">
+          <thead><tr><th>Location</th><th class="ak-hide-sm">Type</th><th class="ak-num ak-hide-sm">Default</th><th class="ak-num">Today</th><th class="ak-hide-sm">Status</th><th class="ak-num"><span class="wl-sr">Actions</span></th></tr></thead>
+          <tbody>
+            @for (r of rows(); track r.l.name) {
+            <tr [class.wl-off]="!r.l.active">
+              <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="typeTone(r.l.type)"><svg class="wl-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 7a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" /></svg></span><span><strong>{{ r.l.name }}</strong><small>{{ r.l.city || '—' }}</small></span></div></td>
+              <td class="ak-hide-sm"><span class="ak-pill is-plain" [attr.data-tone]="typeTone(r.l.type)">{{ r.l.type }}</span></td>
+              <td class="ak-num ak-hide-sm">{{ r.defaults }}</td>
+              <td class="ak-num ak-strong">{{ r.today }}@if (r.live) {<small class="wl-live"> · {{ r.live }} live</small>}</td>
+              <td class="ak-hide-sm"><span class="ak-pill" [attr.data-tone]="r.l.active ? 'teal' : ''">{{ r.l.active ? 'Active' : 'Inactive' }}</span></td>
+              <td class="ak-num"><div class="wl-acts"><button type="button" class="ak-link" (click)="edit(r.l)">Edit</button><button type="button" class="ak-link" (click)="toggle(r.l)">{{ r.l.active ? 'Deactivate' : 'Activate' }}</button></div></td>
+            </tr>
+            } @empty { <tr><td colspan="6" class="ak-empty">No locations of this type.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Who is where today</h2><p>Employees at work, by location</p></div></header>
+      <ul class="ak-rows wl-groups">
+        @for (g of todayGroups(); track g.name) {
+        <li>
+          <div class="wl-group-head"><b>{{ g.name }}</b><span>{{ g.people.length }}</span></div>
+          <div class="wl-faces">@for (x of g.people.slice(0, 12); track x.e.id) {<span class="ak-avatar" [attr.data-tone]="x.e.tone" [attr.title]="x.e.name + (x.live ? ' · on shift' : '')" [class.wl-is-live]="x.live">{{ x.e.initials }}</span>}@if (g.people.length > 12) {<span class="wl-more">+{{ g.people.length - 12 }}</span>}</div>
+        </li>
+        } @empty { <li class="ak-muted">No one is at work yet today.</li> }
+      </ul>
+    </section>
+  </div>
+</div>
+
+@if (editing(); as ed) {
+<div class="ak-scrim" (click)="close()"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="wl-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">{{ ed.original ? 'Edit location' : 'New location' }}</span><h2 id="wl-title">{{ ed.original || 'Add a work location' }}</h2><p>Shown in every location picker while active.</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="close()">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); save()" novalidate>
+    <label class="ak-field"><span>Name</span><input type="text" maxlength="60" placeholder="e.g. Coimbatore branch" [value]="ed.loc.name" (input)="patch({ name: $any($event.target).value })" /></label>
+    <div class="ak-field"><span>Type</span>
+      <div class="wl-types">@for (t of types; track t) {<button type="button" [class.is-on]="ed.loc.type === t" [attr.aria-pressed]="ed.loc.type === t" (click)="patch({ type: t })">{{ t }}</button>}</div>
+    </div>
+    <label class="ak-field"><span>City / area <small>Optional</small></span><input type="text" maxlength="60" [value]="ed.loc.city" (input)="patch({ city: $any($event.target).value })" /></label>
+    @if (ed.original && ed.original !== ed.loc.name.trim() && ed.loc.name.trim()) { <p class="ak-sub">Employees whose default is {{ ed.original }} move to the new name.</p> }
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot"><button type="button" class="ak-btn" (click)="close()">Cancel</button><button type="submit" class="ak-btn is-primary">{{ ed.original ? 'Save changes' : 'Add location' }}</button></div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

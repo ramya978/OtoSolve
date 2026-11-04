@@ -1,0 +1,247 @@
+<!-- BULK ATTENDANCE - 1 who · 2 normal day · 3 who was different · 4 check & apply (all on one page) · default location tab -->
+<app-page-header breadcrumb="Attendance / Bulk entry" heading="Bulk entry"
+  description="Mark a whole team for a day. Permission, overtime and visits apply only to the people you choose.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <div class="ak-seg" role="tablist" aria-label="What to change">
+        <button type="button" role="tab" [attr.aria-pressed]="mode() === 'attendance'" (click)="mode.set('attendance'); error.set('')">Attendance for a day</button>
+        <button type="button" role="tab" [attr.aria-pressed]="mode() === 'location'" (click)="mode.set('location'); error.set('')">Default work location</button>
+      </div>
+      @if (mode() === 'attendance') { <button type="button" class="ak-btn" (click)="startOver()">Start over</button> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees…</div> }
+
+  @if (mode() === 'attendance') {
+  <!-- summary strip (not a wizard - every section stays open below) -->
+  <nav class="bk-summary" aria-label="Bulk entry summary">
+    <button type="button" class="bk-sum" (click)="jump('bk-who')" [class.is-done]="selected().length"><i>1</i><span><b>Who</b><small>{{ picked().size ? picked().size + ' chosen' + (leftOut().length ? ' · ' + leftOut().length + ' left out' : '') : 'Choose people' }}</small></span></button>
+    <button type="button" class="bk-sum" (click)="jump('bk-day')" [class.is-done]="selected().length"><i>2</i><span><b>Normal day</b><small>{{ baseActive() ? bIn() + ' – ' + bOut() : base() === 'A' ? 'Absent' : 'On leave' }}</small></span></button>
+    <button type="button" class="bk-sum" (click)="jump('bk-diff')" [class.is-done]="cards().length"><i>3</i><span><b>Different?</b><small>{{ cards().length ? cards().length + ' card' + (cards().length === 1 ? '' : 's') : 'Optional' }}</small></span></button>
+    <button type="button" class="bk-sum" (click)="jump('bk-check')" [class.is-warn]="tally().errors"><i>4</i><span><b>Check &amp; apply</b><small>{{ blocker() ? (tally().errors ? tally().errors + ' to fix' : 'Not ready') : 'Ready · ' + tally().ready }}</small></span></button>
+  </nav>
+
+  <!-- 1 · WHO -->
+  <section class="ak-card bk-sec" id="bk-who">
+    <header class="bk-head"><span class="bk-n">1</span><div><h2>Who are you marking attendance for?</h2><p>Pick the date and the people. For a big team use Everyone, a department, paste a list or upload a file.</p></div></header>
+    <div class="bk-body">
+      <div class="bk-row">
+        <div class="ak-field"><span>Date</span><ak-date [value]="date()" [min]="minDate" [max]="data.today" (valueChange)="setDate($event)" /></div>
+        <div class="ak-field bk-grow"><span>Shift</span><ak-select class="is-block" icon="clock" [options]="shiftOptions()" [value]="shiftId()" (valueChange)="setShift($event)" /></div>
+      </div>
+      @if (!dayIsWorking() || locked()) {
+      <div class="ak-banner" data-tone="amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg>
+        <span>{{ locked() ? 'This month is finalised in Payroll summary - reopen it to change attendance.' : dateText() + ' is a weekly off or holiday. Choose a working day.' }}</span></div>
+      }
+
+      <div class="bk-pick">
+        <div class="bk-chips">
+          @for (e of chips(); track e.id) {<span class="bk-chip">{{ e.name }}<button type="button" [attr.aria-label]="'Remove ' + e.name" (click)="removeOne(e.id)">×</button></span>}
+          @if (picked().size > chips().length) {<span class="bk-chip is-more">+{{ picked().size - chips().length }} more</span>}
+          @if (!picked().size) {<span class="ak-muted bk-none">Nobody chosen yet.</span>}
+        </div>
+        <div class="ak-toolbar">
+          <button type="button" class="ak-btn is-sm" (click)="everyone()">Everyone ({{ data.people().length }})</button>
+          <button type="button" class="ak-btn is-sm" (click)="notMarked()">Not marked yet ({{ unmarkedIds().length }})</button>
+          <ak-select size="sm" [options]="addDeptOptions()" value="" placeholder="Add a department…" (valueChange)="addDept($event)" ariaLabel="Add a department" />
+          <div class="bk-find">
+            <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+              <input type="search" placeholder="Add a person by name or ID" aria-label="Add a person" [value]="query()" (input)="query.set($any($event.target).value)" /></label>
+            @if (matches().length) {
+            <div class="bk-matches" role="listbox">
+              @for (e of matches(); track e.id) {<button type="button" role="option" [disabled]="picked().has(e.id)" (click)="addOne(e)"><b>{{ e.name }}</b><small>{{ e.id }} · {{ e.department }}{{ picked().has(e.id) ? ' · added' : '' }}</small></button>}
+            </div>
+            }
+          </div>
+          @if (picked().size) { <button type="button" class="ak-link" (click)="clear()">Clear</button> }
+        </div>
+        <div class="ak-toolbar">
+          <button type="button" class="ak-btn is-sm" (click)="pasteOpen.set(!pasteOpen())">{{ pasteOpen() ? 'Hide list' : 'Paste a list' }}</button>
+          <label class="ak-btn is-sm bk-file">Upload file (CSV)<input type="file" accept=".csv,.txt" (change)="onFile($event)" /></label>
+          <button type="button" class="ak-link" (click)="template()">Download template</button>
+        </div>
+        @if (pasteOpen()) {
+        <div class="bk-paste">
+          <textarea class="ak-input" rows="3" placeholder="Employee IDs or full names - one per line or separated by commas" [value]="pasteText()" (input)="pasteText.set($any($event.target).value)"></textarea>
+          <div class="ak-toolbar"><button type="button" class="ak-btn is-sm is-primary" [disabled]="!pasteText().trim()" (click)="applyPaste()">Add these people</button>@if (pasteNote()) {<span class="ak-muted">{{ pasteNote() }}</span>}</div>
+        </div>
+        }
+      </div>
+
+      @if (leftOut().length) {
+      <div class="ak-banner" data-tone="amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg>
+        <span>{{ leftOut().length === 1 ? leftOut()[0].e.name + ' ' + leftOut()[0].why + ' and will be left out.' : leftOut().length + ' people are on leave and will be left out.' }}</span></div>
+      }
+    </div>
+  </section>
+
+  <!-- 2 · NORMAL DAY -->
+  <section class="ak-card bk-sec" id="bk-day">
+    <header class="bk-head"><span class="bk-n">2</span><div><h2>What was a normal day?</h2><p>What most people did. Anyone who was different gets their own card in the next section.</p></div></header>
+    <div class="bk-body">
+      <div class="bk-tiles">
+        @for (b of bases; track b.s) {
+        <button type="button" class="bk-tile" [attr.data-tone]="b.tone" [class.is-on]="base() === b.s" [attr.aria-pressed]="base() === b.s" (click)="setBase(b.s)">
+          <span class="bk-ti"><i></i></span><span><b>{{ b.title }}</b><small>{{ b.text }}</small></span>
+        </button>
+        }
+      </div>
+      @if (baseActive()) {
+      <div class="bk-grid">
+        <label class="ak-field"><span>In time</span><input type="time" [value]="bIn()" (input)="bIn.set($any($event.target).value)" /></label>
+        <label class="ak-field"><span>Out time</span><input type="time" [value]="bOut()" (input)="bOut.set($any($event.target).value)" /></label>
+        <div class="ak-field"><span>In location</span><ak-select class="is-block" icon="pin" [options]="placeOptions()" [value]="bInLoc()" (valueChange)="bInLoc.set($event)" /></div>
+        <div class="ak-field"><span>Out location <small>if different</small></span><ak-select class="is-block" [options]="outLocOptions()" [value]="bOutLoc()" (valueChange)="bOutLoc.set($event)" /></div>
+        @if (base() === 'P') {<label class="ak-field"><span>Break · minutes</span><input type="number" min="0" max="240" step="5" [value]="bBreak()" (input)="bBreak.set(+$any($event.target).value)" /></label>}
+      </div>
+      } @else if (base() === 'L') {
+      <div class="bk-grid"><div class="ak-field"><span>Leave type</span><ak-select class="is-block" [options]="leaveOptions()" [value]="bLeaveType()" (valueChange)="bLeaveType.set($event)" /></div></div>
+      }
+      <div class="ak-banner" data-tone="teal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg><span>{{ baseText() }}</span></div>
+    </div>
+  </section>
+
+  <!-- 3 · DIFFERENT -->
+  <section class="ak-card bk-sec" id="bk-diff">
+    <header class="bk-head"><span class="bk-n">3</span><div><h2>Was anyone different from the normal day?</h2><p>Add permission, overtime, visits and more - only for the people who need them. Everyone else keeps the normal day.</p></div></header>
+    <div class="bk-body">
+      <div class="bk-tiles is-six">
+        @for (r of rules; track r.kind) {
+        <button type="button" class="bk-tile" [attr.data-tone]="r.tone" (click)="addCard(r.kind)">
+          <span class="bk-ti"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="r.icon" /></svg></span><span><b>{{ r.title }}</b><small>{{ r.text }}</small></span>
+        </button>
+        }
+      </div>
+
+      @for (c of cards(); track c.id) {
+      @let def = rule(c.kind);
+      <div class="bk-card" [attr.data-tone]="def.tone">
+        <div class="bk-card-h">
+          <span class="bk-ti"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="def.icon" /></svg></span>
+          <b>{{ def.title }}</b><span class="ak-muted">· {{ c.people.length }} {{ c.people.length === 1 ? 'person' : 'people' }}</span>
+          <button type="button" class="ak-link bk-remove" (click)="removeCard(c.id)">Remove card</button>
+        </div>
+        <div class="bk-card-b">
+          <div class="bk-who">
+            @for (id of c.people; track id) {<span class="bk-chip">{{ name(id) }}<button type="button" [attr.aria-label]="'Remove ' + name(id)" (click)="removeFromCard(c, id)">×</button></span>}
+            <ak-select size="sm" [options]="cardPeopleOptions(c)" value="" [searchable]="true" [placeholder]="c.people.length ? '+ Add person' : 'Choose who this applies to'" (valueChange)="addToCard(c, $event)" ariaLabel="Add person to this card" />
+          </div>
+          <div class="bk-grid">
+            @switch (c.kind) {
+            @case ('permission') {
+            <label class="ak-field"><span>Away from</span><input type="time" [value]="c.from" (input)="patchCard(c.id, { from: $any($event.target).value })" /></label>
+            <label class="ak-field"><span>Back at</span><input type="time" [value]="c.to" (input)="patchCard(c.id, { to: $any($event.target).value })" /></label>
+            }
+            @case ('extra') {
+            <label class="ak-field"><span>Worked until</span><input type="time" [value]="c.out" (input)="patchCard(c.id, { out: $any($event.target).value })" /></label>
+            <label class="ak-field bk-wide"><span>What they did <small>optional</small></span><input type="text" maxlength="80" placeholder="e.g. Month-end closing" [value]="c.note" (input)="patchCard(c.id, { note: $any($event.target).value })" /></label>
+            }
+            @case ('visit') {
+            <div class="ak-field"><span>Place</span><ak-select class="is-block" icon="pin" [options]="placeOptions()" [value]="c.place" (valueChange)="patchCard(c.id, { place: $event })" /></div>
+            <label class="ak-field"><span>In</span><input type="time" [value]="c.from" (input)="patchCard(c.id, { from: $any($event.target).value })" /></label>
+            <label class="ak-field"><span>Out</span><input type="time" [value]="c.to" (input)="patchCard(c.id, { to: $any($event.target).value })" /></label>
+            }
+            @case ('half') {
+            <div class="ak-field"><span>Which half</span><div class="ak-seg"><button type="button" [attr.aria-pressed]="c.session === 'AM'" (click)="patchCard(c.id, { session: 'AM' })">Morning</button><button type="button" [attr.aria-pressed]="c.session === 'PM'" (click)="patchCard(c.id, { session: 'PM' })">Afternoon</button></div></div>
+            }
+            @case ('leave') {
+            <div class="ak-field"><span>Leave type</span><ak-select class="is-block" [options]="leaveOptions()" [value]="c.leaveType" (valueChange)="patchCard(c.id, { leaveType: $event })" /></div>
+            }
+            @default { <p class="ak-sub bk-wide">Marked as working remotely for the day, with the normal day's times.</p> }
+            }
+          </div>
+        </div>
+      </div>
+      } @empty {
+      <div class="bk-empty"><span class="bk-empty-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg></span><b>Nobody was different</b><span>If everyone had a normal day, go straight to Check &amp; apply. Otherwise click a box above, then choose who it applies to.</span></div>
+      }
+    </div>
+  </section>
+
+  <!-- 4 · CHECK & APPLY -->
+  <section class="ak-card is-clip bk-sec" id="bk-check">
+    <header class="bk-head"><span class="bk-n">4</span><div><h2>Check and apply</h2><p>Every person and what will be saved. Change a time right in the row if needed.</p></div></header>
+    <div class="bk-body bk-body-tight">
+      @if (blocker()) {
+      <div class="ak-banner" data-tone="amber"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg><span>{{ blocker() }}</span></div>
+      } @else {
+      <div class="ak-banner" data-tone="teal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg><span>Ready to mark <b>{{ tally().ready }}</b> {{ tally().ready === 1 ? 'person' : 'people' }} for {{ dateText() }}.{{ leftOut().length ? ' ' + leftOut().length + ' left out.' : '' }}</span></div>
+      }
+      <div class="bk-tally">@for (t of tally().counts; track t.label) {<span class="ak-pill" [attr.data-tone]="t.tone">{{ t.label }} · {{ t.n }}</span>}@if (tally().warns) {<span class="ak-pill" data-tone="amber">Check · {{ tally().warns }}</span>}</div>
+    </div>
+    <div class="bk-tools">
+      <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+        <input type="search" placeholder="Search name or ID" aria-label="Search results" [value]="fQuery()" (input)="fQuery.set($any($event.target).value)" /></label>
+      <ak-select [options]="deptOptions()" [value]="fDept()" (valueChange)="fDept.set($event)" ariaLabel="Department" />
+      <ak-select [options]="outcomeOptions" [value]="fOutcome()" align="right" (valueChange)="fOutcome.set($event)" ariaLabel="Outcome" />
+    </div>
+    <div class="ak-table-wrap">
+      <table class="ak-table bk-table">
+        <thead><tr><th>Employee</th><th>Outcome</th><th>In</th><th>Out</th><th class="ak-hide-md">In location</th><th class="ak-hide-lg">Out location</th><th class="ak-hide-sm">Details</th></tr></thead>
+        <tbody>
+          @for (x of shown(); track x.e.id) {
+          <tr [class.bk-bad]="x.error && !x.rec">
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span><span><strong>{{ x.e.name }}</strong><small>{{ x.e.id }} · {{ x.e.department }}</small></span></div></td>
+            <td><span class="ak-pill" [attr.data-tone]="x.tone">{{ x.label }}</span></td>
+            <td>@if (x.in) {<input class="ak-input bk-t" type="time" aria-label="In time" [value]="x.in" (input)="editTime(x.e.id, 'in', $any($event.target).value)" />} @else {<span class="ak-muted">—</span>}</td>
+            <td>@if (x.out) {<input class="ak-input bk-t" type="time" aria-label="Out time" [value]="x.out" (input)="editTime(x.e.id, 'out', $any($event.target).value)" />} @else {<span class="ak-muted">—</span>}</td>
+            <td class="ak-hide-md">{{ x.inLoc || '—' }}</td>
+            <td class="ak-hide-lg ak-muted">{{ x.outLoc && x.outLoc !== x.inLoc ? x.outLoc : x.outLoc ? 'Same' : '—' }}</td>
+            <td class="ak-hide-sm"><span class="bk-details">{{ x.details.join(' · ') || 'Normal day' }}</span>@if (x.error) {<small class="bk-err">{{ x.error }}</small>}</td>
+          </tr>
+          } @empty { <tr><td colspan="7" class="ak-empty">{{ picked().size ? 'No one matches these filters.' : 'Choose people in section 1 to see the result here.' }}</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="bk-apply">
+      <span>{{ tally().ready }} ready{{ tally().errors ? ' · ' + tally().errors + ' to fix' : '' }}{{ leftOut().length ? ' · ' + leftOut().length + ' left out' : '' }}@if (error()) { · <b class="bk-err-inline">{{ error() }}</b>}</span>
+      <button type="button" class="ak-btn is-primary" [disabled]="!!blocker()" (click)="apply()">Apply to {{ tally().ready }} {{ tally().ready === 1 ? 'person' : 'people' }}</button>
+    </footer>
+  </section>
+  }
+
+  @if (mode() === 'location') {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div><h2>Move people to a new default work location</h2><p>A reason is kept for every person in the audit trail</p></div>
+      <div class="ak-toolbar">
+        <ak-select [options]="deptOptions()" [value]="locDept()" (valueChange)="locDept.set($event)" ariaLabel="Department" />
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search name or ID" aria-label="Search employees" [value]="locQuery()" (input)="locQuery.set($any($event.target).value)" /></label>
+      </div>
+    </header>
+    <div class="bk-common">
+      <span class="ak-muted">Apply to <b>{{ locPicked().size }}</b> ticked</span>
+      <ak-select icon="pin" [options]="flow.activeLocations()" [value]="locCommon()" (valueChange)="locCommon.set($event)" ariaLabel="New location" />
+      <input class="ak-input bk-reason" type="text" maxlength="120" placeholder="Reason, e.g. Team moved to Bengaluru" [value]="locReason()" (input)="locReason.set($any($event.target).value)" />
+      <button type="button" class="ak-btn" [disabled]="!locPicked().size" (click)="locApplyCommon()">Apply to ticked</button>
+    </div>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th class="bk-sel"><input type="checkbox" class="ak-check" aria-label="Tick all shown" [checked]="locAllOn()" (change)="locToggleAll($any($event.target).checked)" /></th><th>Employee</th><th class="ak-hide-sm">Current</th><th>New default</th><th class="ak-hide-sm">Reason</th></tr></thead>
+        <tbody>
+          @for (r of locRows(); track r.e.id) {
+          @let l = locRow(r.e.id, r.home);
+          <tr [class.is-on]="!!locDrafts()[r.e.id]">
+            <td class="bk-sel"><input type="checkbox" class="ak-check" [attr.aria-label]="'Tick ' + r.e.name" [checked]="locPicked().has(r.e.id)" (change)="locToggle(r.e.id, $any($event.target).checked)" /></td>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="r.e.tone">{{ r.e.initials }}</span><span><strong>{{ r.e.name }}</strong><small>{{ r.e.department }}</small></span></div></td>
+            <td class="ak-hide-sm ak-muted">{{ r.home }}</td>
+            <td><ak-select size="sm" icon="pin" [options]="flow.activeLocations()" [value]="l.location" (valueChange)="editLoc(r.e.id, r.home, { location: $event })" /></td>
+            <td class="ak-hide-sm"><input class="ak-input bk-note" type="text" maxlength="120" [placeholder]="l.location !== r.home ? 'Required' : 'Only when changing'" [value]="l.reason" (input)="editLoc(r.e.id, r.home, { reason: $any($event.target).value })" /></td>
+          </tr>
+          } @empty { <tr><td colspan="5" class="ak-empty">No employees match.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="bk-apply">
+      <span>{{ locChanges() ? locChanges() + ' change' + (locChanges() === 1 ? '' : 's') + ' ready' : 'No changes yet' }}@if (error()) { · <b class="bk-err-inline">{{ error() }}</b>}</span>
+      <div class="ak-toolbar"><button type="button" class="ak-btn" [disabled]="!locChanges()" (click)="locDrafts.set({})">Discard</button><button type="button" class="ak-btn is-primary" [disabled]="!locChanges()" (click)="saveLocations()">Save locations</button></div>
+    </footer>
+  </section>
+  }
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

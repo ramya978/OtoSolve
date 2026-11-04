@@ -1,0 +1,64 @@
+<!-- TEAM APPROVALS - requests waiting at my level · approve / reject · my past decisions -->
+<app-page-header breadcrumb="My workspace / Approvals" heading="Approvals"
+  description="Requests waiting for you. Approve or reject at your level - the next level is told automatically.">
+  <ng-container actions>
+    <div class="ak-head-acts"><ak-select [options]="peopleOptions()" [value]="hr.meId()" [searchable]="true" icon="user" align="right" (valueChange)="hr.setMe($event)" ariaLabel="Viewing as" /></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (covering().length) { <div class="ak-banner" data-tone="violet"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM19 8v6M22 11h-6" /></svg><span>You are covering approvals for <b>{{ covering().join(', ') }}</b> today.</span></div> }
+  @if (coveredBy()) { <div class="ak-banner" data-tone="blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 16v-4M12 8h.01" /></svg><span>{{ coveredBy() }} is covering your approvals today - new requests go to them.</span></div> }
+
+  <div class="ak-kpis">
+    <div class="ak-kpi"><small>Waiting for you</small><strong>{{ queue().length }}</strong><span>Leave and attendance requests</span>
+      <span class="ak-kpi-ico" data-tone="amber"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" /></svg></span></div>
+    <div class="ak-kpi"><small>Past the reply time</small><strong>{{ lateCount() }}</strong><span>Will move on by the timeout rule</span>
+      <span class="ak-kpi-ico" data-tone="rose"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg></span></div>
+    <div class="ak-kpi"><small>People reporting to you</small><strong>{{ reports() }}</strong><span>{{ me()?.department }}</span>
+      <span class="ak-kpi-ico" data-tone="blue"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" /></svg></span></div>
+    <div class="ak-kpi"><small>Decided by you</small><strong>{{ history().length }}</strong><span>Recent decisions</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></span></div>
+  </div>
+
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Waiting for you</h2><p>Oldest first</p></div></header>
+      <ul class="ta-list">
+        @for (x of queue(); track x.id) {
+        <li [class.is-late]="x.late">
+          <div class="ak-person"><span class="ak-avatar" [attr.data-tone]="tone(x)">{{ initials(x) }}</span><span><strong>{{ x.who }}</strong><small>{{ x.dept }} · {{ x.id }}</small></span></div>
+          <div class="ta-what"><b>{{ x.what }}</b><span>{{ x.when }}</span><small>“{{ x.reason }}”</small></div>
+          <div class="ta-path"><span class="ta-dots">@for (s of x.chain; track $index) {<i [attr.data-tone]="stepTone(s)" [attr.title]="s.name + ' · ' + s.status"></i>}</span><small>Level {{ x.level }} of {{ x.levels }} · {{ nextAfter(x) }}</small><small [class.ta-late]="x.late">Waiting {{ x.hours < 1 ? 'under an hour' : x.hours + ' h' }}{{ x.late ? ' · overdue' : '' }}</small></div>
+          <div class="ta-acts"><button type="button" class="ak-btn is-sm is-primary" (click)="approve(x)">Approve</button><button type="button" class="ak-btn is-sm is-danger" (click)="startReject(x)">Reject</button></div>
+        </li>
+        } @empty { <li class="ak-empty">Nothing is waiting for you. 🎉</li> }
+      </ul>
+    </section>
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Your recent decisions</h2></div></header>
+      <ul class="ak-rows">
+        @for (h of history(); track h.id + h.at) {<li><span><b>{{ h.who }}</b><small>{{ h.what }} · {{ ago(h.at) }}{{ h.note ? ' · “' + h.note + '”' : '' }}</small></span><span class="ak-pill" [attr.data-tone]="h.status === 'Approved' ? 'teal' : 'rose'">{{ h.status }}</span></li>}
+        @empty { <li class="ak-muted">You have not decided anything yet.</li> }
+      </ul>
+    </section>
+  </div>
+</div>
+
+@if (rejecting(); as x) {
+<div class="ak-scrim" (click)="rejecting.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="ta-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">Reject request</span><h2 id="ta-title">{{ x.who }}</h2><p>{{ x.what }} · {{ x.when }}</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="rejecting.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); reject()" novalidate>
+    <div class="ak-field"><span>Their reason</span><p class="ta-p">{{ x.reason }}</p></div>
+    <label class="ak-field"><span>Why are you rejecting it?</span><textarea rows="4" maxlength="180" [placeholder]="'Visible to ' + x.who" [value]="note()" (input)="note.set($any($event.target).value); error.set('')"></textarea></label>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot"><button type="button" class="ak-btn" (click)="rejecting.set(null)">Cancel</button><button type="submit" class="ak-btn is-danger">Reject request</button></div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

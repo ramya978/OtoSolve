@@ -1,0 +1,94 @@
+<!-- PAYROLL SUMMARY - month stepper · figures · close checklist · per-employee payable days -->
+<app-page-header breadcrumb="People / Payroll summary" heading="Payroll summary"
+  description="Payable days and loss of pay per employee, and the month-close checklist.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <div class="py-month" role="group" aria-label="Month">
+        <button type="button" aria-label="Previous month" [disabled]="!canMonth(-1)" (click)="moveMonth(-1)">‹</button>
+        <strong>{{ label() }}</strong>
+        <button type="button" aria-label="Next month" [disabled]="!canMonth(1)" (click)="moveMonth(1)">›</button>
+      </div>
+      <button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees…</div> }
+
+  @let t = total();
+  <div class="ak-kpis">
+    <div class="ak-kpi"><small>Payable days</small><strong>{{ days(t.payable) }}</strong><span>Worked + paid leave + offs</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></span></div>
+    <div class="ak-kpi"><small>Loss of pay</small><strong>{{ days(t.lop) }}</strong><span>Absent + half-day shortfall</span>
+      <span class="ak-kpi-ico" data-tone="rose"><svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" /></svg></span></div>
+    <div class="ak-kpi"><small>Hours recorded</small><strong>{{ hm(t.minutes) }}</strong><span>{{ hm(t.overtime) }} approved overtime</span>
+      <span class="ak-kpi-ico" data-tone="blue"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" /></svg></span></div>
+    <div class="ak-kpi"><small>Month status</small><strong>{{ locked() ? 'Finalised' : ready() ? 'Ready' : 'Provisional' }}</strong><span>{{ locked() ? 'Read only' : 'Still editable' }}</span>
+      <span class="ak-kpi-ico" [attr.data-tone]="locked() ? 'violet' : ready() ? 'teal' : 'amber'"><svg viewBox="0 0 24 24"><path d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" /></svg></span></div>
+  </div>
+
+  <section class="ak-card">
+    <header class="ak-card-head">
+      <div><h2>Month close</h2><p>{{ label() }} · this preview is not a payslip</p></div>
+      <div class="ak-toolbar">
+        @if (confirming()) { <span class="py-warn">Some checks are open. Finalise anyway?</span><button type="button" class="ak-btn" (click)="confirming.set(false)">Cancel</button> }
+        <button type="button" class="ak-btn" [class.is-primary]="!locked()" (click)="finalise()">{{ locked() ? 'Reopen month' : confirming() ? 'Yes, finalise' : 'Finalise month' }}</button>
+      </div>
+    </header>
+    <div class="py-checks">
+      @for (c of checks(); track c.title) {
+      <div class="py-check" [attr.data-tone]="c.ok ? 'teal' : 'amber'">
+        <span class="py-check-ico">@if (c.ok) {<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg>} @else {<svg viewBox="0 0 24 24"><path d="M12 8v5M12 16h.01" /></svg>}</span>
+        <span><b>{{ c.title }}</b><small>{{ c.text }}</small></span>
+      </div>
+      }
+    </div>
+  </section>
+
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div><h2>Employee summary</h2><p>{{ rows().length }} employees · P = present, HD = half day, PL = paid leave</p></div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search employee" aria-label="Search employee" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        <ak-select [options]="deptOptions()" [value]="department()" align="right" (valueChange)="department.set($event)" ariaLabel="Department" />
+      </div>
+    </header>
+    <div class="ak-table-wrap">
+      <table class="ak-table py-table">
+        <thead><tr>
+          <th>Employee</th><th class="ak-num ak-hide-md">Days</th><th class="ak-num">P</th><th class="ak-num">HD</th><th class="ak-num ak-hide-sm">PL</th>
+          <th class="ak-num ak-hide-md">Off</th><th class="ak-num">A</th><th class="ak-num ak-hide-sm">U</th><th class="ak-num">Payable</th><th class="ak-num ak-hide-sm">LOP</th><th class="ak-num ak-hide-lg">Hours</th><th class="ak-num ak-hide-lg">OT approved</th>
+        </tr></thead>
+        <tbody>
+          @for (r of rows(); track r.id) {
+          <tr>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="r.tone">{{ r.initials }}</span><span><strong>{{ r.name }}</strong><small>{{ r.id }} · {{ r.department }}</small></span></div></td>
+            <td class="ak-num ak-hide-md">{{ r.m.days }}</td>
+            <td class="ak-num">{{ r.m.P }}</td>
+            <td class="ak-num">{{ r.m.HD }}</td>
+            <td class="ak-num ak-hide-sm">{{ r.m.L }}</td>
+            <td class="ak-num ak-hide-md">{{ r.m.WO + r.m.H }}</td>
+            <td class="ak-num" [class.py-bad]="r.m.A">{{ r.m.A }}</td>
+            <td class="ak-num ak-hide-sm" [class.py-warn]="r.m.U">{{ r.m.U }}</td>
+            <td class="ak-num ak-strong">{{ days(r.m.payable) }}</td>
+            <td class="ak-num ak-hide-sm" [class.py-bad]="r.m.lop">{{ days(r.m.lop) }}</td>
+            <td class="ak-num ak-hide-lg">{{ hm(r.m.minutes) }}</td>
+            <td class="ak-num ak-hide-lg">{{ r.m.overtime ? hm(r.m.overtime) : '—' }}</td>
+          </tr>
+          } @empty { <tr><td colspan="12" class="ak-empty">No employees match these filters.</td></tr> }
+        </tbody>
+        @if (rows().length) {
+        <tfoot><tr>
+          <td><b>Total</b></td><td class="ak-num ak-hide-md">{{ t.days }}</td><td class="ak-num">{{ t.P }}</td><td class="ak-num">{{ t.HD }}</td><td class="ak-num ak-hide-sm">{{ t.L }}</td>
+          <td class="ak-num ak-hide-md">{{ t.WO + t.H }}</td><td class="ak-num">{{ t.A }}</td><td class="ak-num ak-hide-sm">{{ t.U }}</td><td class="ak-num">{{ days(t.payable) }}</td>
+          <td class="ak-num ak-hide-sm">{{ days(t.lop) }}</td><td class="ak-num ak-hide-lg">{{ hm(t.minutes) }}</td><td class="ak-num ak-hide-lg">{{ hm(t.overtime) }}</td>
+        </tr></tfoot>
+        }
+      </table>
+    </div>
+  </section>
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

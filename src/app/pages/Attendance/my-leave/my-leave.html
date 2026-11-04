@@ -1,0 +1,89 @@
+<!-- MY LEAVE - balances · apply · my requests · teammates away · next holidays -->
+<app-page-header breadcrumb="My workspace / Leave" heading="My leave"
+  description="See what you have left, apply for leave and track your requests.">
+  <ng-container actions>
+    <div class="ak-head-acts"><ak-select [options]="peopleOptions()" [value]="hr.meId()" [searchable]="true" icon="user" align="right" (valueChange)="hr.setMe($event)" ariaLabel="Viewing as" /></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading…</div> }
+
+  <div class="ml-bal">
+    @for (b of balances(); track b.t.id) {
+    <div class="ml-card" [style.--c]="b.t.color">
+      <span class="ml-name">{{ b.t.name }}</span>
+      <strong>{{ b.left === null ? '∞' : b.left }}</strong>
+      <small>{{ b.left === null ? (b.t.paid ? 'No limit' : 'Unpaid · no limit') : 'of ' + b.t.quota + ' days left' }}{{ b.pending ? ' · ' + b.pending + ' pending' : '' }}</small>
+      <div class="ak-bar"><i [style.width.%]="b.pct" [style.background]="b.t.color"></i></div>
+    </div>
+    }
+  </div>
+
+  <div class="ak-split">
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Apply for leave</h2><p>Pick the type and dates. Your balance and the rules are checked before sending.</p></div></header>
+        <form class="ak-form" (submit)="$event.preventDefault(); apply()" novalidate>
+          <div class="ak-form-grid">
+            <div class="ak-field"><span>Leave type</span><ak-select class="is-block" [options]="typeOptions()" [value]="typeId()" (valueChange)="typeId.set($event); error.set('')" /></div>
+            <div class="ak-field"><span>Length</span>
+              <div class="ml-seg"><button type="button" [class.is-on]="half() === ''" (click)="setHalf('')">Full days</button><button type="button" [class.is-on]="half() === 'AM'" (click)="setHalf('AM')">Morning</button><button type="button" [class.is-on]="half() === 'PM'" (click)="setHalf('PM')">Afternoon</button></div>
+            </div>
+          </div>
+          <div class="ak-form-grid">
+            <div class="ak-field"><span>{{ half() ? 'Date' : 'From' }}</span><ak-date [value]="from()" [min]="minDate" [max]="maxDate" [stepper]="false" (valueChange)="setFrom($event)" /></div>
+            @if (!half()) { <div class="ak-field"><span>To</span><ak-date [value]="to()" [min]="from()" [max]="maxDate" [stepper]="false" align="right" (valueChange)="to.set($event); error.set('')" /></div> }
+          </div>
+          <label class="ak-field"><span>Reason</span><textarea rows="3" maxlength="240" placeholder="A short reason for your manager" [value]="reason()" (input)="reason.set($any($event.target).value); error.set('')"></textarea></label>
+          <div class="ml-sum">
+            <div><small>Working days</small><b>{{ days() }}</b></div>
+            <div><small>Balance after</small><b [class.ml-bad]="(after() ?? 0) < 0">{{ after() === null ? 'No limit' : after() }}</b></div>
+            <p>Weekly offs and holidays inside the dates are not counted.</p>
+          </div>
+          @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+          <div class="ak-foot"><button type="submit" class="ak-btn is-primary" [disabled]="!days()">Send request</button></div>
+        </form>
+      </section>
+
+      <section class="ak-card is-clip">
+        <header class="ak-card-head"><div><h2>My requests</h2><p>{{ mine().length }} this year</p></div></header>
+        <div class="ak-table-wrap">
+          <table class="ak-table">
+            <thead><tr><th>Leave</th><th class="ak-num">Days</th><th class="ak-hide-sm">Approval</th><th>Status</th><th class="ak-num"><span class="ml-sr">Cancel</span></th></tr></thead>
+            <tbody>
+              @for (l of mine(); track l.id) {
+              <tr>
+                <td><b>{{ hr.type(l.typeId)?.name }}</b><small class="ml-sub">{{ dates(l) }}</small></td>
+                <td class="ak-num">{{ l.days }}</td>
+                <td class="ak-hide-sm"><span class="ml-path">@for (s of l.chain; track $index) {<i [attr.data-tone]="stepTone(s)" [attr.title]="s.name + ' · ' + s.status"></i>}</span><small class="ml-sub">{{ where(l) }}{{ l.note ? ' · “' + l.note + '”' : '' }}</small></td>
+                <td><span class="ak-pill" [attr.data-tone]="statusTone(l.status)">{{ l.status }}</span></td>
+                <td class="ak-num">@if (canCancel(l)) {<button type="button" class="ak-link" (click)="cancel(l)">Cancel</button>}</td>
+              </tr>
+              } @empty { <tr><td colspan="5" class="ak-empty">No leave requests yet.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Teammates away soon</h2><p>{{ me()?.department }} · next 3 weeks</p></div></header>
+        <ul class="ak-rows">
+          @for (l of teamAway(); track l.id) {<li><span><b>{{ l.employeeName }}</b><small>{{ dates(l) }}</small></span><span class="ak-muted">{{ l.days }}d</span></li>}
+          @empty { <li class="ak-muted">Nobody in your team is away.</li> }
+        </ul>
+      </section>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Next holidays</h2></div><button type="button" class="ak-link" (click)="data.go('companyCalendar')">Calendar →</button></header>
+        <ul class="ak-rows">
+          @for (h of nextHolidays(); track h.date) {<li><span><b>{{ h.name }}</b><small>{{ short(h.date) }}</small></span></li>}
+          @empty { <li class="ak-muted">No holidays coming up.</li> }
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

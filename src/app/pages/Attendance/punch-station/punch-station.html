@@ -1,0 +1,87 @@
+<!-- PUNCH STATION - shared kiosk: find yourself · punch · live board of today's punches -->
+<app-page-header breadcrumb="People / Punch station" heading="Punch station"
+  description="A shared check-in point. Find your name, choose where you are working and punch.">
+  <ng-container actions>
+    <div class="ak-head-acts"><button type="button" class="ak-btn" (click)="data.go('register')">Open register</button></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees…</div> }
+  @if (data.error()) { <div class="ak-state is-error">Unable to load users: {{ data.error() }} <button type="button" class="ak-link" (click)="data.ensure(true)">Retry</button></div> }
+
+  @if (!hr.methodOn('QR kiosk')) { <div class="ak-banner" data-tone="rose"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg><span>The punch station is switched off in Punch methods &amp; devices. Punches here are blocked.</span></div> }
+  <div class="ps-grid">
+    <!-- kiosk -->
+    <section class="ak-card ps-kiosk">
+      <div class="ps-clock"><b>{{ clock().hm }}</b><span>:{{ clock().s }}</span></div>
+      <p class="ps-date">{{ dateText }}</p>
+
+      @if (selected(); as x) {
+      <div class="ps-who">
+        <span class="ak-avatar is-lg" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span>
+        <div><strong>{{ x.e.name }}</strong><small>{{ x.e.id }} · {{ x.e.department }}</small></div>
+        <button type="button" class="ak-btn is-sm" (click)="clear()">Not you?</button>
+      </div>
+      <div class="ps-state" [attr.data-tone]="stateTone(x.state)">
+        <b>{{ stateText(x.state) }}</b>
+        <span>@if (x.s.first) { In {{ x.s.first }} · {{ hm(x.s.workedMin) }} worked · {{ hm(x.s.breakMin) }} break } @else { No punches yet today }</span>
+      </div>
+      <div class="ak-field"><span>Working from</span>
+        <ak-select class="is-block" icon="pin" [options]="flow.activeLocations()" [value]="location()" [disabled]="x.state === 'working' || x.state === 'break'" (valueChange)="location.set($event)" />
+      </div>
+      <div class="ps-actions">
+        @switch (x.state) {
+        @case ('working') {
+        <button type="button" class="ak-btn ps-big" (click)="punch('break-start')">Start break</button>
+        <button type="button" class="ak-btn is-primary ps-big" (click)="punch('out')">Punch out</button>
+        }
+        @case ('break') { <button type="button" class="ak-btn is-primary ps-big ps-span" (click)="punch('break-end')">End break</button> }
+        @case ('done') { <button type="button" class="ak-btn ps-big ps-span" (click)="punch('in')">Punch in again</button> }
+        @default { <button type="button" class="ak-btn is-primary ps-big ps-span" (click)="punch('in')">Punch in</button> }
+        }
+      </div>
+      } @else {
+      <div class="ps-find">
+        <div class="ak-toolbar">
+          <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+            <input type="search" placeholder="Type your name or employee ID" aria-label="Find employee" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+          <ak-select [options]="deptOptions()" [value]="department()" (valueChange)="department.set($event)" ariaLabel="Department" />
+        </div>
+        <div class="ps-people">
+          @for (x of people(); track x.e.id) {
+          <button type="button" class="ps-person" (click)="pick(x.e)">
+            <span class="ak-avatar" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span>
+            <span class="ps-person-name"><b>{{ x.e.name }}</b><small>{{ x.e.department }}</small></span>
+            <i class="ps-dot" [attr.data-tone]="stateTone(x.state)" [attr.title]="stateText(x.state)"></i>
+          </button>
+          } @empty { <p class="ak-muted ps-none">No employee matches “{{ search() }}”.</p> }
+        </div>
+      </div>
+      }
+    </section>
+
+    <!-- live board -->
+    <aside class="ak-stack">
+      <div class="ps-counts">
+        <div data-tone="teal"><b>{{ counts().working }}</b><small>Working</small></div>
+        <div data-tone="amber"><b>{{ counts().break }}</b><small>On break</small></div>
+        <div data-tone="blue"><b>{{ counts().done }}</b><small>Shift done</small></div>
+        <div><b>{{ counts().out }}</b><small>Not in</small></div>
+      </div>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Today's punches</h2><p>Live from this station and My attendance</p></div></header>
+        <ul class="ak-rows ps-board">
+          @for (p of board(); track $index) {
+          <li>
+            <span class="ak-person"><span class="ak-avatar" [attr.data-tone]="p.e.tone">{{ p.e.initials }}</span><span><strong>{{ p.e.name }}</strong><small>{{ p.location }}</small></span></span>
+            <span class="ps-board-r"><b>{{ p.at }}</b><span class="ak-pill is-plain" [attr.data-tone]="punchTone(p.kind)">{{ punchWord(p.kind) }}</span></span>
+          </li>
+          } @empty { <li class="ak-muted">No punches yet today.</li> }
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

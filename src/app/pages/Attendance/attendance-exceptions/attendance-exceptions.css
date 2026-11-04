@@ -1,0 +1,47 @@
+/* Missed punches & overtime - only what the shared attendance kit does not cover */
+.ex-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.ex-acts {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.ex-seg {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.ex-seg button {
+  min-height: 38px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+  font-size: 13px;
+}
+
+.ex-seg button.is-on {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+  color: var(--ak-primary);
+  font-weight: 650;
+}
+
+@media (max-width: 420px) {
+  .ex-seg {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .ex-acts {
+    display: grid;
+    gap: 4px;
+  }
+}

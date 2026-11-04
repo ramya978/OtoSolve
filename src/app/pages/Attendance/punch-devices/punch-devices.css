@@ -1,0 +1,126 @@
+/* Punch methods & devices - only what the shared attendance kit does not cover */
+.pdv-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.pdv-methods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px 20px 20px;
+}
+
+.pdv-method {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ak-line);
+  border-radius: 12px;
+}
+
+.pdv-method.is-off {
+  background: var(--ak-tint);
+}
+
+.pdv-method.is-off .pdv-m-text {
+  opacity: .6;
+}
+
+.pdv-m-text {
+  display: grid;
+  gap: 4px;
+}
+
+.pdv-m-text b {
+  font-size: 14px;
+}
+
+.pdv-m-text small {
+  color: var(--ak-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pdv-where {
+  color: var(--ak-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.pdv-switch {
+  position: relative;
+  flex: none;
+  cursor: pointer;
+}
+
+.pdv-switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.pdv-switch i {
+  display: block;
+  position: relative;
+  width: 36px;
+  height: 21px;
+  border-radius: 11px;
+  background: #cfd7e2;
+  transition: background-color .15s;
+}
+
+.pdv-switch i::after {
+  content: "";
+  position: absolute;
+  top: 2.5px;
+  left: 2.5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .15s;
+}
+
+.pdv-switch input:checked+i {
+  background: var(--ak-primary);
+}
+
+.pdv-switch input:checked+i::after {
+  transform: translateX(15px);
+}
+
+.pdv-switch input:focus-visible+i {
+  outline: 3px solid color-mix(in srgb, var(--ak-primary) 30%, #fff);
+  outline-offset: 2px;
+}
+
+.pdv-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--ak-muted);
+  font-size: 11px;
+}
+
+.pdv-acts {
+  display: inline-flex;
+  gap: 14px;
+}
+
+.pdv-acts .ak-link:disabled {
+  color: var(--ak-muted);
+  cursor: not-allowed;
+}
+
+.pdv-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ak-ink);
+  font-size: 13px;
+  font-weight: 400 !important;
+}

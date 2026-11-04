@@ -1,0 +1,104 @@
+<!-- MISSED PUNCHES & OVERTIME - fix incomplete days · approve overtime before payroll -->
+<app-page-header breadcrumb="People / Missed punches & overtime" heading="Missed punches & overtime"
+  description="Fix days with a missing check-out or nothing recorded, and approve overtime before payroll.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <div class="ak-seg" aria-label="Range">@for (r of ranges; track r) {<button type="button" [attr.aria-pressed]="days() === r" (click)="days.set(r)">Last {{ r }} days</button>}</div>
+      <button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <div class="ak-kpis">
+    <button type="button" class="ak-kpi" (click)="tab.set('missed')"><small>Missed punches</small><strong>{{ missedTotals().all }}</strong><span>{{ missedTotals().asked }} already asked for a fix</span>
+      <span class="ak-kpi-ico" data-tone="rose"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8v5M12 16h.01" /></svg></span></button>
+    <button type="button" class="ak-kpi" (click)="tab.set('missed')"><small>No check-out</small><strong>{{ missedTotals().noOut }}</strong><span>{{ missedTotals().none }} with nothing recorded</span>
+      <span class="ak-kpi-ico" data-tone="amber"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2" /></svg></span></button>
+    <button type="button" class="ak-kpi" (click)="tab.set('overtime'); otFilter.set('Pending')"><small>Overtime to review</small><strong>{{ otTotals().pending }}</strong><span>{{ hm(otTotals().pendingMin) }} in total</span>
+      <span class="ak-kpi-ico" data-tone="violet"><svg viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7z" /></svg></span></button>
+    <button type="button" class="ak-kpi" (click)="tab.set('overtime'); otFilter.set('Approved')"><small>Approved overtime</small><strong>{{ hm(otTotals().approvedMin) }}</strong><span>Goes to payroll</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></span></button>
+  </div>
+
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div class="ak-seg" role="tablist" aria-label="View">
+        <button type="button" role="tab" [attr.aria-pressed]="tab() === 'missed'" (click)="tab.set('missed')">Missed punches <b>{{ missedTotals().all }}</b></button>
+        <button type="button" role="tab" [attr.aria-pressed]="tab() === 'overtime'" (click)="tab.set('overtime')">Overtime <b>{{ otTotals().pending }}</b></button>
+      </div>
+      <div class="ak-toolbar">
+        @if (tab() === 'overtime') {
+        <div class="ak-seg" aria-label="Overtime status">@for (s of ['Pending', 'Approved', 'Rejected', 'All']; track s) {<button type="button" [attr.aria-pressed]="otFilter() === s" (click)="otFilter.set($any(s))">{{ s }}</button>}</div>
+        @if (otTotals().pending) { <button type="button" class="ak-btn is-primary" (click)="approveAllOt()">Approve all {{ otTotals().pending }}</button> }
+        }
+        <ak-select [options]="deptOptions()" [value]="department()" align="right" (valueChange)="department.set($event)" ariaLabel="Department" />
+      </div>
+    </header>
+
+    @if (tab() === 'missed') {
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Employee</th><th>Day</th><th class="ak-hide-xs">Issue</th><th class="ak-hide-sm">Recorded</th><th class="ak-hide-md">Employee asked</th><th class="ak-num"><span class="ex-sr">Actions</span></th></tr></thead>
+        <tbody>
+          @for (m of missed(); track m.e.id + m.d) {
+          <tr>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="m.e.tone">{{ m.e.initials }}</span><span><strong>{{ m.e.name }}</strong><small>{{ m.e.department }}</small></span></div></td>
+            <td class="ak-nowrap">{{ short(m.d) }}</td>
+            <td class="ak-hide-xs"><span class="ak-pill is-plain" [attr.data-tone]="m.issue === 'No check-out' ? 'amber' : 'rose'">{{ m.issue }}</span></td>
+            <td class="ak-hide-sm ak-muted ak-nowrap">{{ m.rec.in ? 'In ' + m.rec.in : '—' }}</td>
+            <td class="ak-hide-md">@if (m.asked) {<span class="ak-pill" data-tone="blue">{{ m.asked }}</span>} @else {<span class="ak-muted">Not yet</span>}</td>
+            <td class="ak-num"><div class="ex-acts"><button type="button" class="ak-btn is-sm is-primary" (click)="fix(m)">Fix</button>@if (m.issue !== 'No check-out') {<button type="button" class="ak-btn is-sm" (click)="markAbsent(m)">Absent</button>}</div></td>
+          </tr>
+          } @empty { <tr><td colspan="6" class="ak-empty">No missed punches in the last {{ days() }} days.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Employee</th><th>Day</th><th class="ak-hide-sm">In – out</th><th class="ak-num ak-hide-sm">Worked</th><th class="ak-num">Overtime</th><th class="ak-num"><span class="ex-sr">Decision</span></th></tr></thead>
+        <tbody>
+          @for (x of otRows(); track x.e.id + x.d) {
+          <tr>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span><span><strong>{{ x.e.name }}</strong><small>{{ x.e.department }}</small></span></div></td>
+            <td class="ak-nowrap">{{ short(x.d) }}</td>
+            <td class="ak-hide-sm ak-muted ak-nowrap">{{ x.rec.in }} – {{ x.rec.out }}</td>
+            <td class="ak-num ak-hide-sm">{{ hm(x.worked) }}</td>
+            <td class="ak-num ak-strong">{{ hm(x.minutes) }}</td>
+            <td class="ak-num">@if (x.status === 'Pending') {<div class="ex-acts"><button type="button" class="ak-btn is-sm is-primary" (click)="decideOt(x, 'Approved')">Approve</button><button type="button" class="ak-btn is-sm is-danger" (click)="decideOt(x, 'Rejected')">Reject</button></div>} @else {<span class="ak-pill" [attr.data-tone]="x.status === 'Approved' ? 'teal' : 'rose'">{{ x.status }}</span>}</td>
+          </tr>
+          } @empty { <tr><td colspan="6" class="ak-empty">No {{ otFilter() === 'All' ? '' : otFilter().toLowerCase() + ' ' }}overtime in the last {{ days() }} days.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    }
+    <footer class="ak-card-foot"><span>{{ tab() === 'missed' ? 'Finalised months are not shown. Fixing a day also closes the employee’s pending correction request for it.' : 'Overtime = net hours beyond 8h a day, from 30 minutes. Only approved overtime counts in Payroll summary.' }}</span></footer>
+  </section>
+</div>
+
+@if (fixing(); as m) {
+<div class="ak-scrim" (click)="fixing.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">Fix missed punch</span><h2 id="ex-title">{{ m.e.name }}</h2><p>{{ short(m.d) }} · {{ m.issue }}</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="fixing.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); saveFix()" novalidate>
+    <div class="ak-field"><span>What happened</span>
+      <div class="ex-seg">@for (f of fixStatuses; track f.s) {<button type="button" [class.is-on]="fStatus() === f.s" (click)="setFix(f.s)">{{ f.l }}</button>}</div>
+    </div>
+    @if (isActive(fStatus())) {
+    <div class="ak-form-grid">
+      <label class="ak-field"><span>Check-in</span><input type="time" [value]="fIn()" (input)="fIn.set($any($event.target).value); error.set('')" /></label>
+      <label class="ak-field"><span>Check-out</span><input type="time" [value]="fOut()" (input)="fOut.set($any($event.target).value); error.set('')" /></label>
+    </div>
+    }
+    @if (m.asked) { <p class="ak-sub">{{ m.e.name }} already asked for a correction ({{ m.asked }}). Saving here approves it.</p> }
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot"><button type="button" class="ak-btn" (click)="fixing.set(null)">Cancel</button><button type="submit" class="ak-btn is-primary">Save to register</button></div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

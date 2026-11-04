@@ -1,0 +1,298 @@
+/* Holiday / company calendar - only what the shared attendance kit does not cover */
+.hc-kpis {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hc-next {
+  overflow: hidden;
+  font-size: 19px !important;
+  text-overflow: ellipsis;
+}
+
+.hc-step {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+}
+
+.hc-step button {
+  min-width: 36px;
+  height: 36px;
+  border: 0;
+  background: var(--ak-card);
+  color: var(--ak-muted);
+  font-size: 16px;
+}
+
+.hc-step .hc-today {
+  padding: 0 12px;
+  border-inline: 1px solid var(--ak-line);
+  color: var(--ak-heading);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.hc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 16px 20px 20px;
+}
+
+.hc-wd {
+  padding-bottom: 4px;
+  color: var(--ak-muted);
+  font-size: 11.5px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.hc-wd.is-off {
+  color: #a3afbf;
+}
+
+.hc-day {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  min-height: 86px;
+  padding: 8px;
+  border: 1px solid var(--ak-line);
+  border-radius: 10px;
+  background: var(--ak-card);
+  text-align: left;
+}
+
+.hc-day:hover:not(.is-static) {
+  border-color: var(--ak-primary);
+}
+
+.hc-day.is-static {
+  cursor: default;
+}
+
+.hc-day.is-off {
+  background: #fafbfd;
+}
+
+.hc-day.is-out {
+  opacity: .45;
+}
+
+.hc-day.is-today {
+  box-shadow: inset 0 0 0 1.5px var(--ak-primary);
+}
+
+.hc-day.is-today .hc-n {
+  color: var(--ak-primary);
+}
+
+.hc-day.is-hol {
+  border-color: color-mix(in srgb, var(--ak-amber) 30%, #fff);
+  background: color-mix(in srgb, var(--ak-amber-bg) 70%, #fff);
+}
+
+.hc-day.is-mine {
+  box-shadow: inset 0 0 0 2px var(--ak-violet);
+}
+
+.hc-n {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.hc-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--t);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.hc-off {
+  color: #a3afbf;
+  font-size: 11px;
+}
+
+.hc-away {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: auto;
+}
+
+.hc-away i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ak-violet);
+}
+
+.hc-away small {
+  color: var(--ak-violet);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.hc-legend {
+  justify-content: flex-start;
+  gap: 18px;
+}
+
+.hc-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hc-k {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--ak-line);
+  border-radius: 4px;
+}
+
+.hc-k.is-hol {
+  border-color: color-mix(in srgb, var(--ak-amber) 30%, #fff);
+  background: var(--ak-amber-bg);
+}
+
+.hc-k.is-off {
+  background: #f2f4f8;
+}
+
+.hc-k.is-away {
+  border: 0;
+  border-radius: 50%;
+  background: var(--ak-violet);
+}
+
+.hc-k.is-mine {
+  border: 2px solid var(--ak-violet);
+}
+
+.hc-list li {
+  padding: 0;
+}
+
+.hc-list li.is-past {
+  opacity: .55;
+}
+
+.hc-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 20px;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+.hc-row:hover:not(:disabled) {
+  background: var(--ak-soft);
+}
+
+.hc-row:disabled {
+  cursor: default;
+}
+
+.hc-date {
+  display: grid;
+  justify-items: center;
+  padding: 4px 0;
+  border-radius: 8px;
+  background: var(--ak-tint);
+}
+
+.hc-date b {
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.hc-date small,
+.hc-what small {
+  color: var(--ak-muted);
+  font-size: 10.5px;
+}
+
+.hc-what {
+  display: grid;
+  min-width: 0;
+}
+
+.hc-what b {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.hc-types button {
+  min-height: 38px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+  font-size: 13px;
+}
+
+.hc-types button.is-on {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+  color: var(--ak-primary);
+  font-weight: 650;
+}
+
+.hc-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ak-ink);
+  font-size: 13px;
+  font-weight: 400 !important;
+}
+
+@media (max-width: 640px) {
+  .hc-kpis {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hc-kpis .ak-kpi:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .hc-grid {
+    gap: 3px;
+    padding: 10px;
+  }
+
+  .hc-day {
+    min-height: 54px;
+    padding: 5px;
+    border-radius: 7px;
+  }
+
+  .hc-name,
+  .hc-off {
+    display: none;
+  }
+
+  .hc-day.is-hol .hc-n {
+    color: var(--ak-amber);
+  }
+}

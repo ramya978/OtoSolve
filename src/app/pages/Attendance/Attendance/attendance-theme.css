@@ -1,0 +1,347 @@
+/* =====================================================================================================
+   ATTENDANCE THEME LAYER - brings the original pages (Attendance register, My attendance, Permission
+   desk, Shift planner, Shift templates, Attendance policies) to the OtoSolve HR reference look.
+   Listed LAST in each of those components' styleUrls, so it re-points their own tokens and evens out
+   type, controls, tables and corners without touching their layouts.
+   ===================================================================================================== */
+:host {
+  /* reference palette */
+  --th-accent: var(--primary, #2645d8);
+  --th-ink: #11151c;
+  --th-ink2: #2f3744;
+  --th-mut: #667085;
+  --th-mut2: #98a2b3;
+  --th-line: #dde1e8;
+  --th-line2: #eceef2;
+  --th-sunk: #f7f8fa;
+  --th-sunk2: #eceff3;
+  --th-card: var(--panel, #fff);
+  --th-soft: color-mix(in srgb, var(--th-accent) 7%, var(--th-card));
+  --th-r: 10px;
+
+  /* Attendance register (at-) */
+  --at-primary: var(--th-accent);
+  --at-ink: var(--th-ink);
+  --at-heading: var(--th-ink);
+  --at-muted: var(--th-mut);
+  --at-line: var(--th-line);
+  --at-row: var(--th-line2);
+  --at-soft: var(--th-sunk);
+  --at-card: var(--th-card);
+  --at-radius: var(--th-r);
+  --at-btn-radius: 8px;
+  --at-primary-soft: var(--th-soft);
+  --at-primary-line: color-mix(in srgb, var(--th-accent) 24%, var(--th-card));
+  --t-teal: #0d7352;
+  --t-teal-bg: #e2f4ec;
+  --t-amber: #8a5a00;
+  --t-amber-bg: #fbf0d6;
+  --t-rose: #b02840;
+  --t-rose-bg: #fce8ec;
+  --t-violet: #5a3fb0;
+  --t-violet-bg: #eee9fa;
+  --t-blue: #0b6670;
+  --t-blue-bg: #dff3f5;
+
+  /* My attendance (ua-) */
+  --ua-blue: var(--th-accent);
+  --ua-ink: var(--th-ink);
+  --ua-muted: var(--th-mut);
+  --ua-line: var(--th-line);
+  --ua-surface: var(--th-card);
+  --ua-soft: var(--th-soft);
+  --ua-soft-line: color-mix(in srgb, var(--th-accent) 24%, var(--th-card));
+  --ua-teal: #0d7352;
+  --ua-teal-bg: #e2f4ec;
+  --ua-amber: #8a5a00;
+  --ua-amber-bg: #fbf0d6;
+  --ua-violet: #5a3fb0;
+  --ua-violet-bg: #eee9fa;
+  --ua-rose: #b02840;
+  --ua-rose-bg: #fce8ec;
+  --ua-blue-ink: #0b6670;
+  --ua-blue-bg: #dff3f5;
+  --ua-work: #1a9e73;
+  --ua-break: #d9a21b;
+
+  /* Permission desk (pd-) */
+  --pd-bg: var(--th-card);
+  --pd-ink: var(--th-ink);
+  --pd-muted: var(--th-mut);
+  --pd-border: var(--th-line);
+  --pd-primary: var(--th-accent);
+
+  /* Shift planner (am-) */
+  --am-primary: var(--th-accent);
+  --am-ink: var(--th-ink);
+  --am-heading: var(--th-ink);
+  --am-muted: var(--th-mut);
+  --am-line: var(--th-line);
+  --am-panel: var(--th-card);
+  --am-soft: var(--th-sunk);
+  --am-blue: #0b6670;
+  --am-teal: #0d7352;
+  --am-amber: #8a5a00;
+  --am-violet: #5a3fb0;
+  --am-rose: #b02840;
+
+  /* Shift templates (st-) */
+  --p: var(--th-accent);
+  --muted: var(--th-mut);
+  --surface: var(--th-card);
+  --soft: var(--th-sunk);
+
+  /* Attendance policies (ap-) */
+  --ap-main: var(--th-accent);
+  --ap-ink: var(--th-ink);
+  --ap-muted: var(--th-mut);
+  --ap-line: var(--th-line);
+  --ap-bg: var(--th-card);
+
+  font-family: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  color: var(--th-ink);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+:host button,
+:host input,
+:host select,
+:host textarea {
+  font-family: inherit;
+}
+
+/* ---------- tables: uppercase headers on a sunk bar, hairline rows ---------- */
+:host table th {
+  background: var(--th-sunk) !important;
+  color: var(--th-mut) !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase;
+}
+
+:host table td {
+  border-color: var(--th-line2);
+}
+
+:host table tbody tr:hover>td {
+  background-color: var(--th-sunk);
+}
+
+/* ---------- form controls ---------- */
+:host input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+:host select,
+:host textarea {
+  border-color: var(--th-line);
+  border-radius: 8px;
+  color: var(--th-ink);
+  font-size: 13.5px;
+}
+
+:host input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+:host select:focus,
+:host textarea:focus {
+  outline: 0;
+  border-color: var(--th-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--th-accent) 18%, transparent);
+}
+
+:host input[type="checkbox"],
+:host input[type="radio"] {
+  accent-color: var(--th-accent);
+}
+
+/* ---------- cards and panels: 10px corners, hairline borders, no heavy shadows ---------- */
+:host :is(.at-card, .at-ov, .ua-panel, .ua-hero, .ua-metric, .ua-hour, .ua-strip, .pd-overview, .pd-main, .pd-inspector, .pd-sidebar,
+  .am-card, .am-panel, .st-card, .st-panel, .ap-card, .ap-panel) {
+  border-color: var(--th-line);
+  border-radius: var(--th-r);
+  box-shadow: none;
+}
+
+/* ---------- buttons: 36px, 8px corners, semibold ---------- */
+:host :is(.at-btn, .ua-button, .pd-button, .am-btn, .st-btn, .ap-btn) {
+  min-height: 36px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+:host :is(.at-btn.is-primary, .ua-button-primary, .pd-button.primary, .am-btn.primary, .st-btn.primary, .ap-btn.primary):hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+/* ---------- headings and status chips ---------- */
+:host :is(h1, h2, h3) {
+  letter-spacing: -.01em;
+}
+
+:host :is(.at-status, .at-chip, .ua-pill, .ua-code, .pd-status) {
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* ---------- My attendance punch card: the reference "hero" (dark accent gradient, glass chips, big round punch) ---------- */
+:host .ua-punch {
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--th-accent) 78%, #000), color-mix(in srgb, var(--th-accent) 45%, #000));
+  color: #fff;
+  box-shadow: 0 18px 48px -12px rgba(16, 24, 40, .28);
+}
+
+:host .ua-punch .ua-greet,
+:host .ua-punch .ua-clock-date,
+:host .ua-punch .ua-punch-meta small,
+:host .ua-punch .ua-punch-meta>div:first-child span,
+:host .ua-punch .ua-log li small,
+:host .ua-punch .ua-eyebrow {
+  color: rgba(255, 255, 255, .68);
+}
+
+:host .ua-punch .ua-name,
+:host .ua-punch .ua-clock b,
+:host .ua-punch .ua-log li b,
+:host .ua-punch .ua-log li span {
+  color: #fff;
+}
+
+:host .ua-punch .ua-clock span {
+  color: rgba(255, 255, 255, .6);
+}
+
+:host .ua-punch .ua-clock b {
+  font-size: 48px;
+  letter-spacing: -.03em;
+}
+
+:host .ua-punch .ua-state {
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: rgba(255, 255, 255, .1);
+}
+
+:host .ua-punch .ua-state b {
+  color: #fff;
+}
+
+:host .ua-punch .ua-state small {
+  color: rgba(255, 255, 255, .7);
+}
+
+:host .ua-punch .ua-state-dot {
+  background: #5fdcae;
+}
+
+:host .ua-punch .ua-dd-btn,
+:host .ua-punch .ua-dd-chip {
+  border-color: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+}
+
+:host .ua-punch .ua-dd-btn svg,
+:host .ua-punch .ua-dd-chip svg {
+  color: rgba(255, 255, 255, .75);
+}
+
+:host .ua-punch .ua-dd-btn:disabled {
+  background: rgba(255, 255, 255, .05);
+  color: rgba(255, 255, 255, .6);
+}
+
+:host .ua-punch .ua-dd-panel {
+  color: var(--th-ink);
+}
+
+:host .ua-punch .ua-log li {
+  border-color: rgba(255, 255, 255, .12);
+}
+
+:host .ua-punch .ua-log li.ua-log-empty {
+  color: rgba(255, 255, 255, .7);
+}
+
+:host .ua-punch .ua-rule {
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+}
+
+:host .ua-punch .ua-rule.is-off {
+  background: rgba(210, 60, 85, .35);
+}
+
+/* punch buttons: big round punch in / out like the reference, break as a glass button */
+:host .ua-punch .ua-punch-actions {
+  justify-items: center;
+}
+
+:host .ua-punch .ua-button-big {
+  width: 132px;
+  height: 132px;
+  min-height: 132px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #1f9e7e;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 0 0 8px rgba(31, 158, 126, .28), 0 0 0 18px rgba(31, 158, 126, .12);
+  transition: transform .15s;
+}
+
+:host .ua-punch .ua-button-big:hover:not(:disabled) {
+  background: #1f9e7e;
+  filter: none;
+  transform: scale(1.04);
+}
+
+:host .ua-punch .ua-punch-actions:has(.ua-button-soft) .ua-button-big,
+:host .ua-punch .ua-button-big.is-out {
+  background: #d9486b;
+  box-shadow: 0 0 0 8px rgba(217, 72, 107, .3), 0 0 0 18px rgba(217, 72, 107, .12);
+}
+
+:host .ua-punch .ua-punch-actions:has(.ua-button-soft) {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  margin: 10px 0;
+}
+
+:host .ua-punch .ua-punch-actions:not(:has(.ua-button-soft)) {
+  margin: 14px 0 10px;
+}
+
+:host .ua-punch .ua-button-soft {
+  border-color: rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+}
+
+:host .ua-punch .ua-button-soft:hover:not(:disabled) {
+  background: rgba(255, 255, 255, .2);
+}
+
+/* stat tiles in the reference style */
+:host .ua-hour {
+  padding: 14px 16px;
+}
+
+:host .ua-hour-ico {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 8px;
+  border-radius: 7px;
+}
+
+:host .ua-hour strong {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+}
+
+:host .ua-tabs button.active,
+:host .at-views button.is-on {
+  color: var(--th-accent);
+}

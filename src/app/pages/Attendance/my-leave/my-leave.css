@@ -1,0 +1,125 @@
+/* My leave - only what the shared attendance kit does not cover */
+.ml-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.ml-bal {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.ml-card {
+  --c: var(--ak-primary);
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--ak-line);
+  border-top: 3px solid var(--c);
+  border-radius: 13px;
+  background: var(--ak-card);
+}
+
+.ml-name {
+  color: var(--ak-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.ml-card strong {
+  font-size: 26px;
+  letter-spacing: -.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ml-card small {
+  margin-bottom: 4px;
+  color: var(--ak-muted);
+  font-size: 11.5px;
+}
+
+.ml-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.ml-seg button {
+  min-height: 38px;
+  padding: 0 4px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+  font-size: 12.5px;
+}
+
+.ml-seg button.is-on {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+  color: var(--ak-primary);
+  font-weight: 650;
+}
+
+.ml-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ak-tint);
+}
+
+.ml-sum small,
+.ml-sum b {
+  display: block;
+}
+
+.ml-sum small {
+  color: var(--ak-muted);
+  font-size: 11.5px;
+}
+
+.ml-sum b {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ml-sum p {
+  flex: 1 1 200px;
+  margin: 0;
+  color: var(--ak-muted);
+  font-size: 12px;
+}
+
+.ml-bad {
+  color: var(--ak-rose);
+}
+
+.ml-sub {
+  display: block;
+  margin-top: 3px;
+  color: var(--ak-muted);
+  font-size: 11.5px;
+}
+
+.ml-path {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.ml-path i {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--t, #b5c0ce);
+  border-radius: 50%;
+}
+
+.ml-path i[data-tone="teal"],
+.ml-path i[data-tone="rose"] {
+  background: var(--t);
+}

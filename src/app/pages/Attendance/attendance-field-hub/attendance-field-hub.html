@@ -1,0 +1,73 @@
+<!-- FIELD HUB - one day, every attendance field per employee, editable in one grid -->
+<app-page-header breadcrumb="People / Attendance field hub" heading="Field hub"
+  description="Shift, work location, punch source, project and approval for every employee on a day.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button>
+      <button type="button" class="ak-btn" (click)="data.go('bulk')">Bulk attendance</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees…</div> }
+
+  <section class="ak-card">
+    <header class="ak-card-head">
+      <div><h2>{{ dateText() }}</h2><p>{{ rows().length }} employees · {{ editable() ? 'editable' : 'read only' }}</p></div>
+      <div class="ak-toolbar">
+        <ak-date [value]="date()" [min]="minDate" [max]="data.today" align="right" (valueChange)="setDate($event)" />
+        <ak-select [options]="deptOptions()" [value]="department()" (valueChange)="department.set($event)" ariaLabel="Department" />
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Name, ID or project" aria-label="Search" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+      </div>
+    </header>
+    <div class="fh-fill">
+      <span class="fh-fill-title">Fill a column for <b>{{ selected().size }}</b> selected</span>
+      <ak-select [options]="fieldOptions" [value]="fillField()" (valueChange)="setFillField($event)" ariaLabel="Field to fill" />
+      @if (fillField() === 'project') {
+      <input class="ak-input fh-fill-input" type="text" maxlength="60" placeholder="Project name" [value]="fillValue()" (input)="fillValue.set($any($event.target).value)" />
+      } @else {
+      <ak-select [options]="fillOptions()" [value]="fillValue()" placeholder="Choose value" (valueChange)="fillValue.set($event)" ariaLabel="Value" />
+      }
+      <button type="button" class="ak-btn" [disabled]="!selected().size || !editable()" (click)="fill()">Fill selected</button>
+    </div>
+  </section>
+
+  <section class="ak-card is-clip">
+    <div class="ak-table-wrap">
+      <table class="ak-table fh-table">
+        <thead><tr>
+          <th class="fh-sel"><input type="checkbox" class="ak-check" aria-label="Select all shown" [checked]="allOn()" (change)="toggleAll($any($event.target).checked)" /></th>
+          <th>Employee</th><th>Status</th><th class="ak-hide-md">Shift</th><th>Location</th><th class="ak-hide-lg fh-src">Source</th>
+          <th class="ak-hide-md">Project</th><th class="ak-hide-sm">Approval</th><th class="ak-hide-lg ak-num">Worked</th>
+        </tr></thead>
+        <tbody>
+          @for (r of rows(); track r.e.id) {
+          @let v = val(r.e);
+          <tr [class.is-on]="!!edits()[r.e.id]">
+            <td class="fh-sel"><input type="checkbox" class="ak-check" [attr.aria-label]="'Select ' + r.e.name" [checked]="selected().has(r.e.id)" (change)="toggle(r.e.id, $any($event.target).checked)" /></td>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="r.e.tone">{{ r.e.initials }}</span><span><strong>{{ r.e.name }}</strong><small>{{ r.v.rec.in ? r.v.rec.in + ' – ' + (r.v.rec.out || (r.v.live ? 'on shift' : '—')) : r.e.department }}</small></span></div></td>
+            <td [class.fh-dirty]="isDirty(r.e, 'status')"><ak-select size="sm" [options]="statusOptions" [value]="v.status" [disabled]="!editable()" (valueChange)="set(r.e, 'status', $event)" /></td>
+            <td class="ak-hide-md" [class.fh-dirty]="isDirty(r.e, 'shift')"><ak-select size="sm" [options]="shiftOptions()" [value]="v.shift" [disabled]="!editable()" (valueChange)="set(r.e, 'shift', $event)" /></td>
+            <td [class.fh-dirty]="isDirty(r.e, 'location')"><ak-select size="sm" [options]="flow.activeLocations()" [value]="v.location" [disabled]="!editable()" (valueChange)="set(r.e, 'location', $event)" /></td>
+            <td class="ak-hide-lg fh-src" [class.fh-dirty]="isDirty(r.e, 'source')"><ak-select size="sm" [options]="sourceOptions" [value]="v.source" [disabled]="!editable()" (valueChange)="set(r.e, 'source', $event)" /></td>
+            <td class="ak-hide-md" [class.fh-dirty]="isDirty(r.e, 'project')"><input class="ak-input fh-project" type="text" maxlength="60" placeholder="—" [disabled]="!editable()" [value]="v.project" (input)="set(r.e, 'project', $any($event.target).value)" /></td>
+            <td class="ak-hide-sm" [class.fh-dirty]="isDirty(r.e, 'approval')"><ak-select size="sm" align="right" [options]="approvalOptions" [value]="v.approval" [disabled]="!editable()" (valueChange)="set(r.e, 'approval', $event)" /></td>
+            <td class="ak-hide-lg ak-num ak-strong">{{ r.v.minutes ? hm(r.v.minutes) : '—' }}</td>
+          </tr>
+          } @empty { <tr><td colspan="9" class="ak-empty">No employees match these filters.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="ak-card-foot" [class.fh-foot-on]="changed()">
+      <span>@if (error()) {<b class="fh-error" role="alert">{{ error() }}</b>} @else {<b>{{ changed() ? changed() + ' employee' + (changed() === 1 ? '' : 's') + ' changed' : 'No unsaved changes' }}</b> · highlighted cells are edited}</span>
+      <div class="ak-toolbar">
+        <button type="button" class="ak-btn" [disabled]="!changed()" (click)="discard()">Discard</button>
+        <button type="button" class="ak-btn is-primary" [disabled]="!changed() || !editable()" (click)="save()">Save changes</button>
+      </div>
+    </footer>
+  </section>
+</div>
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

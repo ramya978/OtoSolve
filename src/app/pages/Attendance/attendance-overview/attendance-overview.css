@@ -1,0 +1,87 @@
+/* Overview - only what the shared attendance kit does not cover */
+.ov-small {
+  font-size: 12px;
+}
+
+.ov-dist {
+  display: grid;
+  gap: 16px;
+}
+
+.ov-dist-row {
+  display: grid;
+  gap: 7px;
+}
+
+.ov-dist-row>div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.ov-dist-row b {
+  font-weight: 600;
+}
+
+.ov-dist-row span {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-dist-row small {
+  color: var(--ak-muted);
+  font-weight: 400;
+}
+
+.ov-dist-row:not([data-tone]) .ak-bar i,
+.ov-dist-row[data-tone=""] .ak-bar i {
+  background: #b5c0ce;
+}
+
+.ov-note {
+  margin: 0;
+  color: var(--ak-muted);
+  font-size: 12px;
+}
+
+.ov-loc li {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.ov-loc-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ov-loc-name svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ak-primary);
+}
+
+.ov-loc-name>span {
+  min-width: 0;
+}
+
+.ov-loc-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 45%;
+  max-width: 220px;
+}
+
+.ov-loc-bar .ak-bar {
+  flex: 1;
+}
+
+.ov-loc-bar b {
+  min-width: 22px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

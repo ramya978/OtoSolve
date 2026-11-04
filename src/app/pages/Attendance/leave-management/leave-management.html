@@ -1,0 +1,189 @@
+<!-- LEAVE MANAGEMENT - requests with approval path · balances · leave types and permission limits -->
+<app-page-header breadcrumb="People / Leave" heading="Leave management"
+  description="Approve requests, see everyone's balance and set up the leave types your company offers.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      @if (tab() === 'requests') { <button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button> }
+      @if (tab() === 'types') { <button type="button" class="ak-btn is-primary" (click)="newType()">+ New leave type</button> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <div class="ak-seg lm-tabs" role="tablist" aria-label="Leave views">
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'requests'" (click)="setTab('requests')">Requests @if (hr.pendingLeaves()) {<b>{{ hr.pendingLeaves() }}</b>}</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'balances'" (click)="setTab('balances')">Balances</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'types'" (click)="setTab('types')">Leave types</button>
+  </div>
+
+  @if (tab() === 'requests') {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div class="ak-seg" aria-label="Status">
+        @for (s of statuses; track s) {<button type="button" [attr.aria-pressed]="status() === s" (click)="setStatus(s)">{{ s }} <b>{{ counts()[s] || 0 }}</b></button>}
+      </div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search name or ID" aria-label="Search" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        <ak-select [options]="deptOptions()" [value]="department()" align="right" (valueChange)="department.set($event)" ariaLabel="Department" />
+        @if (pendingTicked().length) { <button type="button" class="ak-btn is-primary" (click)="approveTicked()">✓ Approve {{ pendingTicked().length }} ticked</button> }
+      </div>
+    </header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr>
+          @if (status() === 'Pending') {<th class="lm-sel"><input type="checkbox" class="ak-check" aria-label="Tick all" (change)="tickAll($any($event.target).checked)" /></th>}
+          <th>Employee</th><th class="ak-hide-xs">Leave</th><th class="ak-hide-lg">Reason</th><th class="ak-hide-md">Balance left</th><th class="ak-hide-sm">Approval path</th><th class="ak-num"><span class="lm-sr">Actions</span></th>
+        </tr></thead>
+        <tbody>
+          @for (l of rows(); track l.id) {
+          @let t = type(l.typeId);
+          <tr class="is-click" (click)="review(l)">
+            @if (status() === 'Pending') {<td class="lm-sel" (click)="$event.stopPropagation()"><input type="checkbox" class="ak-check" [attr.aria-label]="'Tick ' + l.employeeName" [checked]="ticked().has(l.id)" (change)="tick(l.id, $any($event.target).checked)" /></td>}
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="tone(l)">{{ initials(l) }}</span><span><strong>{{ l.employeeName }}</strong><small>{{ l.employeeId }} · {{ l.department }}</small></span></div></td>
+            <td class="ak-hide-xs"><span class="lm-type" [style.--c]="t?.color">{{ t?.name || 'Leave' }}</span><small class="lm-sub">{{ dates(l) }} · {{ l.days }} day{{ l.days === 1 ? '' : 's' }}</small></td>
+            <td class="ak-hide-lg"><span class="lm-reason" [attr.title]="l.reason">{{ l.reason }}</span></td>
+            <td class="ak-hide-md ak-muted">{{ left(l) }}</td>
+            <td class="ak-hide-sm">
+              <span class="lm-path">@for (s of l.chain; track $index) {<i [attr.data-tone]="stepTone(s)" [attr.title]="s.name + ' · ' + s.status"></i>}</span>
+              <small class="lm-sub" [class.lm-late]="overdue(l)">{{ l.status === 'Pending' ? waiting(l) : (l.decidedBy ? l.status + ' by ' + l.decidedBy : l.status) }}{{ overdue(l) ? ' · overdue' : '' }}</small>
+            </td>
+            <td class="ak-num" (click)="$event.stopPropagation()">
+              @if (l.status === 'Pending') {
+              <div class="lm-acts"><button type="button" class="ak-btn is-sm is-primary" (click)="approve(l)">Approve</button><button type="button" class="ak-btn is-sm is-danger" (click)="review(l)">Reject</button></div>
+              } @else { <span class="ak-pill" [attr.data-tone]="statusTone(l.status)">{{ l.status }}</span> }
+            </td>
+          </tr>
+          } @empty { <tr><td colspan="7" class="ak-empty">No {{ status() === 'All' ? '' : status().toLowerCase() + ' ' }}leave requests.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="ak-card-foot"><span>HR can approve at any level. Approved leave becomes “Leave” in the attendance register; unpaid leave is counted as loss of pay.</span></footer>
+  </section>
+  }
+
+  @if (tab() === 'balances') {
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div><h2>Leave balances · {{ data.today.slice(0, 4) }}</h2><p>Days left, after approved and pending leave</p></div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search name or ID" aria-label="Search" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        <ak-select [options]="deptOptions()" [value]="department()" align="right" (valueChange)="department.set($event)" ariaLabel="Department" />
+      </div>
+    </header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Employee</th>@for (t of activeTypes(); track t.id; let i = $index) {<th [class.ak-hide-sm]="i > 1" [class.ak-hide-md]="i > 2">{{ t.name }}</th>}</tr></thead>
+        <tbody>
+          @for (b of balances(); track b.e.id) {
+          <tr>
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="b.e.tone">{{ b.e.initials }}</span><span><strong>{{ b.e.name }}</strong><small>{{ b.e.department }}</small></span></div></td>
+            @for (c of b.cells; track c.t.id; let i = $index) {
+            <td [class.ak-hide-sm]="i > 1" [class.ak-hide-md]="i > 2"><div class="lm-bal"><b>{{ c.left }}</b><span>of {{ c.t.quota }}</span></div><div class="ak-bar"><i [style.width.%]="c.pct" [style.background]="c.t.color"></i></div></td>
+            }
+          </tr>
+          } @empty { <tr><td [attr.colspan]="activeTypes().length + 1" class="ak-empty">No employees match.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  }
+
+  @if (tab() === 'types') {
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Leave types</h2><p>Yearly quota per employee · unpaid leave counts as loss of pay</p></div></header>
+      <div class="ak-table-wrap">
+        <table class="ak-table">
+          <thead><tr><th>Leave type</th><th class="ak-num">Days a year</th><th class="ak-hide-sm">Pay</th><th class="ak-hide-sm">Status</th><th class="ak-num"><span class="lm-sr">Edit</span></th></tr></thead>
+          <tbody>
+            @for (t of hr.types(); track t.id) {
+            <tr>
+              <td><span class="lm-type" [style.--c]="t.color">{{ t.name }}</span><small class="lm-sub">Code {{ t.code }}</small></td>
+              <td class="ak-num ak-strong">{{ t.quota === null ? 'No limit' : t.quota }}</td>
+              <td class="ak-hide-sm"><span class="ak-pill is-plain" [attr.data-tone]="t.paid ? 'teal' : 'rose'">{{ t.paid ? 'Paid' : 'Unpaid' }}</span></td>
+              <td class="ak-hide-sm"><span class="ak-pill" [attr.data-tone]="t.active ? 'teal' : ''">{{ t.active ? 'Active' : 'Off' }}</span></td>
+              <td class="ak-num"><button type="button" class="ak-link" (click)="editType.set({ ...t }); error.set('')">Edit</button></td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Permission limits</h2><p>Short time off during the day</p></div></header>
+      <div class="ak-form">
+        <div class="ak-form-grid">
+          <label class="ak-field"><span>Requests a month</span><input type="number" min="0" max="20" [value]="perMonth()" (input)="perMonth.set(+$any($event.target).value)" /></label>
+          <label class="ak-field"><span>Longest, in minutes</span><input type="number" min="15" max="480" step="15" [value]="maxMinutes()" (input)="maxMinutes.set(+$any($event.target).value)" /></label>
+        </div>
+        <p class="ak-sub">Employees see these limits on their Permission page. Requests over the limit cannot be sent.</p>
+        <div class="ak-foot"><button type="button" class="ak-btn is-primary" (click)="savePerm()">Save limits</button></div>
+      </div>
+    </section>
+  </div>
+  }
+</div>
+
+<!-- review drawer -->
+@if (open(); as l) {
+<div class="ak-scrim" (click)="open.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="lm-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">{{ l.id }}</span><h2 id="lm-title">{{ l.employeeName }}</h2><p>{{ type(l.typeId)?.name }} · {{ dates(l) }} · {{ l.days }} day{{ l.days === 1 ? '' : 's' }}</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="open.set(null)">×</button>
+  </header>
+  <div class="ak-form">
+    <div class="ak-field"><span>Reason</span><p class="lm-p">{{ l.reason }}</p></div>
+    <div class="ak-field"><span>Balance</span><p class="lm-p">{{ left(l) }} left this year</p></div>
+    <div class="ak-field"><span>Approval path</span>
+      <ol class="lm-chain">
+        @for (s of l.chain; track $index) {
+        <li [attr.data-tone]="stepTone(s)"><i></i><span><b>{{ s.name }}</b><small>{{ roleLabel[s.role] }} · {{ s.status }}{{ s.note ? ' · ' + s.note : '' }}</small></span></li>
+        }
+      </ol>
+    </div>
+    @if (l.status === 'Pending') {
+    <label class="ak-field"><span>Note <small>Required to reject</small></span><textarea rows="3" maxlength="180" placeholder="Visible to the employee" [value]="note()" (input)="note.set($any($event.target).value); error.set('')"></textarea></label>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot"><button type="button" class="ak-btn is-danger" (click)="reject(l)">Reject</button><button type="button" class="ak-btn is-primary" (click)="approve(l)">Approve as HR</button></div>
+    } @else {
+    <div class="ak-field"><span>Decision</span><p class="lm-p">{{ l.status }}{{ l.decidedBy ? ' by ' + l.decidedBy : '' }}{{ l.note ? ' - ' + l.note : '' }}</p></div>
+    @if (l.status === 'Approved') { <div class="ak-foot"><button type="button" class="ak-btn is-danger" (click)="cancel(l)">Cancel this leave</button></div> }
+    }
+  </div>
+</aside>
+}
+
+<!-- leave type drawer -->
+@if (editType(); as t) {
+<div class="ak-scrim" (click)="editType.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="lt-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">Leave type</span><h2 id="lt-title">{{ t.name || 'New leave type' }}</h2><p>Quota applies per employee per calendar year.</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="editType.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); saveType()" novalidate>
+    <div class="ak-form-grid">
+      <label class="ak-field"><span>Name</span><input type="text" maxlength="40" [value]="t.name" (input)="patchType({ name: $any($event.target).value })" /></label>
+      <label class="ak-field"><span>Code <small>Short</small></span><input type="text" maxlength="4" [value]="t.code" (input)="patchType({ code: $any($event.target).value })" /></label>
+    </div>
+    <div class="ak-form-grid">
+      <label class="ak-field"><span>Days a year</span><input type="number" min="0" max="60" [disabled]="t.quota === null" [value]="t.quota ?? ''" (input)="patchType({ quota: +$any($event.target).value })" /></label>
+      <label class="ak-field lm-check"><span>No limit</span><span class="lm-inline"><input type="checkbox" class="ak-check" [checked]="t.quota === null" (change)="patchType({ quota: $any($event.target).checked ? null : 6 })" /> Unlimited (e.g. loss of pay)</span></label>
+    </div>
+    <div class="ak-field"><span>Pay</span>
+      <div class="lm-seg2"><button type="button" [class.is-on]="t.paid" (click)="patchType({ paid: true })">Paid</button><button type="button" [class.is-on]="!t.paid" (click)="patchType({ paid: false })">Unpaid · loss of pay</button></div>
+    </div>
+    <div class="ak-field"><span>Colour</span>
+      <div class="lm-colors">@for (c of colors; track c) {<button type="button" [style.background]="c" [class.is-on]="t.color === c" [attr.aria-label]="'Colour ' + c" (click)="patchType({ color: c })"></button>}</div>
+    </div>
+    <label class="ak-field"><span>Status</span><span class="lm-inline"><input type="checkbox" class="ak-check" [checked]="t.active" (change)="patchType({ active: $any($event.target).checked })" /> Employees can apply for this leave</span></label>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot"><button type="button" class="ak-btn" (click)="editType.set(null)">Cancel</button><button type="submit" class="ak-btn is-primary">Save leave type</button></div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

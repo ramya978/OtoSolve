@@ -1,0 +1,70 @@
+<!-- PUNCH METHODS & DEVICES - which ways of punching are allowed · device list -->
+<app-page-header breadcrumb="Set up / Punch methods and devices" heading="Punch methods & devices"
+  description="Choose how people may punch, and keep track of biometric terminals and kiosks.">
+  <ng-container actions>
+    <div class="ak-head-acts"><button type="button" class="ak-btn is-primary" (click)="add()">+ Add device</button></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <section class="ak-card">
+    <header class="ak-card-head"><div><h2>Punch methods</h2><p>{{ onCount() }} of {{ methods.length }} switched on · switching one off blocks new punches that way</p></div></header>
+    <div class="pdv-methods">
+      @for (m of methods; track m) {
+      <div class="pdv-method" [class.is-off]="!hr.methodOn(m)">
+        <div class="pdv-m-text"><b>{{ m }}</b><small>{{ about[m]?.text }}</small><span class="pdv-where">{{ about[m]?.where }} · {{ today()[m] || 0 }} today</span></div>
+        <label class="pdv-switch" [attr.aria-label]="m"><input type="checkbox" [checked]="hr.methodOn(m)" (change)="toggle(m, $any($event.target).checked)" /><i></i></label>
+      </div>
+      }
+    </div>
+  </section>
+
+  <section class="ak-card is-clip">
+    <header class="ak-card-head"><div><h2>Devices</h2><p>{{ hr.devices().length }} registered</p></div></header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Device</th><th class="ak-hide-sm">Method</th><th class="ak-hide-md">Location</th><th class="ak-hide-lg">Serial</th><th>Status</th><th class="ak-hide-sm">Last sync</th><th class="ak-num"><span class="pdv-sr">Actions</span></th></tr></thead>
+        <tbody>
+          @for (d of hr.devices(); track d.id) {
+          <tr>
+            <td><b>{{ d.name }}</b><small class="pdv-sub">{{ d.id }}</small></td>
+            <td class="ak-hide-sm">{{ d.method }}</td>
+            <td class="ak-hide-md">{{ d.location }}</td>
+            <td class="ak-hide-lg ak-muted">{{ d.serial }}</td>
+            <td><span class="ak-pill" [attr.data-tone]="!d.active ? '' : hr.methodOn(d.method) ? 'teal' : 'amber'">{{ !d.active ? 'Off' : hr.methodOn(d.method) ? 'Active' : 'Method off' }}</span></td>
+            <td class="ak-hide-sm ak-muted">{{ lastSync(d) }}</td>
+            <td class="ak-num"><div class="pdv-acts"><button type="button" class="ak-link" [disabled]="!d.active" (click)="sync(d)">Sync</button><button type="button" class="ak-link" (click)="edit(d)">Edit</button></div></td>
+          </tr>
+          } @empty { <tr><td colspan="7" class="ak-empty">No devices yet. Add a biometric terminal or kiosk.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    <footer class="ak-card-foot"><span>Device punches arrive through the device vendor’s API once it is connected; “Sync” records the time of the last check.</span></footer>
+  </section>
+</div>
+
+@if (editing(); as d) {
+<div class="ak-scrim" (click)="editing.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="pdv-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">Device</span><h2 id="pdv-title">{{ d.name || 'New device' }}</h2><p>{{ d.id }}</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="editing.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); save()" novalidate>
+    <label class="ak-field"><span>Name</span><input type="text" maxlength="50" placeholder="e.g. Reception biometric" [value]="d.name" (input)="patch({ name: $any($event.target).value })" /></label>
+    <div class="ak-form-grid">
+      <div class="ak-field"><span>Method</span><ak-select class="is-block" [options]="deviceMethods" [value]="d.method" (valueChange)="patch({ method: $event })" /></div>
+      <div class="ak-field"><span>Location</span><ak-select class="is-block" icon="pin" [options]="flow.activeLocations()" [value]="d.location" (valueChange)="patch({ location: $event })" /></div>
+    </div>
+    <label class="ak-field"><span>Serial number</span><input type="text" maxlength="40" [value]="d.serial" (input)="patch({ serial: $any($event.target).value })" /></label>
+    <label class="ak-field"><span>Status</span><span class="pdv-inline"><input type="checkbox" class="ak-check" [checked]="d.active" (change)="patch({ active: $any($event.target).checked })" /> Accept punches from this device</span></label>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot">
+      @if (isSaved(d)) { <button type="button" class="ak-btn is-danger" (click)="remove()">Remove</button> }
+      <button type="button" class="ak-btn" (click)="editing.set(null)">Cancel</button><button type="submit" class="ak-btn is-primary">Save device</button>
+    </div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

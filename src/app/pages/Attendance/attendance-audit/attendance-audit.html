@@ -1,0 +1,44 @@
+<!-- AUDIT TRAIL - type filter · person · search · entries grouped by day -->
+<app-page-header breadcrumb="People / Attendance audit" heading="Audit trail"
+  description="Every punch, request, decision and manual change, newest first.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <button type="button" class="ak-btn" [disabled]="!rows().length" (click)="exportCsv()">↓ Export CSV</button>
+      @if (confirmClear()) { <button type="button" class="ak-btn" (click)="confirmClear.set(false)">Keep log</button> }
+      <button type="button" class="ak-btn is-danger" [disabled]="!flow.audit().length" (click)="clear()">{{ confirmClear() ? 'Yes, clear the log' : 'Clear log' }}</button>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div class="ak-seg" aria-label="Entry type">
+        @for (k of kinds; track k.value) {<button type="button" [attr.aria-pressed]="kind() === k.value" (click)="kind.set(k.value)">{{ k.label }} <b>{{ counts()[k.value] || 0 }}</b></button>}
+      </div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Search details" aria-label="Search the log" [value]="search()" (input)="search.set($any($event.target).value)" /></label>
+        <ak-select [options]="actors()" [value]="actor()" align="right" [searchable]="true" (valueChange)="actor.set($event)" ariaLabel="Person" />
+      </div>
+    </header>
+
+    @for (g of groups(); track g.day) {
+    <div class="au-day">{{ g.day }}<span>{{ g.items.length }}</span></div>
+    <ol class="au-list">
+      @for (a of g.items; track $index) {
+      <li>
+        <span class="au-time">{{ a.time }}</span>
+        <span class="au-dot" [attr.data-tone]="tone(a.k)"></span>
+        <span class="au-body"><b>{{ a.action }}</b><small>{{ a.detail }}</small></span>
+        <span class="au-actor"><span class="ak-pill is-plain" [attr.data-tone]="tone(a.k)">{{ a.k }}</span><small>{{ a.actor }}</small></span>
+      </li>
+      }
+    </ol>
+    } @empty {
+    <p class="ak-empty">{{ flow.audit().length ? 'No entries match these filters.' : 'Nothing recorded yet. Punches, requests, approvals and saves will appear here.' }}</p>
+    }
+
+    <footer class="ak-card-foot"><span>Kept in this browser (latest 300 entries) until the attendance API is connected - not tamper-proof.</span></footer>
+  </section>
+</div>

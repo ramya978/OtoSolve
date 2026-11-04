@@ -67,14 +67,32 @@ import { OrgDepartments } from './pages/Organization/Department/departments';
 import { OrgSettings } from './pages/Organization/Settings/settings';
 import { ActivateAccount } from './pages/Auth/Account_Activate/activate-account';
 import { Dashboard } from './pages/Dashboard/dashboard';
-import { Attendance } from './pages/Attendance/attendance';
 import { WhatsappMessages } from './pages/Communications/Whatsapp-Messages/whatsapp-messages';
 import { NumberVerification } from './pages/Communications/Number-Verification/number-verification';
-import { ShiftPlannerComponent } from './pages/shift-planner/shift-planner';
-import { ShiftTemplatesComponent } from './pages/shift-templates/shift-templates';
-import { PermissionDeskComponent } from './pages/permission-desk/permission-desk';
-import { AttendancePoliciesComponent } from './pages/attendance-policies/attendance-policies';
-import { IndividualAttendance } from './pages/Individual_attendance/user_attendance';
+import { Attendance } from './pages/Attendance/Attendance/attendance';
+import { IndividualAttendance } from './pages/Attendance/Individual_attendance/user_attendance';
+import { AttendancePoliciesComponent } from './pages/Attendance/attendance-policies/attendance-policies';
+import { PermissionDeskComponent } from './pages/Attendance/permission-desk/permission-desk';
+import { ShiftPlannerComponent } from './pages/Attendance/shift-planner/shift-planner';
+import { ShiftTemplatesComponent } from './pages/Attendance/shift-templates/shift-templates';
+import { BulkAttendance } from './pages/Attendance/bulk-attendance/bulk-attendance';
+import { AttendanceOverview } from './pages/Attendance/attendance-overview/attendance-overview';
+import { PunchStation } from './pages/Attendance/punch-station/punch-station';
+import { AttendanceFieldHub } from './pages/Attendance/attendance-field-hub/attendance-field-hub';
+import { AttendanceExceptions } from './pages/Attendance/attendance-exceptions/attendance-exceptions';
+import { TeamApprovals } from './pages/Attendance/team-approvals/team-approvals';
+import { LeaveManagement } from './pages/Attendance/leave-management/leave-management';
+import { HolidayCalendar, CompanyCalendar } from './pages/Attendance/holiday-calendar/holiday-calendar';
+import { ApprovalFlow } from './pages/Attendance/approval-flow/approval-flow';
+import { GeoFencing } from './pages/Attendance/geo-fencing/geo-fencing';
+import { PunchDevices } from './pages/Attendance/punch-devices/punch-devices';
+import { WorkLocations } from './pages/Attendance/work-locations/work-locations';
+import { EmployeeDirectory } from './pages/Attendance/employee-directory/employee-directory';
+import { AttendanceReports } from './pages/Attendance/attendance-reports/attendance-reports';
+import { PayrollSummary } from './pages/Attendance/payroll-summary/payroll-summary';
+import { AttendanceAudit } from './pages/Attendance/attendance-audit/attendance-audit';
+import { MyLeave } from './pages/Attendance/my-leave/my-leave';
+import { MyPermission } from './pages/Attendance/my-permission/my-permission';
 
 const flatten = (items: readonly MenuItem[]): MenuItem[] => items.flatMap((item) => [item, ...flatten(item.children)]);
 
@@ -119,6 +137,27 @@ const REAL_SCREENS: Record<string, unknown> = {
   'app/permission-desk': PermissionDeskComponent,
   'app/attendance-policies': AttendancePoliciesComponent,
   'app/individual-attendance': IndividualAttendance,
+  'app/bulk-attendance': BulkAttendance,
+
+  // Attendance - every other page (paths match ATTENDANCE_LINKS in attendance-data.service.ts)
+  'app/attendance/overview': AttendanceOverview,
+  'app/attendance/punch-station': PunchStation,
+  'app/attendance/field-hub': AttendanceFieldHub,
+  'app/attendance/exceptions': AttendanceExceptions,
+  'app/attendance/team-approvals': TeamApprovals,
+  'app/attendance/leave': LeaveManagement,
+  'app/attendance/holidays': HolidayCalendar,
+  'app/attendance/approval-flow': ApprovalFlow,
+  'app/attendance/geo-fencing': GeoFencing,
+  'app/attendance/devices': PunchDevices,
+  'app/attendance/locations': WorkLocations,
+  'app/attendance/employees': EmployeeDirectory,
+  'app/attendance/reports': AttendanceReports,
+  'app/attendance/payroll': PayrollSummary,
+  'app/attendance/audit': AttendanceAudit,
+  'app/attendance/my-leave': MyLeave,
+  'app/attendance/my-permission': MyPermission,
+  'app/attendance/company-calendar': CompanyCalendar,
 
 
 };

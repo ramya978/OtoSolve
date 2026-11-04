@@ -1,0 +1,110 @@
+<!-- EMPLOYEE DIRECTORY - filters · list with today's status, shift, location, month rate · profile drawer -->
+<app-page-header breadcrumb="People / Employee directory" heading="Employee directory"
+  description="One employee list for attendance, shifts and work locations.">
+  <ng-container actions>
+    <div class="ak-head-acts"><button type="button" class="ak-btn" (click)="exportCsv()">↓ Export CSV</button></div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (data.loading()) { <div class="ak-state">Loading employees and departments…</div> }
+  @if (data.error()) { <div class="ak-state is-error">Unable to load users: {{ data.error() }} <button type="button" class="ak-link" (click)="data.ensure(true)">Retry</button></div> }
+
+  @let k = kpis();
+  <div class="ak-kpis">
+    <div class="ak-kpi"><small>Employees</small><strong>{{ k.people }}</strong><span>{{ k.departments }} departments</span>
+      <span class="ak-kpi-ico" data-tone="blue"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg></span></div>
+    <div class="ak-kpi"><small>At work today</small><strong>{{ k.atWork }}</strong><span>{{ k.live }} on shift right now</span>
+      <span class="ak-kpi-ico" data-tone="teal"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" /></svg></span></div>
+    <div class="ak-kpi"><small>Remote by default</small><strong>{{ k.remote }}</strong><span>Default work location</span>
+      <span class="ak-kpi-ico" data-tone="violet"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10" /></svg></span></div>
+    <div class="ak-kpi"><small>Average attendance</small><strong>{{ k.rate }}%</strong><span>This month so far</span>
+      <span class="ak-kpi-ico" data-tone="amber"><svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9" /></svg></span></div>
+  </div>
+
+  <section class="ak-card is-clip">
+    <header class="ak-card-head">
+      <div><h2>People</h2><p>{{ filtered().length }} of {{ all().length }} employees</p></div>
+      <div class="ak-toolbar">
+        <label class="ak-search"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM21 21l-4.35-4.35" /></svg>
+          <input type="search" placeholder="Name, ID or role" aria-label="Search employees" [value]="search()" (input)="search.set($any($event.target).value); page.set(1)" /></label>
+        <ak-select [options]="deptOptions()" [value]="department()" (valueChange)="setFilter('department', $event)" ariaLabel="Department" />
+        <ak-select [options]="locOptions()" [value]="location()" (valueChange)="setFilter('location', $event)" ariaLabel="Location" />
+        <ak-select [options]="statusOptions" [value]="status()" align="right" (valueChange)="setFilter('status', $event)" ariaLabel="Status today" />
+      </div>
+    </header>
+    <div class="ak-table-wrap">
+      <table class="ak-table">
+        <thead><tr><th>Employee</th><th class="ak-hide-md">Department</th><th class="ak-hide-lg">Default location</th><th class="ak-hide-lg">Shift today</th><th>Today</th><th class="ak-hide-sm ed-rate-h">This month</th><th><span class="ed-sr">Open</span></th></tr></thead>
+        <tbody>
+          @for (x of visible(); track x.e.id) {
+          <tr class="is-click" (click)="open(x.e)">
+            <td><div class="ak-person"><span class="ak-avatar" [attr.data-tone]="x.e.tone">{{ x.e.initials }}</span><span><strong>{{ x.e.name }}</strong><small>{{ x.e.id }} · {{ x.e.role }}</small></span></div></td>
+            <td class="ak-hide-md">{{ x.e.department }}</td>
+            <td class="ak-hide-lg ak-muted">{{ x.home }}</td>
+            <td class="ak-hide-lg"><span class="ak-nowrap">{{ x.shift.name }}</span><small class="ed-sub">{{ x.shift.start }} – {{ x.shift.end }}</small></td>
+            <td>@if (x.v.live) {<span class="ak-pill" data-tone="teal">On shift · {{ x.v.rec.in }}</span>} @else {<span class="ak-pill" [attr.data-tone]="tone[x.v.rec.status]">{{ labels[x.v.rec.status] }}</span>}</td>
+            <td class="ak-hide-sm"><div class="ed-rate"><span class="ak-bar"><i [style.width.%]="x.rate"></i></span><b>{{ x.rate.toFixed(0) }}%</b></div></td>
+            <td class="ak-num"><button type="button" class="ak-link" (click)="open(x.e); $event.stopPropagation()">View</button></td>
+          </tr>
+          } @empty { <tr><td colspan="7" class="ak-empty">No employees match these filters.</td></tr> }
+        </tbody>
+      </table>
+    </div>
+    @if (pages() > 1) {
+    <footer class="ak-card-foot">
+      <span>Page {{ page() }} of {{ pages() }}</span>
+      <nav class="ed-pager" aria-label="Pages">
+        <button type="button" class="ak-btn is-sm" aria-label="Previous page" [disabled]="page() <= 1" (click)="page.set(page() - 1)">‹</button>
+        @for (n of pageList(); track n) {<button type="button" class="ak-btn is-sm" [class.is-primary]="n === page()" [attr.aria-current]="n === page() ? 'page' : null" (click)="page.set(n)">{{ n }}</button>}
+        <button type="button" class="ak-btn is-sm" aria-label="Next page" [disabled]="page() >= pages()" (click)="page.set(page() + 1)">›</button>
+      </nav>
+    </footer>
+    }
+  </section>
+</div>
+
+@if (profile(); as p) {
+<div class="ak-scrim" (click)="close()"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="ed-title">
+  <header class="ak-drawer-head">
+    <div class="ak-person"><span class="ak-avatar is-lg" [attr.data-tone]="p.e.tone">{{ p.e.initials }}</span>
+      <span><span class="ak-eyebrow">Employee profile</span><h2 id="ed-title">{{ p.e.name }}</h2><p>{{ p.e.role }} · {{ p.e.department }} · {{ p.e.id }}</p></span></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="close()">×</button>
+  </header>
+  <div class="ak-form">
+    @if (profileMonth(); as m) {
+    <div class="ed-facts">
+      <div><small>Attendance</small><b>{{ m.rate.toFixed(0) }}%</b></div>
+      <div><small>Present</small><b>{{ m.P + m.HD * 0.5 }}</b></div>
+      <div><small>Leave</small><b>{{ m.L }}</b></div>
+      <div><small>Hours</small><b>{{ hm(m.minutes) }}</b></div>
+    </div>
+    }
+    <div class="ak-field"><span>Last 14 days</span>
+      <div class="ed-strip">
+        @for (d of last14(); track d.d) {
+        <span class="ed-day" [attr.title]="d.d + ' · ' + labels[d.v.rec.status]"><small>{{ d.day }}</small><i class="ak-code" [attr.data-tone]="tone[d.v.rec.status]">{{ d.v.rec.status === 'L' ? 'PL' : d.v.rec.status }}</i><small>{{ d.n }}</small></span>
+        }
+      </div>
+    </div>
+    <div class="ed-today">
+      <div><small>Today</small><b>{{ p.v.live ? 'On shift since ' + p.v.rec.in : labels[p.v.rec.status] }}</b></div>
+      <div><small>Shift</small><b>{{ p.shift.name }} · {{ p.shift.start }}–{{ p.shift.end }}</b></div>
+    </div>
+    <div class="ak-field"><span>Default work location</span>
+      <ak-select class="is-block" icon="pin" [options]="flow.activeLocations()" [value]="newHome()" (valueChange)="newHome.set($event); error.set('')" />
+    </div>
+    @if (newHome() !== p.home) {
+    <label class="ak-field"><span>Reason for change</span><input type="text" maxlength="120" placeholder="Visible in the audit trail" [value]="reason()" (input)="reason.set($any($event.target).value); error.set('')" /></label>
+    }
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot">
+      <button type="button" class="ak-btn" (click)="viewAttendance(p.e)">Open attendance</button>
+      <button type="button" class="ak-btn is-primary" [disabled]="newHome() === p.home" (click)="saveHome()">Save location</button>
+    </div>
+  </div>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

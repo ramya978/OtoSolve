@@ -1,0 +1,254 @@
+/* Punch station - only what the shared attendance kit does not cover */
+.ps-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.ps-kiosk {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.ps-clock {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.ps-clock b {
+  font-size: 60px;
+  font-weight: 720;
+  letter-spacing: -2px;
+}
+
+.ps-clock span {
+  color: var(--ak-muted);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.ps-date {
+  margin: -8px 0 4px;
+  color: var(--ak-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.ps-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ak-line);
+  border-radius: 12px;
+}
+
+.ps-who>div {
+  flex: 1;
+  min-width: 0;
+}
+
+.ps-who strong,
+.ps-who small {
+  display: block;
+}
+
+.ps-who strong {
+  font-size: 16px;
+}
+
+.ps-who small {
+  margin-top: 2px;
+  color: var(--ak-muted);
+  font-size: 12px;
+}
+
+.ps-state {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 11px;
+  background: var(--tb);
+  color: var(--t);
+}
+
+.ps-state b {
+  font-size: 14px;
+}
+
+.ps-state span {
+  font-size: 12.5px;
+}
+
+.ps-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ps-big {
+  min-height: 52px;
+  font-size: 15px;
+}
+
+.ps-span {
+  grid-column: 1 / -1;
+}
+
+.ps-find {
+  display: grid;
+  gap: 12px;
+}
+
+.ps-find .ak-search {
+  max-width: none;
+}
+
+.ps-people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.ps-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--ak-line);
+  border-radius: 11px;
+  background: var(--ak-card);
+  text-align: left;
+  transition: border-color .15s, background-color .15s;
+}
+
+.ps-person:hover {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+}
+
+.ps-person-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.ps-person-name b,
+.ps-person-name small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ps-person-name b {
+  font-size: 13px;
+}
+
+.ps-person-name small {
+  margin-top: 2px;
+  color: var(--ak-muted);
+  font-size: 11.5px;
+}
+
+.ps-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #c4cdd8;
+}
+
+.ps-dot[data-tone="teal"],
+.ps-dot[data-tone="amber"],
+.ps-dot[data-tone="blue"] {
+  background: var(--t);
+}
+
+.ps-none {
+  grid-column: 1 / -1;
+  font-size: 13px;
+}
+
+.ps-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--ak-line);
+  border-radius: 13px;
+  background: var(--ak-card);
+}
+
+.ps-counts>div {
+  display: grid;
+  gap: 2px;
+  padding: 14px 10px;
+  border-left: 1px solid var(--ak-line);
+  text-align: center;
+}
+
+.ps-counts>div:first-child {
+  border-left: 0;
+}
+
+.ps-counts b {
+  color: var(--t, var(--ak-heading));
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ps-counts small {
+  color: var(--ak-muted);
+  font-size: 11.5px;
+}
+
+.ps-board {
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.ps-board li {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.ps-board-r {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+  .ps-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .ps-kiosk {
+    padding: 16px;
+  }
+
+  .ps-clock b {
+    font-size: 46px;
+  }
+
+  .ps-people {
+    grid-template-columns: 1fr;
+    max-height: 360px;
+  }
+
+  .ps-counts small {
+    font-size: 10.5px;
+  }
+}

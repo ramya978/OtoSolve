@@ -1,0 +1,97 @@
+<!-- HOLIDAY / COMPANY CALENDAR - month grid · holidays of the year · who is away soon -->
+<app-page-header [breadcrumb]="admin ? 'People / Holiday calendar' : 'My workspace / Calendar'" [heading]="admin ? 'Holiday calendar' : 'Company calendar'"
+  [description]="admin ? 'Company holidays for the year. Click a day to add or change one.' : 'Holidays, weekly offs and who is away.'">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      @if (!admin) { <ak-select [options]="peopleOptions()" [value]="hr.meId()" [searchable]="true" icon="user" align="right" (valueChange)="hr.setMe($event)" ariaLabel="Viewing as" /> }
+      @if (admin) { <button type="button" class="ak-btn is-primary" (click)="add()">+ Add holiday</button> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  <div class="ak-kpis hc-kpis">
+    <div class="ak-kpi"><small>Holidays this year</small><strong>{{ counts().total }}</strong><span>{{ counts().optional }} optional</span></div>
+    <div class="ak-kpi"><small>Still to come</small><strong>{{ counts().left }}</strong><span>From today</span></div>
+    <div class="ak-kpi"><small>Next holiday</small><strong class="hc-next">{{ nextHoliday()?.name || '—' }}</strong><span>{{ nextHoliday() ? long(nextHoliday()?.date ?? '') : 'None planned' }}</span></div>
+  </div>
+
+  <div class="ak-split">
+    <section class="ak-card">
+      <header class="ak-card-head">
+        <div><h2>{{ title() }}</h2><p>{{ admin ? 'Dots = people on approved leave' : 'Your leave is outlined' }}</p></div>
+        <div class="hc-step" role="group" aria-label="Month">
+          <button type="button" aria-label="Previous month" (click)="moveMonth(-1)">‹</button>
+          <button type="button" class="hc-today" (click)="month.set(data.today.slice(0, 7))">Today</button>
+          <button type="button" aria-label="Next month" (click)="moveMonth(1)">›</button>
+        </div>
+      </header>
+      <div class="hc-grid">
+        @for (w of week; track w; let i = $index) {<span class="hc-wd" [class.is-off]="i > 4">{{ w }}</span>}
+        @for (c of grid(); track c.d) {
+        <button type="button" class="hc-day" [class.is-out]="c.out" [class.is-off]="c.off" [class.is-today]="c.today" [class.is-hol]="!!c.holiday"
+          [class.is-mine]="c.mine" [class.is-static]="!admin" [attr.aria-label]="long(c.d) + (c.holiday ? ', ' + c.holiday.name : '')" (click)="dayClick(c)">
+          <span class="hc-n">{{ c.n }}</span>
+          @if (c.holiday) { <span class="hc-name" [attr.data-tone]="typeTone(c.holiday.type)">{{ c.holiday.name }}</span> }
+          @else if (c.off && !c.out) { <span class="hc-off">Off</span> }
+          @if (c.away) { <span class="hc-away" [attr.title]="c.away + ' on leave'">@for (x of c.dots; track $index) {<i></i>}@if (c.away > 4) {<small>+{{ c.away - 4 }}</small>}</span> }
+        </button>
+        }
+      </div>
+      <footer class="ak-card-foot hc-legend">
+        <span><i class="hc-k is-hol"></i>Holiday</span><span><i class="hc-k is-off"></i>Weekly off</span><span><i class="hc-k is-away"></i>On leave</span>@if (!admin) {<span><i class="hc-k is-mine"></i>Your leave</span>}
+      </footer>
+    </section>
+
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Holidays in {{ month().slice(0, 4) }}</h2><p>{{ admin ? 'Click one to edit' : 'Paid days off for everyone' }}</p></div></header>
+        <ul class="ak-rows hc-list">
+          @for (h of yearList(); track h.date) {
+          <li [class.is-past]="h.past">
+            <button type="button" class="hc-row" [disabled]="!admin" (click)="edit(h, h.date)">
+              <span class="hc-date"><b>{{ h.date.slice(8) }}</b><small>{{ short(h.date).split(' ')[1] }}</small></span>
+              <span class="hc-what"><b>{{ h.name }}</b><small>{{ h.day }}{{ h.optional ? ' · optional' : '' }}</small></span>
+              <span class="ak-pill is-plain" [attr.data-tone]="typeTone(h.type)">{{ h.type }}</span>
+            </button>
+          </li>
+          } @empty { <li class="ak-muted">No holidays added for this year.</li> }
+        </ul>
+      </section>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Away in the next 3 weeks</h2><p>Approved leave</p></div></header>
+        <ul class="ak-rows">
+          @for (l of awaySoon(); track l.id) {
+          <li><span><b>{{ l.employeeName }}</b><small>{{ short(l.from) }}{{ l.to !== l.from ? ' → ' + short(l.to) : '' }} · {{ hr.type(l.typeId)?.name }}</small></span><span class="ak-muted">{{ l.days }}d</span></li>
+          } @empty { <li class="ak-muted">Nobody has approved leave coming up.</li> }
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+
+@if (editing(); as e) {
+<div class="ak-scrim" (click)="editing.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="hc-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">{{ e.original ? 'Edit holiday' : 'New holiday' }}</span><h2 id="hc-title">{{ e.h.name || 'Add a holiday' }}</h2><p>{{ long(e.h.date) }}</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="editing.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); save()" novalidate>
+    <div class="ak-field"><span>Date</span><ak-date [value]="e.h.date" (valueChange)="patch({ date: $event })" /></div>
+    <label class="ak-field"><span>Name</span><input type="text" maxlength="50" placeholder="e.g. Pongal" [value]="e.h.name" (input)="patch({ name: $any($event.target).value })" /></label>
+    <div class="ak-field"><span>Type</span>
+      <div class="hc-types">@for (t of types; track t) {<button type="button" [class.is-on]="e.h.type === t" [attr.aria-pressed]="e.h.type === t" (click)="patch({ type: t })">{{ t }}</button>}</div>
+    </div>
+    <label class="ak-field"><span>Optional holiday</span><span class="hc-inline"><input type="checkbox" class="ak-check" [checked]="e.h.optional" (change)="patch({ optional: $any($event.target).checked })" /> People may take it as leave; it is not a holiday for everyone</span></label>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot">
+      @if (e.original) { <button type="button" class="ak-btn is-danger" (click)="remove()">Remove</button> }
+      <button type="button" class="ak-btn" (click)="editing.set(null)">Cancel</button>
+      <button type="submit" class="ak-btn is-primary">Save holiday</button>
+    </div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>

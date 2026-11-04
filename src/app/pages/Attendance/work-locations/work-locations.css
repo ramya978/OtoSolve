@@ -1,0 +1,106 @@
+/* Work locations - only what the shared attendance kit does not cover */
+.wl-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.wl-pin {
+  width: 15px;
+  height: 15px;
+}
+
+.wl-off td {
+  color: var(--ak-muted);
+}
+
+.wl-off .ak-person strong {
+  color: var(--ak-muted);
+}
+
+.wl-live {
+  color: var(--ak-teal);
+  font-weight: 500;
+}
+
+.wl-acts {
+  display: inline-flex;
+  gap: 14px;
+}
+
+.wl-groups li {
+  display: grid;
+  justify-content: stretch;
+  gap: 9px;
+}
+
+.wl-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wl-group-head span {
+  color: var(--ak-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wl-faces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.wl-faces .ak-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 10.5px;
+}
+
+.wl-faces .wl-is-live {
+  box-shadow: 0 0 0 2px var(--ak-card), 0 0 0 3.5px var(--ak-teal);
+}
+
+.wl-more {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--ak-tint);
+  color: var(--ak-muted);
+  font-size: 11px;
+}
+
+.wl-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.wl-types button {
+  min-height: 38px;
+  border: 1px solid var(--ak-line);
+  border-radius: 9px;
+  background: var(--ak-card);
+  color: var(--ak-ink);
+  font-size: 13px;
+}
+
+.wl-types button.is-on {
+  border-color: var(--ak-primary);
+  background: var(--ak-soft);
+  color: var(--ak-primary);
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .wl-acts {
+    display: grid;
+    gap: 4px;
+    justify-items: end;
+  }
+}

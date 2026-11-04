@@ -1,0 +1,129 @@
+<!-- GEO-FENCING - zones per work location · simplified map · test a point · client visits -->
+<app-page-header breadcrumb="Set up / Geo-fencing" heading="Geo-fencing"
+  description="Draw a circle around every place people may punch from, and assign client visits to people who go out for work.">
+  <ng-container actions>
+    <div class="ak-head-acts">
+      <label class="gf-switch"><input type="checkbox" [checked]="hr.geoEnforced()" (change)="toggle($any($event.target).checked)" /><i></i><span>{{ hr.geoEnforced() ? 'Geo-fencing on' : 'Geo-fencing off' }}</span></label>
+    </div>
+  </ng-container>
+</app-page-header>
+
+<div class="ak">
+  @if (!hr.geoEnforced()) {
+  <div class="ak-banner" data-tone="blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 16v-4M12 8h.01" /></svg>
+    <span>Geo-fencing is off - punches are not checked against these zones. Switch it on when the zones are right.</span></div>
+  }
+  <div class="ak-seg gf-tabs" role="tablist">
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'zones'" (click)="tab.set('zones')">Zones</button>
+    <button type="button" role="tab" [attr.aria-pressed]="tab() === 'visits'" (click)="tab.set('visits')">Client &amp; field visits <b>{{ hr.visits().length }}</b></button>
+  </div>
+
+  @if (tab() === 'zones') {
+  <div class="ak-split is-even">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Work locations</h2><p>Remote locations are never checked · locations come from Work locations</p></div></header>
+      <ul class="ak-rows gf-zones">
+        @for (r of rows(); track r.l.name) {
+        <li [class.is-off]="!r.l.active">
+          <span class="gf-zone" [attr.data-tone]="typeTone(r.l.type)">
+            <b>{{ r.l.name }} <span class="ak-pill is-plain" [attr.data-tone]="typeTone(r.l.type)">{{ r.l.type }}</span></b>
+            <small>@if (r.l.type === 'Remote') {Not checked - work from anywhere} @else if (r.z) {Radius {{ r.z.radius }} m · {{ r.z.lat }}, {{ r.z.lng }}} @else {No zone - anyone can punch here}</small>
+          </span>
+          @if (r.l.type !== 'Remote') { <button type="button" class="ak-btn is-sm" (click)="edit(r.l.name)">{{ r.z ? 'Edit zone' : 'Draw zone' }}</button> }
+        </li>
+        }
+      </ul>
+    </section>
+
+    <div class="ak-stack">
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>All zones</h2><p>Simplified map · circles are enlarged so they stay visible@if (map().scaleKm) { · grid ≈ {{ map().scaleKm }} km}</p></div></header>
+        <div class="gf-map">
+          <svg viewBox="0 0 600 340" role="img" aria-label="Map of zones">
+            <defs><pattern id="gfgrid" width="60" height="60" patternUnits="userSpaceOnUse"><path d="M60 0H0V60" fill="none" stroke="#e6ebf2" /></pattern></defs>
+            <rect width="600" height="340" fill="url(#gfgrid)" />
+            @for (z of map().zs; track z.name) {
+            <g [attr.opacity]="z.active ? 1 : .45"><circle [attr.cx]="z.x" [attr.cy]="z.y" [attr.r]="z.r" class="gf-ring" /><circle [attr.cx]="z.x" [attr.cy]="z.y" r="4" class="gf-dot" /><text [attr.x]="z.x" [attr.y]="$index % 2 ? z.y - z.r - 6 : z.y + z.r + 14" text-anchor="middle">{{ z.name }}</text></g>
+            }
+            @if (map().test; as t) { <g><circle [attr.cx]="t.x" [attr.cy]="t.y" r="6" class="gf-test" /></g> }
+          </svg>
+          @if (!map().zs.length) { <p class="gf-empty">Draw a zone to see it here.</p> }
+        </div>
+      </section>
+      <section class="ak-card">
+        <header class="ak-card-head"><div><h2>Test a location</h2><p>Type a GPS point to see whether someone standing there could punch</p></div></header>
+        <div class="ak-form">
+          <div class="ak-form-grid">
+            <label class="ak-field"><span>Latitude</span><input type="text" inputmode="decimal" placeholder="13.0850" [value]="testLat()" (input)="testLat.set($any($event.target).value)" /></label>
+            <label class="ak-field"><span>Longitude</span><input type="text" inputmode="decimal" placeholder="80.2101" [value]="testLng()" (input)="testLng.set($any($event.target).value)" /></label>
+          </div>
+          @if (testResult().length) {
+          <ul class="gf-results">
+            @for (t of testResult(); track t.name) {<li [attr.data-tone]="t.inside ? 'teal' : ''"><b>{{ t.name }}</b><span>{{ km(t.d) }} away · {{ t.inside ? 'inside, can punch' : 'outside the ' + t.radius + ' m circle' }}</span></li>}
+          </ul>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+  }
+
+  @if (tab() === 'visits') {
+  <div class="ak-split">
+    <section class="ak-card is-clip">
+      <header class="ak-card-head"><div><h2>Client &amp; field visits</h2><p>On these days the person may punch at the client site</p></div></header>
+      <div class="ak-table-wrap">
+        <table class="ak-table">
+          <thead><tr><th>Employee</th><th>Day</th><th>Site</th><th class="ak-hide-sm">Note</th><th class="ak-num"><span class="gf-sr">Remove</span></th></tr></thead>
+          <tbody>
+            @for (v of visits(); track v.id) {
+            <tr [class.gf-past]="v.date < data.today">
+              <td><b>{{ v.employeeName }}</b></td><td class="ak-nowrap">{{ short(v.date) }}@if (v.date === data.today) { <span class="ak-pill" data-tone="teal">Today</span>}</td>
+              <td>{{ v.site }}</td><td class="ak-hide-sm ak-muted">{{ v.note || '—' }}</td>
+              <td class="ak-num"><button type="button" class="ak-link" (click)="hr.removeVisit(v.id)">Remove</button></td>
+            </tr>
+            } @empty { <tr><td colspan="5" class="ak-empty">No visits assigned.</td></tr> }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="ak-card">
+      <header class="ak-card-head"><div><h2>Assign a visit</h2><p>Client sites and field locations</p></div></header>
+      <div class="ak-form">
+        <div class="ak-field"><span>Who</span><ak-select class="is-block" [options]="peopleOptions()" [value]="vPerson()" placeholder="Choose employee" [searchable]="true" (valueChange)="vPerson.set($event); error.set('')" /></div>
+        <div class="ak-field"><span>Day</span><ak-date [value]="vDate()" [min]="data.today" (valueChange)="vDate.set($event)" /></div>
+        <div class="ak-field"><span>Site</span><ak-select class="is-block" icon="pin" [options]="siteOptions()" [value]="vSite()" placeholder="Choose site" (valueChange)="vSite.set($event); error.set('')" /></div>
+        <label class="ak-field"><span>Note <small>Optional</small></span><input type="text" maxlength="80" placeholder="e.g. Quarterly review" [value]="vNote()" (input)="vNote.set($any($event.target).value)" /></label>
+        @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+        <div class="ak-foot"><button type="button" class="ak-btn is-primary" (click)="addVisit()">Assign visit</button></div>
+      </div>
+    </section>
+  </div>
+  }
+</div>
+
+@if (editing(); as e) {
+<div class="ak-scrim" (click)="editing.set(null)"></div>
+<aside class="ak-drawer" role="dialog" aria-modal="true" aria-labelledby="gf-title">
+  <header class="ak-drawer-head">
+    <div><span class="ak-eyebrow">Zone</span><h2 id="gf-title">{{ e.name }}</h2><p>People can punch here only from inside this circle.</p></div>
+    <button type="button" class="ak-x" aria-label="Close" (click)="editing.set(null)">×</button>
+  </header>
+  <form class="ak-form" (submit)="$event.preventDefault(); save()" novalidate>
+    <div class="ak-form-grid">
+      <label class="ak-field"><span>Latitude</span><input type="number" step="0.0001" [value]="e.z.lat" (input)="patch({ lat: +$any($event.target).value })" /></label>
+      <label class="ak-field"><span>Longitude</span><input type="number" step="0.0001" [value]="e.z.lng" (input)="patch({ lng: +$any($event.target).value })" /></label>
+    </div>
+    <button type="button" class="ak-btn" [disabled]="locating()" (click)="hereForZone()">{{ locating() ? 'Finding you…' : 'Use where I am now' }}</button>
+    <label class="ak-field"><span>Radius · {{ e.z.radius }} m</span><input type="range" min="30" max="1000" step="10" class="gf-range" [value]="e.z.radius" (input)="patch({ radius: +$any($event.target).value })" /></label>
+    <p class="ak-sub">Phone GPS is usually accurate to 10–50 m. 150–250 m suits most offices.</p>
+    @if (error()) { <p class="ak-form-error" role="alert">{{ error() }}</p> }
+    <div class="ak-foot">
+      @if (hr.zone(e.name)) { <button type="button" class="ak-btn is-danger" (click)="removeZone()">Remove zone</button> }
+      <button type="button" class="ak-btn" (click)="editing.set(null)">Cancel</button><button type="submit" class="ak-btn is-primary">Save zone</button>
+    </div>
+  </form>
+</aside>
+}
+
+<div class="ak-toast" role="status" aria-live="polite">@if (toast()) {<span>{{ toast() }}</span>}</div>
