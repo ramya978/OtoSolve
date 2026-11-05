@@ -15,6 +15,9 @@
 .us-warn { color: var(--i-warning) !important; }
 .us-search { width: calc(280px * var(--us-k)); max-width: 100%; }
 
+/* filters never push wider than their slot */
+.us-card .i-toolbar iam-select { min-width: 0; max-width: 100%; }
+
 /* cards ↔ list switch */
 .us-views { display: inline-flex; padding: 3px; border: 1px solid var(--i-line); border-radius: var(--i-btn-radius); background: color-mix(in srgb, var(--i-line) 20%, #fff); }
 
@@ -110,10 +113,10 @@
 /* ---------- detail drawer ---------- */
 .us-hero { display: flex; align-items: center; gap: calc(14px * var(--us-k)); margin-bottom: calc(20px * var(--us-k)); padding-bottom: calc(20px * var(--us-k)); border-bottom: 1px solid var(--i-line); }
 .us-hero > div { display: grid; flex: 1; min-width: 0; line-height: 1.4; }
-.us-hero strong { color: var(--i-heading); font-size: calc(19px * var(--us-fs)); font-weight: 600; letter-spacing: -.3px; }
+.us-hero strong { color: var(--i-heading); font-size: calc(19px * var(--us-fs)); font-weight: 600; letter-spacing: -.3px; overflow-wrap: anywhere; }
 .us-hero small { overflow-wrap: anywhere; color: var(--i-muted); font-size: calc(12.5px * var(--us-fs)); }
+.us-hero .i-st { flex: none; }
 .us-mt { margin-top: calc(16px * var(--us-k)); }
-.us-top { z-index: 61; }
 
 /* ---------- select-all next to Cards/List tabs ---------- */
 .us-select-all {
@@ -157,18 +160,46 @@
   .h-unit { display: none; }
   .us-table { --cols: 52px minmax(0, 1fr) 22% 14% 16% 64px; }
 }
+
+/* UI-036: on tablets / phones the toolbar becomes a tidy 2-column grid:
+   search on its own row, status + role side by side, select-all + view switch side by side.
+   Nothing stretches to a giant full-width bar any more. */
 @container us-card (max-width: 700px) {
   .h-role, .h-sign { display: none; }
   .us-table { --cols: 44px minmax(0, 1fr) 90px 56px; }
   .us-cards { padding: calc(16px * var(--us-k)); }
+
+  .us-card .i-toolbar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
+  }
+  .us-card .i-toolbar > .i-spacer { display: none; }
+  .us-card .i-toolbar .us-search { grid-column: 1 / -1; flex: none; width: 100%; min-width: 0; }
+  .us-card .i-toolbar iam-select { display: block; width: 100%; }
+  .us-card .i-toolbar > .i-btn--ghost { grid-column: 1 / -1; justify-self: start; }
+  .us-select-all { justify-self: start; }
+  .us-views { justify-self: end; }
 }
+
 @container us-card (max-width: 520px) {
   .us-sum > .us-sum-mfa { display: none; }
-  .us-search { flex: 1 1 100%; width: 100%; }
   .us-select-all span { display: none; }
-  .us-views { width: 100%; }
-  .us-views button { flex: 1; justify-content: center; }
+  .us-views button { padding: 6px 10px; }
   .us-pageof { display: none; }
+}
+
+/* compact control heights inside the toolbar on narrow cards */
+@container us-card (max-width: 700px) {
+  :host ::ng-deep .us-card .i-toolbar iam-select > *,
+  :host ::ng-deep .us-card .i-toolbar iam-select button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  :host ::ng-deep .us-card .i-toolbar iam-select button { height: 36px !important; min-height: 0 !important; }
+  .us-card .i-search { height: 36px; }
 }
 
 /* ---------- edit drawer: reason for this change ---------- */
@@ -333,6 +364,106 @@
 .i-drawer iam-select ::ng-deep button,
 .i-drawer iam-select ::ng-deep input,
 .i-drawer iam-select ::ng-deep span { font-size: calc(13px * var(--us-dfs)) !important; }
+
+/* UI-037 / UI-038: drawer header — label and title stack cleanly, never overlap,
+   long names wrap, the close button keeps its place. Header stays on top while the body scrolls. */
+.i-drawer .i-detail-head {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex: none;               /* never squeezed by the scrolling body */
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  height: auto;
+  background: var(--i-surface);
+}
+.i-drawer .i-drawer-body { min-height: 0; }
+.i-drawer .i-drawer-foot { flex: none; }
+
+/* drawers sit above the app's own top bar / side bar (which covered the drawer title on mobile) */
+.i-overlay { z-index: 111111111; }
+.i-overlay.us-top { z-index: 11111111111; }
+.i-drawer {
+  height: 100vh;
+  height: 100dvh;           /* mobile browsers: the address bar no longer hides the header or footer */
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.i-drawer .i-detail-head > div {
+  display: grid;
+  flex: 1;
+  gap: 4px;
+  min-width: 0;
+}
+.i-drawer .i-detail-head .i-label {
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.i-drawer .i-detail-head h2 {
+  position: static;
+  margin: 0;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.i-drawer .i-detail-head .i-icon-btn { flex: none; }
+
+/* section titles sit above their content with clear space */
+.i-drawer .i-detail-sec h3 {
+  position: static;
+  display: block;
+  margin: 0 0 calc(10px * var(--us-k));
+  line-height: 1.35;
+}
+
+/* UI-037: details as a 2-column grid (label above value) — half the scrolling */
+.i-drawer .i-kv {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(12px * var(--us-k)) calc(16px * var(--us-k));
+  margin: 0;
+}
+.i-drawer .i-kv > div {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+}
+.i-drawer .i-kv > div.is-wide { grid-column: 1 / -1; }
+.i-drawer .i-kv dt,
+.i-drawer .i-kv dd { margin: 0; text-align: left; }
+.i-drawer .i-kv dd { overflow-wrap: anywhere; }
+
+/* UI-038: edit form keeps 2 columns on every screen size */
+.i-drawer .i-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(12px * var(--us-k));
+}
+.i-drawer .i-grid-2 > *,
+.i-drawer .i-field,
+.i-drawer iam-select { min-width: 0; }
+.i-drawer iam-select { display: block; width: 100%; }
+:host ::ng-deep .i-drawer iam-select > *,
+:host ::ng-deep .i-drawer iam-select button { width: 100%; min-width: 0 !important; max-width: 100%; }
+
+/* footer wraps instead of squeezing */
+.i-drawer .i-drawer-foot { flex-wrap: wrap; gap: 8px; }
+
+/* phones: full-width drawer, tighter spacing so less scrolling */
+@media (max-width: 560px) {
+  .i-drawer { width: 100vw; }
+  .i-drawer .i-detail-head { padding: 14px 16px; }
+  .i-drawer .i-drawer-body { padding: 14px 16px; }
+  .i-drawer .i-detail-sec + .i-detail-sec { margin-top: 16px; padding-top: 16px; }
+  .i-drawer .us-hero { margin-bottom: 14px; padding-bottom: 14px; }
+  .i-drawer .i-drawer-foot { padding: 12px 16px; }
+  .i-drawer .i-drawer-foot .i-foot-note:not(:empty) { flex: 1 1 100%; }
+  .i-drawer .us-mt { margin-top: 12px; }
+}
 
 /* ---------- page header (shared app-page-header) ----------
    Its own sizes are large; on this page it follows the same density. !important because the

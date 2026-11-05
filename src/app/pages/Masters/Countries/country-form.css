@@ -620,3 +620,75 @@
     justify-content: center;
   }
 }
+
+
+/* =====================================================================================================
+   MOBILE / ALIGNMENT FIXES (kept last so they win)
+   UI-048 / UI-049 - Back button level with the title
+   UI-047 / UI-049 - preview widget: mark + name on one row, facts in a 2-column grid, no blank space
+   UI-048 / UI-049 - Cancel / Save (Create) compact on the right instead of two half-width buttons
+   ===================================================================================================== */
+.cf-head-acts {
+  margin-top: calc(17px * var(--cf-fs)) !important;
+}
+
+@container cf-page (max-width: 820px) {
+  .cf-page .cf-side {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    row-gap: 2px;
+    padding: calc(14px * var(--cf-k)) calc(16px * var(--cf-k));
+  }
+  .cf-page .cf-mark {
+    width: calc(40px * var(--cf-k));
+    min-width: calc(40px * var(--cf-k));
+    height: calc(40px * var(--cf-k));
+    font-size: calc(13px * var(--cf-fs));
+  }
+  .cf-page .cf-name { align-self: end; }
+  .cf-page .cf-sub { grid-column: 2; align-self: start; }
+
+  /* facts: 2 columns with hairline separators */
+  .cf-page .cf-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1px;
+    margin-top: calc(12px * var(--cf-k));
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--k-accent) 14%, var(--k-line));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--k-accent) 14%, var(--k-line));
+  }
+  .cf-page .cf-facts > div {
+    display: grid;
+    flex: none;
+    align-content: start;
+    justify-content: start;
+    gap: 2px;
+    min-width: 0;
+    padding: calc(8px * var(--cf-k)) calc(10px * var(--cf-k));
+    border: 0;
+    background: var(--white, #fff);
+  }
+  .cf-page .cf-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .cf-page .cf-facts dd { white-space: normal; overflow-wrap: anywhere; }
+
+  .cf-page .cf-progress { padding-top: calc(12px * var(--cf-k)); }
+}
+
+@container cf-page (max-width: 520px) {
+  .cf-page .cf-facts > div { flex: none; }
+  .cf-page .cf-spacer { display: block; }
+  .cf-page .cf-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: calc(8px * var(--cf-k));
+    margin-top: calc(18px * var(--cf-k));
+    padding-top: calc(14px * var(--cf-k));
+  }
+  .cf-page .cf-actions > .m-btn {
+    flex: none;
+    height: calc(34px * var(--cf-k)) !important;
+    padding: 0 calc(14px * var(--cf-k)) !important;
+  }
+}

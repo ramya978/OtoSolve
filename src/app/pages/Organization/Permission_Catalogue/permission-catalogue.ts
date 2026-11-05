@@ -10,6 +10,7 @@ const ROLES_PATH = '/app/administration/access/role-and-permission-catalogue';
 /** icons for this page (24x24, currentColor) */
 const ICONS: Record<string, string> = {
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3',
+  filter: 'M3 6h18 M6.5 12h11 M10 18h4',
   copy: 'M9 9h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V10a1 1 0 0 1 1-1z M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1',
   check: 'M5 12.5l4.5 4.5L19 7.5',
   prev: 'M15 6l-6 6 6 6',
@@ -65,82 +66,49 @@ export class PermissionCatalogue implements OnInit {
   }
   readonly actions: ActionDef[] = ACTIONS;
 
-
-  // Pagination
-
+  /* pagination */
   readonly pageSizes = [10, 25, 50];
-readonly pageSize = signal(10);
-readonly page = signal(1);
+  readonly pageSize = signal(10);
+  readonly page = signal(1);
 
-readonly pages = computed(() =>
-  Math.max(1, Math.ceil(this.rows().length / this.pageSize()))
-);
+  readonly pages = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
 
-readonly current = computed(() =>
-  Math.min(this.page(), this.pages())
-);
+  readonly current = computed(() => Math.min(this.page(), this.pages()));
 
-readonly paged = computed(() => {
-  const start = (this.current() - 1) * this.pageSize();
-  return this.rows().slice(start, start + this.pageSize());
-});
+  readonly paged = computed(() => {
+    const start = (this.current() - 1) * this.pageSize();
+    return this.rows().slice(start, start + this.pageSize());
+  });
 
-readonly from = computed(() =>
-  this.rows().length
-    ? (this.current() - 1) * this.pageSize() + 1
-    : 0
-);
+  readonly from = computed(() => this.rows().length ? (this.current() - 1) * this.pageSize() + 1 : 0);
 
-readonly to = computed(() =>
-  Math.min(this.current() * this.pageSize(), this.rows().length)
-);
+  readonly to = computed(() => Math.min(this.current() * this.pageSize(), this.rows().length));
 
-readonly visiblePages = computed<(number | '...')[]>(() => {
-  const total = this.pages();
-  const current = this.current();
+  readonly visiblePages = computed<(number | '...')[]>(() => {
+    const total = this.pages();
+    const current = this.current();
 
-  if (total <= 5) {
-    return Array.from({ length: total }, (_, i) => i + 1);
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (current <= 2) return [1, 2, '...', total];
+    if (current >= total - 1) return [1, '...', total - 1, total];
+    return [1, '...', current, '...', total];
+  });
+
+  onPageSizeChange(event: Event): void {
+    const size = Number((event.target as HTMLSelectElement).value);
+    if (!this.pageSizes.includes(size)) return;
+    this.pageSize.set(size);
+    this.page.set(1);
   }
 
-  if (current <= 2) {
-    return [1, 2, '...', total];
+  go(delta: number): void {
+    this.page.set(Math.min(this.pages(), Math.max(1, this.current() + delta)));
   }
 
-  if (current >= total - 1) {
-    return [1, '...', total - 1, total];
+  goToPage(page: number | '...'): void {
+    if (typeof page !== 'number') return;
+    this.page.set(Math.min(this.pages(), Math.max(1, page)));
   }
-
-  return [1, '...', current, '...', total];
-});
-
-onPageSizeChange(event: Event): void {
-  const size = Number((event.target as HTMLSelectElement).value);
-
-  if (!this.pageSizes.includes(size)) {
-    return;
-  }
-
-  this.pageSize.set(size);
-  this.page.set(1);
-}
-
-go(delta: number): void {
-  this.page.set(
-    Math.min(this.pages(), Math.max(1, this.current() + delta))
-  );
-}
-
-goToPage(page: number | '...'): void {
-  if (typeof page !== 'number') {
-    return;
-  }
-
-  this.page.set(Math.min(this.pages(), Math.max(1, page)));
-}
-
-
-
 
   /* filters */
   readonly module = signal<string>('');
@@ -150,6 +118,14 @@ goToPage(page: number | '...'): void {
   readonly query = signal('');
   readonly openRows = signal(false);
   readonly copied = signal<string>('');
+
+  /** mobile: the extra filters (module, group, sensitive, actions) sit behind the "Filters" button */
+  readonly filtersOpen = signal(false);
+  toggleFilters(): void { this.filtersOpen.update((v) => !v); }
+
+  /** how many filters besides search are on — shown as a badge on the "Filters" button */
+  readonly activeFilterCount = computed(() =>
+    [this.module(), this.group(), this.action(), this.sensitiveOnly()].filter(Boolean).length);
 
   /* stats */
   get total(): number { return this.all.length; }

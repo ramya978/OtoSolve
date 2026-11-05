@@ -10,10 +10,10 @@
   <app-page-header breadcrumb="Users &amp; Access / Roles" heading="Roles &amp; permissions" description="Pick a permission area to see what every role can do in it. Open a role to read or change its permissions.">
   <ng-container actions>
       <div class="rp-head-acts">
-  <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportRoles()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
-    <button type="button" class="i-btn i-btn--primary" (click)="openCreate()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span class="rp-l-long">Create role</span><span class="rp-l-short">Create</span></button>
+  <button type="button" class="i-btn" aria-label="Export" title="Export" [disabled]="exporting()" (click)="exportRoles()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span class="rp-l-long">Export</span></button>
+    <button type="button" class="i-btn i-btn--primary" aria-label="Create role" title="Create role" (click)="openCreate()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span class="rp-l-long">Create role</span></button>
       </div>
   
   </ng-container>
@@ -63,7 +63,7 @@
     <section class="i-card rp-detail" aria-labelledby="rp-area-name">
       <div class="rp-pick">
         <span class="i-field-label">Permission area</span>
-        <iam-select [options]="areaOptions" [value]="area()" (valueChange)="area.set($event)" />
+        <iam-select [options]="areaOptions" [value]="currentArea().key" (valueChange)="area.set($event)" />
       </div>
 
       <div class="rp-dhead">

@@ -4,14 +4,52 @@
      → profile card: identity (avatar · name · stage · contact | owner) + four figures in one card
      → [ timeline card: tabs + search + filters in the head · month groups · dated rail entries · pager
        | side cards: standing · record · activity ] → entry popup.
+     Mobile header: Back · ⋯ More (Schedule follow-up, Export) · Log communication - compact icon buttons.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor & Leads / Lead Work Queue"  heading="Communication timeline" description="Every call, e-mail, meeting and note with this lead in one place.">
   <ng-container actions>
-    <div style="gap: 10px; display: flex;flex-wrap: wrap;">
-        <button type="button" class="ct-btn" (click)="back()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg> Back</button>
-      <button type="button" class="ct-btn" (click)="scheduleFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Schedule follow-up</button>
-      <button type="button" class="ct-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
-      <button type="button" class="ct-btn is-primary" (click)="logCommunication()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Log communication</button>
+    <div class="ct-hactions">
+      <button type="button" class="ct-btn" aria-label="Back" title="Back" (click)="back()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg>
+        <span class="ct-btn-text">Back</span>
+      </button>
+
+      <!-- desktop: shown as buttons · phones: moved into the More menu -->
+      <button type="button" class="ct-btn ct-h-wide" (click)="scheduleFollowUp()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Schedule follow-up
+      </button>
+      <button type="button" class="ct-btn ct-h-wide" (click)="exportCsv()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export
+      </button>
+
+      <!-- phones only: overflow menu -->
+      <div class="ct-dd ct-h-more">
+        <button type="button" class="ct-btn" [class.is-active]="menu() === 'more'" aria-label="More actions" title="More actions"
+                aria-haspopup="menu" [attr.aria-expanded]="menu() === 'more'" (click)="toggleMenu('more', $event)">
+          <svg class="ct-dots" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+          </svg>
+        </button>
+        @if (menu() === 'more') {
+          <ul class="ct-pop ct-more-menu" role="menu" (click)="$event.stopPropagation()">
+            <li role="none">
+              <button type="button" role="menuitem" (click)="menu.set(null); scheduleFollowUp()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Schedule follow-up
+              </button>
+            </li>
+            <li role="none">
+              <button type="button" role="menuitem" (click)="menu.set(null); exportCsv()">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export
+              </button>
+            </li>
+          </ul>
+        }
+      </div>
+
+      <button type="button" class="ct-btn is-primary" aria-label="Log communication" title="Log communication" (click)="logCommunication()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+        <span class="ct-btn-text">Log communication</span>
+      </button>
     </div>
   </ng-container>
 </app-page-header>

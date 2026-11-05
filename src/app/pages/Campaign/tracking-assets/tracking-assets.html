@@ -8,11 +8,6 @@
 
 <app-page-header breadcrumb="Fundraising / Tracking assets" heading="Tracking asset manager" description="QR codes and landing pages across your campaigns, with their status, usage and approvals.">
   <ng-container actions>
-
-
-
-
-
     <a class="w-btn w-btn-primary" [routerLink]="paths.assetNew">
       <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
       Create
@@ -229,8 +224,11 @@
 </div>
 <!-- /.ta-wrap -->
 
-<!-- ===== asset drawer ===== -->
+<!-- ===== asset drawer =====
+     taPortal moves this wrapper to <body> while open, so no layout parent can keep the drawer
+     under the app top bar or inside the page column. -->
 @if (open(); as a) {
+  <div class="ta-portal" taPortal>
   <div class="w-overlay" (click)="openRef.set(null)"></div>
   <aside class="w-drawer ta-drawer" role="dialog" aria-modal="true" aria-labelledby="ta-d-title">
     <header class="w-drawer-head">
@@ -334,4 +332,5 @@
       }
     </footer>
   </aside>
+  </div>
 }

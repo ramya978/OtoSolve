@@ -2,6 +2,7 @@
      CREATE TRACKING ASSET (tracking-asset-form.ts · tracking-asset-form.css)
      Split card: form on the left (type choice, campaign, medium, URL, dates, placement, actions) ·
      phone-style live preview on a tinted panel on the right · discard confirmation.
+     Fields in the right-hand column carry "af-col-end" so their dropdown opens inwards on phones.
      ===================================================================================================== -->
 <div class="af-wrap">
 <form class="af-split" novalidate (submit)="$event.preventDefault(); save('submitted')">
@@ -34,14 +35,14 @@
         @if (err('type'); as e) { <span class="w-error">{{ e }}</span> }
       </div>
 
-      <div class="w-field">
+      <div class="w-field af-col-start">
         <label class="w-label" for="af-campaign">Campaign <span class="w-req">*</span><small>{{ campaignHint() }}</small></label>
         <cw-select inputId="af-campaign" placeholder="Select an eligible campaign in scope…" [options]="campaignOptions()"
                    [value]="draft().campaign" [invalid]="!!err('campaign')" [disabled]="!!editingRef"
                    (valueChange)="pickCampaign($event)" />
         @if (err('campaign'); as e) { <span class="w-error">{{ e }}</span> }
       </div>
-      <div class="w-field">
+      <div class="w-field af-col-end">
         <label class="w-label" for="af-medium">Medium <span class="w-req">*</span></label>
         <cw-select inputId="af-medium" placeholder="Select a medium…" [options]="mediumOptions" [value]="draft().medium"
                    [invalid]="!!err('medium')" (valueChange)="set('medium', $event)" />
@@ -67,16 +68,16 @@
       </div>
 
       <h3 class="af-sec af-full"><svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>Schedule</h3>
-      <div class="w-field">
+      <div class="w-field af-col-start">
         <label class="w-label" for="af-from">Active from <span class="w-req">*</span></label>
-        <input id="af-from" type="date" class="w-input" [value]="draft().from" (input)="set('from', text($event))"
-               [attr.aria-invalid]="!!err('from') || null" />
+        <cw-date-picker inputId="af-from" placeholder="Choose start date" [value]="draft().from"
+                        [max]="campaign()?.end || ''" [invalid]="!!err('from')" (valueChange)="set('from', $event)" />
         @if (err('from'); as e) { <span class="w-error">{{ e }}</span> }
       </div>
-      <div class="w-field">
+      <div class="w-field af-col-end">
         <label class="w-label" for="af-to">Active to <span class="w-req">*</span></label>
-        <input id="af-to" type="date" class="w-input" [value]="draft().to" [min]="draft().from" (input)="set('to', text($event))"
-               [attr.aria-invalid]="!!err('to') || null" />
+        <cw-date-picker inputId="af-to" placeholder="Choose end date" align="end" [value]="draft().to"
+                        [min]="draft().from" [max]="campaign()?.end || ''" [invalid]="!!err('to')" (valueChange)="set('to', $event)" />
         @if (err('to'); as e) { <span class="w-error">{{ e }}</span> }
       </div>
 

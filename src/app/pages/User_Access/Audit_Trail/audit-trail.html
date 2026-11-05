@@ -8,11 +8,14 @@
     <div>
       <span class="i-eyebrow">Users &amp; Access / Audit</span>
       <h1>Activity journal</h1>
-      <p>Every sign-in, view and change in time order — who did it, on which record and how it ended.</p>
+      <p>
+        <span class="at-d-long">Every sign-in, view and change in time order — who did it, on which record and how it ended.</span>
+        <span class="at-d-short">Every sign-in, view and change — who did it and how it ended.</span>
+      </p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn" [disabled]="exporting()" (click)="exportCsv()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span class="at-l-long">Export to CSV</span><span class="at-l-short">Export</span></button>
+      <button type="button" class="i-btn" aria-label="Export to CSV" title="Export to CSV" [disabled]="exporting()" (click)="exportCsv()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span class="at-l-long">Export to CSV</span></button>
     </div>
   </header>
 

@@ -18,6 +18,7 @@
 
 /* ---------- page header (shared app-page-header): same on every page ---------- */
 :host ::ng-deep app-page-header {
+  position: relative;
   display: block;
   margin: 0 0 calc(16px * var(--fus-k)) !important;
   padding-bottom: 0 !important;
@@ -84,11 +85,57 @@
   align-items: center;
   gap: calc(8px * var(--fus-k));
 }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+/* phones + small tablets (UI-012): the buttons sit in the empty space on the right of the
+   breadcrumb + title, and the description runs full width under both. No absolute positioning,
+   so nothing can sit on top of the text.
+   The header row becomes a 2-column grid: text on the left, buttons on the right. Its text block is
+   flattened (display: contents) so the description can span both columns under the buttons.
+   Export becomes an icon button and "New follow-up" becomes "New". */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
-  :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  .fq-head-acts { gap: calc(6px * var(--fus-k)); }
+  .fq-head-acts .fq-long { display: none; }
+  :host ::ng-deep app-page-header .fq-exp {
+    width: calc(36px * var(--fus-k)) !important;
+    padding: 0 !important;
+  }
+  :host ::ng-deep app-page-header .fq-head-acts .is-primary {
+    padding: 0 calc(12px * var(--fus-k)) !important;
+  }
+
+  /* the header row: text | buttons */
+  :host ::ng-deep app-page-header > * {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    column-gap: calc(12px * var(--fus-k)) !important;
+    row-gap: 0 !important;
+    flex-wrap: nowrap !important;
+  }
+  /* text block: its lines become grid items in the left column */
+  :host ::ng-deep app-page-header > * > :first-child { display: contents !important; }
+  :host ::ng-deep app-page-header > * > :first-child > * {
+    grid-column: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* the description goes under both the title and the buttons, full width */
+  :host ::ng-deep app-page-header > * > :first-child > p { grid-column: 1 / -1; }
+  /* the buttons: right column, level with the breadcrumb + title */
+  :host ::ng-deep app-page-header > * > :not(:first-child) {
+    display: flex !important;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center !important;
+    justify-self: end;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  :host ::ng-deep app-page-header h1 { font-size: calc(22px * var(--fus-fs)) !important; }
+  :host ::ng-deep app-page-header p { margin-top: calc(8px * var(--fus-k)) !important; }
 }
 
 .fq-tag {
@@ -466,15 +513,19 @@
   color: var(--fu-muted);
 }
 
+/* quick views: chips on wide screens, one dropdown on phones */
 .fq-quick {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
   padding: 0 calc(20px * var(--fus-k)) calc(14px * var(--fus-k));
   border-bottom: 1px solid var(--fu-row);
 }
 
-.fq-quick button {
+.fq-quick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fq-quick-chips button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -488,23 +539,97 @@
   cursor: pointer;
 }
 
-.fq-quick button em {
+.fq-quick-chips button em {
   color: var(--fu-muted);
   font-size: calc(11px * var(--fus-fs));
   font-style: normal;
 }
 
-.fq-quick button:hover {
+.fq-quick-chips button:hover {
   background: var(--fu-line);
 }
 
-.fq-quick button.is-on {
+.fq-quick-chips button.is-on {
   background: var(--cc-btn, var(--fu-primary));
   color: var(--cc-btn-ink, var(--primary-on, #fff));
 }
 
-.fq-quick button.is-on em {
+.fq-quick-chips button.is-on em {
   color: color-mix(in srgb, var(--cc-btn-ink, var(--primary-on, #fff)) 70%, transparent);
+}
+
+.fq-quick-dd {
+  display: none;
+}
+
+.fq-quick-dd > .fu-dd-btn {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--fus-k));
+  width: 100%;
+}
+
+.fq-quick-dd > .fu-dd-btn > svg {
+  flex: none;
+}
+
+.fq-qd-lbl {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: calc(8px * var(--fus-k));
+  min-width: 0;
+  overflow: hidden;
+  color: var(--fu-heading);
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fq-qd-lbl small {
+  color: var(--fu-muted);
+  font-size: calc(11px * var(--fus-fs));
+  font-weight: 500;
+}
+
+.fq-qd-n {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--fu-primary-soft);
+  color: var(--fu-primary);
+  font-size: calc(11px * var(--fus-fs));
+  font-style: normal;
+  font-weight: 600;
+}
+
+.fq-quick-dd .fu-menu {
+  right: 0;
+  left: 0;
+  width: auto;
+  min-width: 0;
+  max-height: min(60vh, 380px);
+  overflow-y: auto;
+}
+
+.fq-quick-dd .fu-menu button {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--fus-k));
+  width: 100%;
+}
+
+.fq-qd-item {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+}
+
+.fq-menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--fu-row);
 }
 
 /* filters panel */
@@ -2145,6 +2270,65 @@
   .fq-daylist .fq-status {
     display: none;
   }
+
+  /* ---- search row (UI-013): search keeps the room, Sort + Filters become square icon
+     buttons beside it, so nothing overlaps or wraps under itself ---- */
+  .fq-tools {
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .fq-search {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .fq-tools > .fu-dd {
+    display: flex;
+    flex: none;
+    min-width: 0;
+  }
+
+  .fq-tool-btn {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0 !important;
+    width: calc(38px * var(--fus-k));
+    min-width: calc(38px * var(--fus-k));
+    max-width: none;
+    height: auto;
+    min-height: calc(36px * var(--fus-k));
+    padding: 0 !important;
+  }
+
+  .fq-tool-btn .fq-btn-lbl,
+  .fq-tool-btn .fq-chev {
+    display: none;
+  }
+
+  .fq-tool-btn .fq-sort-ico {
+    display: block;
+  }
+
+  .fq-tool-btn .fu-count {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    margin: 0;
+  }
+
+  /* ---- quick views (UI-013): ten chips become one "View" dropdown ---- */
+  .fq-quick-chips {
+    display: none;
+  }
+
+  .fq-quick-dd {
+    display: block;
+  }
 }
 
 @container fu (max-width: 520px) {
@@ -2296,16 +2480,12 @@
   .fq-vtab-list button em { padding: 0 4px; }
 }
 
-/* ---------- phones: shorter labels, compact tools and footer ---------- */
+/* ---------- phones: shorter labels, compact footer ---------- */
 @media (max-width: 560px) {
-  /* header: "New" instead of "New follow-up" */
+  /* "Rows 10" → "10" */
   .fq-long { display: none; }
 }
 @container fu (max-width: 560px) {
-  .fq-tools { flex-wrap: nowrap; }
-  .fq-tools .fu-dd { min-width: 0; }
-  .fq-tools .fu-dd > .fu-btn { max-width: calc(150px * var(--fus-k)); }
-  .fq-sort-ico { display: none; }
   .fq-foot { padding: calc(12px * var(--fus-k)) calc(12px * var(--fus-k)); }
   .fq-pager { gap: 4px; }
   .fq-pg { min-width: calc(30px * var(--fus-k)); height: calc(30px * var(--fus-k)); padding: 0 6px; }
@@ -2338,4 +2518,75 @@
 }
 @container fu (max-width: 900px) {
   .fq-side { display: none; }
+}
+
+/* ---------- small phones (≈300-520px): nothing may push the card wider than the screen ----------
+   The "Due between" dates and the week strip were wider than the card, so the page scrolled
+   sideways and left a grey strip on the right. */
+@container fu (max-width: 640px) {
+  .fq-filters {
+    padding: calc(14px * var(--fus-k)) calc(12px * var(--fus-k));
+  }
+}
+@container fu (max-width: 520px) {
+  /* dates: two equal columns with "to" between, each date shrinks instead of overflowing */
+  .fq-range {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: calc(6px * var(--fus-k));
+  }
+  .fq-range > .fu-dd,
+  .fq-range .fu-dd-btn {
+    width: 100%;
+    min-width: 0;
+  }
+  .fq-range .fu-dd-btn {
+    gap: 6px;
+    padding-right: calc(10px * var(--fus-k));
+    padding-left: calc(10px * var(--fus-k));
+  }
+  .fq-range .fu-dd-btn > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fq-range .fu-dd-btn > svg { flex: none; }
+
+  /* any date picker stays inside the screen */
+  .fu-cal { max-width: calc(100vw - 24px); }
+
+  /* week strip: seven equal days that fit the card */
+  .fq-days {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    width: 100%;
+  }
+  .fq-day {
+    padding: 5px 0;
+  }
+  .fq-day small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: calc(9px * var(--fus-fs));
+    letter-spacing: 0;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+  .fq-day em {
+    padding: 0 3px;
+  }
+}
+@container fu (max-width: 380px) {
+  /* very narrow: the two dates stack, the "to" word steps aside */
+  .fq-range {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .fq-range > .fu-muted { display: none; }
+  .fq-week-nav {
+    width: 100%;
+  }
+  .fq-week-nav > span {
+    flex: 1;
+  }
 }

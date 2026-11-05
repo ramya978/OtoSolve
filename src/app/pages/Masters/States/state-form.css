@@ -42,3 +42,108 @@
   align-self: flex-start;
   gap: calc(8px * var(--mf-k, 1));
 }
+
+
+/* =====================================================================================================
+   MOBILE / ALIGNMENT FIXES (kept last so they win over the shared master-form.css)
+   - Back button level with the title
+   - preview widget: mark, name and status on one row, facts in a 2-column grid, no blank space
+   - Cancel / Save (Create) compact on the right instead of two half-width buttons
+   ===================================================================================================== */
+
+/* UI fix: header button sits on the title's line (it was level with the breadcrumb above the title) */
+.sf-head-acts {
+  align-self: flex-start;
+  margin-top: calc(17px * var(--mf-fs, 1)) !important;
+}
+
+@media (max-width: 640px) {
+  /* preview widget */
+  :host .mf-view .mf-intro {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: start !important;
+    gap: calc(12px * var(--mf-k, 1)) !important;
+    min-height: 0 !important;
+    padding: calc(14px * var(--mf-k, 1)) !important;
+  }
+  :host .mf-view .mf-intro-id {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex !important;
+    align-items: center !important;
+    gap: calc(12px * var(--mf-k, 1)) !important;
+    min-width: 0;
+    margin: 0 !important;
+  }
+  :host .mf-view .mf-mark {
+    flex: none;
+    width: calc(40px * var(--mf-k, 1)) !important;
+    min-width: calc(40px * var(--mf-k, 1)) !important;
+    height: calc(40px * var(--mf-k, 1)) !important;
+    margin: 0 !important;
+  }
+  :host .mf-view .mf-intro-copy { display: grid !important; gap: 2px !important; min-width: 0; }
+  :host .mf-view .mf-intro-copy strong { font-size: calc(15px * var(--mf-fs, 1)) !important; line-height: 1.3 !important; overflow-wrap: anywhere; }
+  :host .mf-view .mf-intro-copy p { margin: 0 !important; font-size: calc(12px * var(--mf-fs, 1)) !important; line-height: 1.45 !important; }
+  :host .mf-view .mf-state {
+    position: static !important;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
+
+  /* facts: 2 columns with hairline separators, left aligned */
+  :host .mf-view .mf-facts {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 1px !important;
+    width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    border: 1px solid var(--k-line, #e3e6ea) !important;
+    border-radius: 10px;
+    background: var(--k-line, #e3e6ea) !important;
+  }
+  :host .mf-view .mf-facts > div {
+    display: grid !important;
+    align-content: start;
+    justify-items: start;
+    gap: 2px !important;
+    min-width: 0;
+    margin: 0 !important;
+    padding: calc(8px * var(--mf-k, 1)) calc(10px * var(--mf-k, 1)) !important;
+    border: 0 !important;
+    background: var(--white, #fff) !important;
+    text-align: left !important;
+  }
+  :host .mf-view .mf-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  :host .mf-view .mf-facts dt { margin: 0 !important; font-size: calc(10px * var(--mf-fs, 1)) !important; }
+  :host .mf-view .mf-facts dd { margin: 0 !important; font-size: calc(13px * var(--mf-fs, 1)) !important; overflow-wrap: anywhere; white-space: normal !important; }
+
+  /* register note + readiness: tighter */
+  :host .mf-view .mf-meta { gap: calc(8px * var(--mf-k, 1)) !important; margin-block: calc(10px * var(--mf-k, 1)) !important; }
+
+  /* action bar: compact buttons on the right */
+  :host .mf-view .mf-footer {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-end !important;
+    gap: calc(8px * var(--mf-k, 1)) !important;
+  }
+  :host .mf-view .mf-footer .m-btn {
+    flex: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: calc(34px * var(--mf-k, 1)) !important;
+    min-height: 0 !important;
+    padding: 0 calc(14px * var(--mf-k, 1)) !important;
+    font-size: calc(13px * var(--mf-fs, 1)) !important;
+  }
+}

@@ -596,7 +596,7 @@
 .i-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 11111111;
   display: flex;
   justify-content: flex-end;
   background: color-mix(in srgb, #10131c 38%, transparent);

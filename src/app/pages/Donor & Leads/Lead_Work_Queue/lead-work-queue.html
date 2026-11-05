@@ -2,18 +2,22 @@
      LEAD WORK QUEUE (lead-work-queue.ts · lead-work-queue.css)
      Header card (title, search, filters toggle, sort, export, capture) · filter row with custom dropdowns ·
      summary tabs · lead table with animated row actions · pager · floating bulk-action bar · toast.
+     Mobile: header actions turn icon-only beside the title · filters fold behind one "Filters" button ·
+     summary tabs become a swipeable strip (all tabs reachable, nothing truncated).
      ===================================================================================================== -->
 <app-loader [fullPage]="true" [message]="'Loading leads…'" *ngIf="loading()"></app-loader>
 
 <app-page-header breadcrumb="Donor &amp; Leads" [breadcrumbRoute]="'/app/donor-leads/lead-work-queue'" heading="{{ heading }}" description="Manage leads assigned to you.">
   <ng-container actions>
-   <div style="display: flex;flex-wrap:wrap ;gap: 10px;">
-    
-       <!-- sort (custom dropdown) -->
+    <div class="lwq-hactions">
+
+      <!-- sort (custom dropdown) -->
       <div class="lwq-dd lwq-sort" [class.is-open]="openDd() === 'sort'">
-        <button type="button" class="lwq-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'sort'" (click)="toggleDd('sort', $event)">
+        <button type="button" class="lwq-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === 'sort'"
+                [attr.aria-label]="'Sort: ' + labelOf(sortOpts, sort())" [attr.title]="'Sort: ' + labelOf(sortOpts, sort())"
+                (click)="toggleDd('sort', $event)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg>
-          {{ labelOf(sortOpts, sort()) }}
+          <span class="lwq-btn-text">{{ labelOf(sortOpts, sort()) }}</span>
           <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
         </button>
         @if (openDd() === 'sort') {
@@ -27,20 +31,20 @@
         }
       </div>
 
-      <button type="button" class="lwq-btn" (click)="doExport()">
+      <button type="button" class="lwq-btn" aria-label="Export" title="Export" (click)="doExport()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
-        Export
+        <span class="lwq-btn-text">Export</span>
       </button>
-      <button type="button" class="lwq-btn is-primary" (click)="goCapture()">
+      <button type="button" class="lwq-btn is-primary" aria-label="Capture lead" title="Capture lead" (click)="goCapture()">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        Capture lead
+        <span class="lwq-btn-text">Capture lead</span>
       </button>
-   </div>
+    </div>
   </ng-container>
 </app-page-header>
 
 <section class="lwq-panel" aria-label="Lead work queue">
-  <!-- ===== search · sort · export · capture ===== -->
+  <!-- ===== search · filters ===== -->
   <header class="lwq-head">
     <div class="lwq-tools">
       <label class="lwq-search">
@@ -48,51 +52,57 @@
         <input type="search" placeholder="Search name, lead ID, phone, e-mail" aria-label="Search leads" [value]="query()" (input)="setQuery($any($event.target).value)" />
       </label>
 
-   <span class="lwq-fbar-lead">
+      <!-- mobile only: one button opens the filter panel -->
+      <button type="button" class="lwq-ftoggle" [class.is-on]="filtersOpen() || activeFilters()"
+              aria-controls="lwq-filters" [attr.aria-expanded]="filtersOpen()" (click)="filtersOpen.set(!filtersOpen())">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>
-        Filter by
-      </span>
+        Filters
+        @if (activeFilters()) { <b>{{ activeFilters() }}</b> }
+      </button>
 
-  
+      <div id="lwq-filters" class="lwq-fbar" [class.is-shown]="filtersOpen()">
+        <span class="lwq-fbar-lead">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>
+          Filter by
+        </span>
 
-      
-      @for (f of filterDefs(); track f.key) {
-        <div class="lwq-dd lwq-pill" [class.is-open]="openDd() === f.key" [class.is-set]="f.value !== 'all'">
-          <button type="button" class="lwq-pill-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === f.key" (click)="toggleDd(f.key, $event)">
-            <svg class="lwq-pill-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>
-            <span class="lwq-pill-label">{{ f.label }}</span>
-            @if (f.value !== 'all') { <b class="lwq-pill-val">{{ labelOf(f.opts, f.value) }}</b> }
-            <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
-          </button>
-          @if (f.value !== 'all') {
-            <button type="button" class="lwq-pill-x" [attr.aria-label]="'Clear ' + f.label" (click)="clearF(f.key, $event)">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+        @for (f of filterDefs(); track f.key) {
+          <div class="lwq-dd lwq-pill" [class.is-open]="openDd() === f.key" [class.is-set]="f.value !== 'all'">
+            <button type="button" class="lwq-pill-btn" aria-haspopup="listbox" [attr.aria-expanded]="openDd() === f.key" (click)="toggleDd(f.key, $event)">
+              <svg class="lwq-pill-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>
+              <span class="lwq-pill-label">{{ f.label }}</span>
+              @if (f.value !== 'all') { <b class="lwq-pill-val">{{ labelOf(f.opts, f.value) }}</b> }
+              <svg class="lwq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
             </button>
-          }
-          @if (openDd() === f.key) {
-            <div class="lwq-pop" (click)="$event.stopPropagation()">
-              <div class="lwq-pop-head">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>{{ f.label }}
+            @if (f.value !== 'all') {
+              <button type="button" class="lwq-pill-x" [attr.aria-label]="'Clear ' + f.label" (click)="clearF(f.key, $event)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
+              </button>
+            }
+            @if (openDd() === f.key) {
+              <div class="lwq-pop" (click)="$event.stopPropagation()">
+                <div class="lwq-pop-head">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(f.icon)" /></svg>{{ f.label }}
+                </div>
+                <ul class="lwq-pop-list" role="listbox">
+                  @for (o of f.opts; track o.value) {
+                    <li role="option" [attr.aria-selected]="o.value === f.value" [class.is-on]="o.value === f.value" (click)="pick(f.key, o.value)">
+                      <i class="lwq-radio"></i>{{ o.label }}
+                    </li>
+                  }
+                </ul>
               </div>
-              <ul class="lwq-pop-list" role="listbox">
-                @for (o of f.opts; track o.value) {
-                  <li role="option" [attr.aria-selected]="o.value === f.value" [class.is-on]="o.value === f.value" (click)="pick(f.key, o.value)">
-                    <i class="lwq-radio"></i>{{ o.label }}
-                  </li>
-                }
-              </ul>
-            </div>
-          }
-        </div>
-      }
+            }
+          </div>
+        }
 
-      @if (activeFilters()) {
-        <button type="button" class="lwq-clear" (click)="clearFilters()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
-          Clear all <b>{{ activeFilters() }}</b>
-        </button>
-      }
-   
+        @if (activeFilters()) {
+          <button type="button" class="lwq-clear" (click)="clearFilters()">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reset')" /></svg>
+            Clear all <b>{{ activeFilters() }}</b>
+          </button>
+        }
+      </div>
     </div>
   </header>
 

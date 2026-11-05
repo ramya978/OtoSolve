@@ -204,3 +204,34 @@
 .is-opt small { overflow: hidden; color: color-mix(in srgb, var(--is-muted) 85%, #fff); font-size: calc(11px * var(--font-scale, 1)); font-weight: 400; letter-spacing: .2px; text-overflow: ellipsis; white-space: nowrap; }
 
 .is-empty { justify-content: center; color: var(--is-muted); cursor: default; }
+
+/* ---------- tablets / phones ----------
+   The list opens exactly as wide as its own field, so a dropdown in the right-hand column
+   can never run off the screen (that overflow caused the sideways scroll and the cut-off page).
+   Long names wrap to a second line instead of being cut. */
+@media (max-width: 760px) {
+  .is-pop {
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    padding: 5px;
+  }
+
+  .is-search { margin-bottom: 5px; padding: 0 8px; }
+  .is-search input { height: 34px; font-size: calc(13px * var(--font-scale, 1)); }
+
+  .is-list { max-height: min(300px, 50vh); }
+
+  .is-list li { gap: 8px; padding: 9px 10px; }
+
+  .is-opt > span,
+  .is-opt small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .is-opt > span { font-size: calc(13px * var(--font-scale, 1)); line-height: 1.35; }
+  .is-init { width: 28px; height: 28px; }
+}

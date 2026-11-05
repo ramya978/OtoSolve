@@ -1,5 +1,6 @@
-/* DONOR 360 - flat identity bar (unchanged) + two aligned columns of section cards.
-   Fonts, sizes and header are the same as before. Theme tokens only. */
+/* DONOR 360 - flat identity bar + two aligned columns of section cards. Theme tokens only.
+   Mobile fixes: UI-009 follow-up table titles no longer overlap · UI-010 giving-journey widgets keep their
+   dividing lines · UI-011 header shows ⋯ More + Create intent beside the name, contact details spaced. */
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
      sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
@@ -97,11 +98,89 @@
   transform: translateX(-50%) translateY(-3px);
 }
 .dx-head-acts .dx-group button:hover::after { transform: translateX(-50%) translateY(0); }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+/* ---- More (⋯) menu: phones only ---- */
+.dx-more { position: relative; display: none; }
+.dx-more-btn {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 36px;
+  min-width: 36px;
+  height: 36px !important;
+  padding: 0 !important;
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-btn-radius);
+  background: var(--dx-card);
+  color: var(--dx-muted) !important;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dx-more-btn:hover,
+.dx-more-btn.is-open { border-color: var(--dx-primary-line); background: var(--dx-primary-soft); color: var(--dx-primary) !important; }
+.dx-dots { width: 18px; height: 18px; }
+.dx-dots circle { fill: currentColor; stroke: none; }
+
+.dx-more-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 200px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-btn-radius);
+  background: var(--dx-card);
+  box-shadow: 0 12px 28px rgb(20 20 35 / 12%);
+  list-style: none;
+  animation: di-drop 0.14s ease-out;
+}
+.dx-more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: auto !important;
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border: 0;
+  border-radius: max(4px, calc(var(--dx-btn-radius) - 3px));
+  background: none;
+  color: var(--dx-ink) !important;
+  font-size: 13px !important;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.dx-more-menu button svg { flex: none; width: 16px; height: 16px; color: var(--dx-muted); }
+.dx-more-menu button:hover { background: var(--dx-soft); color: var(--dx-primary) !important; }
+.dx-more-menu button:hover svg { color: var(--dx-primary); }
+
+/* UI-011 · phones: ⋯ More + Create intent (icon) stay beside the donor name */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
+  :host ::ng-deep app-page-header > * {
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  :host ::ng-deep app-page-header > * > :first-child { flex: 1 1 auto; min-width: 0; }
+  :host ::ng-deep app-page-header h1 { font-size: calc(20px * var(--d3-fs)) !important; overflow-wrap: anywhere; }
+  :host ::ng-deep app-page-header p { font-size: calc(12.5px * var(--d3-fs)) !important; }
   :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  :host ::ng-deep app-page-header [slot="actions"] { flex: none; flex-wrap: nowrap; max-width: none; }
+
+  .dx-head-acts { gap: 6px; }
+  .dx-head-acts .dx-group { display: none; }
+  .dx-more { display: block; }
+  .dx-head-acts .dx-btn.dx-create {
+    width: 36px;
+    min-width: 36px;
+    gap: 0;
+    padding: 0 !important;
+  }
+  .dx-create .dx-btn-text { display: none; }
+  .dx-create svg { width: 17px; height: 17px; }
 }
 
 :host {
@@ -155,7 +234,7 @@
 .dx-crumbs a:hover { color: var(--dx-primary); }
 .dx-crumbs b { color: var(--dx-heading); font-weight: 600; }
 
-/* ================= identity bar (flat, no card) - unchanged ================= */
+/* ================= identity bar (flat, no card) ================= */
 .dx-idbar {
   display: flex;
   flex-wrap: wrap;
@@ -180,7 +259,7 @@
   box-shadow: 0 0 0 4px var(--dx-primary-soft);
 }
 
-.dx-who { display: grid; flex: 1; gap: 4px; min-width: calc(260px * var(--d3-k)); }
+.dx-who { display: grid; flex: 1; gap: 4px; min-width: min(100%, calc(260px * var(--d3-k))); }
 .dx-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px calc(12px * var(--d3-k)); }
 .dx-name-row h1 { margin: 0; color: var(--dx-heading); font-size: calc(17px * var(--d3-fs)) !important; font-weight: 600 !important; letter-spacing: -0.2px !important; line-height: 1.25; }
 .dx-name-row .dx-upd { color: var(--dx-muted); font-size: calc(11.5px * var(--d3-fs)); }
@@ -207,6 +286,7 @@
 
 .dx-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px calc(14px * var(--d3-k)); margin: 0; padding: 0; list-style: none; }
 .dx-inline li { display: inline-flex; align-items: center; gap: 5px; min-width: 0; padding: 0; color: var(--dx-ink); font-size: calc(12px * var(--d3-fs)); }
+.dx-inline li > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dx-inline li svg { flex: none; width: calc(13px * var(--d3-k)); height: calc(13px * var(--d3-k)); color: var(--dx-muted); }
 .dx-inline li.is-ok,
 .dx-inline li.is-ok svg { color: var(--c-green); }
@@ -589,6 +669,7 @@
 .dx-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 
 .dx-table th {
+  overflow: hidden;
   padding: calc(8px * var(--d3-k)) calc(10px * var(--d3-k));
   border-bottom: 1px solid var(--dx-row);
   color: var(--dx-muted);
@@ -596,6 +677,7 @@
   font-weight: 600;
   letter-spacing: 0.5px;
   text-align: left;
+  text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -803,35 +885,79 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 }
 
 @container dx (max-width: 600px) {
-  /* phones: three small figures in a row (icon and note step aside), journey as 2 × 2 */
+  /* phones: three small figures in a row (icon and note step aside) */
   .dx-figures { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(8px * var(--d3-k)); }
   .dx-fig { grid-template-columns: minmax(0, 1fr); padding: calc(8px * var(--d3-k)) calc(10px * var(--d3-k)); }
   .dx-fig-ico,
   .dx-fig em { display: none; }
   .dx-fig small,
   .dx-fig b { grid-column: 1; }
-  .dx-journey { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 6px; }
-  .dx-journey li::after { display: none; }
+
+  /* UI-010 · giving journey as a framed 2 × 2 grid with dividing lines (as on laptop) */
+  .dx-journey {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0;
+    border: 1px solid var(--dx-row);
+    border-radius: var(--dx-btn-radius);
+    background: color-mix(in srgb, var(--dx-line) 10%, var(--dx-card));
+  }
+  .dx-journey li { padding: calc(10px * var(--d3-k)) calc(12px * var(--d3-k)); }
+  .dx-journey li::after,
+  .dx-journey li:not(:last-child)::after { display: none; }
+  .dx-journey li:nth-child(even) { border-left: 1px solid var(--dx-row); }
+  .dx-journey li:nth-child(n + 3) { border-top: 1px solid var(--dx-row); }
+  .dx-j-txt { padding-right: 0; background: none; }
+
   .dx-table .c-hide-sm, .dx-table col.c-hide-sm { display: none; }
   .dx-gstrip { flex-wrap: wrap; }
   .dx-gs { flex: 1 1 45%; }
   .dx-feed-meta em { display: none; }
-  .dx-inline { column-gap: calc(10px * var(--d3-k)); }
+
+  /* UI-009 · follow-ups: narrow Due + Action columns, so "Follow-up" has room and titles never overlap */
+  /* the table keeps 6 columns (colspan="6"), so on phones it is laid out as a grid instead:
+     header and every row use the same 3 columns - Due · Follow-up · Action - across the full width */
+  .dx-follow-table,
+  .dx-follow-table thead,
+  .dx-follow-table tbody { display: block; width: 100%; }
+  .dx-follow-table colgroup { display: none; }
+  .dx-follow-table tr {
+    display: grid;
+    grid-template-columns: calc(84px * var(--d3-k)) minmax(0, 1fr) calc(84px * var(--d3-k));
+    align-items: center;
+    border-bottom: 1px solid var(--dx-row);
+  }
+  .dx-follow-table tbody tr:last-child { border-bottom: 0; }
+  .dx-follow-table th,
+  .dx-follow-table td { display: block; min-width: 0; border-bottom: 0; }
+  .dx-follow-table .c-hide-sm { display: none; }
+  .dx-follow-table thead tr { border-radius: var(--dx-btn-radius); background: var(--dx-soft); }
+  .dx-follow-table th:first-child,
+  .dx-follow-table td:first-child { padding-left: 10px; }
+  .dx-follow-table th:last-child,
+  .dx-follow-table td:last-child { padding-right: 10px; }
+  .dx-follow-table td.dx-empty { grid-column: 1 / -1; padding: calc(20px * var(--d3-k)) 10px; }
+  .dx-follow-table .dx-due { gap: 6px; }
+  .dx-follow-table .dx-due small { display: none; }
+  .dx-follow-table td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+
+  /* UI-011 · contact details: e-mail on its own line, the rest two per row */
+  .dx-inline {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+  }
+  .dx-inline li.is-mail { grid-column: 1 / -1; order: -1; }
+  .dx-idbar { margin-bottom: calc(14px * var(--d3-k)); padding-bottom: calc(14px * var(--d3-k)); }
 }
 
 
 /* =====================================================================
-   PATCH 2 - paste at the END of donor-360.css (after the earlier patch)
-   Goal: the two columns always end on the same line, however many
-   activity events there are.
+   Columns always end on the same line, however many activity events:
      - the MAIN column decides the row height
      - the SIDE column is stretched to exactly that height
      - Profile + Consent keep their natural size
      - the Activity card takes the remaining height and scrolls inside
    ===================================================================== */
-
-/* the side column no longer pushes the row taller (size containment),
-   it just stretches to whatever height the main column needs */
 .dx-cols {
   min-height: calc(900px * var(--d3-k)); /* safety: Profile + Consent + a usable Activity card */
 }
@@ -874,8 +1000,7 @@ col.w-act { width: calc(100px * var(--d3-k)); }
   background: var(--dx-card);
 }
 
-/* Campaign history is the last main card: no stretching gap any more,
-   it keeps its natural height (extra space only if the row is taller) */
+/* Campaign history is the last main card */
 .dx-col.is-main > #dx-campaigns {
   flex: 1;
 }
@@ -912,12 +1037,6 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 /* gifts table on the smallest phones: the campaign steps aside so amount and status keep their room */
 @container dx (max-width: 440px) {
   .dx-table:has(col.w-ref) :is(col, th, td):nth-child(3) { display: none; }
-}
-
-/* header actions on phones: they drop under the title (shared rule above); short label "Create intent" */
-@media (max-width: 560px) {
-  .dx-head-acts { flex-wrap: wrap; }
-  .dx-long { display: none; }
 }
 
 /* coming-up strip on phones: three short rows in the same frame */

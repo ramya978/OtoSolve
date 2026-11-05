@@ -1,18 +1,20 @@
 <app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="{{ lead().fullName }}" description="View and manage lead details.">
   <ng-container actions>
+    <!-- phones: these become three compact icon buttons beside the name (labels stay for screen readers) -->
     <div class="lp-head-actions">
-    <button type="button" class="lp-text-link" (click)="back.emit()">
-      All leads
-      <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
-    </button>
-    <button type="button" class="pf-hbtn btn-secondary" [disabled]="isClosed()" (click)="onSchedule()">
-      <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>
-      Schedule follow-up
-    </button>
-    <button type="button" class="pf-hbtn btn-primary" [disabled]="isClosed()" (click)="onCommunicate()">
-      <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
-      Communicate
-    </button>
+      <button type="button" class="lp-text-link" aria-label="All leads" title="All leads" (click)="goBack()">
+        <svg class="lp-ico lp-ico-mob" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
+        <span class="lp-btn-text">All leads</span>
+        <svg class="lp-ico lp-ico-desk" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+      </button>
+      <button type="button" class="pf-hbtn btn-secondary" aria-label="Schedule follow-up" title="Schedule follow-up" [disabled]="isClosed()" (click)="onSchedule()">
+        <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg>
+        <span class="lp-btn-text">Schedule follow-up</span>
+      </button>
+      <button type="button" class="pf-hbtn btn-primary" aria-label="Communicate" title="Communicate" [disabled]="isClosed()" (click)="onCommunicate()">
+        <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
+        <span class="lp-btn-text">Communicate</span>
+      </button>
     </div>
   </ng-container>
 </app-page-header>
@@ -195,7 +197,7 @@
             </button>
           </dd>
         </div>
-        <div>
+        <div class="lp-span-sm">
           <dt>E-mail</dt>
           <dd class="lp-with-copy">
             <span class="lp-ellipsis">{{ lead().email }}</span>
@@ -389,92 +391,90 @@
         </div>
       </dl>
 
+      <!-- two tidy rows: lifecycle actions · close lead -->
       <div class="lp-card-actions">
-        @if (canAccept()) {
-          <div class="lp-reassign">
-            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'accept'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'accept'" (click)="openAction('accept', $event)">
-              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-              Accept
-            </button>
-          </div>
-        }
-        @if (canContact()) {
-          <div class="lp-reassign">
-            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'contact'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'contact'" (click)="openAction('contact', $event)">
-              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>
-              Log contact
-            </button>
-          </div>
-        }
-        @if (canQualify()) {
-          <div class="lp-reassign">
-            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'qualify'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'qualify'" (click)="openAction('qualify', $event)">
-              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg>
-              Qualify
-            </button>
-          </div>
-        }
-        @if (canQualify()) {
-          <div class="lp-reassign">
-            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'nurture'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'nurture'" (click)="openAction('nurture', $event)">
-              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
-              Move to nurture
-            </button>
-          </div>
-        }
-        @if (canConvert()) {
-          <div class="lp-reassign">
-            <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'convert'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'convert'" (click)="openAction('convert', $event)">
-              <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
-              Convert to donor
-            </button>
-          </div>
-        }
-        @if (action(); as a) {
-          <div class="lp-reassign">
-            <div class="lp-pop" role="dialog" aria-labelledby="lp-action-title" (click)="$event.stopPropagation()">
-              <div class="lp-pop-head">
-                <h3 id="lp-action-title">{{ actionTitle() }}</h3>
-                <p>{{ actionHint() }}</p>
-              </div>
-              @if (a === 'contact') {
-                <ul class="lp-pop-list" role="listbox" aria-label="Channel">
-                  @for (c of channelOptions(); track c.value) {
-                    <li role="option" [attr.aria-selected]="actionChannel() === c.value" [class.is-current]="actionChannel() === c.value" (click)="actionChannel.set(c.value)">
-                      <span class="lp-pop-copy"><b>{{ c.label }}</b></span>
-                      @if (actionChannel() === c.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
-                    </li>
+        @if (anyAction()) {
+          <div class="lp-actions-main">
+            @if (canAccept()) {
+              <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'accept'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'accept'" (click)="openAction('accept', $event)">
+                <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+                Accept
+              </button>
+            }
+            @if (canContact()) {
+              <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'contact'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'contact'" (click)="openAction('contact', $event)">
+                <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>
+                Log contact
+              </button>
+            }
+            @if (canQualify()) {
+              <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'qualify'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'qualify'" (click)="openAction('qualify', $event)">
+                <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg>
+                Qualify
+              </button>
+              <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'nurture'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'nurture'" (click)="openAction('nurture', $event)">
+                <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg>
+                Move to nurture
+              </button>
+            }
+            @if (canConvert()) {
+              <button type="button" class="lp-btn lp-btn-sm" [class.is-open]="action() === 'convert'" aria-haspopup="dialog" [attr.aria-expanded]="action() === 'convert'" (click)="openAction('convert', $event)">
+                <svg class="lp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>
+                Convert to donor
+              </button>
+            }
+
+            @if (action(); as a) {
+              <!-- the form opens under the action buttons, as wide as the card -->
+              <div class="lp-reassign lp-action-slot">
+                <div class="lp-pop" role="dialog" aria-labelledby="lp-action-title" (click)="$event.stopPropagation()">
+                  <div class="lp-pop-head">
+                    <h3 id="lp-action-title">{{ actionTitle() }}</h3>
+                    <p>{{ actionHint() }}</p>
+                  </div>
+                  @if (a === 'contact') {
+                    <ul class="lp-pop-list" role="listbox" aria-label="Channel">
+                      @for (c of channelOptions(); track c.value) {
+                        <li role="option" [attr.aria-selected]="actionChannel() === c.value" [class.is-current]="actionChannel() === c.value" (click)="actionChannel.set(c.value)">
+                          <span class="lp-pop-copy"><b>{{ c.label }}</b></span>
+                          @if (actionChannel() === c.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                        </li>
+                      }
+                    </ul>
+                    <ul class="lp-pop-list" role="listbox" aria-label="Outcome">
+                      @for (o of outcomeOptions(); track o.value) {
+                        <li role="option" [attr.aria-selected]="actionOutcome() === o.value" [class.is-current]="actionOutcome() === o.value" (click)="actionOutcome.set(o.value)">
+                          <span class="lp-pop-copy"><b>{{ o.label }}</b></span>
+                          @if (actionOutcome() === o.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
+                        </li>
+                      }
+                    </ul>
                   }
-                </ul>
-                <ul class="lp-pop-list" role="listbox" aria-label="Outcome">
-                  @for (o of outcomeOptions(); track o.value) {
-                    <li role="option" [attr.aria-selected]="actionOutcome() === o.value" [class.is-current]="actionOutcome() === o.value" (click)="actionOutcome.set(o.value)">
-                      <span class="lp-pop-copy"><b>{{ o.label }}</b></span>
-                      @if (actionOutcome() === o.value) { <svg class="lp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }
-                    </li>
-                  }
-                </ul>
-              }
-              <label class="lp-owner-search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('note')" /></svg>
-                <input type="text" [placeholder]="a === 'accept' || a === 'contact' ? 'Note (optional)' : 'Reason'" aria-label="Note" autocomplete="off"
-                       [value]="actionNote()" (input)="setActionNote($event)" />
-              </label>
-              <div class="lp-pop-head" style="padding-bottom: 12px;">
-                <button type="button" class="lp-btn lp-btn-sm lp-btn-primary" [disabled]="!actionReady() || actionBusy()" (click)="submitAction()">
-                  {{ actionTitle() }}
-                </button>
+                  <label class="lp-owner-search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('note')" /></svg>
+                    <input type="text" [placeholder]="a === 'accept' || a === 'contact' ? 'Note (optional)' : 'Reason'" aria-label="Note" autocomplete="off"
+                           [value]="actionNote()" (input)="setActionNote($event)" />
+                  </label>
+                  <div class="lp-pop-foot">
+                    <button type="button" class="lp-btn lp-btn-sm lp-btn-primary" [disabled]="!actionReady() || actionBusy()" (click)="submitAction()">
+                      {{ actionTitle() }}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            }
           </div>
         }
-        @if (isClosed()) {
-          <button type="button" class="lp-btn lp-btn-sm" (click)="reopen()">Reopen lead</button>
-        } @else {
-          <span class="lp-actions-label">Close lead</span>
-          <button type="button" class="lp-btn lp-btn-sm" (click)="close('Lost')">Mark lost</button>
-          <button type="button" class="lp-btn lp-btn-sm" (click)="close('Dormant')">Mark dormant</button>
-        }
+
+        <div class="lp-actions-close">
+          @if (isClosed()) {
+            <button type="button" class="lp-btn lp-btn-sm" (click)="reopen()">Reopen lead</button>
+          } @else {
+            <span class="lp-actions-label">Close lead</span>
+            <button type="button" class="lp-btn lp-btn-sm" (click)="close('Lost')">Mark lost</button>
+            <button type="button" class="lp-btn lp-btn-sm" (click)="close('Dormant')">Mark dormant</button>
+          }
+        </div>
       </div>
     </section>
 

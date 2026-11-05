@@ -1,4 +1,6 @@
-/* ASSIGNMENT BOARD - figures, records (table / cards), owners panel. Shared look: ../fu-shared.css */
+/* ASSIGNMENT BOARD - figures, records (table / cards), owners panel. Shared look: ../fu-shared.css
+   Mobile fix UI-008: Export sits top-right beside the title as an icon button (no blank space);
+   the Leads / Donors switch moves to a full-width row under the header. */
 
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
@@ -57,11 +59,54 @@
   font-size: calc(13px * var(--ab-fs)) !important;
   white-space: nowrap;
 }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+.ab-hactions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: calc(10px * var(--ab-k));
+}
+
+/* the Leads / Donors switch: in the header on desktop, under it on phones */
+.ab-types-body { display: none; }
+
+/* UI-008 · phones: Export fills the empty space beside the title; Leads / Donors gets its own row */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
+  :host ::ng-deep app-page-header > * {
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  :host ::ng-deep app-page-header > * > :first-child { flex: 1 1 auto; min-width: 0; }
+  :host ::ng-deep app-page-header h1 { font-size: calc(20px * var(--ab-fs)) !important; }
+  :host ::ng-deep app-page-header p { font-size: calc(12.5px * var(--ab-fs)) !important; }
   :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  :host ::ng-deep app-page-header [slot="actions"] { flex: none; flex-wrap: nowrap; max-width: none; }
+
+  .ab-types-head { display: none !important; }
+
+  .ab-export {
+    justify-content: center;
+    gap: 0 !important;
+    width: 36px;
+    min-width: 36px;
+    height: 36px !important;
+    padding: 0 !important;
+  }
+  .ab-export .ab-btn-text { display: none; }
+  .ab-export svg { width: 17px; height: 17px; }
+
+  .ab-types-body {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+  }
+  .ab-types-body button {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 36px;
+  }
 }
 
 .ab-types button { padding: 0 calc(12px * var(--ab-k)); }
@@ -183,7 +228,6 @@ td.ab-empty { display: table-cell; }
 .ab-empty b { display: block; color: var(--fu-heading); }
 .ab-empty span { color: var(--fu-muted); font-size: calc(12px * var(--ab-fs)); }
 
-/* foot */
 /* foot + pagination */
 .ab-foot {
   display: flex;
@@ -254,6 +298,7 @@ td.ab-empty { display: table-cell; }
 .ab-gap { min-width: calc(20px * var(--ab-k)); color: var(--fu-muted); text-align: center; }
 .ab-page:focus-visible,
 .ab-rows:focus-visible { outline: 2px solid var(--fu-primary); outline-offset: 2px; }
+
 /* owners */
 .ab-owners { position: sticky; top: calc(16px * var(--ab-k)); min-width: 0; }
 .ab-own-head { padding: calc(18px * var(--ab-k)) calc(18px * var(--ab-k)) calc(12px * var(--ab-k)); border-bottom: 1px solid var(--fu-row); }
@@ -311,7 +356,6 @@ td.ab-empty { display: table-cell; }
 }
 
 @container fu (max-width: 620px) {
-  .ab-types { width: 100%; }
   .ab-search { flex: 1 1 100%; }
   .ab-table col.c-own,
   .ab-table .c-own { display: none; }

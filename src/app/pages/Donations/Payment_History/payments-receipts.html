@@ -5,23 +5,26 @@
   </ng-container>
 </app-page-header>
 
-<!-- summary cards: totals + per-status counts -->
-<div class="pr-stats mb">
-  @for (s of stats; track s.label) {
-    <section [class]="'pr-stat tone-' + s.tone">
-      <div class="pr-stat-head">
-        <span class="pr-stat-label">{{ s.label }}</span>
-        <span class="pr-stat-icon">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path [attr.d]="iconPath(s.icon)" />
-          </svg>
-        </span>
-      </div>
-      <strong class="pr-stat-value">{{ s.value }}</strong>
-      <div class="pr-stat-note">{{ s.note }}</div>
-    </section>
-  }
+<!-- summary cards: totals + per-status counts.
+     The wrapper is the size container, so the row itself can switch to a compact grid on phones. -->
+<div class="pr-stats-wrap mb">
+  <div class="pr-stats">
+    @for (s of stats; track s.label) {
+      <section [class]="'pr-stat tone-' + s.tone">
+        <div class="pr-stat-head">
+          <span class="pr-stat-label">{{ s.label }}</span>
+          <span class="pr-stat-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path [attr.d]="iconPath(s.icon)" />
+            </svg>
+          </span>
+        </div>
+        <strong class="pr-stat-value">{{ s.value }}</strong>
+        <div class="pr-stat-note">{{ s.note }}</div>
+      </section>
+    }
+  </div>
 </div>
 
 <!-- receipt history -->
@@ -33,7 +36,7 @@
     </div>
     <div class="pr-tools">
       <label class="pr-search">
-        <input type="search" placeholder="Search by donor name, e-mail, reference"
+        <input type="search" placeholder="Search donor, e-mail, reference"
                [value]="query()" (input)="setQuery($any($event.target).value)" aria-label="Search receipts" />
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.55"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -88,7 +91,6 @@
             <td class="pr-col-ref">
               <div class="pr-stack">
                 <span class="pr-ref">{{ r.email ?? 'No e-mail on record' }}</span>
-                <!-- <span class="pr-sub">{{ refNote(r) }}</span> -->
               </div>
             </td>
 

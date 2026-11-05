@@ -5,13 +5,11 @@
     <h1 class="ao-title">{{ isEdit ? 'Edit office' : 'Create an office' }}</h1>
     <p class="ao-sub">{{ isEdit ? 'Update the details of this office.' : 'Add a head office, region, branch or any other location.' }}</p>
   </div>
-  <button type="button" class="pf-hbtn btn-secondary" (click)="back()">
+  <button type="button" class="pf-hbtn btn-secondary ao-back" aria-label="Back to offices" (click)="back()">
     <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('back')" /></svg>
-    Back
+    <span class="ao-btn-txt">Back</span>
   </button>
 </header>
-
-
 
 <!-- 1. Basics -->
 <section class="og-card ao-card" aria-labelledby="ao-h1">
@@ -23,8 +21,8 @@
   </div>
 
   <div class="ao-body">
-    <div class="ao-grid4">
-      <div class="og-field">
+    <div class="ao-grid4 ao-grid4--basics">
+      <div class="og-field ao-f-name">
         <label class="og-flabel" for="ao-name">Name <i>*</i></label>
         <input id="ao-name" class="og-input" [class.bad]="submitted() && errors()['name']" type="text" placeholder="e.g. Chennai head office" maxlength="100"
                [value]="f().name" (input)="set('name', $any($event.target).value)" />
@@ -50,7 +48,7 @@
         <small class="og-hint">Top level for a head office or region.</small>
       </div>
 
-      <div class="og-field">
+      <div class="og-field ao-f-kind">
         <label class="og-flabel" for="ao-kind">Kind <i>*</i></label>
         <input id="ao-kind" class="og-input" [class.bad]="submitted() && errors()['kind']" type="text" placeholder="Head office, branch, region…" maxlength="40"
                [value]="f().kind" (input)="set('kind', $any($event.target).value)" />
@@ -96,7 +94,7 @@
         </select>
       </div>
 
-      <div class="ao-grid2">
+      <div class="ao-grid2 ao-grid2--contact">
         <div class="og-field">
           <label class="og-flabel" for="ao-email">Contact e-mail</label>
           <div class="og-addon">
@@ -137,7 +135,7 @@
         </select>
       </div>
 
-      <div class="ao-grid2">
+      <div class="ao-grid2 ao-grid2--keep">
         <div class="og-field">
           <label class="og-flabel" for="ao-order">Display order</label>
           <input id="ao-order" class="og-input" type="number" min="0" step="10" [value]="f().order" (change)="setOrder($any($event.target).value)" />
@@ -182,7 +180,7 @@
       </div>
     </div>
 
-    <div class="ao-grid4">
+    <div class="ao-grid4 ao-grid4--address">
       <div class="og-field">
         <label class="og-flabel" for="ao-country">Country <i>*</i></label>
         <select id="ao-country" class="og-input" [class.bad]="submitted() && errors()['country']" (change)="setCountry($any($event.target).value)">

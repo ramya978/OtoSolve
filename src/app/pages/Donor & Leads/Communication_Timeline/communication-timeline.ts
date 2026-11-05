@@ -6,7 +6,8 @@ import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 export type CtTab = 'all' | 'call' | 'email' | 'meeting' | 'important';
-type CtMenu = 'filters' | 'rows' | null;
+/** Open popover: filters, rows-per-page, or the header's More menu (phones). */
+type CtMenu = 'filters' | 'rows' | 'more' | null;
 
 @Component({
   selector: 'app-communication-timeline',

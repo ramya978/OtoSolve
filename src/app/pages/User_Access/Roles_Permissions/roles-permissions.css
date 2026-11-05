@@ -61,7 +61,18 @@
 /* ---------- chosen area (record style) ---------- */
 .rp-detail { container: rp-detail / inline-size; display: flex; flex-direction: column; min-width: 0; padding: calc(20px * var(--rp-k)) calc(22px * var(--rp-k)) calc(22px * var(--rp-k)); overflow: visible; }
 .rp-detail > .rp-note { margin-top: auto; }
-.rp-pick { display: none; gap: 6px; margin-bottom: calc(20px * var(--rp-k)); }
+
+/* narrow-screen area picker: label on top, dropdown full width */
+.rp-pick {
+  display: none;
+  grid-template-columns: minmax(0, 1fr);
+  gap: calc(6px * var(--rp-k));
+  margin-bottom: calc(16px * var(--rp-k));
+  padding-bottom: calc(14px * var(--rp-k));
+  border-bottom: 1px solid var(--i-line);
+}
+.rp-pick .i-field-label { margin: 0; }
+.rp-pick iam-select { display: block; width: 100%; min-width: 0; }
 
 .rp-dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: calc(16px * var(--rp-k)); }
 .rp-dtitle { min-width: 0; }
@@ -170,7 +181,7 @@
 .rp-plist li { display: flex; align-items: center; justify-content: space-between; gap: calc(14px * var(--rp-k)); padding: calc(10px * var(--rp-k)) 2px; border-bottom: 1px solid var(--i-soft); }
 .rp-plist li:last-child { border-bottom: 0; }
 .rp-plist li.is-off .rp-ptext strong { color: var(--i-muted); font-weight: 500; }
-.rp-plist li.is-changed { margin: 0 -calc(10px * var(--rp-k)); padding-inline: calc(12px * var(--rp-k)); border-radius: 8px; background: color-mix(in srgb, var(--i-warning) 7%, #fff); }
+.rp-plist li.is-changed { margin: 0 calc(-10px * var(--rp-k)); padding-inline: calc(12px * var(--rp-k)); border-radius: 8px; background: color-mix(in srgb, var(--i-warning) 7%, #fff); }
 .rp-plist .i-st { flex: none; font-size: calc(12.5px * var(--rp-fs)); }
 .rp-ptext { display: grid; gap: 3px; min-width: 0; line-height: 1.35; }
 .rp-ptext strong { color: var(--i-heading); font-size: calc(13px * var(--rp-fs)); font-weight: 600; }
@@ -349,12 +360,25 @@
   white-space: nowrap;
 }
 
-.rp-head-acts .i-btn svg { width: calc(15px * var(--rp-k)); height: calc(15px * var(--rp-k)); }
-.rp-l-short { display: none; }
+.rp-head-acts .i-btn svg { flex: none; width: calc(15px * var(--rp-k)); height: calc(15px * var(--rp-k)); }
 
+/* mobile: header buttons show only their icon (square buttons); labels stay for screen readers */
 @container rp-page (max-width: 560px) {
-  .rp-head-acts .rp-l-long { display: none; }
-  .rp-head-acts .rp-l-short { display: inline; }
+  .rp-head-acts .i-btn {
+    justify-content: center;
+    width: calc(36px * var(--rp-k));
+    padding: 0;
+    gap: 0;
+  }
+  .rp-head-acts .i-btn svg { width: calc(17px * var(--rp-k)); height: calc(17px * var(--rp-k)); }
+  .rp-head-acts .rp-l-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }
 
 /* role card buttons and shared pieces at this page's density */
@@ -480,6 +504,55 @@
 :host ::ng-deep app-page-header [class*="eyebrow"] {
   font-size: calc(11px * var(--rp-fs)) !important;
   letter-spacing: 1px !important;
+}
+
+/* =====================================================================
+   MOBILE FIXES
+   UI-039 — search bar comes first, the two filters sit side by side below it
+   UI-040 — hairline separators between the fact widgets; compact area dropdown
+   (kept last so they win over the density rules above)
+   ===================================================================== */
+
+/* UI-039: search first, then filters */
+@container rp-page (max-width: 640px) {
+  .rp-toolbar { gap: calc(10px * var(--rp-k)); }
+  .rp-toolbar .i-spacer { display: none; }
+  .rp-search { order: -1; flex: 1 1 100%; width: 100%; }
+  .rp-filter { flex: 1 1 0; min-width: 0; width: auto; }
+}
+
+/* UI-040: fact widgets on the area card get dividing lines (2 × 2 grid with hairlines) */
+@container rp-detail (max-width: 700px) {
+  .rp-detail .rp-kv {
+    gap: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--i-line);
+    border-radius: 10px;
+    background: var(--i-line);
+  }
+  .rp-detail .rp-kv > div {
+    padding: calc(10px * var(--rp-k)) calc(12px * var(--rp-k));
+    background: var(--i-surface);
+  }
+}
+
+/* same separators for the facts in the role drawer, create/edit drawer and compare popup */
+@media (max-width: 760px) {
+  .rp-dr .rp-kv,
+  .rp-dlg .rp-kv {
+    gap: 1px;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--i-line);
+    border-radius: 10px;
+    background: var(--i-line);
+  }
+  .rp-dr .rp-kv > div,
+  .rp-dlg .rp-kv > div {
+    padding: calc(10px * var(--rp-k)) calc(12px * var(--rp-k));
+    background: var(--i-surface);
+  }
 }
 
 /* ---------- density by screen width ----------

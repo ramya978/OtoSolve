@@ -92,13 +92,18 @@
   padding-bottom: 0 !important;
 }
 
-/* the cards row already carries the global .mb spacing; keep it tight to the table */
-.pr-stats.mb { margin-bottom: calc(16px * var(--pr-k)) }
-
 /* ---------- summary cards ---------- */
-/* the cards sit in one row that never wraps; as the row narrows the last cards hide */
+/* the wrapper is the size container (a container can't restyle itself, only what's inside it),
+   so the row below can change from a flex row to a compact grid on phones */
+.pr-stats-wrap {
+  container: pr-stats / inline-size
+}
+
+/* the wrapper carries the global .mb spacing; keep it tight to the table */
+.pr-stats-wrap.mb { margin-bottom: calc(16px * var(--pr-k)) }
+
+/* one row that never wraps; on laptops/tablets the last cards hide as the row narrows */
 .pr-stats {
-  container: pr-stats / inline-size;
   display: flex;
   flex-wrap: nowrap;
   gap: calc(16px * var(--pr-k))
@@ -217,19 +222,20 @@
 .pr-tools {
   display: flex;
   align-items: center;
-  gap: 10px
+  gap: 10px;
+  min-width: 0
 }
 
 .pr-search {
   position: relative;
   display: inline-flex;
-  align-items: center
+  align-items: center;
+  min-width: 0
 }
-
-.pr-search { min-width: 0 }
 
 .pr-search input {
   width: clamp(200px, 20vw, 290px);
+  min-width: 0;
   height: calc(38px * var(--pr-k));
   padding: 6px 34px 6px 11px;
   border: 1px solid var(--pr-field-line);
@@ -257,6 +263,7 @@
 }
 
 .pr-select {
+  flex: none;
   height: calc(38px * var(--pr-k));
   padding: 6px 30px 6px 10px;
   border: 1px solid var(--pr-field-line);
@@ -329,9 +336,6 @@
 .pr-table tbody tr:hover td {
   background: color-mix(in srgb, var(--pr-primary) 3%, var(--white))
 }
-
-/* all headings and cells are left-aligned with the same 20px side padding (set above),
-   so the space between every pair of columns is equal */
 
 /* a cell with a main line and a small grey line under it */
 .pr-stack {
@@ -512,7 +516,6 @@
 /* the eye outline stays still; only the inner circle (pupil) moves */
 .pr-view .pr-eye-pupil {
   transform: translateX(0);
-  /* the same transition runs both ways: right on hover, back to centre when the hover ends */
   transition: transform .2s ease
 }
 
@@ -522,7 +525,6 @@
   color: var(--primary-on, #fff)
 }
 
-/* only animation: the pupil slides to the right inside the eye */
 .pr-view:hover .pr-eye-pupil,
 .pr-view:focus-visible .pr-eye-pupil {
   transform: translateX(2.5px)
@@ -566,7 +568,7 @@
   transition-delay: .25s
 }
 
-/* the tooltip on the last row would be clipped by the table scroll box - show it above instead */
+/* the tooltip on the last row would be clipped by the card - show it above instead */
 .pr-table tbody tr:last-child .pr-view::after {
   top: auto;
   bottom: calc(100% + 7px)
@@ -662,13 +664,11 @@ td.empty {
   cursor: default
 }
 
-/* ---------- view dialog ----------
-   Same layout as before; only the width, spacing and font sizes are smaller and follow the page
-   density (--pr-k / --pr-fs), so the popup fits a 14" screen or a zoomed browser. */
+/* ---------- view dialog ---------- */
 .pr-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 11111111;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -851,79 +851,6 @@ td.empty {
 @keyframes pr-rise { from { opacity: 0; transform: translateY(8px) scale(.99) } }
 
 /* =====================================================================================================
-   RESPONSIVE - 14" laptop to 32" monitor
-   1) density: the screen width sets --pr-k (text, figures, spacing all scale with it)
-   2) summary cards: one row; the last cards hide as the row narrows (never wrap)
-   3) table: columns hide as the card narrows (E-mail → Receipt → Status); their facts move
-      under the donor name. No sideways scroll at any width.
-   ===================================================================================================== */
-
-/* 1) density by screen width (CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440) */
-@media (max-width: 1800px) { :host { --pr-k: .95 } }
-@media (max-width: 1600px) { :host { --pr-k: .9 } }
-@media (max-width: 1440px) { :host { --pr-k: .86 } }
-@media (max-width: 1280px) { :host { --pr-k: .84 } }
-
-/* 2) summary cards: hide from the end (5th, then 4th, then 3rd) instead of wrapping */
-@container pr-stats (max-width: 1180px) { .pr-stat:nth-child(5) { display: none } }
-@container pr-stats (max-width: 940px)  { .pr-stat:nth-child(4) { display: none } }
-@container pr-stats (max-width: 700px)  { .pr-stat:nth-child(3) { display: none } }
-@container pr-stats (max-width: 420px)  { .pr-stat:nth-child(2) { display: none } }
-@container pr-stats (max-width: 1180px) { .pr-stat-value { font-size: calc(26px * var(--pr-fs)) } }
-
-/* 3) table columns + head toolbar, by the card's own width (respects the sidebar) */
-@container pr-card (max-width: 1240px) {
-  .pr-col-ref { display: none }
-  .pr-meta-email { display: block }
-}
-
-@container pr-card (max-width: 1000px) {
-  .pr-col-receipt { display: none }
-  .pr-meta { display: flex }
-  .pr-meta .pr-tag,
-  .pr-meta .pr-meta-date { display: none }
-  .pr-meta-receipt { display: inline }
-}
-
-@container pr-card (max-width: 900px) {
-  .pr-head { flex-wrap: wrap }
-  .pr-tools { width: 100% }
-  .pr-search { flex: 1 }
-  .pr-search input { width: 100% }
-}
-
-@container pr-card (max-width: 720px) {
-  .pr-col-status { display: none }
-  .pr-meta .pr-tag,
-  .pr-meta .pr-meta-date { display: inline-flex }
-  .pr-foot { justify-content: center }
-}
-
-@container pr-card (max-width: 480px) {
-  .pr-meta-email { display: none }
-  .pr-av { display: none }
-  .pr-table thead th, .pr-table tbody td { padding-left: 12px; padding-right: 12px }
-  .pr-tools { flex-wrap: wrap }
-  .pr-select { width: 100% }
-}
-
-/* dialog: big screens get 3 columns, phones 1 */
-@media (min-width: 1801px) {
-  .pr-fields { grid-template-columns: repeat(3, minmax(0, 1fr)) }
-}
-
-@media (max-width: 560px) {
-  .pr-fields { grid-template-columns: 1fr }
-  .pr-hero { flex-direction: column; gap: 10px }
-  .pr-pill { margin-top: 0 }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :host *,
-  :host *::before,
-  :host *::after { animation: none !important; transition: none !important }
-}
-/* =====================================================================================================
    PAGINATION - "Showing 1-10 of 84" · Rows dropdown · chevron pager with page gaps (1 2 ... 9)
    ===================================================================================================== */
 .pr-foot { padding: 12px 20px }
@@ -1017,6 +944,193 @@ td.empty {
 
 @keyframes pr-drop { from { opacity: 0; transform: translateY(4px) } }
 
+/* =====================================================================================================
+   RESPONSIVE - phone to 32" monitor
+   1) density: the screen width sets --pr-k (text, figures, spacing all scale with it)
+   2) summary cards: one row; on laptops/tablets the last cards hide as the row narrows.
+      On phones (UI-018) all five come back as a compact grid instead of one wide card:
+      row 1 = Total events + Total amount, row 2 = Successful · Pending · Failed.
+   3) table: columns hide as the card narrows (E-mail → Receipt → Status); their facts move
+      under the donor name. No sideways scroll at any width.
+   4) head toolbar (UI-019): search and status filter stay on one compact row on phones.
+   ===================================================================================================== */
+
+/* 1) density by screen width */
+@media (max-width: 1800px) { :host { --pr-k: .95 } }
+@media (max-width: 1600px) { :host { --pr-k: .9 } }
+@media (max-width: 1440px) { :host { --pr-k: .86 } }
+@media (max-width: 1280px) { :host { --pr-k: .84 } }
+
+/* 2) summary cards: laptops / tablets - hide from the end (5th, then 4th) instead of wrapping */
+@container pr-stats (max-width: 1180px) {
+  .pr-stat:nth-child(5) { display: none }
+  .pr-stat-value { font-size: calc(26px * var(--pr-fs)) }
+}
+@container pr-stats (max-width: 940px) { .pr-stat:nth-child(4) { display: none } }
+
+/* phones: compact grid with every card - 2 wide on top, 3 narrow below (6-column track) */
+@container pr-stats (max-width: 700px) {
+  .pr-stats {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 10px
+  }
+
+  .pr-stat,
+  .pr-stat:nth-child(n) {
+    display: flex;
+    padding: 12px 14px
+  }
+
+  .pr-stat:nth-child(-n + 2) { grid-column: span 3 }
+  .pr-stat:nth-child(n + 3) { grid-column: span 2 }
+
+  .pr-stat-head { gap: 8px }
+  .pr-stat-label { padding-top: 5px; font-size: calc(11.5px * var(--pr-fs)) }
+  .pr-stat-icon { width: 28px; height: 28px; border-radius: 7px }
+  .pr-stat-icon svg { width: 15px; height: 15px }
+
+  .pr-stat-value {
+    margin-top: 6px;
+    font-size: calc(20px * var(--pr-fs));
+    letter-spacing: -.4px
+  }
+
+  .pr-stat-note {
+    margin-top: 3px;
+    font-size: calc(10.5px * var(--pr-fs));
+    -webkit-line-clamp: 1;
+    white-space: nowrap;
+    text-overflow: ellipsis
+  }
+
+  /* the three narrow status cards drop the icon tile; the number carries the status colour instead */
+  .pr-stat:nth-child(n + 3) .pr-stat-icon { display: none }
+  .pr-stat:nth-child(n + 3) .pr-stat-label { padding-top: 0 }
+  .pr-stat.tone-teal .pr-stat-value { color: var(--status-success-ink) }
+  .pr-stat.tone-blue .pr-stat-value { color: #4266b7 }
+  .pr-stat.tone-red .pr-stat-value { color: var(--status-danger-ink) }
+}
+
+/* very small phones (≈320px) */
+@container pr-stats (max-width: 360px) {
+  .pr-stats { gap: 8px }
+  .pr-stat,
+  .pr-stat:nth-child(n) { padding: 10px }
+  .pr-stat-value { font-size: calc(18px * var(--pr-fs)) }
+}
+
+/* 3) table columns + 4) head toolbar, by the card's own width (respects the sidebar) */
+@container pr-card (max-width: 1240px) {
+  .pr-col-ref { display: none }
+  .pr-meta-email { display: block }
+}
+
+@container pr-card (max-width: 1000px) {
+  .pr-col-receipt { display: none }
+  .pr-meta { display: flex }
+  .pr-meta .pr-tag,
+  .pr-meta .pr-meta-date { display: none }
+  .pr-meta-receipt { display: inline }
+}
+
+/* toolbar drops under the title; search takes the free space, the filter keeps its own width */
+@container pr-card (max-width: 900px) {
+  .pr-head { flex-wrap: wrap; gap: 12px }
+  .pr-tools { width: 100%; flex-wrap: nowrap }
+  .pr-search { flex: 1 1 auto }
+  .pr-search input { width: 100% }
+  .pr-select { width: auto; max-width: 160px }
+}
+
+@container pr-card (max-width: 720px) {
+  .pr-col-status { display: none }
+  .pr-meta .pr-tag,
+  .pr-meta .pr-meta-date { display: inline-flex }
+  .pr-foot { justify-content: center }
+}
+
+/* phones: tighter head, smaller fields - search + filter still on one row */
+@container pr-card (max-width: 480px) {
+  .pr-meta-email { display: none }
+  .pr-av { display: none }
+  .pr-table thead th, .pr-table tbody td { padding-left: 12px; padding-right: 12px }
+
+  .pr-head { padding: 14px 14px 12px; gap: 10px }
+  .pr-head-text h2 { font-size: calc(17px * var(--pr-fs)) }
+  .pr-head-text p { margin-top: 3px; font-size: calc(11.5px * var(--pr-fs)) }
+
+  .pr-tools { gap: 8px }
+  .pr-search input {
+    height: 34px;
+    padding: 4px 30px 4px 10px;
+    font-size: calc(12px * var(--pr-fs))
+  }
+  .pr-search svg { right: 9px; width: 14px; height: 14px }
+  .pr-select {
+    height: 34px;
+    max-width: 120px;
+    padding: 4px 26px 4px 9px;
+    background-position: right 7px center;
+    background-size: 12px
+  }
+}
+
+/* dialog: big screens get 3 columns, phones 1 */
+@media (min-width: 1801px) {
+  .pr-fields { grid-template-columns: repeat(3, minmax(0, 1fr)) }
+}
+
+/* phones (UI-020): each field is one row - label on the left, value on the right - instead of
+   label stacked over value, so the popup is much shorter and the right side isn't left blank */
+@media (max-width: 560px) {
+  .pr-overlay { padding: 12px }
+  .pr-dialog { max-height: calc(100vh - 24px) }
+  .pr-dialog-head { padding: 12px 16px }
+  .pr-dialog-body { padding: 14px 16px }
+  .pr-dialog-foot { padding: 10px 16px }
+
+  /* name on the left, status pill on the right - one line, not stacked */
+  .pr-hero { flex-direction: row; align-items: center; gap: 12px; margin-bottom: 12px }
+  .pr-hero-name { margin-top: 4px; font-size: calc(17px * var(--pr-fs)) }
+  .pr-pill { margin-top: 0 }
+
+  .pr-fields {
+    display: block;
+    margin: 0 0 14px;
+    border-top: 1px solid var(--pr-row-line)
+  }
+
+  .pr-field {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--pr-row-line)
+  }
+
+  .pr-field dt {
+    flex: none;
+    max-width: 45%;
+    margin: 0
+  }
+
+  .pr-field dd {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right
+  }
+
+  .pr-note { padding: 10px 12px; line-height: 1.55 }
+}
+
 @media (max-width: 760px) {
   .pr-foot { padding: 12px 16px }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :host *,
+  :host *::before,
+  :host *::after { animation: none !important; transition: none !important }
 }

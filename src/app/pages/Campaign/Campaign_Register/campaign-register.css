@@ -130,6 +130,36 @@
 /* header buttons stay on one line */
 .cr-headactions { flex-wrap: nowrap; }
 
+/* mobile / tablet: Export and Create become square icon-only buttons */
+@media (max-width: 800px) {
+  .cr-headactions { gap: 8px; }
+
+  .cr-hbtn {
+    display: inline-grid !important;
+    place-items: center;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .cr-hbtn svg {
+    width: 18px;
+    height: 18px;
+    margin: 0 !important;
+  }
+
+  .cr-hbtn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
 /* the KPI strip keeps the same gap to the register as the header to the strip */
 .cr-kpis.mb { margin-bottom: calc(16px * var(--cr-k)); }
 
@@ -358,7 +388,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--cr-primary) 16%, transparent);
 }
 
-/* ---------- custom dropdown (owner / rows) ---------- */
+/* ---------- custom dropdown (owner / rows / status) ---------- */
 .cr-dd {
   position: relative;
   display: inline-flex;
@@ -485,6 +515,25 @@
 
 .cr-rows-label {
   color: var(--cr-muted);
+}
+
+/* status dropdown: stands in for the status tabs on mobile / tablet only (hidden on desktop) */
+.cr-dd-status {
+  display: none;
+}
+
+/* counts inside the status dropdown sit at the right, before the tick */
+.cr-dd-status .cr-dd-menu li .cr-tab-n {
+  margin-left: auto;
+}
+
+.cr-dd-status .cr-dd-menu li .cr-tab-n + svg {
+  margin-left: 0;
+}
+
+.cr-dd-status .cr-dd-menu li.is-on .cr-tab-n {
+  background: var(--cr-primary);
+  color: var(--primary-on, #fff);
 }
 
 @keyframes cr-pop {
@@ -1778,14 +1827,17 @@ button.cr-owner:hover .cr-owner-more {
   to { opacity: 1; }
 }
 
-/* ---------- empty state ---------- */
-.cr-table td.empty {
+/* ---------- empty state ----------
+   A block under the table (not a colspan cell), so the header row always spans the full card width. */
+.cr-empty {
   padding: calc(44px * var(--cr-k)) calc(20px * var(--cr-k));
+  border-bottom: 1px solid var(--cr-row-line);
   color: var(--cr-muted);
+  font-size: calc(13px * var(--cr-fs));
   text-align: center;
 }
 
-.cr-table td.empty .cr-reset {
+.cr-empty .cr-reset {
   margin-left: 6px;
 }
 
@@ -1832,11 +1884,67 @@ html[data-motion="reduce"] .cr-overlay {
   .cr-c-progress { width: 20%; }
 }
 
+/* ---------- filter area on mobile / tablet (bug UI-014) ----------
+   The 8 status tabs wrapped into 3 rows under the search. They now fold into a "Status"
+   custom dropdown, so the area is two short rows: search (full width), then Status + Owner
+   side by side. No wrapping chip rows, no sideways scroll. */
 @container cr-card (max-width: 760px) {
   .cr-c-progress,
   .cr-h-progress { display: none; }
 
   .cr-c-status { width: 30%; }
+
+  .cr-tabs { display: none; }
+
+  .cr-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(12px * var(--cr-k));
+    padding: calc(14px * var(--cr-k)) calc(16px * var(--cr-k));
+  }
+
+  .cr-tools {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(8px * var(--cr-k));
+    width: 100%;
+  }
+
+  .cr-tools .cr-search { grid-column: 1 / -1; }
+  .cr-tools .cr-search input { width: 100%; }
+
+  .cr-dd-status { display: inline-flex; }
+
+  .cr-tools > .cr-dd { min-width: 0; }
+
+  .cr-tools > .cr-dd .cr-dd-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .cr-tools .cr-dd-val {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cr-tools .cr-dd-chev {
+    flex: none;
+    margin-left: auto;
+  }
+
+  .cr-tools .cr-dd-btn .cr-tab-n { flex: none; }
+
+  /* menus line up with their own button: Status opens to the right, Owner to the left */
+  .cr-dd-status .cr-dd-menu { left: 0; right: auto; }
+  .cr-dd-owner .cr-dd-menu { right: 0; left: auto; }
+  .cr-tools .cr-dd-menu { min-width: 100%; max-width: calc(100vw - 32px); }
+
+  .cr-tools .cr-reset {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
 }
 
 /* narrowest: status hides too and the compact line under the name takes over */
@@ -1856,10 +1964,6 @@ html[data-motion="reduce"] .cr-overlay {
   .cr-logo { width: 36px; height: calc(36px * var(--cr-k)); }
   .cr-logo svg { width: 21px; height: calc(21px * var(--cr-k)); }
 
-  .cr-tabs { flex-wrap: wrap; padding: calc(4px * var(--cr-k)) calc(12px * var(--cr-k)); }
-
-  .cr-tab { padding: calc(8px * var(--cr-k)) calc(8px * var(--cr-k)) calc(9px * var(--cr-k)); }
-
   .cr-foot { flex-direction: column; align-items: stretch; }
 
   .cr-pager { justify-content: center; gap: calc(6px * var(--cr-k)); }
@@ -1867,6 +1971,11 @@ html[data-motion="reduce"] .cr-overlay {
   .cr-page { min-width: 32px; height: calc(32px * var(--cr-k)); padding: 0 calc(8px * var(--cr-k)); font-size: calc(12px * var(--cr-fs)); }
   .cr-page-nav { width: 32px; padding: 0; }
   .cr-page-gap { height: calc(32px * var(--cr-k)); }
+}
+
+/* very small phones: drop the small "STATUS" / "OWNER" captions so the chosen value fits */
+@container cr-card (max-width: 380px) {
+  .cr-tools .cr-dd-key { display: none; }
 }
 
 /* ---------- density by screen width ----------

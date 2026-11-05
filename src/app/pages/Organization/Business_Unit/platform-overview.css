@@ -11,6 +11,8 @@
 @media (max-width: 1600px) { :host { --po-k: .9; } }
 @media (max-width: 1440px) { :host { --po-k: .86; } }
 @media (max-width: 1280px) { :host { --po-k: .84; } }
+/* phones and tablets: the laptop step-down is not wanted (it makes text tiny); mobile sizes are set below */
+@media (max-width: 768px) { :host { --po-k: 1; } }
 
 .pl-page {
   container: pl-page / inline-size;
@@ -153,6 +155,7 @@
   color: var(--i-heading);
   font-size: calc(14.5px * var(--po-fs));
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .pl-note {
@@ -244,6 +247,7 @@
   display: flex;
   flex-direction: column;
   gap: calc(10px * var(--po-k));
+  min-width: 0;
   padding: calc(16px * var(--po-k)) calc(18px * var(--po-k));
   border: 1px solid var(--i-line);
   border-radius: var(--i-radius);
@@ -264,11 +268,20 @@
   display: flex;
   align-items: center;
   gap: calc(8px * var(--po-k));
+  min-width: 0;
   color: var(--i-muted);
   font-size: calc(13px * var(--po-fs));
 }
 
+.pl-stage-top > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pl-stage-top em {
+  flex: none;
   margin-left: auto;
   font-style: normal;
   font-size: calc(12px * var(--po-fs));
@@ -394,59 +407,21 @@
   background: none;
 }
 
-/* responsive */
-@container pl-page (max-width: 900px) {
-  .pl-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pl-sec:nth-child(odd) {
-    border-right: 0;
-  }
-
-  .pl-sec:nth-last-child(-n + 2) {
-    border-bottom: 1px solid var(--i-line);
-  }
-
-  .pl-sec:last-child {
-    border-bottom: 0;
-  }
-
-  .pl-stages {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@container pl-page (max-width: 520px) {
-  .pl-tabs {
-    padding-inline: calc(16px * var(--po-k));
-  }
-
-  .pl-pad,
-  .pl-sec {
-    padding: calc(18px * var(--po-k)) calc(16px * var(--po-k));
-  }
-
-  .pl-stages {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .pl-track {
-    display: none;
-  }
-}
-
 /* ---------- fit every screen: no sideways scroll ---------- */
 /* tabs wrap onto a second line on narrow screens instead of scrolling sideways */
 .pl-tabs { flex-wrap: wrap; column-gap: calc(20px * var(--po-k)); overflow-x: visible; }
 
 /* ---------- page header: same look as the shared page header on every other page ---------- */
+/* grid, not flex: title on the left, button always on the right in the same row (never wraps below) */
 .pl-page > .i-head {
-  display: flex !important;
-  flex-wrap: wrap;
-  align-items: flex-start !important;
-  justify-content: space-between;
-  gap: calc(12px * var(--po-k)) calc(20px * var(--po-k));
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-rows: auto !important;
+  flex-direction: row !important;
+  align-items: start !important;
+  justify-content: stretch !important;
+  gap: 0 calc(20px * var(--po-k)) !important;
+  min-height: 0 !important;
   margin: 0 0 calc(16px * var(--po-k)) !important;
   padding: 0 !important;
   border: 0 !important;
@@ -454,7 +429,12 @@
   background: none !important;
   box-shadow: none !important;
 }
-.pl-page > .i-head > :first-child { flex: 1 1 calc(320px * var(--po-k)); min-width: 0; }
+.pl-page > .i-head > :first-child {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  width: auto !important;
+  min-width: 0;
+}
 .pl-page > .i-head .i-eyebrow {
   margin: 0 !important;
   font-size: calc(11px * var(--po-fs)) !important;
@@ -467,19 +447,28 @@
   font-weight: 650 !important;
   letter-spacing: -.5px !important;
   line-height: 1.25 !important;
+  overflow-wrap: anywhere;
 }
 .pl-page > .i-head p {
   margin: calc(6px * var(--po-k)) 0 0 !important;
   font-size: calc(13.5px * var(--po-fs)) !important;
   line-height: 1.5 !important;
+  overflow-wrap: anywhere;
 }
 /* header buttons: one row, top-right, normal height */
 .pl-page > .i-head .i-head-actions {
-  display: flex;
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  justify-self: end !important;
+  align-self: start !important;
+  display: flex !important;
   flex: none;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap !important;
   align-items: center;
   gap: calc(8px * var(--po-k));
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 .pl-page > .i-head .i-head-actions .i-btn {
   height: calc(36px * var(--po-k)) !important;
@@ -487,4 +476,276 @@
   padding-block: 0 !important;
   font-size: calc(13px * var(--po-fs)) !important;
   white-space: nowrap;
+}
+
+/* =====================================================================================
+   RESPONSIVE — tablet (≤ 900px) and mobile (≤ 520px)
+   ===================================================================================== */
+
+/* ---------- tablet ---------- */
+@container pl-page (max-width: 900px) {
+  /* UI-072: overview stays a 2-column grid (Platform record | Contact, Root domain | About)
+     on tablet and mobile too, so the right side is never left empty */
+  .pl-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .pl-sec {
+    min-width: 0;
+  }
+
+  /* inside each half-width section, fields stack: label over value */
+  .pl-sec .i-kv {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: calc(12px * var(--po-k)) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .pl-sec .i-kv > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 3px !important;
+    width: auto !important;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .pl-sec .i-kv dt,
+  .pl-sec .i-kv dd {
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .pl-sec .i-kv dt {
+    color: var(--i-muted);
+    font-size: calc(12px * var(--po-fs)) !important;
+  }
+
+  .pl-sec .i-kv dd {
+    color: var(--i-heading);
+    font-size: calc(13.5px * var(--po-fs)) !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* UI-071: summary — 2 + 3 compact widgets instead of 5 tall rows */
+  .pl-sum {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .pl-sum > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+    grid-column: span 2 !important;
+    min-width: 0;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: calc(14px * var(--po-k)) calc(16px * var(--po-k)) !important;
+    border: 0 !important;
+  }
+
+  .pl-sum > div:nth-child(-n + 2) {
+    grid-column: span 3 !important;
+  }
+
+  /* hairlines: row 1 = 1|2, row 2 = 3|4|5 */
+  .pl-sum > div:nth-child(1),
+  .pl-sum > div:nth-child(3),
+  .pl-sum > div:nth-child(4) {
+    border-right: 1px solid var(--i-line) !important;
+  }
+
+  .pl-sum > div:nth-child(1),
+  .pl-sum > div:nth-child(2) {
+    border-bottom: 1px solid var(--i-line) !important;
+  }
+
+  .pl-sum > div > span {
+    margin: 0 !important;
+    font-size: calc(12px * var(--po-fs)) !important;
+    line-height: 1.35 !important;
+  }
+
+  .pl-sum > div > strong {
+    margin: 0 !important;
+    font-size: calc(22px * var(--po-fs)) !important;
+    line-height: 1.15 !important;
+  }
+
+  .pl-sum > div > small {
+    margin: 0 !important;
+    font-size: calc(11.5px * var(--po-fs)) !important;
+    line-height: 1.35 !important;
+  }
+
+  /* organisation stage cards */
+  .pl-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- mobile ---------- */
+@container pl-page (max-width: 520px) {
+  /* UI-070: compact header — title and an icon-only button share one row */
+  .pl-page > .i-head {
+    gap: 0 12px !important;
+    margin: 0 0 12px !important;
+  }
+
+  .pl-page > .i-head .i-eyebrow {
+    font-size: calc(10.5px * var(--po-fs)) !important;
+    letter-spacing: .6px !important;
+  }
+
+  .pl-page > .i-head h1 {
+    margin: 2px 0 0 !important;
+    font-size: calc(20px * var(--po-fs)) !important;
+    letter-spacing: -.3px !important;
+  }
+
+  .pl-page > .i-head p {
+    margin: 2px 0 0 !important;
+    font-size: calc(12.5px * var(--po-fs)) !important;
+  }
+
+  .pl-page > .i-head .i-head-actions .i-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    gap: 0 !important;
+    padding: 0 !important;
+  }
+
+  .pl-btn-label {
+    display: none;
+  }
+
+  /* UI-071: summary — 1 + 2 + 2 compact widgets */
+  .pl-sumcard {
+    margin-bottom: 12px;
+  }
+
+  .pl-sum {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .pl-sum > div,
+  .pl-sum > div:nth-child(-n + 2) {
+    grid-column: span 1 !important;
+    padding: 12px 14px !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+  }
+
+  .pl-sum > div:nth-child(1) {
+    grid-column: 1 / -1 !important;
+  }
+
+  /* hairlines: row 1 = 1, row 2 = 2|3, row 3 = 4|5 */
+  .pl-sum > div:nth-child(2),
+  .pl-sum > div:nth-child(4) {
+    border-right: 1px solid var(--i-line) !important;
+  }
+
+  .pl-sum > div:nth-child(1),
+  .pl-sum > div:nth-child(2),
+  .pl-sum > div:nth-child(3) {
+    border-bottom: 1px solid var(--i-line) !important;
+  }
+
+  .pl-sum > div > strong {
+    font-size: calc(20px * var(--po-fs)) !important;
+  }
+
+  /* the label already says it; the hint line only adds height on a phone */
+  .pl-sum > div > small {
+    display: none !important;
+  }
+
+  /* tabs + panels */
+  .pl-tabs {
+    gap: 16px;
+    padding-inline: 16px;
+  }
+
+  .pl-tab {
+    padding: 13px 0 11px;
+  }
+
+  .pl-pad,
+  .pl-sec {
+    padding: 16px;
+  }
+
+  .pl-h3 {
+    margin-bottom: 12px;
+  }
+
+  /* overview: still 2 columns on a phone, just a little tighter */
+  .pl-sec {
+    padding: 14px 12px;
+  }
+
+  .pl-sec .i-kv {
+    gap: 10px !important;
+  }
+
+  .pl-sec .i-kv dt {
+    font-size: calc(11.5px * var(--po-fs)) !important;
+  }
+
+  .pl-sec .i-kv dd,
+  .pl-about,
+  .pl-domain {
+    font-size: calc(13px * var(--po-fs)) !important;
+  }
+
+  .pl-note {
+    font-size: calc(12px * var(--po-fs));
+  }
+
+  /* organisation stage cards: 2 per row, smaller inside */
+  .pl-stages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pl-stage {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .pl-stage-top {
+    gap: 6px;
+    font-size: calc(12px * var(--po-fs));
+  }
+
+  .pl-stage-top em {
+    font-size: calc(11.5px * var(--po-fs));
+  }
+
+  .pl-stage-n {
+    font-size: calc(18px * var(--po-fs));
+  }
+
+  /* onboarding table */
+  .pl-table th,
+  .pl-table td {
+    padding: 11px 12px;
+  }
+
+  .pl-track {
+    display: none;
+  }
 }

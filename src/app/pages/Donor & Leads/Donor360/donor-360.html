@@ -1,14 +1,16 @@
 <!-- =====================================================================================================
      DONOR 360 - one page, no tabs.
-     Flat identity bar on top (avatar · name · status · ID · contact · actions)  [unchanged].
+     Flat identity bar on top (contact · owner · consent).
      Below: two aligned columns that end on the same line -
        MAIN column : Overview · Gifts · Promise schedule · Campaign history   (wide, data-heavy cards)
        SIDE column : Profile · Consent · Activity                              (Activity grows to fill the gap)
      Follow-ups runs full width underneath.
+     Phones: header shows ⋯ More (Timeline · Schedule · Export · Edit · Refresh) + Create intent beside the name.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor &amp; Leads / Donor 360"  heading="{{ d().name }}" description="Complete donor profile with gifts, campaigns and activity.">
   <ng-container actions>
     <div class="dx-head-acts">
+      <!-- desktop: icon group -->
       <div class="dx-group" role="group" aria-label="Donor actions">
         <button type="button" (click)="timeline()" data-tip="Timeline" aria-label="Timeline">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('timeline')" /></svg>
@@ -26,37 +28,50 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg>
         </button>
       </div>
-      <button type="button" class="dx-btn is-primary" (click)="createIntent()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span>Create<span class="dx-long"> donation</span> intent</span>
+
+      <!-- phones: the same five actions in one More menu -->
+      <div class="dx-more" (click)="$event.stopPropagation()">
+        <button type="button" class="dx-more-btn" [class.is-open]="moreOpen()" aria-label="More actions" title="More actions"
+                aria-haspopup="menu" [attr.aria-expanded]="moreOpen()" (click)="moreOpen.set(!moreOpen())">
+          <svg class="dx-dots" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="19" cy="12" r="1.6" />
+          </svg>
+        </button>
+        @if (moreOpen()) {
+          <ul class="dx-more-menu" role="menu">
+            <li role="none"><button type="button" role="menuitem" (click)="moreOpen.set(false); timeline()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('timeline')" /></svg> Timeline</button></li>
+            <li role="none"><button type="button" role="menuitem" (click)="moreOpen.set(false); schedule()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg> Schedule follow-up</button></li>
+            <li role="none"><button type="button" role="menuitem" (click)="moreOpen.set(false); exportHistory()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export history</button></li>
+            <li role="none"><button type="button" role="menuitem" (click)="moreOpen.set(false); editProfile()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg> Edit profile</button></li>
+            <li role="none"><button type="button" role="menuitem" (click)="moreOpen.set(false); refresh()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('refresh')" /></svg> Refresh</button></li>
+          </ul>
+        }
+      </div>
+
+      <button type="button" class="dx-btn is-primary dx-create" aria-label="Create donation intent" title="Create donation intent" (click)="createIntent()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span class="dx-btn-text">Create<span class="dx-long"> donation</span> intent</span>
       </button>
     </div>
   </ng-container>
 </app-page-header>
 
-<!-- ================= identity bar (flat, no card) - actions now sit in the page header ================= -->
+<!-- ================= identity bar (flat, no card) - actions sit in the page header ================= -->
 <header class="dx-idbar">
-
   <div class="dx-who">
-    <!-- <div class="dx-name-row">
-      <h1></h1>
-      <span [class]="'dx-status st-' + d().status.toLowerCase()"><i></i>{{ d().status }}</span>
-      <span class="dx-upd">Updated {{ d().updated }}</span>
-    </div> -->
     <ul class="dx-inline">
-      <!-- <li>
-        <button type="button" class="dx-code" (click)="copy(d().code)" [attr.aria-label]="'Copy donor ID ' + d().code">
-          {{ d().code }}<svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('copy')" /></svg>
-        </button>
-      </li> -->
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg>{{ d().phone }}</li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg>{{ d().email }}</li>
-      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ d().owner }}</li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('phone')" /></svg><span>{{ d().phone }}</span></li>
+      <li class="is-mail"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('mail')" /></svg><span>{{ d().email }}</span></li>
+      <li><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg><span>{{ d().owner }}</span></li>
       <li [class.is-ok]="d().consent.state === 'Granted'" [class.is-bad]="d().consent.state === 'Withdrawn'">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Consent {{ d().consent.state.toLowerCase() }}
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg><span>Consent {{ d().consent.state.toLowerCase() }}</span>
       </li>
     </ul>
   </div>
-
 </header>
 
 <div class="dx-layout">
@@ -156,7 +171,7 @@
         </div>
       </section>
 
-      <!-- promises (moved from side column) -->
+      <!-- promises -->
       <section class="dx-sec" id="dx-promises">
         <div class="dx-sec-side">
           <h2>Promise schedule</h2>
@@ -187,7 +202,7 @@
         </div>
       </section>
 
-      <!-- campaigns (moved from side column) -->
+      <!-- campaigns -->
       <section class="dx-sec" id="dx-campaigns">
         <div class="dx-sec-side">
           <h2>Campaign history</h2>
@@ -279,7 +294,7 @@
         </div>
       </section>
 
-      <!-- activity (moved here - last card in the column grows to fill, so no big gap) -->
+      <!-- activity -->
       <section class="dx-sec" id="dx-activity">
         <div class="dx-sec-side">
           <h2>Activity</h2>
@@ -341,9 +356,10 @@
         <input type="search" placeholder="Search follow-ups…" aria-label="Search follow-ups"
                [value]="followQuery()" (input)="followQuery.set($any($event.target).value)" />
       </label>
-      <table class="dx-table">
-        <colgroup><col class="w-due" /><col /><col class="w-owner c-hide-sm" /><col class="w-pri c-hide-sm" /><col class="w-st" /><col class="w-act" /></colgroup>
-        <thead><tr><th>Due</th><th>Follow-up</th><th class="c-hide-sm">Owner</th><th class="c-hide-sm">Priority</th><th>Status</th><th class="num">Action</th></tr></thead>
+      <!-- phones: Owner, Priority and Status step aside (the Action column already says Mark done / Closed) -->
+      <table class="dx-table dx-follow-table">
+        <colgroup><col class="w-due" /><col /><col class="w-owner c-hide-sm" /><col class="w-pri c-hide-sm" /><col class="w-st c-hide-sm" /><col class="w-act" /></colgroup>
+        <thead><tr><th>Due</th><th>Follow-up</th><th class="c-hide-sm">Owner</th><th class="c-hide-sm">Priority</th><th class="c-hide-sm">Status</th><th class="num">Action</th></tr></thead>
         <tbody>
           @for (f of followRows(); track f.due + f.title) {
             <tr>
@@ -351,7 +367,7 @@
               <td [attr.title]="f.title">{{ f.title }}</td>
               <td class="c-hide-sm">{{ f.owner }}</td>
               <td class="c-hide-sm"><span [class]="'dx-dotted ' + (f.priority === 'Urgent' ? 'tone-red' : f.priority === 'High' ? 'tone-amber' : 'tone-muted')"><i></i>{{ f.priority }}</span></td>
-              <td><span [class]="'dx-dotted ' + (f.status === 'Completed' ? 'tone-green' : 'tone-blue')"><i></i>{{ f.status }}</span></td>
+              <td class="c-hide-sm"><span [class]="'dx-dotted ' + (f.status === 'Completed' ? 'tone-green' : 'tone-blue')"><i></i>{{ f.status }}</span></td>
               <td class="num">
                 @if (f.status === 'Completed') {
                   <span class="dx-closed"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Closed</span>

@@ -458,7 +458,6 @@
   margin-bottom: calc(18px * var(--og-k));
   padding: calc(18px * var(--og-k)) calc(20px * var(--og-k)) 0;
   border: 1px solid var(--i-line);
-  /* border-top: 1px solid var(--i-primary); */
   border-radius: var(--i-radius);
   background: var(--og-card);
 }
@@ -1291,3 +1290,92 @@
 @media (max-width: 1600px) { :host { --og-k: .9; } }
 @media (max-width: 1440px) { :host { --og-k: .86; } }
 @media (max-width: 1280px) { :host { --og-k: .84; } }
+
+/* =====================================================================================
+   PHONES / NARROW - UI-024 · UI-025 · UI-026 (kept last so they win over the rules above)
+   ===================================================================================== */
+
+/* UI-024: the heading's text block had a 360px minimum, so on a phone the buttons wrapped
+   onto their own line, leaving a big gap. The text now shrinks and the buttons stay top-right
+   beside the title. Several reviewer buttons wrap among themselves, still on the right. */
+/* every width: one row - text on the left, buttons on the right. The shared header style
+   stacks them (column / wrap), so both are overridden here. The buttons drop by the eyebrow's
+   height so they line up with the organisation name, not with the eyebrow above it. */
+.og-head {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 12px calc(16px * var(--og-k)) !important;
+}
+
+.og-head-main {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+}
+
+.og-title-row h1 {
+  overflow-wrap: anywhere;
+}
+
+.og-head .i-head-actions {
+  --og-acts-top: calc((11px * 1.4 + 4px) * var(--og-fs) + (26px * 1.25 * var(--og-fs) - 36px * var(--og-k)) / 2);
+  flex: 0 1 auto !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  align-self: flex-start !important;
+  width: auto !important;
+  max-width: 55%;
+  margin: var(--og-acts-top) 0 0 !important;
+  gap: 6px calc(8px * var(--og-k));
+}
+
+@container og-page (max-width: 640px) {
+  .og-head .i-btn {
+    padding: 0 12px;
+  }
+}
+
+/* UI-025: Registration and Contact sit in one column here, so each list uses a two-column grid
+   (label over value in every cell) instead of a tall single column. E-mail and website take the
+   full row so long addresses don't get cut. */
+@container og-page (max-width: 900px) {
+  .og-sec .i-kv {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 14px 18px !important;
+    margin: 0 !important;
+  }
+
+  .og-sec .i-kv > div {
+    display: grid !important;
+    grid-template-columns: none !important;
+    align-content: start;
+    gap: 3px !important;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  .og-sec .i-kv > div.is-wide {
+    grid-column: 1 / -1;
+  }
+
+  .og-sec .i-kv dt {
+    margin: 0 !important;
+    color: var(--i-muted);
+  }
+
+  .og-sec .i-kv dd {
+    margin: 0 !important;
+    text-align: left !important;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* UI-026: once the facts beside the tabs are hidden, the tabs spread across the whole bar
+   instead of bunching up on the left. When they wrap on the smallest phones, each row still fills. */
+@container og-page (max-width: 1080px) {
+  .og-tabs {
+    justify-content: space-between;
+  }
+}

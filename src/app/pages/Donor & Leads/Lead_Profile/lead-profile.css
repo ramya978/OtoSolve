@@ -3,6 +3,8 @@
    Typography follows the OtoSolve reference: Inter / Segoe UI · 14px base · 13px values ·
    11–12px captions · 10px uppercase eyebrows · 15px card titles · navy ink, slate muted text, hairlines.
    Accent colour comes from --primary (falls back to --accent).
+   Mobile fixes: UI-004 icon-only header actions beside the name · UI-005 lifecycle actions in two aligned
+   rows (equal-width buttons on phones) · UI-006 compact cards with 2-column value grids on phones.
    ===================================================================================================== */
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
@@ -61,11 +63,48 @@
   font-size: calc(13px * var(--lp-fs)) !important;
   white-space: nowrap;
 }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+/* the back link shows a "→" on desktop and a "←" icon on phones */
+.lp-ico-mob { display: none; }
+
+/* UI-004 · phones: the three actions stay top-right beside the name as compact, equal icon buttons */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
+  :host ::ng-deep app-page-header > * {
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  :host ::ng-deep app-page-header > * > :first-child { flex: 1 1 auto; min-width: 0; }
+  :host ::ng-deep app-page-header h1 {
+    font-size: calc(20px * var(--lp-fs)) !important;
+    overflow-wrap: anywhere;
+  }
+  :host ::ng-deep app-page-header p { font-size: calc(12.5px * var(--lp-fs)) !important; }
   :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  :host ::ng-deep app-page-header [slot="actions"] { flex: none; flex-wrap: nowrap; max-width: none; }
+
+  .lp-head-actions { gap: 6px; }
+  .lp-head-actions > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0 !important;
+    width: 36px;
+    min-width: 36px;
+    height: 36px !important;
+    padding: 0 !important;
+  }
+  .lp-head-actions .lp-btn-text,
+  .lp-head-actions .lp-ico-desk { display: none; }
+  .lp-head-actions .lp-ico-mob { display: block; }
+  .lp-head-actions .lp-ico { width: 17px; height: 17px; }
+  .lp-head-actions .lp-text-link {
+    border: 1px solid var(--lp-line);
+    border-radius: var(--btn-radius);
+    background: var(--white);
+    color: var(--lp-ink);
+  }
+  .lp-head-actions .lp-text-link:hover .lp-ico { transform: translateX(-2px); }
 }
 
 :host {
@@ -317,6 +356,7 @@
 
 .lp-head-actions {
   display: flex;
+  flex-wrap: nowrap;
   align-items: center;
   gap: calc(10px * var(--lp-k));
   flex-shrink: 0
@@ -548,6 +588,12 @@
   color: var(--lp-muted);
   font-size: calc(12px * var(--lp-fs));
   line-height: 1.6
+}
+
+.lp-pop-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 calc(16px * var(--lp-k)) calc(14px * var(--lp-k))
 }
 
 .lp-owner-search {
@@ -917,7 +963,7 @@ dd.is-due {
   background: var(--white);
   border: 1px solid var(--lp-line);
   border-radius: var(--radius);
-      margin-bottom: calc(10px * var(--lp-k));
+  margin-bottom: calc(10px * var(--lp-k));
 }
 
 .lp-card-head {
@@ -971,6 +1017,10 @@ dd.is-due {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: calc(18px * var(--lp-k)) calc(24px * var(--lp-k))
+}
+
+.lp-grid3 > div {
+  min-width: 0
 }
 
 .lp-grid3 dt {
@@ -1153,6 +1203,7 @@ dd.is-due {
 }
 
 .lp-table-wrap {
+  position: relative;
   border: 1px solid var(--lp-line);
   border-radius: var(--radius);
   overflow-x: auto
@@ -1242,15 +1293,53 @@ dd.is-due {
   font-size: calc(11px * var(--lp-fs))
 }
 
-/* lifecycle actions */
+/* ---------- lifecycle actions: row 1 = lifecycle steps, row 2 = close lead ---------- */
 .lp-card-actions {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: calc(8px * var(--lp-k));
+  flex-direction: column;
+  gap: calc(12px * var(--lp-k));
   margin-top: calc(14px * var(--lp-k));
   padding-top: calc(14px * var(--lp-k));
   border-top: 1px solid var(--lp-row-line)
+}
+
+.lp-actions-main {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(8px * var(--lp-k))
+}
+
+/* the action form opens under the buttons, aligned to the card's left edge */
+.lp-action-slot {
+  position: static;
+  flex-basis: 100%;
+  width: 100%;
+  height: 0
+}
+
+.lp-action-slot .lp-pop {
+  top: 100%;
+  right: auto;
+  left: 0;
+  margin-top: 8px
+}
+
+.lp-actions-close {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(8px * var(--lp-k));
+  padding-top: calc(12px * var(--lp-k));
+  border-top: 1px dashed var(--lp-row-line)
+}
+
+.lp-actions-main:empty + .lp-actions-close,
+.lp-card-actions > .lp-actions-close:first-child {
+  padding-top: 0;
+  border-top: 0
 }
 
 .lp-actions-label {
@@ -1345,31 +1434,37 @@ dd.is-due {
   }
 }
 
+/* UI-005 + UI-006 · tablets & phones */
 @media (max-width: 760px) {
-  .lp-head {
-    flex-direction: column
-  }
-
-  .lp-head h1 {
-    font-size: calc(21px * var(--lp-fs))
-  }
-
-  .lp-head-actions {
-    flex-wrap: wrap;
-    width: 100%
-  }
-
-  .lp-head-actions .lp-btn {
-    flex: 1
-  }
-
+  /* compact cards */
   .lp-card {
-    padding: calc(18px * var(--lp-k)) calc(16px * var(--lp-k))
+    padding: 16px 14px 14px;
+    margin-bottom: 12px
+  }
+
+  .lp-card-head {
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px
+  }
+
+  .lp-card-ico {
+    flex-basis: 30px;
+    width: 30px;
+    height: 30px
   }
 
   .lp-hero-top,
   .lp-progress {
-    padding-inline: calc(16px * var(--lp-k))
+    padding-inline: 14px
+  }
+
+  .lp-hero-top {
+    padding-block: 16px
+  }
+
+  .lp-progress {
+    padding-block: 14px
   }
 
   .lp-owner {
@@ -1384,40 +1479,121 @@ dd.is-due {
     font-size: calc(11px * var(--lp-fs))
   }
 
+  /* value grids: 2 columns with tight row gaps; long values (e-mail) take the full row */
   .lp-grid3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr))
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 14px
   }
 
-  .lp-card-head {
-    flex-wrap: wrap
+  .lp-grid3 dd {
+    margin-top: 2px
+  }
+
+  .lp-span-sm {
+    grid-column: 1 / -1
+  }
+
+  /* label · value rows: shorter */
+  .lp-rows > div {
+    min-height: 0;
+    padding: 8px 0
+  }
+
+  .lp-person {
+    padding-bottom: 10px
   }
 
   .lp-activity {
-    flex-wrap: wrap
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding-top: 12px
   }
 
-  .lp-pop {
-    right: auto;
-    left: 0
+  .lp-kpi,
+  .lp-kpi:first-child {
+    padding: 12px 14px;
+    gap: 10px
+  }
+
+  .lp-ring-num {
+    left: 14px
+  }
+
+  /* lifecycle actions: equal-width buttons in a 2-column grid; a lone last button spans the row */
+  .lp-actions-main {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px
+  }
+
+  .lp-actions-main > .lp-btn {
+    width: 100%;
+    min-width: 0
+  }
+
+  .lp-actions-main > .lp-btn:last-of-type:nth-of-type(odd) {
+    grid-column: 1 / -1
+  }
+
+  .lp-action-slot {
+    grid-column: 1 / -1
+  }
+
+  .lp-action-slot .lp-pop {
+    right: 0;
+    width: auto;
+    max-width: none
+  }
+
+  /* close row: label on its own line, then two equal buttons */
+  .lp-actions-close {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px
+  }
+
+  .lp-actions-close .lp-actions-label {
+    grid-column: 1 / -1;
+    margin: 0
+  }
+
+  .lp-actions-close > .lp-btn {
+    width: 100%
+  }
+
+  .lp-actions-close > .lp-btn:only-of-type {
+    grid-column: 1 / -1
   }
 }
 
 @media (max-width: 480px) {
-  .lp-grid3,
+  /* key figures stay 2-up (the follow-up figure keeps the full row) */
   .lp-kpis {
-    grid-template-columns: 1fr
+    grid-template-columns: repeat(2, minmax(0, 1fr))
   }
 
-  .lp-kpi:nth-child(2) {
-    border-top: 1px solid var(--lp-row-line)
+  .lp-kpi-ico {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px
   }
 
-  .lp-kpi:nth-child(even) {
-    border-left: 0
+  .lp-ring {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px
+  }
+
+  .lp-ring-num {
+    width: 36px
   }
 
   .lp-step-label {
     display: none
+  }
+
+  .lp-card-head p {
+    font-size: 11.5px
   }
 }
 
@@ -1431,14 +1607,8 @@ dd.is-due {
 }
 
 /* ---------- fit every screen: no sideways scroll ---------- */
-.lp-table-wrap { position: relative; }
 /* consent table: channel and decision stay; the rest steps aside as the screen narrows */
 @media (max-width: 1200px) { .lp-table :is(th, td):nth-child(4) { display: none; } }  /* notice version */
 @media (max-width: 1000px) { .lp-table :is(th, td):nth-child(6) { display: none; } }  /* expires */
 @media (max-width: 640px)  { .lp-table :is(th, td):nth-child(5) { display: none; } }  /* effective */
 @media (max-width: 440px)  { .lp-table :is(th, td):nth-child(3) { display: none; } }  /* status */
-
-/* the action popup sits at the end of its row: on phones it opens towards the left so it stays on screen */
-@media (max-width: 760px) {
-  .lp-pop[aria-labelledby="lp-action-title"] { right: 0; left: auto; }
-}

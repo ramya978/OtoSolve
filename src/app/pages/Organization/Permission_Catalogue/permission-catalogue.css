@@ -11,6 +11,8 @@
 @media (max-width: 1600px) { :host { --pc-k: .9; } }
 @media (max-width: 1440px) { :host { --pc-k: .86; } }
 @media (max-width: 1280px) { :host { --pc-k: .84; } }
+/* phones and tablets: the laptop step-down is not wanted (it makes text tiny); mobile sizes are set below */
+@media (max-width: 768px) { :host { --pc-k: 1; } }
 
 .pc-page {
   container: pc-page / inline-size;
@@ -189,7 +191,7 @@
 .pc-widgets {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch;            /* FIX: was "start" — all 3 cards now share one height */
+  align-items: stretch;
   gap: calc(12px * var(--pc-k));
   margin-bottom: calc(12px * var(--pc-k));
 }
@@ -267,12 +269,11 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  height: calc(340px * var(--pc-k));                   /* same height for all 3 cards, no big empty gaps */
+  height: calc(340px * var(--pc-k));
   padding: calc(10px * var(--pc-k)) calc(12px * var(--pc-k)) calc(14px * var(--pc-k));
-  overflow-y: auto;                /* long lists (Permission groups) scroll inside */
+  overflow-y: auto;
 }
 
-/* rows grow evenly when the list is short, never shrink when it is long */
 .pc-widget-body > .pc-row {
   flex: 1 0 auto;
 }
@@ -367,7 +368,6 @@
 }
 
 /* ---------- donut + legend ---------- */
-/* one colour per action, picked by position so no two slices look alike */
 .pc-c0 { --t: var(--i-primary); }
 .pc-c1 { --t: #c68a2b; }
 .pc-c2 { --t: #2f8062; }
@@ -398,7 +398,6 @@
   transform: rotate(-90deg);
 }
 
-/* thin ring with small gaps between slices; the shared page rule fills every svg */
 .pc-donut circle {
   fill: none;
   stroke-width: 4;
@@ -445,7 +444,6 @@
   font-size: calc(11px * var(--pc-fs));
 }
 
-/* legend: 2 columns under the ring */
 .pc-legend {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -530,6 +528,16 @@
   align-items: center;
   gap: calc(12px * var(--pc-k));
   flex-wrap: wrap;
+}
+
+/* desktop: the wrapper adds no box, so module / group / switch sit in the search row as before */
+.pc-more-sel {
+  display: contents;
+}
+
+/* "Filters" button is for small screens only */
+.pc-filter-btn {
+  display: none;
 }
 
 .pc-search {
@@ -724,6 +732,11 @@
   text-transform: uppercase;
 }
 
+/* the permission column takes the spare width, so nothing is left blank on the right */
+.pc-table th:first-child {
+  width: auto;
+}
+
 .pc-table td {
   padding: calc(15px * var(--pc-k)) calc(22px * var(--pc-k));
   border-bottom: 1px solid var(--i-soft);
@@ -750,6 +763,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
   margin-top: 5px;
   padding: 2px 4px 2px calc(8px * var(--pc-k));
   border: 1px solid var(--i-line);
@@ -760,8 +774,14 @@
   font-size: calc(12px * var(--pc-fs));
 }
 
+.pc-code-txt {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .pc-copy {
   display: inline-flex;
+  flex: none;
   padding: 3px;
   border: 0;
   border-radius: 5px;
@@ -847,7 +867,7 @@
   background: none !important;
 }
 
-/* ---------- pagination ---------- *//* Pagination footer */
+/* ---------- pagination ---------- */
 .pc-foot {
   display: flex;
   align-items: center;
@@ -867,9 +887,14 @@
 }
 
 .pc-showing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: calc(32px * var(--pc-k));
   margin: 0;
   color: var(--i-muted);
-  font-size: calc(12px * var(--pc-fs));
+  font-size: calc(12.5px * var(--pc-fs));
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -878,25 +903,26 @@
   font-weight: 600;
 }
 
-/* Rows per page */
+/* Rows per page: "Rows [10]" */
 .pc-rows {
   display: inline-flex;
   align-items: center;
-  flex-direction: row-reverse;
-  gap: 5px;
+  gap: 6px;
   height: calc(32px * var(--pc-k));
   margin: 0;
-  padding: 0 calc(9px * var(--pc-k));
+  padding: 0 calc(6px * var(--pc-k)) 0 calc(10px * var(--pc-k));
   border: 1px solid var(--i-line);
   border-radius: 8px;
   background: var(--i-surface);
   color: var(--i-muted);
-  font-size: calc(11px * var(--pc-fs));
+  font-size: calc(12px * var(--pc-fs));
+  line-height: 1;
 }
 
 .pc-rows select {
-  width: calc(32px * var(--pc-k));
-  padding: 4px 0;
+  min-width: calc(40px * var(--pc-k));
+  height: 100%;
+  padding: 0;
   border: 0;
   outline: none;
   background: transparent;
@@ -925,7 +951,8 @@
   background: var(--i-surface);
   color: var(--i-heading);
   font: inherit;
-  font-size: calc(12px * var(--pc-fs));
+  font-size: calc(12.5px * var(--pc-fs));
+  line-height: 1;
   cursor: pointer;
   transition:
     background-color 0.15s ease,
@@ -938,14 +965,12 @@
   height: calc(14px * var(--pc-k));
 }
 
-/* Hover */
 .pc-pg:hover:not(:disabled):not(.is-on) {
   border-color: var(--i-primary);
   background: var(--i-hover);
   color: var(--i-primary);
 }
 
-/* Active page background */
 .pc-pg.is-on {
   border-color: var(--i-primary);
   background: var(--i-tint);
@@ -953,23 +978,21 @@
   font-weight: 600;
 }
 
-/* Disabled buttons */
 .pc-pg:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-/* Ellipsis */
 .pc-gap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: calc(20px * var(--pc-k));
+  height: calc(32px * var(--pc-k));
   color: var(--i-muted);
-  font-size: calc(12px * var(--pc-fs));
+  font-size: calc(12.5px * var(--pc-fs));
 }
 
-/* Screen-reader-only label */
 .pc-sr-only {
   position: absolute;
   width: 1px;
@@ -982,34 +1005,12 @@
   border: 0;
 }
 
-/* Keyboard accessibility */
 .pc-pg:focus-visible,
 .pc-rows select:focus-visible {
   outline: 2px solid var(--i-primary);
   outline-offset: 2px;
 }
 
-/* Mobile */
-@container pc-page (max-width: 520px) {
-  .pc-foot {
-    justify-content: space-between;
-    padding: calc(12px * var(--pc-k));
-  }
-
-  .pc-foot-left {
-    gap: calc(8px * var(--pc-k));
-  }
-
-  .pc-pager {
-    gap: 3px;
-  }
-
-  .pc-pg {
-    min-width: calc(29px * var(--pc-k));
-    height: calc(30px * var(--pc-k));
-    padding-inline: 5px;
-  }
-}
 /* ---------- form-style chrome: banner + icon-tile section heads ---------- */
 .pc-head { align-items: flex-start; padding-bottom: calc(16px * var(--pc-k)); }
 .pc-head h1 { font-size: calc(26px * var(--pc-fs)); font-weight: 600; }
@@ -1043,7 +1044,6 @@
 .pc-sec-head .pc-widget-ic { width: calc(40px * var(--pc-k)); height: calc(40px * var(--pc-k)); border-radius: 12px; }
 .pc-sec-head .pc-widget-ic svg { width: calc(19px * var(--pc-k)); height: calc(19px * var(--pc-k)); }
 
-/* larger icon tiles in the widget heads too, to match */
 .pc-widget-head { align-items: center; padding: calc(18px * var(--pc-k)) calc(24px * var(--pc-k)); }
 .pc-widget-ic { width: calc(40px * var(--pc-k)); height: calc(40px * var(--pc-k)); border-radius: 12px; }
 .pc-widget-ic svg { width: calc(19px * var(--pc-k)); height: calc(19px * var(--pc-k)); }
@@ -1059,7 +1059,6 @@
 
 .pc-widget-title { flex: 1; }
 
-/* icon moves to the far right, no tile — same as the strip cells */
 .pc-widget-ic {
   order: 2;
   width: auto;
@@ -1078,7 +1077,6 @@
 
 .pc-widget-head p { font-size: calc(12.5px * var(--pc-fs)); }
 
-/* the count is already in the stat strip */
 .pc-widget-n { display: none; }
 
 .pc-widget-body {
@@ -1116,10 +1114,8 @@
 /* ---------- fit every screen: no sideways scroll ---------- */
 .pc-tablewrap { position: relative; }
 .pc-table td { overflow-wrap: anywhere; }
-/* columns step aside as the page narrows: handling, then module (permission and action stay) */
+/* tablet: handling column steps aside (permission, module, action stay) */
 @container pc-page (max-width: 760px) { .pc-table :is(th, td):nth-child(4) { display: none; } }
-@container pc-page (max-width: 560px) { .pc-table :is(th, td):nth-child(2) { display: none; } }
-@container pc-page (max-width: 560px) { .pc-table :is(th, td) { padding-inline: calc(14px * var(--pc-k)); } }
 
 /* ---------- page header: same look as the shared page header on every other page ---------- */
 .pc-page > .pc-head {
@@ -1163,4 +1159,198 @@
 @container pc-page (max-width: 600px) {
   .pc-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pc-tiles > .pc-cell:nth-child(n + 3) { display: none; }
+}
+
+/* =====================================================================================
+   MOBILE (≤ 640px)
+   ===================================================================================== */
+@container pc-page (max-width: 640px) {
+  .pc-page > .pc-head h1 { font-size: calc(21px * var(--pc-fs)) !important; }
+  .pc-page > .pc-head .pc-sub { font-size: calc(12.5px * var(--pc-fs)) !important; }
+
+  .pc-cell { gap: 10px; padding: 14px 16px; }
+  .pc-cell-main strong { font-size: calc(20px * var(--pc-fs)); }
+
+  /* section heads: smaller, no sub-line */
+  .pc-sec-head { gap: 12px; padding: 14px 16px; }
+  .pc-sec-head p { display: none; }
+  .pc-sec-head .pc-widget-ic { width: 34px; height: 34px; border-radius: 10px; }
+  .pc-sec-head .pc-widget-ic svg { width: 17px; height: 17px; }
+  .pc-sec-head h2 { font-size: calc(14.5px * var(--pc-fs)); }
+
+  /* ---------- UI-073: search + "Filters" button; the rest opens on tap ---------- */
+  .pc-tools-body { gap: 12px; padding: 14px 16px 16px; }
+
+  .pc-tools-main { flex-wrap: wrap; gap: 10px; }
+
+  .pc-search {
+    flex: 1 1 0;
+    height: 40px;
+    padding: 0 12px;
+    border-radius: 10px;
+  }
+
+  .pc-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    flex: none;
+    height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--i-line);
+    border-radius: 10px;
+    background: transparent;
+    color: var(--i-heading);
+    font: inherit;
+    font-size: calc(13px * var(--pc-fs));
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .pc-filter-btn svg { width: 16px; height: 16px; }
+
+  .pc-filter-btn.is-on {
+    border-color: var(--i-primary);
+    color: var(--i-primary);
+  }
+
+  .pc-filter-btn b {
+    display: inline-grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--i-primary);
+    color: var(--i-primary-on, #fff);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  /* closed: only search + Filters show */
+  .pc-more:not(.is-open) { display: none !important; }
+
+  /* open: module | group side by side, switch underneath */
+  .pc-more-sel.is-open {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    flex: 1 1 100%;
+  }
+
+  .pc-select {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    min-width: 0;
+    height: auto;
+    padding: 6px 10px;
+    border-radius: 10px;
+    font-size: calc(11.5px * var(--pc-fs));
+  }
+
+  .pc-select select {
+    width: 100%;
+    max-width: none;
+    font-size: calc(13px * var(--pc-fs));
+    text-overflow: ellipsis;
+  }
+
+  .pc-switch {
+    grid-column: 1 / -1;
+    justify-self: start;
+    height: 32px;
+    font-size: calc(13px * var(--pc-fs));
+  }
+
+  /* action chips: smaller, wrap */
+  .pc-chips { gap: 6px; }
+
+  .pc-chip {
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    font-size: calc(12.5px * var(--pc-fs));
+  }
+
+  .pc-chip b { font-size: calc(11.5px * var(--pc-fs)); }
+
+  .pc-clear { flex-basis: 100%; margin-left: 0; text-align: left; }
+
+  /* ---------- UI-074: each permission becomes a full-width card row ---------- */
+  .pc-tablewrap { overflow: visible; }
+
+  .pc-table,
+  .pc-table tbody { display: block; width: 100%; }
+
+  .pc-table thead { display: none; }
+
+  .pc-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--i-soft);
+  }
+
+  .pc-table tbody tr:last-child { border-bottom: 0; }
+
+  .pc-table tbody tr:hover { background: color-mix(in srgb, var(--i-hover) 60%, transparent); }
+
+  .pc-table tbody tr:hover td { background: none; }
+
+  .pc-table td,
+  .pc-table :is(th, td):nth-child(2),
+  .pc-table :is(th, td):nth-child(4) {
+    display: block !important;
+    min-width: 0;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  /* row 1: permission | action · row 2: module · group | handling */
+  .pc-table td:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .pc-table td:nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; padding-top: 2px !important; }
+  .pc-table td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .pc-table td:nth-child(4) { grid-column: 2; grid-row: 2; justify-self: end; align-self: center; }
+
+  .pc-name { font-size: calc(14px * var(--pc-fs)); }
+
+  .pc-mod span { display: inline; font-size: calc(12.5px * var(--pc-fs)); }
+  .pc-mod small { font-size: calc(12.5px * var(--pc-fs)); }
+  .pc-mod small::before { content: ' · '; }
+
+  .pc-pill,
+  .pc-std { font-size: calc(12.5px * var(--pc-fs)); }
+
+  .pc-table tbody tr.pc-empty-row { display: block; padding: 0; }
+  .pc-table tbody tr.pc-empty-row:hover { background: none; }
+
+  /* ---------- UI-075: footer — "Showing … | Rows" on one line, pager centred under it ---------- */
+  .pc-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .pc-foot-left {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .pc-pager {
+    justify-content: center;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .pc-pg {
+    min-width: 32px;
+    height: 32px;
+    padding-inline: 6px;
+  }
 }

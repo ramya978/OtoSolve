@@ -736,8 +736,79 @@ display: block;
 }
 
 /* ---------- drawer ---------- */
+/* The drawer and its overlay sit above the app's top bar (which was covering the drawer's
+   title row and close button), take the full visible screen height (100dvh, so the mobile
+   address bar never pushes the footer off-screen), and only the body scrolls - header and
+   footer stay in view. */
+.w-overlay {
+  z-index: 1000 !important;
+}
+
 .ta-drawer {
+  z-index: 111111111 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  flex-direction: column;
   width: min(520px, 100vw);
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+}
+
+.ta-drawer > .w-drawer-head,
+.ta-drawer > .ta-alert,
+.ta-drawer > .w-drawer-foot {
+  flex: none;
+}
+
+.ta-drawer > .w-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* the blocks inside keep their full height and the body scrolls instead
+   (without this the figures box was squeezed: Received cut, Live window gone) */
+.ta-drawer > .w-drawer-body > * {
+  flex-shrink: 0;
+}
+
+/* wrapper moved to <body> while the drawer is open: takes no space of its own */
+.ta-portal {
+  display: contents;
+}
+
+/* the close button never gets squeezed off the head row */
+.ta-drawer > .w-drawer-head {
+  padding-top: max(calc(16px * var(--ta-k)), env(safe-area-inset-top));
+}
+
+.ta-drawer > .w-drawer-head > div {
+  min-width: 0;
+}
+
+.ta-drawer > .w-drawer-head h2 {
+  overflow-wrap: anywhere;
+}
+
+.ta-drawer > .w-drawer-head .w-close {
+  flex: none;
+  margin-left: auto;
+}
+
+.ta-drawer > .w-drawer-foot {
+  padding-bottom: max(calc(14px * var(--ta-k)), env(safe-area-inset-bottom));
+}
+
+/* phones: the drawer fills the screen */
+@media (max-width: 560px) {
+  .ta-drawer {
+    width: 100vw;
+    border-radius: 0;
+  }
 }
 
 .ta-d-meta {
@@ -1009,11 +1080,17 @@ display: block;
   .ta-pagehead-actions { width: 100%; }
 
   .ta-kpi-side { display: none; }
+}
 
+/* drawer content on a phone (the drawer sits outside .ta-wrap, so this uses the screen width -
+   the old container rule never reached it) */
+@media (max-width: 560px) {
   .ta-code {
     grid-template-columns: minmax(0, 1fr);
     justify-items: center;
   }
+
+  .ta-code .ta-link { width: 100%; box-sizing: border-box; }
 
   .ta-figs {
     grid-template-columns: minmax(0, 1fr);

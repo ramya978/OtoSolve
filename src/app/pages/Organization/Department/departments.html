@@ -1,19 +1,20 @@
 <div class="dp-wrap">
-<app-page-header breadcrumb="Administration / Organisation" heading="Departments" description="Departments across the organisation, with their heads, people and status.">
-  <ng-container actions>
-     <div class="dp-head-acts">
- <button type="button" class="pf-hbtn btn-secondary" (click)="exportCsv()">
+<!-- header row: page header on the left, buttons on the right (kept outside app-page-header
+     so they always sit on the same line as the title, on every screen size) -->
+<div class="dp-head">
+  <app-page-header breadcrumb="Administration / Organisation" heading="Departments" description="Departments across the organisation, with their heads, people and status."></app-page-header>
+
+  <div class="dp-head-acts">
+    <button type="button" class="pf-hbtn btn-secondary" aria-label="Export departments" (click)="exportCsv()">
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14" /></svg>
-      Export
+      <span class="dp-btn-txt">Export</span>
     </button>
-    <button type="button" class="pf-hbtn btn-primary" (click)="openCreate()">
+    <button type="button" class="pf-hbtn btn-primary" aria-label="Create department" (click)="openCreate()">
       <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-      Create
+      <span class="dp-btn-txt">Create</span>
     </button>
-     </div>
-   
-  </ng-container>
-</app-page-header>
+  </div>
+</div>
 
 <section class="og-kpis" aria-label="Department summary">
   <article class="og-kpi">
@@ -145,7 +146,7 @@
 
       <div class="og-pop-body">
         <div class="og-pop-top">
-          <div>
+          <div class="og-pop-titletext">
             <p class="og-eyebrow">Department · {{ v.code }}</p>
             <h3 id="dp-view-title" class="og-pop-name">{{ v.name }}</h3>
           </div>
@@ -243,23 +244,25 @@
 
         <section class="og-block">
           <h3 class="og-block-title">Structure</h3>
-          <div class="og-field">
-            <label class="og-flabel" for="dp-parent">Sits under</label>
-            <select id="dp-parent" class="og-input" (change)="fParent.set($any($event.target).value)">
-              <option value="" [selected]="!fParent()">Top level</option>
-              @for (p of parentOptions(); track p.id) {
-                <option [value]="p.id" [selected]="fParent() === p.id">{{ p.name }}</option>
-              }
-            </select>
-          </div>
-          <div class="og-field og-field--last">
-            <label class="og-flabel" for="dp-head">Head of department</label>
-            <select id="dp-head" class="og-input" (change)="fHead.set($any($event.target).value)">
-              <option value="" [selected]="!fHead()">No head yet</option>
-              @for (p of store.people(); track p.id) {
-                <option [value]="p.id" [selected]="fHead() === p.id">{{ p.name }}</option>
-              }
-            </select>
+          <div class="og-grid2">
+            <div class="og-field og-field--last">
+              <label class="og-flabel" for="dp-parent">Sits under</label>
+              <select id="dp-parent" class="og-input" (change)="fParent.set($any($event.target).value)">
+                <option value="" [selected]="!fParent()">Top level</option>
+                @for (p of parentOptions(); track p.id) {
+                  <option [value]="p.id" [selected]="fParent() === p.id">{{ p.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="og-field og-field--last">
+              <label class="og-flabel" for="dp-head">Head of department</label>
+              <select id="dp-head" class="og-input" (change)="fHead.set($any($event.target).value)">
+                <option value="" [selected]="!fHead()">No head yet</option>
+                @for (p of store.people(); track p.id) {
+                  <option [value]="p.id" [selected]="fHead() === p.id">{{ p.name }}</option>
+                }
+              </select>
+            </div>
           </div>
         </section>
 
@@ -270,7 +273,7 @@
               <label class="og-flabel" for="dp-desc">Description</label>
               <span class="og-count">{{ fDesc().length }} / 1000</span>
             </span>
-            <textarea id="dp-desc" class="og-input og-area" rows="4" maxlength="1000" placeholder="What this department is responsible for."
+            <textarea id="dp-desc" class="og-input og-area" rows="3" maxlength="1000" placeholder="What this department is responsible for."
                       [value]="fDesc()" (input)="fDesc.set($any($event.target).value)"></textarea>
           </div>
         </section>
@@ -301,7 +304,7 @@
   </div>
 }
 
-<!-- ============================== popup: confirm delete (redesigned) ============================== -->
+<!-- ============================== popup: confirm delete ============================== -->
 @if (deleting(); as d) {
   <div class="og-overlay" (click)="cancelDelete()">
     <div class="og-dialog og-pop og-confirm og-delete" role="alertdialog" aria-modal="true" aria-labelledby="dp-del-title" tabindex="-1" (click)="$event.stopPropagation()">
@@ -329,7 +332,7 @@
         </button>
         <button type="button" class="pf-hbtn btn-primary og-danger" (click)="confirmDelete()">
           <svg class="og-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
-          Delete 
+          Delete
         </button>
       </footer>
     </div>

@@ -59,11 +59,88 @@
   font-size: calc(13px * var(--nv-fs)) !important;
   white-space: nowrap;
 }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+/* UI-023 - phones: the header figures drop under the title as their own strip, with a clear gap
+   above them and room inside each figure (they were packed against the description). The box
+   that holds the figures inside the shared header is found by :has(), so its class name
+   doesn't matter. */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
-  :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  :host ::ng-deep app-page-header > * {
+    flex-wrap: wrap !important;
+    row-gap: 0 !important;
+  }
+
+  :host ::ng-deep app-page-header *:has(> .wa-stats) {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  /* the gap sits on the strip itself, so it shows whichever header box wraps it */
+  :host .wa-stats {
+    display: grid !important;
+    flex: 1 1 100% !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 !important;
+    width: 100% !important;
+    margin: 16px 0 0 !important;
+    padding: 0;
+    border: 1px solid var(--wa-line);
+    border-radius: var(--wa-radius);
+    background: var(--wa-card);
+  }
+
+  :host .wa-stats > div {
+    display: grid;
+    align-content: start;
+    gap: 4px;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 12px;
+    border: 0;
+    border-left: 1px solid var(--wa-row);
+  }
+
+  :host .wa-stats > div:first-child { border-left: 0; }
+
+  :host .wa-stats dt {
+    overflow: hidden;
+    color: var(--wa-muted);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  :host .wa-stats dd {
+    margin: 0;
+    color: var(--wa-heading);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* "ready in Wati" / "2 running" sit on their own line under the figure */
+  :host .wa-stats dd small {
+    display: block;
+    margin-top: 2px;
+    color: var(--wa-muted);
+    font-size: 11px;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 360px) {
+  :host .wa-stats > div { padding: 9px 9px; }
+  :host .wa-stats dd { font-size: 16px; }
 }
 
 :host { --nv-pad: 18px; --nv-ctl: 36px; }

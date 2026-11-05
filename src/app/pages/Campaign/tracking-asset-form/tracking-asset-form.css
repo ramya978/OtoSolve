@@ -69,6 +69,11 @@
   padding: calc(20px * var(--af-k)) calc(26px * var(--af-k)) calc(24px * var(--af-k));
 }
 
+/* a field never pushes its column wider than half the row */
+.af-grid > .w-field {
+  min-width: 0;
+}
+
 .af-full {
   grid-column: 1 / -1;
   display: grid;
@@ -116,6 +121,7 @@
   display: flex;
   align-items: center;
   gap: calc(12px * var(--af-k));
+  min-width: 0;
   padding: calc(12px * var(--af-k)) calc(14px * var(--af-k));
   border: 1px solid var(--w-line);
   border-radius: 10px;
@@ -170,9 +176,12 @@
 }
 
 .af-type strong {
+  overflow: hidden;
   color: var(--w-heading);
   font-size: calc(13px * var(--af-fs));
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .af-type small {
@@ -840,10 +849,91 @@
   .af-stage { grid-template-rows: none; }
 }
 
+/* ---------- mobile form (bug UI-017) ----------
+   The fields used to stack one per row, leaving each one stretched across the whole screen.
+   They now stay in a 2-column grid on phones: Campaign | Medium, Active from | Active to, and
+   the two type tiles side by side (compact). Only Destination URL, Place, the section headings
+   and the live-window strip span the full row. Very small screens (≤ 360px) go to one column. */
 @container af-page (max-width: 640px) {
-  .af-grid,
-  .af-types {
-    grid-template-columns: minmax(0, 1fr);
+  .af-grid {
+    gap: calc(14px * var(--af-k)) calc(12px * var(--af-k));
+  }
+
+  /* compact type tiles: icon + name + tick, no description */
+  .af-types { gap: calc(10px * var(--af-k)); }
+
+  .af-type {
+    gap: calc(8px * var(--af-k));
+    padding: calc(10px * var(--af-k));
+  }
+
+  .af-type small { display: none; }
+
+  .af-type-ico {
+    width: calc(30px * var(--af-k));
+    height: calc(30px * var(--af-k));
+  }
+
+  .af-type-ico .w-ico {
+    width: calc(15px * var(--af-k));
+    height: calc(15px * var(--af-k));
+  }
+
+  .af-type-tick {
+    width: calc(18px * var(--af-k));
+    height: calc(18px * var(--af-k));
+  }
+
+  /* label hints (e.g. "Active · 10 Nov 2026") drop under the label instead of widening it */
+  .af-grid .w-field > .w-label {
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+
+  .af-grid .w-field > .w-label small {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* dropdown menus line up with their own field and never run past the card edge:
+     left column opens to the right, right column (af-col-end) opens to the left */
+  .af-grid cw-select {
+    position: relative;
+  }
+
+  .af-grid cw-select ::ng-deep *:has(> [role="listbox"]),
+  .af-grid cw-select ::ng-deep [role="listbox"] {
+    box-sizing: border-box;
+    min-width: 100% !important;
+    max-width: calc(100cqw - 32px) !important;
+  }
+
+  .af-grid .af-col-start cw-select ::ng-deep *:has(> [role="listbox"]),
+  .af-grid .af-col-start cw-select ::ng-deep [role="listbox"] {
+    left: 0 !important;
+    right: auto !important;
+  }
+
+  .af-grid .af-col-end cw-select ::ng-deep *:has(> [role="listbox"]),
+  .af-grid .af-col-end cw-select ::ng-deep [role="listbox"] {
+    left: auto !important;
+    right: 0 !important;
+  }
+
+  /* menu items wrap instead of forcing the menu wider */
+  .af-grid cw-select ::ng-deep [role="option"] {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* date inputs fit half a row */
+  .af-grid input[type="date"].w-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-inline: calc(8px * var(--af-k));
   }
 
   .af-title,
@@ -869,6 +959,14 @@
   .af-l-short { display: inline; }
 
   .af-main > app-page-header { padding-inline: calc(16px * var(--af-k)) !important; }
+}
+
+/* very small phones: one field per row */
+@container af-page (max-width: 360px) {
+  .af-grid,
+  .af-types {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -944,6 +1042,27 @@
 .af-grid cw-select ::ng-deep [role="combobox"] {
   height: calc(38px * var(--af-k)) !important;
   min-height: 0 !important;
+}
+
+/* custom date field: same height and text size as the other fields on this page */
+.af-grid cw-date-picker {
+  --cw-dp-h: calc(38px * var(--af-k));
+  --cw-dp-fs: calc(13px * var(--af-fs));
+}
+
+/* selects never push their half of the row wider; long names end with "…" */
+.af-grid cw-select {
+  display: block;
+  min-width: 0;
+}
+
+.af-grid cw-select ::ng-deep button[aria-haspopup],
+.af-grid cw-select ::ng-deep [role="combobox"] {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- density by screen width ----------

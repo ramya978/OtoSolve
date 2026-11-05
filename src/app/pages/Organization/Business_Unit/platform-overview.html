@@ -12,8 +12,11 @@
       <p>{{ platform.reference }} · {{ platform.rootDomain }} · Platform record</p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn i-btn--primary" (click)="seeAll()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>See all organisations</button>
+      <button type="button" class="i-btn i-btn--primary" (click)="seeAll()"
+              aria-label="See all organisations" title="See all organisations">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('list')" /></svg>
+        <span class="pl-btn-label">See all organisations</span>
+      </button>
     </div>
   </header>
 
@@ -45,17 +48,17 @@
           <h3 class="pl-h3">Platform record</h3>
           <dl class="i-kv">
             <div><dt>Reference</dt><dd>{{ platform.reference }}</dd></div>
-            <div><dt>Registered legal name</dt><dd>{{ platform.legalName }}</dd></div>
             <div><dt>Status</dt><dd><span class="i-st i-st--success">{{ platform.status }}</span></dd></div>
+            <div class="pl-kv-wide"><dt>Registered legal name</dt><dd>{{ platform.legalName }}</dd></div>
           </dl>
         </section>
 
         <section class="pl-sec">
           <h3 class="pl-h3">Contact &amp; defaults</h3>
           <dl class="i-kv">
-            <div class="is-wide"><dt>Contact</dt><dd>{{ platform.contact }}</dd></div>
-            <div class="is-wide"><dt>Support</dt><dd>{{ platform.support }}</dd></div>
-            <div class="is-wide"><dt>Defaults</dt><dd>{{ platform.defaults }}</dd></div>
+            <div class="is-wide pl-kv-half"><dt>Contact</dt><dd>{{ platform.contact }}</dd></div>
+            <div class="is-wide pl-kv-half"><dt>Support</dt><dd>{{ platform.support }}</dd></div>
+            <div class="is-wide pl-kv-wide"><dt>Defaults</dt><dd>{{ platform.defaults }}</dd></div>
           </dl>
         </section>
 
@@ -75,9 +78,6 @@
     <!-- ============ ORGANISATIONS ============ -->
     @if (tab() === 'organisations') {
       <div class="pl-pad">
-        
-
-
         <div class="pl-stages">
           @for (s of stages; track s.key) {
             <article class="pl-stage" [class.is-zero]="!s.count">

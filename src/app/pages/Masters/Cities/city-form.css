@@ -783,3 +783,26 @@
     justify-content: center
   }
 }
+
+
+/* =====================================================================================================
+   MOBILE / ALIGNMENT FIXES (kept last so they win)
+   UI-060 / UI-061 - Back button level with the title
+   Cancel / Create compact on the right on phones (same as the other master forms)
+   ===================================================================================================== */
+.ct-head-acts {
+  margin-top: calc(17px * var(--ct-fs)) !important;
+}
+
+@container ct-sheet (max-width: 520px) {
+  .ct-page .ct-bar-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: calc(8px * var(--ct-k));
+  }
+  .ct-page .ct-bar-actions > .m-btn {
+    flex: none;
+    height: calc(34px * var(--ct-k)) !important;
+    padding: 0 calc(14px * var(--ct-k)) !important;
+  }
+}

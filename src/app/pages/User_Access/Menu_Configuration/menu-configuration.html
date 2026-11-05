@@ -10,13 +10,16 @@
     <div>
       <span class="i-eyebrow">Users &amp; Access / Menus</span>
       <h1>Menu configuration</h1>
-      <p>Pick a menu on the left to see its items. Rename, reorder or switch them off — nothing is published until you save.</p>
+      <p>
+        <span class="mc-d-long">Pick a menu on the left to see its items. Rename, reorder or switch them off — nothing is published until you save.</span>
+        <span class="mc-d-short">Pick a menu to edit its items. Nothing is published until you save.</span>
+      </p>
     </div>
     <div class="i-head-actions">
-      <button type="button" class="i-btn" (click)="exportCsv()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
-      <button type="button" class="i-btn i-btn--primary" (click)="createTop()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span class="mc-l-long">Create menu</span><span class="mc-l-short">Create</span></button>
+      <button type="button" class="i-btn" aria-label="Export" title="Export" (click)="exportCsv()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span class="mc-l-long">Export</span></button>
+      <button type="button" class="i-btn i-btn--primary" aria-label="Create menu" title="Create menu" (click)="createTop()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg><span class="mc-l-long">Create menu</span></button>
     </div>
   </header>
 
@@ -30,10 +33,10 @@
       <span><b>{{ inUseItems() }}</b> of {{ totalItems() }} in the sidebar</span>
       <span class="mc-hide-sm"><b>{{ topInUse() }}</b> of {{ topCount() }} menus on</span>
     </div>
-    <button type="button" class="i-btn" [disabled]="saved()" (click)="discard()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg>Cancel changes</button>
-    <button type="button" class="i-btn i-btn--primary" [disabled]="saved()" (click)="save()">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save changes</button>
+    <button type="button" class="i-btn" aria-label="Cancel changes" [disabled]="saved()" (click)="discard()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('undo')" /></svg><span class="mc-sb-long">Cancel changes</span><span class="mc-sb-short">Cancel</span></button>
+    <button type="button" class="i-btn i-btn--primary" aria-label="Save changes" [disabled]="saved()" (click)="save()">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg><span class="mc-sb-long">Save changes</span><span class="mc-sb-short">Save</span></button>
   </section>
 
   <!-- toolbar -->

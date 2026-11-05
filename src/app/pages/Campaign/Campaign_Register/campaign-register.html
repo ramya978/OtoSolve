@@ -7,19 +7,22 @@
      timeline · row actions that depend on the status (draft: view/edit/duplicate/delete · submitted:
      view/duplicate/readiness · scheduled: view/edit/duplicate/launch · active: view/edit/duplicate ·
      closing/closed: view/duplicate), each with its own hover animation · bulk bar · pager.
+     Mobile / tablet: the status tabs fold into a "Status" custom dropdown next to the owner one,
+     so the filter area stays two short rows (search, then Status + Owner).
      ===================================================================================================== -->
 <app-page-header breadcrumb="Fundraising / Campaigns" heading="All campaigns" description="Fundraising campaigns across the workspace, with their status, progress and dates.">
   <ng-container actions>
     <div class="cr-headactions">
-      <button type="button" class="btn-secondary pf-hbtn"(click)="exportAll()" >
+      <!-- mobile / tablet: icon only (label hidden, still read out via aria-label, shown as tooltip) -->
+      <button type="button" class="btn-secondary pf-hbtn cr-hbtn" aria-label="Export" title="Export" (click)="exportAll()">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
-        Export
+        <span class="cr-hbtn-label">Export</span>
       </button>
-      <button type="button" class="btn-primary pf-hbtn" (click)="goCreate()">
+      <button type="button" class="btn-primary pf-hbtn cr-hbtn" aria-label="Create" title="Create" (click)="goCreate()">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
-        Create
+        <span class="cr-hbtn-label">Create</span>
       </button>
     </div>
   </ng-container>
@@ -53,7 +56,7 @@
 <!-- register -->
 <section class="card cr-card mb" aria-labelledby="cr-reg-title">
 
-  <!-- title row: name + count, search, owner dropdown -->
+  <!-- title row: name + count, search, status dropdown (mobile only), owner dropdown -->
   <div class="cr-bar">
     <div class="cr-bar-title">
       <h2 id="cr-reg-title">Campaigns</h2>
@@ -68,8 +71,47 @@
                [value]="query()" (input)="setQuery($any($event.target).value)" />
       </label>
 
+      <!-- status: custom dropdown - replaces the status tabs on mobile / tablet -->
+      <div class="cr-dd cr-dd-status" [class.is-open]="openMenu() === 'status'">
+        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'status'"
+                aria-label="Filter by status" (click)="toggleMenu('status', $event)">
+          <span class="cr-dd-key">Status</span>
+          @if (statusFilter() !== 'all') {
+            <i [class]="'cr-dot tone-' + statusFilterTone()" aria-hidden="true"></i>
+          }
+          <span class="cr-dd-val">{{ statusFilterLabel() }}</span>
+          <span class="cr-tab-n">{{ statusCounts()[statusFilter()] }}</span>
+          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+        </button>
+        @if (openMenu() === 'status') {
+          <ul class="cr-dd-menu" role="listbox" aria-label="Status" (click)="$event.stopPropagation()">
+            <li role="option" [attr.aria-selected]="statusFilter() === 'all'" [class.is-on]="statusFilter() === 'all'"
+                tabindex="0" (click)="setStatus('all')" (keydown.enter)="setStatus('all')">
+              All statuses
+              <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
+              @if (statusFilter() === 'all') {
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+              }
+            </li>
+            @for (s of statusOrder; track s) {
+              <li role="option" [attr.aria-selected]="statusFilter() === s" [class.is-on]="statusFilter() === s"
+                  tabindex="0" (click)="setStatus(s)" (keydown.enter)="setStatus(s)">
+                <i [class]="'cr-dot tone-' + statusTone(s)" aria-hidden="true"></i>{{ statusLabel(s) }}
+                <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
+                @if (statusFilter() === s) {
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
       <!-- owner: custom dropdown -->
-      <div class="cr-dd" [class.is-open]="openMenu() === 'owner'">
+      <div class="cr-dd cr-dd-owner" [class.is-open]="openMenu() === 'owner'">
         <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'owner'"
                 (click)="toggleMenu('owner', $event)">
           <span class="cr-dd-key">Owner</span>
@@ -107,7 +149,7 @@
     </div>
   </div>
 
-  <!-- status tabs with counts -->
+  <!-- status tabs with counts (desktop; on mobile / tablet the Status dropdown above takes over) -->
   <div class="cr-tabs" role="tablist" aria-label="Filter by status">
     <button type="button" role="tab" class="cr-tab" [class.is-on]="statusFilter() === 'all'"
             [attr.aria-selected]="statusFilter() === 'all'" (click)="setStatus('all')">
@@ -319,16 +361,18 @@
               </div>
             </td>
           </tr>
-        } @empty {
-          <tr>
-            <td colspan="7" class="empty">
-              No campaigns match this filter. Try a different search term or status.
-              @if (hasFilters()) { <button type="button" class="cr-reset" (click)="resetFilters()">Reset filters</button> }
-            </td>
-          </tr>
         }
       </tbody>
     </table>
+
+    <!-- empty state sits outside the table: a colspan="7" cell kept the hidden columns alive on
+         mobile, so the header row only covered the visible columns (header looked too narrow) -->
+    @if (!pageRows().length) {
+      <div class="cr-empty">
+        No campaigns match this filter. Try a different search term or status.
+        @if (hasFilters()) { <button type="button" class="cr-reset" (click)="resetFilters()">Reset filters</button> }
+      </div>
+    }
   </div>
 
   <div class="card-foot cr-foot">

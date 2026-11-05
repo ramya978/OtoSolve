@@ -111,6 +111,9 @@ export type SortKey = 'name' | 'status' | 'progress' | 'owner' | 'launch' | 'end
 
 export type RowAction = 'view' | 'edit' | 'duplicate' | 'readiness' | 'launch' | 'delete';
 
+/** Custom dropdowns on the page (status = mobile / tablet replacement for the status tabs). */
+export type MenuKey = 'owner' | 'rows' | 'status';
+
 export interface CampaignKpi {
   key: 'total' | 'active' | 'scheduled' | 'approval' | 'ending' | 'paused' | 'received';
   label: string;
@@ -184,8 +187,8 @@ export class CampaignRegister {
   readonly checked = signal<Set<string>>(new Set());
   /** Campaign whose owners are shown in the owners popup (null = closed). */
   readonly ownersFor = signal<CampaignRow | null>(null);
-  /** Which custom dropdown is open ('owner' | 'rows' | null). */
-  readonly openMenu = signal<'owner' | 'rows' | null>(null);
+  /** Which custom dropdown is open ('owner' | 'rows' | 'status' | null). */
+  readonly openMenu = signal<MenuKey | null>(null);
 
   get total(): number { return this.rows().length; }
   readonly pageSizes = [10, 25, 50];
@@ -196,6 +199,18 @@ export class CampaignRegister {
   readonly statusLabel = (s: CampaignStatus): string => STATUS_META[s].label;
   readonly statusTone = (s: CampaignStatus): string => STATUS_META[s].tone;
   readonly iconPath = (name: string): string => ICON_PATHS[name] ?? '';
+
+  /** Label of the current status filter, for the mobile Status dropdown button. */
+  statusFilterLabel(): string {
+    const s = this.statusFilter();
+    return s === 'all' ? 'All' : STATUS_META[s].label;
+  }
+
+  /** Tone of the current status filter ('' for all), for the dot in the Status dropdown button. */
+  statusFilterTone(): string {
+    const s = this.statusFilter();
+    return s === 'all' ? '' : STATUS_META[s].tone;
+  }
 
   /** Top KPI strip - built only from what the list view shows (status, progress, owner, launch / end),
    *  for the rows matching the current search + owner filter. */
@@ -294,7 +309,7 @@ export class CampaignRegister {
   /** Count per status tab (and 'all') for the current search + owner. */
   readonly statusCounts = computed(() => {
     const st = !this.query().trim() && this.ownerFilter() === 'all' ? this.stats() : null;
-    if (st) return { all: st.total, draft: st.draft, submitted: st.submitted, scheduled: st.scheduled, active: st.active, paused: st.paused, closing: st.closing, closed: st.closed };
+    if (st) return { all: st.total, draft: st.draft, submitted: st.submitted, scheduled: st.scheduled, active: st.active, paused: st.paused, closing: st.closing, closed: st.closed } as Record<string, number>;
     const out: Record<string, number> = { all: this.baseRows().length };
     for (const s of STATUS_ORDER) out[s] = 0;
     for (const r of this.baseRows()) out[r.status]++;
@@ -458,6 +473,7 @@ export class CampaignRegister {
   }
   setStatus(value: string): void {
     this.statusFilter.set(value as 'all' | CampaignStatus);
+    this.openMenu.set(null);
     this.page.set(1);
   }
   setOwner(value: string): void {
@@ -494,7 +510,7 @@ export class CampaignRegister {
     this.goToPage(this.page() + 1);
   }
 
-  toggleMenu(menu: 'owner' | 'rows', event: Event): void {
+  toggleMenu(menu: MenuKey, event: Event): void {
     event.stopPropagation();
     this.openMenu.set(this.openMenu() === menu ? null : menu);
   }

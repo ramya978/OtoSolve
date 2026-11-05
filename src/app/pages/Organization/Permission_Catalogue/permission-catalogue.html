@@ -11,8 +11,6 @@
       <h1>Permission catalogue</h1>
       <p class="pc-sub">{{ total }} permissions · {{ moduleList().length }} modules · {{ sensitiveTotal }} sensitive</p>
     </div>
-
- 
   </header>
 
   <!-- STAT STRIP -->
@@ -62,8 +60,6 @@
     </div>
   </section>
 
-
-
   <!-- FILTER TOOLBAR -->
   <section class="i-card pc-tools" aria-label="Filters">
     <header class="pc-sec-head">
@@ -75,54 +71,64 @@
     </header>
 
     <div class="pc-tools-body">
-    <div class="pc-tools-row">
-      <label class="pc-search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
-        <input type="search" placeholder="Search by code, name or group" aria-label="Search permissions"
-               [value]="query()" (input)="onSearch($event)" />
-      </label>
+      <div class="pc-tools-row pc-tools-main">
+        <label class="pc-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
+          <input type="search" placeholder="Search by code, name or group" aria-label="Search permissions"
+                 [value]="query()" (input)="onSearch($event)" />
+        </label>
 
-      <label class="pc-select">
-        <span>Module</span>
-        <select aria-label="Module" (change)="onModule($event)">
-          <option value="" [selected]="module() === ''">All modules ({{ total }})</option>
-          @for (m of moduleList(); track m.name) {
-            <option [value]="m.name" [selected]="module() === m.name">{{ m.name }} ({{ m.count }})</option>
-          }
-        </select>
-      </label>
-
-      <label class="pc-select">
-        <span>Group</span>
-        <select aria-label="Group" (change)="onGroup($event)">
-          <option value="" [selected]="group() === ''">All groups</option>
-          @for (g of groupList(); track g.name) {
-            <option [value]="g.name" [selected]="group() === g.name">{{ g.name }} ({{ g.count }})</option>
-          }
-        </select>
-      </label>
-
-      <button type="button" role="switch" class="pc-switch" [class.is-on]="sensitiveOnly()" [attr.aria-checked]="sensitiveOnly()"
-              (click)="toggleSensitive()">
-        <span class="pc-switch-track"><span class="pc-switch-knob"></span></span>
-        Sensitive only
-      </button>
-    </div>
-
-    <div class="pc-tools-row pc-chips" role="tablist" aria-label="Actions">
-      <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === ''" [attr.aria-selected]="action() === ''" (click)="pickAction('')">
-        All actions <b>{{ baseCount() }}</b>
-      </button>
-      @for (a of actions; track a.key) {
-        <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === a.key" [attr.aria-selected]="action() === a.key"
-                (click)="pickAction(a.key)">
-          <i [class]="'pc-dot pc-tone--' + a.tone"></i>{{ a.label }} <b>{{ actionCount(a.key) }}</b>
+        <!-- mobile only: opens the other filters -->
+        <button type="button" class="pc-filter-btn" [class.is-on]="filtersOpen() || activeFilterCount() > 0"
+                [attr.aria-expanded]="filtersOpen()" aria-controls="pc-more-filters" (click)="toggleFilters()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg>
+          Filters
+          @if (activeFilterCount()) { <b>{{ activeFilterCount() }}</b> }
         </button>
-      }
-      @if (hasFilters()) {
-        <button type="button" class="i-link pc-clear" (click)="clearFilters()">Clear filters</button>
-      }
-    </div>
+
+        <div class="pc-more pc-more-sel" id="pc-more-filters" [class.is-open]="filtersOpen()">
+          <label class="pc-select">
+            <span>Module</span>
+            <select aria-label="Module" (change)="onModule($event)">
+              <option value="" [selected]="module() === ''">All modules ({{ total }})</option>
+              @for (m of moduleList(); track m.name) {
+                <option [value]="m.name" [selected]="module() === m.name">{{ m.name }} ({{ m.count }})</option>
+              }
+            </select>
+          </label>
+
+          <label class="pc-select">
+            <span>Group</span>
+            <select aria-label="Group" (change)="onGroup($event)">
+              <option value="" [selected]="group() === ''">All groups</option>
+              @for (g of groupList(); track g.name) {
+                <option [value]="g.name" [selected]="group() === g.name">{{ g.name }} ({{ g.count }})</option>
+              }
+            </select>
+          </label>
+
+          <button type="button" role="switch" class="pc-switch" [class.is-on]="sensitiveOnly()" [attr.aria-checked]="sensitiveOnly()"
+                  (click)="toggleSensitive()">
+            <span class="pc-switch-track"><span class="pc-switch-knob"></span></span>
+            Sensitive only
+          </button>
+        </div>
+      </div>
+
+      <div class="pc-tools-row pc-chips pc-more" [class.is-open]="filtersOpen()" role="tablist" aria-label="Actions">
+        <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === ''" [attr.aria-selected]="action() === ''" (click)="pickAction('')">
+          All actions <b>{{ baseCount() }}</b>
+        </button>
+        @for (a of actions; track a.key) {
+          <button type="button" role="tab" class="pc-chip" [class.is-on]="action() === a.key" [attr.aria-selected]="action() === a.key"
+                  (click)="pickAction(a.key)">
+            <i [class]="'pc-dot pc-tone--' + a.tone"></i>{{ a.label }} <b>{{ actionCount(a.key) }}</b>
+          </button>
+        }
+        @if (hasFilters()) {
+          <button type="button" class="i-link pc-clear" (click)="clearFilters()">Clear filters</button>
+        }
+      </div>
     </div>
   </section>
 
@@ -153,7 +159,7 @@
               <td>
                 <strong class="pc-name">{{ p.name }}</strong>
                 <span class="pc-code">
-                  {{ p.code }}
+                  <span class="pc-code-txt">{{ p.code }}</span>
                   <button type="button" class="pc-copy" [class.is-done]="copied() === p.code"
                           [attr.aria-label]="'Copy ' + p.code" (click)="copy(p.code)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(copied() === p.code ? 'check' : 'copy')" /></svg>
@@ -166,9 +172,7 @@
               </td>
               <td>
                 @if (p.sensitive) {
-                  <span class="pc-pill pc-pill--sens">
-                   Sensitive
-                  </span>
+                  <span class="pc-pill pc-pill--sens">Sensitive</span>
                 } @else {
                   <span class="pc-std">Standard</span>
                 }
@@ -191,70 +195,42 @@
     </div>
 
     <!-- PAGINATION -->
-<footer class="pc-foot">
-  <div class="pc-foot-left">
-    <p class="pc-showing">
-      Showing <b>{{ from() }}–{{ to() }}</b> of
-      <b>{{ rows().length }}</b>
-    </p>
+    <footer class="pc-foot">
+      <div class="pc-foot-left">
+        <p class="pc-showing">
+          Showing <b>{{ from() }}–{{ to() }}</b> of <b>{{ rows().length }}</b>
+        </p>
 
-    <label class="pc-rows">
-      <span class="pc-sr-only">Rows per page</span>
-      <select
-        aria-label="Rows per page"
-        [value]="pageSize()"
-        (change)="onPageSizeChange($event)"
-      >
-        @for (size of pageSizes; track size) {
-          <option [value]="size">{{ size }}</option>
-        }
-      </select>
-      <span>Rows</span>
-    </label>
-  </div>
+        <label class="pc-rows">
+          <span class="pc-sr-only">Rows per page</span>
+          <span class="pc-rows-txt">Rows</span>
+          <select aria-label="Rows per page" [value]="pageSize()" (change)="onPageSizeChange($event)">
+            @for (size of pageSizes; track size) {
+              <option [value]="size" [selected]="pageSize() === size">{{ size }}</option>
+            }
+          </select>
+        </label>
+      </div>
 
-  <nav class="pc-pager" aria-label="Pagination">
-    <button
-      type="button"
-      class="pc-pg"
-      aria-label="Previous page"
-      [disabled]="current() <= 1"
-      (click)="go(-1)"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path [attr.d]="icon('prev')" />
-      </svg>
-    </button>
-
-    @for (p of visiblePages(); track p) {
-      @if (p === '...') {
-        <span class="pc-gap" aria-hidden="true">...</span>
-      } @else {
-        <button
-          type="button"
-          class="pc-pg"
-          [class.is-on]="current() === p"
-          [attr.aria-current]="current() === p ? 'page' : null"
-          [attr.aria-label]="'Page ' + p"
-          (click)="goToPage(p)"
-        >
-          {{ p }}
+      <nav class="pc-pager" aria-label="Pagination">
+        <button type="button" class="pc-pg" aria-label="Previous page" [disabled]="current() <= 1" (click)="go(-1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('prev')" /></svg>
         </button>
-      }
-    }
 
-    <button
-      type="button"
-      class="pc-pg"
-      aria-label="Next page"
-      [disabled]="current() >= pages()"
-      (click)="go(1)"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path [attr.d]="icon('next')" />
-      </svg>
-    </button>
-  </nav>
-</footer>
+        @for (p of visiblePages(); track $index) {
+          @if (p === '...') {
+            <span class="pc-gap" aria-hidden="true">…</span>
+          } @else {
+            <button type="button" class="pc-pg" [class.is-on]="current() === p"
+                    [attr.aria-current]="current() === p ? 'page' : null" [attr.aria-label]="'Page ' + p"
+                    (click)="goToPage(p)">{{ p }}</button>
+          }
+        }
+
+        <button type="button" class="pc-pg" aria-label="Next page" [disabled]="current() >= pages()" (click)="go(1)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('next')" /></svg>
+        </button>
+      </nav>
+    </footer>
   </section>
 </div>

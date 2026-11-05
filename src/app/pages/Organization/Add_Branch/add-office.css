@@ -13,18 +13,18 @@
   min-width: 0;
 }
 
-/* ---------- page header: same as the shared app-page-header on the other pages ---------- */
+/* ---------- page header: text on the left, Back button on the title line (never wraps below) ---------- */
 .ao-head {
   display: flex;
+  flex-wrap: nowrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: calc(12px * var(--ao-k)) calc(20px * var(--ao-k));
-  flex-wrap: wrap;
+  gap: calc(16px * var(--ao-k));
   margin-bottom: calc(16px * var(--ao-k));
 }
 
 .ao-head-text {
-  flex: 1 1 calc(360px * var(--ao-k));
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -57,6 +57,8 @@
 /* buttons in the header and the footer bar */
 .ao-head .pf-hbtn,
 .ao-bar .pf-hbtn {
+  display: inline-flex !important;
+  align-items: center !important;
   height: calc(36px * var(--ao-k)) !important;
   min-height: 0 !important;
   padding: 0 calc(14px * var(--ao-k)) !important;
@@ -65,9 +67,16 @@
   white-space: nowrap;
 }
 
-.ao-head .pf-hbtn {
-  flex: none;
+/* Back button: pushed down by the breadcrumb so it sits centred on the title line */
+.ao-head .ao-back {
+  --ao-crumb: calc(15.4px * var(--ao-fs));      /* 11px x 1.4 line height */
+  --ao-crumb-gap: calc(4px * var(--ao-k));
+  --ao-title-lh: calc(32.5px * var(--ao-fs));   /* 26px x 1.25 line height */
+  --ao-btn-h: calc(36px * var(--ao-k));
+  flex: 0 0 auto;
   align-self: flex-start;
+  height: var(--ao-btn-h) !important;
+  margin-top: calc(var(--ao-crumb) + var(--ao-crumb-gap) + (var(--ao-title-lh) - var(--ao-btn-h)) / 2);
 }
 
 .ao-head .og-ico,
@@ -186,6 +195,7 @@
 .ao-body .og-field {
   gap: calc(6px * var(--ao-k));
   margin-bottom: calc(14px * var(--ao-k));
+  min-width: 0;
 }
 
 .ao-body .og-flabel {
@@ -303,26 +313,135 @@
   }
 }
 
+/* UI-034 / UI-035 - mobile header: Back button icon-only on the title line */
+@container ao-page (max-width: 760px) {
+  .ao-head {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .ao-title {
+    font-size: calc(22px * var(--ao-fs));
+  }
+
+  .ao-sub {
+    margin-top: 4px;
+  }
+
+  .ao-head .ao-back {
+    --ao-title-lh: calc(27.5px * var(--ao-fs));   /* 22px x 1.25 */
+    --ao-btn-h: 34px;
+    width: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    border-radius: 8px !important;
+  }
+
+  .ao-head .ao-back .og-ico {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ao-head .ao-btn-txt {
+    display: none;
+  }
+}
+
+/* UI-034 / UI-035 - mobile form: 2 columns for short fields, less vertical space */
 @container ao-page (max-width: 640px) {
-  .ao-grid2,
-  .ao-grid4 {
-    grid-template-columns: 1fr;
+  .ao-card,
+  .ao-row {
+    margin-bottom: 12px;
+  }
+
+  .ao-row {
+    gap: 12px;
   }
 
   .ao-card-head {
-    padding: calc(12px * var(--ao-k)) calc(16px * var(--ao-k));
+    gap: 10px;
+    padding: 10px 14px;
   }
 
   .ao-card-head p {
     display: none;
   }
 
+  .ao-ico {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .ao-ico svg {
+    width: 16px;
+    height: 16px;
+  }
+
   .ao-body {
-    padding: calc(14px * var(--ao-k)) calc(16px * var(--ao-k)) calc(2px * var(--ao-k));
+    padding: 12px 14px 2px;
+  }
+
+  .ao-body .og-field {
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+
+  .ao-body .og-input {
+    height: 36px;
+  }
+
+  .ao-body .og-area {
+    min-height: 68px;
+  }
+
+  /* helper hints take a full line each on a phone; errors still show */
+  .ao-body .og-hint {
+    display: none;
+  }
+
+  /* basics: name full width · code | sits under · kind full width */
+  .ao-grid4--basics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 10px;
+  }
+
+  .ao-grid4--basics .ao-f-name,
+  .ao-grid4--basics .ao-f-kind {
+    grid-column: 1 / -1;
+  }
+
+  /* address: country | state · city | postal */
+  .ao-grid4--address {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 10px;
+  }
+
+  /* display order | status stays side by side */
+  .ao-grid2--keep {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 10px;
+  }
+
+  /* long fields (address lines, e-mail / phone) stack */
+  .ao-grid2:not(.ao-grid2--keep) {
+    grid-template-columns: 1fr;
+  }
+
+  .ao-quick {
+    margin: -2px 0 10px;
+  }
+
+  .ao-body .og-chip {
+    height: 28px;
+    padding: 0 10px;
   }
 
   .ao-bar {
     justify-content: stretch;
+    padding-bottom: 16px;
   }
 
   .ao-bar .pf-hbtn {

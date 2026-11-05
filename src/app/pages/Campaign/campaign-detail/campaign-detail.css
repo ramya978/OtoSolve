@@ -43,15 +43,27 @@
   .cd-l-mid { display: inline; }
 }
 
+/* mobile: icon-only square buttons (the name stays in title / aria-label) */
 @container cd-page (max-width: 700px) {
   .cd-hbtn .cd-l-long,
-  .cd-hbtn .cd-l-mid { display: none; }
-  .cd-l-short { display: inline; }
-}
+  .cd-hbtn .cd-l-mid,
+  .cd-hbtn .cd-l-short { display: none !important; }
 
-@container cd-page (max-width: 340px) {
-  .cd-hbtn .cd-l-short { display: none; }
-  .cd-hbtn { width: calc(36px * var(--cd-k)); padding: 0 !important; justify-content: center; }
+  .cd-head-acts .cd-hbtn {
+    display: inline-grid;
+    place-items: center;
+    width: calc(40px * var(--cd-k));
+    min-width: calc(40px * var(--cd-k));
+    height: calc(40px * var(--cd-k));
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .cd-head-acts .cd-hbtn .w-ico {
+    width: calc(18px * var(--cd-k));
+    height: calc(18px * var(--cd-k));
+    margin: 0 !important;
+  }
 }
 
 /* ---------- card shell ---------- */
@@ -1443,11 +1455,88 @@
   .cd-kpis > .cd-kpi:nth-child(3) { display: none; }
 }
 
-/* phones: Raised and Monthly revenue stacked, each full width */
+/* ---------- phones (bug UI-015): KPI widgets were too wide / busy ----------
+   Raised and Monthly revenue stack full width, but each card stays compact: the 6-month heat
+   tiles and the "Still to raise / Days left" figures (meant for wide desktop cards) are dropped,
+   the ring / icon / figures are a size smaller and the target + dates line wraps instead of
+   stretching the card. Nothing overflows sideways. */
 @container cd-page (max-width: 460px) {
-  .cd-kpis { flex-direction: column; }
+  /* two short cards side by side instead of two tall stacked rows: ring / icon on top,
+     figures under it - about half the height of the stacked version */
+  .cd-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: calc(10px * var(--cd-k));
+    margin-bottom: calc(14px * var(--cd-k));
+  }
+
   .cd-kpis > .cd-kpi,
-  .cd-kpis > .cd-kpi-main { flex: none; }
+  .cd-kpis > .cd-kpi-main {
+    flex: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .cd-kpis > .cd-kpi {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: calc(8px * var(--cd-k));
+    padding: calc(12px * var(--cd-k));
+  }
+
+  .cd-kpis .cd-kpi-body { width: 100%; }
+
+  /* target + dates / delta line: at most two lines */
+  .cd-kpis .cd-kpi-note {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  /* wide-card extras off on phones */
+  .cd-kpis .cd-kpi-side,
+  .cd-kpis .cd-kpi-extra,
+  .cd-kpis .cd-kpi-track { display: none !important; }
+
+  .cd-kpis > .cd-kpi:not(.cd-kpi-main) .cd-kpi-body {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+
+  .cd-kpis .cd-kpi-body { min-width: 0; }
+
+  .cd-ring {
+    width: calc(40px * var(--cd-k));
+    height: calc(40px * var(--cd-k));
+  }
+
+  .cd-ring > span { font-size: calc(11px * var(--cd-fs)); }
+
+  .cd-kpi-ico {
+    width: calc(36px * var(--cd-k));
+    height: calc(36px * var(--cd-k));
+    border-radius: 10px;
+  }
+
+  .cd-kpi-ico .w-ico {
+    width: calc(18px * var(--cd-k));
+    height: calc(18px * var(--cd-k));
+  }
+
+  .cd-kpi-value {
+    overflow: hidden;
+    font-size: calc(18px * var(--cd-fs));
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cd-kpi-note { white-space: normal; line-height: 1.45; }
+}
+
+/* very small phones: back to one card per row */
+@container cd-page (max-width: 300px) {
+  .cd-kpis { grid-template-columns: minmax(0, 1fr); }
 }
 
 @container cd-page (max-width: 1000px) {

@@ -106,6 +106,9 @@ const ICONS: Record<IconName, string> = {
   search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.3-4.3'
 };
 
+/** Where "All leads" (the back button) takes the user. */
+const WORK_QUEUE_ROUTE = '/app/fundraising/relationships/lead-work-queue';
+
 /** Lifecycle track shown in the summary card: the pipeline in order, then where a lead can be parked or closed. */
 const STAGES: LeadStatus[] = ['New', 'Assigned', 'Contacted', 'Qualified', 'Converted', 'Nurture', 'Suppressed', 'Closed'];
 
@@ -326,7 +329,7 @@ export class LeadProfile implements OnInit {
     const id = q.get('leadId') ?? q.get('id');
     if (!ref && !id) {
       this.showToast('Choose a lead from the work queue to open its profile.');
-      this.router.navigate(['/app/fundraising/relationships/lead-work-queue']);
+      this.router.navigate([WORK_QUEUE_ROUTE]);
       return;
     }
     this.api.getAssignableOwners().pipe(catchError(() => of([] as DonLookupItem[]))).subscribe((owners) => {
@@ -503,6 +506,12 @@ export class LeadProfile implements OnInit {
   // =================================================================================================
   // actions
   // =================================================================================================
+  /** "All leads": tell a parent screen (if any), then open the lead work queue. */
+  protected goBack(): void {
+    this.back.emit();
+    this.router.navigate([WORK_QUEUE_ROUTE]);
+  }
+
   protected onCommunicate(): void {
     this.communicate.emit(this.lead());
     this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: this.lead().reference } });

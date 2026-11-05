@@ -12,7 +12,7 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 export type FuTab = 'all' | 'mine' | 'today' | 'overdue' | 'upcoming' | 'done-today' | 'high' | 'attention' | 'escalated' | 'calls';
 export type FuView = 'list' | 'board' | 'calendar';
 export type FuSort = 'latest' | 'oldest' | 'due' | 'priority';
-type FuMenu = 'sort' | 'owner' | 'campaign' | 'from' | 'to' | 'row' | 'rows' | 'r-owner' | 'e-manager' | 'c-date' | 'c-cat' | 'c-staff' | null;
+type FuMenu = 'sort' | 'quick' | 'owner' | 'campaign' | 'from' | 'to' | 'row' | 'rows' | 'r-owner' | 'e-manager' | 'c-date' | 'c-cat' | 'c-staff' | null;
 type FuDialog = 'reassign' | 'escalate' | 'reschedule' | 'cancel' | 'history' | 'day' | null;
 
 /** The queue endpoint's own `view` word for each tab ('all' sends none). */
@@ -221,6 +221,11 @@ export class FollowUps implements OnDestroy {
       [{ key: 'calls' as FuTab, label: 'Calls', n: n('calls') }]
     ];
   });
+  /** The active quick view, shown on the phone dropdown that replaces the chips. */
+  protected readonly currentTab = computed(() => {
+    const flat = this.tabs().flat();
+    return flat.find((t) => t.key === this.tab()) ?? flat[0];
+  });
 
   protected readonly filtered = computed(() => {
     const q = this.query().trim().toLowerCase();
@@ -383,7 +388,7 @@ export class FollowUps implements OnDestroy {
 
   /* ---------- tabs / search / filters ---------- */
   setTab(t: FuTab): void {
-    this.tab.set(t); this.page.set(1); this.selected.set([]);
+    this.tab.set(t); this.page.set(1); this.selected.set([]); this.menu.set(null);
     this.store.setQueueView(SERVER_VIEW[t]);
   }
   ngOnDestroy(): void { this.store.setQueueView(null); }

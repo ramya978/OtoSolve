@@ -2,24 +2,40 @@
      ASSIGNMENT BOARD
      Page header → "On the board" widgets (click to filter) → records card (tools · filters · tabs · chips · table · pager)
      + Owners side card → assign / history popups.
+     Phones: Export sits top-right beside the title as an icon button; the Leads / Donors switch moves to a
+     full-width row under the header.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="Assignment board" description="Give every lead and donor an owner, and see who is carrying how much.">
   <ng-container actions>
-   <div style="gap: 10px;display: flex;flex-wrap: wrap;">
-     <div class="fu-seg ab-types" role="tablist">
-      <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
-      </button>
-      <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+    <div class="ab-hactions">
+      <!-- desktop: Leads / Donors switch in the header -->
+      <div class="fu-seg ab-types ab-types-head" role="tablist" aria-label="Record type">
+        <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
+        </button>
+        <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+        </button>
+      </div>
+      <button type="button" class="fu-btn ab-export" aria-label="Export" title="Export" (click)="exportCsv()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+        <span class="ab-btn-text">Export</span>
       </button>
     </div>
-    <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Export</button>
-   </div>
   </ng-container>
 </app-page-header>
 
 <div class="ab">
+
+  <!-- phones: Leads / Donors switch as a full-width row under the header -->
+  <div class="fu-seg ab-types ab-types-body" role="tablist" aria-label="Record type">
+    <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
+    </button>
+    <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+    </button>
+  </div>
 
   <!-- ===== on the board ===== -->
   <section class="ab-figs" aria-label="On the board">

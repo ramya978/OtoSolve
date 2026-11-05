@@ -143,6 +143,8 @@ export class LeadWorkQueue implements OnInit {
   protected readonly pageSizes = [10, 25, 50];
   protected readonly sort = signal<SortKey>('due');
   protected readonly openDd = signal<Dd | null>(null);
+  /** Mobile only: whether the filter panel under the search bar is open (desktop always shows the filters). */
+  protected readonly filtersOpen = signal(false);
 
   // ---- dropdown options ----
   protected readonly stageOpts: Opt[] = [{ value: 'all', label: 'All' }, ...['New', 'Assigned', 'Contacted', 'Qualified', 'Converted', 'Lost'].map((v) => ({ value: v, label: v }))];
@@ -342,6 +344,8 @@ export class LeadWorkQueue implements OnInit {
   }
   @HostListener('document:click') onDocClick(): void { this.openDd.set(null); }
   @HostListener('document:keydown.escape') onEscape(): void {
-    if (this.openDd()) this.openDd.set(null); else this.clearChecked();
+    if (this.openDd()) this.openDd.set(null);
+    else if (this.filtersOpen()) this.filtersOpen.set(false);
+    else this.clearChecked();
   }
 }

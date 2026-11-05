@@ -111,11 +111,6 @@
   .at-tools .at-range { width: 100% !important; }
 }
 
-@container at-page (max-width: 560px) {
-  .at-page > .i-head .at-l-long { display: none; }
-  .at-page > .i-head .at-l-short { display: inline; }
-}
-
 @container at-card (max-width: 420px) {
   /* phones: the summary keeps Total and Denied or failed */
   .at-sum > div:nth-child(2) { display: none; }
@@ -170,8 +165,6 @@
   margin: 0 !important;
 }
 
-.at-l-short { display: none; }
-
 /* buttons on the page: one height, sized with the page */
 .at-page .i-btn {
   height: calc(34px * var(--at-k));
@@ -183,7 +176,7 @@
 }
 
 .at-page > .i-head .i-btn { height: calc(36px * var(--at-k)); padding: 0 calc(14px * var(--at-k)); font-size: calc(13px * var(--at-fs)); }
-.at-page .i-btn svg { width: calc(15px * var(--at-k)); height: calc(15px * var(--at-k)); }
+.at-page .i-btn svg { flex: none; width: calc(15px * var(--at-k)); height: calc(15px * var(--at-k)); }
 
 /* shared pieces at this page's density */
 .at-sum strong { font-size: calc(20px * var(--at-fs)); }
@@ -247,4 +240,51 @@
 @container at-card (max-width: 560px) {
   .at-card .at-tools > .at-search,
   .at-card .at-tools > .at-range { grid-column: 1 / -1; }
+}
+
+/* =====================================================================
+   MOBILE FIX — UI-044 (kept last so it wins over the rules above)
+   header: title on the left, Export as an icon button in the top-right corner on the same row,
+   shorter description. A grid (not flex) so the shared header's mobile stacking cannot push
+   the button below the text.
+   ===================================================================== */
+.at-d-short { display: none; }
+
+@container at-page (max-width: 640px) {
+  .at-page > .i-head {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    flex-direction: row !important;
+    align-items: start !important;
+    gap: calc(12px * var(--at-k)) !important;
+  }
+  .at-page > .i-head > div:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
+  .at-page > .i-head .i-head-actions {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    width: auto !important;
+    margin: 0 !important;
+  }
+  .at-page > .i-head h1 { font-size: calc(22px * var(--at-fs)) !important; }
+  .at-page > .i-head p { font-size: calc(13px * var(--at-fs)) !important; }
+  .at-d-long { display: none; }
+  .at-d-short { display: inline; }
+
+  /* Export: square icon-only button; the label stays for screen readers */
+  .at-page > .i-head .i-btn {
+    justify-content: center;
+    width: calc(36px * var(--at-k));
+    padding: 0;
+    gap: 0;
+  }
+  .at-page > .i-head .i-btn svg { width: calc(17px * var(--at-k)); height: calc(17px * var(--at-k)); }
+  .at-page > .i-head .at-l-long {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
 }

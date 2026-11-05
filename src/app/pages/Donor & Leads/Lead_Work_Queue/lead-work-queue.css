@@ -1,5 +1,7 @@
 /* LEAD WORK QUEUE - flat, theme-token design (same family as tracking-assets).
-   Custom dropdowns · summary tabs · fixed-layout table (no horizontal scroll) · animated actions · pager · bulk bar. */
+   Custom dropdowns · summary tabs · fixed-layout table (no horizontal scroll) · animated actions · pager · bulk bar.
+   Mobile fixes: UI-001 icon-only header actions beside the title · UI-002 filters behind one "Filters" button,
+   compact search · UI-003 summary tabs become a swipeable strip with full, wrapping text. */
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
      sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
@@ -57,11 +59,38 @@
   font-size: calc(13px * var(--lwq-fs)) !important;
   white-space: nowrap;
 }
-/* phones: the header actions drop under the title instead of squeezing it */
+
+.lwq-hactions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: calc(8px * var(--lwq-k));
+}
+
+/* UI-001 · phones: actions stay top-right beside the title as compact icon buttons (labels kept for screen readers) */
 @media (max-width: 700px) {
-  :host ::ng-deep app-page-header > * { flex-wrap: wrap !important; }
+  :host ::ng-deep app-page-header > * {
+    flex-wrap: nowrap !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  :host ::ng-deep app-page-header > * > :first-child { flex: 1 1 auto; min-width: 0; }
+  :host ::ng-deep app-page-header h1 { font-size: calc(20px * var(--lwq-fs)) !important; }
+  :host ::ng-deep app-page-header p { font-size: calc(12.5px * var(--lwq-fs)) !important; }
   :host ::ng-deep app-page-header [actions],
-  :host ::ng-deep app-page-header [slot="actions"] { flex-wrap: wrap; max-width: 100%; }
+  :host ::ng-deep app-page-header [slot="actions"] { flex: none; flex-wrap: nowrap; }
+
+  .lwq-hactions { gap: 6px; }
+  .lwq-hactions .lwq-btn {
+    justify-content: center;
+    gap: 0;
+    width: 36px;
+    height: 36px !important;
+    padding: 0 !important;
+  }
+  .lwq-hactions .lwq-btn svg { width: 17px; height: 17px; }
+  .lwq-hactions .lwq-btn-text,
+  .lwq-hactions .lwq-chev { display: none; }
 }
 
 :host {
@@ -119,7 +148,6 @@
   align-items: center;
   justify-content: space-between;
   gap: calc(14px * var(--lwq-k)) calc(20px * var(--lwq-k));
-  /* title · filters · tools on one line; wraps only when space runs out */
   padding: calc(18px * var(--lwq-k)) calc(20px * var(--lwq-k));
 }
 
@@ -176,6 +204,7 @@
   outline: 0;
   background: none;
   font-size: calc(13px * var(--lwq-fs));
+  text-overflow: ellipsis;
 }
 
 .lwq-search input::placeholder { color: var(--lwq-muted); }
@@ -283,15 +312,41 @@
 .lwq-menu li.is-on svg { opacity: 1; }
 
 /* ================= filter bar (pill dropdowns) ================= */
-.lwq-fbar {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
+/* desktop: the wrapper is invisible to layout - pills flow inline next to search exactly as before */
+.lwq-fbar { display: contents; }
+
+/* mobile-only "Filters" toggle (hidden on wider screens) */
+.lwq-ftoggle {
+  display: none;
+  flex: none;
   align-items: center;
-  gap: calc(8px * var(--lwq-k));
-  min-width: 0;
-  padding-left: calc(20px * var(--lwq-k));
-  border-left: 1px solid var(--lwq-row);
+  gap: 6px;
+  height: calc(36px * var(--lwq-k));
+  padding: 0 calc(12px * var(--lwq-k));
+  border: 1px solid var(--lwq-line);
+  border-radius: var(--lwq-btn-radius);
+  background: var(--lwq-card);
+  font-size: calc(13px * var(--lwq-fs));
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+
+.lwq-ftoggle svg { width: 15px; height: 15px; color: var(--lwq-muted); }
+.lwq-ftoggle.is-on { border-color: var(--lwq-primary-line); background: var(--lwq-primary-soft); color: var(--lwq-primary); }
+.lwq-ftoggle.is-on svg { color: var(--lwq-primary); }
+.lwq-ftoggle b {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--cc-btn, var(--lwq-primary));
+  color: var(--cc-btn-ink, var(--primary-on, #fff));
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .lwq-fbar-lead {
@@ -334,7 +389,7 @@
   cursor: pointer;
 }
 
-.lwq-pill-ico { width: calc(14px * var(--lwq-k)); height: calc(14px * var(--lwq-k)); color: var(--lwq-muted); transition: transform .2s; }
+.lwq-pill-ico { flex: none; width: calc(14px * var(--lwq-k)); height: calc(14px * var(--lwq-k)); color: var(--lwq-muted); transition: transform .2s; }
 .lwq-pill:hover .lwq-pill-ico { transform: translateY(-1px) scale(1.08); }
 .lwq-pill-label { color: var(--lwq-ink); font-weight: 500; }
 
@@ -355,6 +410,7 @@
 
 .lwq-pill-x {
   display: grid;
+  flex: none;
   place-items: center;
   width: calc(20px * var(--lwq-k));
   height: calc(20px * var(--lwq-k));
@@ -470,7 +526,7 @@
 /* ================= summary widgets (simple: label · big number · note) ================= */
 .lwq-stats {
   display: grid;
-  /* always one row: widgets share the width equally; low-priority ones hide on narrower screens (see container queries) */
+  /* one row: widgets share the width equally; on tablets low-priority ones hide, on phones the row swipes */
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
   padding: 6px 0;
@@ -900,29 +956,35 @@ col.c-act { width: calc(128px * var(--lwq-k)); }
   :host *, :host *::before, :host *::after { animation: none !important; transition: none !important; }
 }
 
-/* ================= responsive (container queries, no horizontal scroll) ================= */
-/* summary widgets stay on ONE line: hide the least important first (Recently added, High potential, Hot, Assigned) */
-@container lwq (max-width: 1280px) {
+/* ================= responsive (container queries, no horizontal page scroll) ================= */
+/* UI-003 · summary widgets: always ONE line, no scroll. As the screen narrows, one widget hides at a time
+   (least important first) so every widget left on screen keeps ~150px+ and its text stays readable.
+   Order hidden: Recently added → High potential → Hot → Assigned → Converted.
+   7 widgets > 1180 · 6 ≤ 1180 · 5 ≤ 1020 · 4 ≤ 860 · 3 ≤ 680 · 2 ≤ 460 (All leads + Unassigned) */
+@container lwq (max-width: 1180px) {
   .lwq-stat:nth-child(6) { display: none; }
 }
 
-@container lwq (max-width: 1100px) {
+@container lwq (max-width: 1020px) {
   .lwq-stat:nth-child(5) { display: none; }
 }
 
-@container lwq (max-width: 900px) {
+@container lwq (max-width: 860px) {
   .lwq-stat:nth-child(4) { display: none; }
+  .lwq-stat { padding: calc(14px * var(--lwq-k)) calc(16px * var(--lwq-k)) calc(16px * var(--lwq-k)); }
+  .lwq-stat::after { right: calc(16px * var(--lwq-k)); left: calc(16px * var(--lwq-k)); }
 }
 
-@container lwq (max-width: 640px) {
+@container lwq (max-width: 680px) {
   .lwq-stat:nth-child(3) { display: none; }
-  .lwq-stat { padding: calc(14px * var(--lwq-k)) calc(14px * var(--lwq-k)) calc(16px * var(--lwq-k)); }
-  .lwq-stat::after { right: calc(14px * var(--lwq-k)); left: calc(14px * var(--lwq-k)); }
-  .lwq-stat strong { font-size: calc(20px * var(--lwq-fs)); }
+  .lwq-stat-label { color: var(--lwq-ink); }
+  /* safety net: a long note wraps to a second line instead of being cut with "…" */
+  .lwq-stat small { overflow: visible; white-space: normal; line-height: 1.35; }
 }
 
-@container lwq (max-width: 1500px) {
-  .lwq-fbar { order: 3; flex-basis: 100%; padding: calc(12px * var(--lwq-k)) 0 0; border-left: 0; border-top: 1px dashed var(--lwq-line); }
+@container lwq (max-width: 460px) {
+  .lwq-stat:nth-child(7) { display: none; }
+  .lwq-stat strong { font-size: calc(20px * var(--lwq-fs)); }
 }
 
 @container lwq (max-width: 1180px) {
@@ -956,12 +1018,54 @@ col.c-act { width: calc(128px * var(--lwq-k)); }
   .lwq-fbar-lead { width: 100%; }
 }
 
+/* UI-002 · phones: compact search + "Filters" button on one row; the pills open as a tidy 2-column panel */
+@container lwq (max-width: 640px) {
+  .lwq-head { padding: calc(14px * var(--lwq-k)); }
+  .lwq-tools { flex-wrap: wrap; gap: 8px; }
+
+  .lwq-search {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+  }
+  .lwq-search input { font-size: 13px; }
+
+  .lwq-ftoggle { display: inline-flex; }
+
+  .lwq-fbar { display: none; }
+  .lwq-fbar.is-shown {
+    display: grid;
+    flex: 1 1 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--lwq-line);
+    animation: lwq-drop .16s ease-out;
+  }
+  .lwq-fbar-lead { display: none; }
+
+  .lwq-pill { width: 100%; min-width: 0; height: 36px; }
+  .lwq-pill-btn { flex: 1 1 auto; min-width: 0; justify-content: flex-start; }
+  .lwq-pill-label,
+  .lwq-pill-val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lwq-pill-label { flex: 0 1 auto; min-width: 0; }
+  .lwq-pill-val { flex: 1 1 auto; min-width: 0; max-width: none; }
+  .lwq-pill .lwq-chev { margin-left: auto; flex: none; }
+
+  /* popovers stay inside the screen: right-column pills open towards the left */
+  .lwq-fbar > .lwq-pill:nth-of-type(even) .lwq-pop { right: 0; left: auto; }
+  .lwq-pop { max-width: calc(100cqi - 28px); }
+
+  .lwq-clear { grid-column: 1 / -1; justify-self: start; margin-left: 0; }
+}
+
 @container lwq (max-width: 560px) {
   col.c-stage, .lwq-table .c-stage { display: none; }
   col.c-lead { width: 50%; }
   col.c-next { width: 50%; }
   col.c-act { width: calc(112px * var(--lwq-k)); }
   .lwq-actions button { width: calc(30px * var(--lwq-k)); height: calc(30px * var(--lwq-k)); }
-  .lwq-clear { margin-left: 0; }
   .lwq-foot { justify-content: center; }
 }

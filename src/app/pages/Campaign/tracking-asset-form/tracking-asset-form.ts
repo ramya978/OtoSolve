@@ -7,6 +7,7 @@ import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
 import { AssetType, todayIso, destinationFor, MEDIUMS, LIFECYCLE_LABEL, daysBetween, TrackingAsset, Medium, fmtDate } from '../../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
+import { CwDatePicker } from '../../../Shared/Campaign/cw-date-picker';
 
 
 interface AssetDraft {
@@ -22,7 +23,7 @@ interface AssetDraft {
 
 @Component({
   selector: 'app-tracking-asset-form',
-  imports: [CwSelect, PageHeader],
+  imports: [CwSelect, CwDatePicker, PageHeader],
   templateUrl: './tracking-asset-form.html',
   styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-asset-form.css', '../../../Shared/layout/page-header/page-header.css']
 })

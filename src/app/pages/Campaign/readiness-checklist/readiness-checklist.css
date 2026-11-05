@@ -45,6 +45,23 @@
   .rc-hbtn-add { width: calc(36px * var(--rc-k)); padding: 0 !important; justify-content: center; }
 }
 
+/* UI-021 - phones: the shared header centres its actions against the whole title + description
+   block, so once the description wraps to two lines the buttons drop below the title line.
+   Here the actions (and every header box that holds them) align to the top, and the buttons are
+   nudged so their centre sits on the title line. --rc-acts-offset is that nudge. */
+@container rc-page (max-width: 700px) {
+  :host ::ng-deep app-page-header *:has(.rc-head-acts) {
+    align-items: flex-start !important;
+    align-self: flex-start !important;
+  }
+
+  .rc-head-acts {
+    --rc-acts-offset: calc((26px * 1.25 * var(--rc-fs) - 36px * var(--rc-k)) / 2);
+    align-self: flex-start;
+    margin-top: var(--rc-acts-offset);
+  }
+}
+
 /* meta chip next to the lifecycle chip */
 .rc-meta-chip {
   display: inline-flex;
@@ -373,7 +390,6 @@
 }
 
 .rc-req-tag.is-req {
-  /* background: var(--w-primary-soft); */
   color: var(--w-primary-ink);
 }
 
@@ -826,6 +842,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
 /* ---------- page header (shared app-page-header) ----------
    Its own sizes are large; on this page it follows the same density. !important because the
    header's own styles are more specific. */

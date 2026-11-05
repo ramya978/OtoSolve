@@ -8,7 +8,7 @@
 <app-page-header breadcrumb="Donor &amp; Leads"  heading="Follow-ups" description="Every call, e-mail and visit the team owes a lead or donor - and whether it is on time.">
   <ng-container actions>
     <div class="fq-head-acts">
-      <button type="button" class="fu-btn" (click)="exportCsv()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>Export</button>
+      <button type="button" class="fu-btn fq-exp" (click)="exportCsv()" aria-label="Export" title="Export as CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg><span class="fq-long">Export</span></button>
       <button type="button" class="fu-btn is-primary" (click)="newFollowUp()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>New<span class="fq-long">&nbsp;follow-up</span></button>
     </div>
   </ng-container>
@@ -75,8 +75,8 @@
           <input type="text" placeholder="Search name, reference or purpose" [value]="query()" (input)="setQuery($event)" />
         </label>
         <div class="fu-dd" [class.is-open]="menu() === 'sort'">
-          <button type="button" class="fu-btn" (click)="toggleMenu('sort', $event)" [attr.aria-expanded]="menu() === 'sort'">
-            <svg class="fq-sort-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg><span class="fq-sort-lbl">{{ sortLabel() }}</span><svg class="fq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          <button type="button" class="fu-btn fq-tool-btn" (click)="toggleMenu('sort', $event)" [attr.aria-expanded]="menu() === 'sort'" [attr.aria-label]="'Sort: ' + sortLabel()" [attr.title]="'Sort: ' + sortLabel()">
+            <svg class="fq-sort-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sort')" /></svg><span class="fq-sort-lbl fq-btn-lbl">{{ sortLabel() }}</span><svg class="fq-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
           </button>
           @if (menu() === 'sort') {
             <ul class="fu-menu is-right" role="listbox" (click)="$event.stopPropagation()">
@@ -86,18 +86,37 @@
             </ul>
           }
         </div>
-        <button type="button" class="fu-btn" [class.is-active]="filtersOpen() || filterCount()" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg> Filters @if (filterCount()) { <em class="fu-count">{{ filterCount() }}</em> }
+        <button type="button" class="fu-btn fq-tool-btn" [class.is-active]="filtersOpen() || filterCount()" (click)="filtersOpen.set(!filtersOpen())" [attr.aria-expanded]="filtersOpen()" aria-label="Filters" title="Filters">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('filter')" /></svg><span class="fq-btn-lbl">Filters</span> @if (filterCount()) { <em class="fu-count">{{ filterCount() }}</em> }
         </button>
       </div>
 
-      <!-- quick filters -->
+      <!-- quick filters: chips on wide screens, one dropdown on phones -->
       <nav class="fq-quick" aria-label="Quick views">
-        @for (grp of tabs(); track $index) {
-          @for (t of grp; track t.key) {
-            <button type="button" [class.is-on]="tab() === t.key" (click)="setTab(t.key)">{{ t.label }} <em>{{ t.n }}</em></button>
+        <div class="fq-quick-chips">
+          @for (grp of tabs(); track $index) {
+            @for (t of grp; track t.key) {
+              <button type="button" [class.is-on]="tab() === t.key" (click)="setTab(t.key)">{{ t.label }} <em>{{ t.n }}</em></button>
+            }
           }
-        }
+        </div>
+        <div class="fu-dd fq-quick-dd" [class.is-open]="menu() === 'quick'">
+          <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('quick', $event)" [attr.aria-expanded]="menu() === 'quick'" aria-haspopup="listbox" aria-label="Quick view">
+            <span class="fq-qd-lbl"><small>View</small>{{ currentTab().label }}</span>
+            <em class="fq-qd-n">{{ currentTab().n }}</em>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg>
+          </button>
+          @if (menu() === 'quick') {
+            <ul class="fu-menu" role="listbox" (click)="$event.stopPropagation()">
+              @for (grp of tabs(); track $index; let gi = $index) {
+                @if (gi > 0) { <li class="fq-menu-sep" role="separator"></li> }
+                @for (t of grp; track t.key) {
+                  <li><button type="button" [class.is-on]="tab() === t.key" (click)="setTab(t.key)"><span class="fq-qd-item">{{ t.label }}</span><small>{{ t.n }}</small>@if (tab() === t.key) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></li>
+                }
+              }
+            </ul>
+          }
+        </div>
       </nav>
 
       <!-- filters panel -->
@@ -272,7 +291,6 @@
                         <button type="button" class="fu-icon" (click)="toggleMenu('row', $event, f.id)" [attr.aria-expanded]="menu() === 'row' && menuRow() === f.id" [attr.aria-label]="'Actions for ' + f.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('more')" /></svg></button>
                         @if (menu() === 'row' && menuRow() === f.id) {
                           <ul class="fu-menu is-right" role="menu" (click)="$event.stopPropagation()">
-                            <!-- @if (canRun(f)) { <li><button type="button" role="menuitem" (click)="run(f)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('play')" /></svg> Execute follow-up</button></li> } -->
                             <li><button type="button" role="menuitem" (click)="openDetails(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg> Open details</button></li>
                             @if (can(f, 'Reschedule')) { <li><button type="button" role="menuitem" (click)="startReschedule(f.id)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg> Reschedule</button></li> }
                             @if (can(f, 'Reassign')) { <li><button type="button" role="menuitem" (click)="startReassign([f.id])"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Reassign</button></li> }

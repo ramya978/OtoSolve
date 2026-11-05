@@ -249,6 +249,9 @@ export class Donor360 implements OnInit {
   /** Donor on screen - loaded from the API for the reference in the URL. */
   protected readonly d = signal<D360Donor>({ ...EMPTY, code: this.route.snapshot.queryParamMap.get('ref') ?? '' });
 
+  /** Phones: the header's More (⋯) menu with Timeline · Schedule · Export · Edit · Refresh. */
+  protected readonly moreOpen = signal(false);
+
   ngOnInit(): void {
     this.load();
     // The pledge form's currencies: the active ones in the currency master, from /donors/reference-data.
@@ -630,6 +633,7 @@ export class Donor360 implements OnInit {
 
   // ---------- intent: actions ----------
   createIntent(): void {
+    this.moreOpen.set(false);
     const known = this.currencyCatalogue().map((c) => c.value);
     this.iCurrency.set(known.includes('INR') || !known.length ? 'INR' : known[0]);
     this.iAmount.set('');
@@ -763,8 +767,13 @@ export class Donor360 implements OnInit {
     this.toastTimer = window.setTimeout(() => this.toast.set(null), 2600);
   }
 
+  /** A click anywhere outside the More menu closes it. */
+  @HostListener('document:click')
+  onDocClick(): void { if (this.moreOpen()) this.moreOpen.set(false); }
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.moreOpen()) { this.moreOpen.set(false); return; }
     if (this.curOpen() || this.calOpen()) { this.curOpen.set(false); this.calOpen.set(false); return; }
     if (this.intentOpen()) { this.closeIntent(); return; }
     this.toast.set(null);

@@ -52,7 +52,7 @@ svg {
 }
 
 .og-crumb {
-      display: block;
+    display: block;
     margin-bottom: 6px;
     font-size: calc(10px * var(--dp-fs));
     font-weight: 650;
@@ -62,7 +62,7 @@ svg {
 }
 
 .og-page-title {
-     color: var(--cr-heading);
+    color: var(--cr-heading);
     font-family: var(--cr-heading-font);
     font-size: calc(30px * var(--dp-fs));
     font-weight: 650;
@@ -355,19 +355,21 @@ svg {
 .og-overlay {
     position: fixed;
     inset: 0;
-    z-index: 1000;
+    z-index: 1111111111;
     display: grid;
     place-items: center;
     padding: calc(24px * var(--dp-k));
     background: rgb(15 10 25 / .32);
     backdrop-filter: blur(3px);
     animation: og-fade .14s ease-out;
+    overflow-y: scroll;
 }
 
 .og-dialog {
     display: flex;
     width: 100%;
     max-height: calc(100vh - 48px);
+    max-height: calc(100dvh - 48px);
     border-radius: 20px;
     background: var(--card, #fff);
     box-shadow: 0 28px 70px rgb(20 10 30 / .28);
@@ -426,8 +428,10 @@ svg {
     max-width: calc(1000px * var(--dp-k));
 }
 
+/* header and footer never shrink, so the scrolling body can't slide under them */
 .og-pop-head {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
     gap: calc(16px * var(--dp-k));
@@ -440,6 +444,7 @@ svg {
     font-size: calc(22px * var(--dp-fs));
     font-weight: 650;
     letter-spacing: -0.2px;
+    line-height: 1.3;
     color: var(--ink);
 }
 
@@ -467,7 +472,8 @@ svg {
 }
 
 .og-pop-body {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     padding: calc(30px * var(--dp-k)) calc(38px * var(--dp-k)) calc(32px * var(--dp-k));
     overflow-y: auto;
 }
@@ -479,12 +485,22 @@ svg {
     gap: calc(16px * var(--dp-k));
 }
 
+.og-pop-titletext {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.og-pop-top .og-pill {
+    flex-shrink: 0;
+}
+
 .og-eyebrow {
-display: block;
+    display: block;
     margin-bottom: 0 !important;
     font-size: calc(10px * var(--dp-fs)) !important;
     font-weight: 650;
     letter-spacing: 1.2px;
+    line-height: 1.4;
     text-transform: uppercase;
 }
 
@@ -495,6 +511,7 @@ display: block;
     letter-spacing: -0.4px;
     line-height: 1.15;
     color: var(--ink);
+    overflow-wrap: anywhere;
 }
 
 .og-pill {
@@ -563,6 +580,7 @@ display: block;
 
 .og-pop-foot {
     display: flex;
+    flex-shrink: 0;
     align-items: center;
     justify-content: flex-end;
     gap: calc(12px * var(--dp-k));
@@ -612,6 +630,7 @@ display: block;
     width: 100%;
     max-width: calc(520px * var(--dp-k));
     height: 100%;
+    max-height: 100dvh;
     background: var(--card, #fff);
     box-shadow: -24px 0 60px rgb(20 10 30 / .22);
     border-left: 1px solid var(--line);
@@ -645,11 +664,17 @@ display: block;
 .og-mtitle p {
     margin: 4px 0 0;
     font-size: calc(13.5px * var(--dp-fs));
+    line-height: 1.45;
     color: var(--muted);
 }
 
+.og-mtitle .og-eyebrow {
+    margin-top: 0;
+}
+
 .og-drawer-body {
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 4px calc(28px * var(--dp-k)) calc(24px * var(--dp-k));
     overflow-y: auto;
 }
@@ -1010,14 +1035,13 @@ display: block;
         font-size: calc(26px * var(--dp-fs));
     }
 
+    /* view popup: 2 columns on mobile (fewer rows, less scrolling) */
     .og-facts {
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: calc(20px * var(--dp-k));
     }
 
-    .og-grid2 {
-        grid-template-columns: 1fr;
-    }
+    /* edit drawer keeps 2 columns too (no 1fr stacking) */
 
     .og-overlay {
         padding: calc(12px * var(--dp-k));
@@ -1034,16 +1058,6 @@ display: block;
 
     .og-orgfacts {
         margin-left: 0;
-    }
-}
-
-@media (max-width: 480px) {
-    .og-facts {
-        grid-template-columns: 1fr;
-    }
-
-    .og-pop-top {
-        flex-direction: column-reverse;
     }
 }
 
@@ -1180,6 +1194,10 @@ display: block;
     padding: calc(20px * var(--dp-k)) calc(28px * var(--dp-k)) calc(26px * var(--dp-k));
 }
 
+.og-drawer--form .og-drawer-body > * {
+    flex-shrink: 0;
+}
+
 .og-drawer--form .og-drawer-foot {
     background: var(--card, #fff);
 }
@@ -1276,20 +1294,16 @@ display: block;
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
- button,input,select {
+
+button,
+input,
+select {
     font: inherit;
 }
 
 /* =====================================================================
    REDESIGN: page header + KPI strip
    ===================================================================== */
-/* .og-page-head {
-    align-items: flex-start;
-    margin: 4px 0 calc(18px * var(--dp-k));
-}
- */
-
-
 .og-page-sub {
     margin: calc(10px * var(--dp-k)) 0 0;
     font-size: calc(15px * var(--dp-fs));
@@ -1406,24 +1420,8 @@ display: block;
 
 
 /* =====================================================================
-   PATCH - paste at the END of departments.css
-   (code plain text, status plain text, equal columns, view popup extras)
+   PATCH (code plain text, status plain text, view popup extras)
    ===================================================================== */
-
-/* equal-width columns */
-.og-table--list {
-    table-layout: fixed;
-    min-width: calc(1000px * var(--dp-k));
-}
-
-.og-table--list .og-cell {
-    max-width: 100%;
-    min-width: 0;
-}
-
-.og-table--list .og-person {
-    white-space: normal;
-}
 
 /* code: plain text, no box */
 .og-code {
@@ -1489,27 +1487,7 @@ display: block;
 }
 
 /* =====================================================================
-   Equal-width table columns (Departments list)
-   ===================================================================== */
-.og-table--list {
-    table-layout: fixed !important;
-    width: 100% !important;
-    min-width: 0 !important;
-}
-
-.og-table--list th,
-.og-table--list td {
-    width: 14.285714% !important;
-    min-width: 0 !important;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: calc(14px * var(--dp-k)) calc(12px * var(--dp-k)) !important;
-}
-
-/* icon + text spacing on filled buttons */
-
-/* =====================================================================
-   Delete popup redesign (danger confirmation)
+   Delete popup (danger confirmation)
    ===================================================================== */
 .og-delete .og-pop-head {
     padding: calc(26px * var(--dp-k)) calc(38px * var(--dp-k)) calc(22px * var(--dp-k));
@@ -1558,6 +1536,7 @@ display: block;
     font-size: calc(15px * var(--dp-fs));
     font-weight: 600;
     color: var(--status-danger, #b3261e);
+    overflow-wrap: anywhere;
 }
 
 .og-del-body {
@@ -1588,141 +1567,128 @@ display: block;
 }
 
 
-
 /* ==========================================
-   DEPARTMENTS TABLE - EQUAL WIDTH COLUMNS
+   DEPARTMENTS TABLE
    ========================================== */
-
 .og-tablecard {
-  width: 100%;
-  overflow: hidden;
+    width: 100%;
+    overflow: hidden;
 }
 
 .og-scroll {
-  width: 100%;
-  overflow-x: auto;
+    width: 100%;
+    overflow-x: auto;
 }
 
 .og-table--list {
-  width: 100% !important;
-  min-width: calc(1000px * var(--dp-k));
-  table-layout: fixed !important;
-  border-collapse: collapse;
+    width: 100% !important;
+    min-width: calc(1000px * var(--dp-k));
+    table-layout: fixed !important;
+    border-collapse: collapse;
 }
 
-/* Equal width for all 7 columns */
 .og-table--list th,
 .og-table--list td {
-  width: 14.2857% !important;
-  min-width: 0;
-  padding: calc(14px * var(--dp-k)) calc(12px * var(--dp-k)) !important;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  vertical-align: middle;
+    width: 14.2857% !important;
+    min-width: 0;
+    padding: calc(14px * var(--dp-k)) calc(12px * var(--dp-k)) !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
 }
 
-/* Table header */
 .og-table--list th {
-  text-align: left;
-  white-space: nowrap;
-  font-weight: 600;
+    text-align: left;
+    white-space: nowrap;
+    font-weight: 600;
 }
 
-/* Department name and description */
 .og-table--list .og-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .og-table--list .og-name {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
 }
 
 .og-table--list .og-desc {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* Department code */
 .og-table--list .og-code {
-  white-space: nowrap;
+    white-space: nowrap;
 }
 
-/* Department head */
 .og-table--list .og-person {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(8px * var(--dp-k));
-  max-width: 100%;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(8px * var(--dp-k));
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .og-table--list .og-person i {
-  flex-shrink: 0;
+    flex-shrink: 0;
 }
 
 .og-table--list .og-na,
 .og-table--list .og-under {
-  display: block;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-/* People count */
 .og-table--list .og-count-pill {
-  display: inline-grid;
-  place-items: center;
+    display: inline-grid;
+    place-items: center;
 }
 
-/* Status */
 .og-table--list .og-status {
-  white-space: nowrap;
+    white-space: nowrap;
 }
 
-/* Actions */
 .og-table--list th.r,
 .og-table--list td.r {
-  text-align: right;
+    text-align: right;
 }
 
 .og-table--list .og-acts {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 .og-table--list .og-iconbtn {
-  flex-shrink: 0;
+    flex-shrink: 0;
 }
 
-/* Table row hover */
 .og-table--list tbody tr:hover td {
-  background: var(--og-tint);
+    background: var(--og-tint);
 }
-
-
 
 
 /* =====================================================================
@@ -1731,37 +1697,66 @@ display: block;
    outside it so they keep covering the screen.
    ===================================================================== */
 .dp-wrap {
-  container: dp-page / inline-size;
-  min-width: 0;
+    container: dp-page / inline-size;
+    min-width: 0;
+}
+
+/* ---------- header row: page header + buttons side by side ----------
+   The buttons are a sibling of app-page-header (not inside it), so their
+   position is controlled here. They are pushed down by the breadcrumb height
+   so they sit centred on the title line. */
+.dp-head {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: calc(16px * var(--dp-k));
+    margin: 0 0 calc(16px * var(--dp-k));
+}
+
+.dp-head > app-page-header {
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 /* header buttons: one row, sized with the page */
 .dp-head-acts {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: calc(8px * var(--dp-k));
+    /* breadcrumb line + gap below it + half the difference between title line and button */
+    --dp-crumb-h: calc(16px * var(--dp-fs));
+    --dp-crumb-gap: calc(6px * var(--dp-k));
+    --dp-title-lh: calc(32.5px * var(--dp-fs));
+    --dp-btn-h: calc(36px * var(--dp-k));
+    --dp-acts-top: calc(var(--dp-crumb-h) + var(--dp-crumb-gap) + (var(--dp-title-lh) - var(--dp-btn-h)) / 2);
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: calc(8px * var(--dp-k));
+    margin-top: var(--dp-acts-top);
 }
 
 .dp-head-acts .pf-hbtn {
-  height: calc(36px * var(--dp-k)) !important;
-  min-height: 0 !important;
-  padding: 0 calc(14px * var(--dp-k)) !important;
-  gap: calc(6px * var(--dp-k)) !important;
-  font-size: calc(13px * var(--dp-fs)) !important;
-  white-space: nowrap;
+    display: inline-flex !important;
+    align-items: center !important;
+    height: var(--dp-btn-h) !important;
+    min-height: 0 !important;
+    padding: 0 calc(14px * var(--dp-k)) !important;
+    gap: calc(6px * var(--dp-k)) !important;
+    font-size: calc(13px * var(--dp-fs)) !important;
+    white-space: nowrap;
 }
 
 /* ---------- KPI strip: one row, cards hide by priority ---------- */
 .og-kpis {
-  display: flex;
-  margin-bottom: calc(16px * var(--dp-k));
-  border-radius: 14px;
+    display: flex;
+    margin-bottom: calc(16px * var(--dp-k));
+    border-radius: 14px;
 }
 
 .og-kpi {
-  flex: 1 1 0;
-  padding: calc(16px * var(--dp-k)) calc(18px * var(--dp-k)) calc(14px * var(--dp-k));
-  border-top: 0;
+    flex: 1 1 0;
+    padding: calc(16px * var(--dp-k)) calc(18px * var(--dp-k)) calc(14px * var(--dp-k));
+    border-top: 0;
 }
 
 .og-kpi > header span { font-size: calc(13px * var(--dp-fs)); }
@@ -1777,27 +1772,27 @@ display: block;
 @container dp-page (max-width: 980px)  { .og-kpi:nth-child(4) { display: none; } }
 @container dp-page (max-width: 760px)  { .og-kpi:nth-child(5) { display: none; } }
 @container dp-page (max-width: 520px) {
-  .og-kpi-side { display: none; }
-  .og-kpi > p { display: none; }
+    .og-kpi-side { display: none; }
+    .og-kpi > p { display: none; }
 }
 
 /* ---------- table: fits the card, columns hide instead of scrolling ---------- */
 .og-scroll { overflow: visible !important; }
 
 .og-table--list {
-  min-width: 0 !important;
+    min-width: 0 !important;
 }
 
 .og-table--list th,
 .og-table--list td {
-  width: auto !important;
-  padding: calc(13px * var(--dp-k)) calc(14px * var(--dp-k)) !important;
-  font-size: calc(13.5px * var(--dp-fs));
+    width: auto !important;
+    padding: calc(13px * var(--dp-k)) calc(14px * var(--dp-k)) !important;
+    font-size: calc(13.5px * var(--dp-fs));
 }
 
 .og-table--list th {
-  font-size: calc(11px * var(--dp-fs)) !important;
-  letter-spacing: 1px !important;
+    font-size: calc(11px * var(--dp-fs)) !important;
+    letter-spacing: 1px !important;
 }
 
 .og-table--list th:first-child,
@@ -1825,47 +1820,47 @@ display: block;
 
 /* code · sits under · head line under the name - only once those columns are hidden */
 .dp-meta {
-  display: none;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: calc(12px * var(--dp-fs));
-  text-overflow: ellipsis;
-  white-space: nowrap;
+    display: none;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: calc(12px * var(--dp-fs));
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 @container dp-page (max-width: 1100px) {
-  .og-table--list th:nth-child(3), .og-table--list td:nth-child(3) { display: none; }
-  .og-table--list .og-desc { display: none; }
-  .dp-meta { display: block; }
-  .dp-meta .dp-m-code, .dp-meta .dp-m-head { display: none; }
+    .og-table--list th:nth-child(3), .og-table--list td:nth-child(3) { display: none; }
+    .og-table--list .og-desc { display: none; }
+    .dp-meta { display: block; }
+    .dp-meta .dp-m-code, .dp-meta .dp-m-head { display: none; }
 }
 
 @container dp-page (max-width: 900px) {
-  .og-table--list th:nth-child(2), .og-table--list td:nth-child(2) { display: none; }
-  .dp-meta .dp-m-code { display: inline; }
+    .og-table--list th:nth-child(2), .og-table--list td:nth-child(2) { display: none; }
+    .dp-meta .dp-m-code { display: inline; }
 }
 
 @container dp-page (max-width: 720px) {
-  .og-table--list th:nth-child(5), .og-table--list td:nth-child(5) { display: none; }
-  .og-table--list th:nth-child(4), .og-table--list td:nth-child(4) { display: none; }
-  .dp-meta .dp-m-head { display: inline; }
-  .og-table--list th:nth-child(1) { width: auto !important; }
-  .og-table--list th:nth-child(6) { width: calc(84px * var(--dp-k)) !important; }
+    .og-table--list th:nth-child(5), .og-table--list td:nth-child(5) { display: none; }
+    .og-table--list th:nth-child(4), .og-table--list td:nth-child(4) { display: none; }
+    .dp-meta .dp-m-head { display: inline; }
+    .og-table--list th:nth-child(1) { width: auto !important; }
+    .og-table--list th:nth-child(6) { width: calc(84px * var(--dp-k)) !important; }
 }
 
 @container dp-page (max-width: 460px) {
-  .og-table--list th:nth-child(7) { width: calc(118px * var(--dp-k)) !important; }
-  .og-table--list td:nth-child(7) { text-overflow: clip !important; }
-  .og-table--list th:nth-child(7),
-  .og-table--list td:nth-child(7) { padding-left: 4px !important; }
-  .og-table--list th:nth-child(6),
-  .og-table--list td:nth-child(6) { padding-inline: 6px !important; }
-  .og-table--list .og-acts { gap: 2px !important; }
-  .og-table--list .og-iconbtn { border-color: transparent; }
-  .og-table--list th:first-child,
-  .og-table--list td:first-child { padding-left: calc(14px * var(--dp-k)) !important; }
-  .og-table--list th:last-child,
-  .og-table--list td:last-child { padding-right: calc(10px * var(--dp-k)) !important; }
+    .og-table--list th:nth-child(7) { width: calc(118px * var(--dp-k)) !important; }
+    .og-table--list td:nth-child(7) { text-overflow: clip !important; }
+    .og-table--list th:nth-child(7),
+    .og-table--list td:nth-child(7) { padding-left: 4px !important; }
+    .og-table--list th:nth-child(6),
+    .og-table--list td:nth-child(6) { padding-inline: 6px !important; }
+    .og-table--list .og-acts { gap: 2px !important; }
+    .og-table--list .og-iconbtn { border-color: transparent; }
+    .og-table--list th:first-child,
+    .og-table--list td:first-child { padding-left: calc(14px * var(--dp-k)) !important; }
+    .og-table--list th:last-child,
+    .og-table--list td:last-child { padding-right: calc(10px * var(--dp-k)) !important; }
 }
 
 /* =====================================================================
@@ -1883,35 +1878,37 @@ display: block;
 .og-xbox svg { width: calc(16px * var(--dp-k)); height: calc(16px * var(--dp-k)); }
 
 .og-pop-body { padding: calc(20px * var(--dp-k)) calc(24px * var(--dp-k)) calc(22px * var(--dp-k)); }
-/* eyebrow + department name: lighter and smaller so they no longer look heavy */
+
+/* eyebrow + department name: lighter and smaller */
 .og-pop .og-eyebrow {
-  margin: 0 !important;
-  color: var(--muted) !important;
-  font-size: calc(10.5px * var(--dp-pfs)) !important;
-  font-weight: 600 !important;
-  letter-spacing: 1px !important;
+    margin: 0 !important;
+    color: var(--muted) !important;
+    font-size: calc(10.5px * var(--dp-pfs)) !important;
+    font-weight: 600 !important;
+    letter-spacing: 1px !important;
 }
 
 .og-pop .og-pop-name {
-  margin: calc(4px * var(--dp-k)) 0 0 !important;
-  font-size: calc(19px * var(--dp-pfs)) !important;
-  font-weight: 600 !important;
-  letter-spacing: -.2px !important;
-  line-height: 1.3 !important;
+    margin: calc(4px * var(--dp-k)) 0 0 !important;
+    font-size: calc(19px * var(--dp-pfs)) !important;
+    font-weight: 600 !important;
+    letter-spacing: -.2px !important;
+    line-height: 1.3 !important;
 }
 
 .og-pop .og-facts dt {
-  font-size: calc(11.5px * var(--dp-pfs)) !important;
+    font-size: calc(11.5px * var(--dp-pfs)) !important;
 }
 
 .og-pop .og-facts dd {
-  font-size: calc(13.5px * var(--dp-pfs)) !important;
-  font-weight: 550 !important;
+    font-size: calc(13.5px * var(--dp-pfs)) !important;
+    font-weight: 550 !important;
 }
 
 @media (max-width: 760px) {
-  .og-pop .og-pop-name { font-size: calc(18px * var(--dp-pfs)) !important; }
+    .og-pop .og-pop-name { font-size: calc(18px * var(--dp-pfs)) !important; }
 }
+
 .og-pill { padding: calc(5px * var(--dp-k)) calc(10px * var(--dp-k)); border-radius: 8px; font-size: calc(12.5px * var(--dp-pfs)); }
 
 .og-facts { gap: calc(16px * var(--dp-k)) calc(20px * var(--dp-k)); margin: calc(20px * var(--dp-k)) 0 calc(20px * var(--dp-k)); }
@@ -1927,10 +1924,10 @@ display: block;
 
 .og-pop-foot { gap: calc(8px * var(--dp-k)); padding: calc(14px * var(--dp-k)) calc(24px * var(--dp-k)); }
 .og-pop-foot .pf-hbtn {
-  height: calc(36px * var(--dp-k)) !important;
-  min-height: 0 !important;
-  padding: 0 calc(14px * var(--dp-k)) !important;
-  font-size: calc(13px * var(--dp-pfs)) !important;
+    height: calc(36px * var(--dp-k)) !important;
+    min-height: 0 !important;
+    padding: 0 calc(14px * var(--dp-k)) !important;
+    font-size: calc(13px * var(--dp-pfs)) !important;
 }
 
 /* delete popup */
@@ -1966,30 +1963,39 @@ display: block;
 
 /* ---------- page header (shared app-page-header) ---------- */
 :host ::ng-deep app-page-header {
-  display: block;
-  margin: 0 0 calc(16px * var(--dp-k)) !important;
-  padding-bottom: 0 !important;
+    display: block;
+    margin: 0 !important;
+    padding: 0 !important;
 }
+:host ::ng-deep app-page-header > * { margin: 0 !important; padding-top: 0 !important; }
 :host ::ng-deep app-page-header > *,
 :host ::ng-deep app-page-header > * > *:last-child { margin-bottom: 0 !important; padding-bottom: 0 !important; }
 :host ::ng-deep app-page-header h1 {
-  font-size: calc(26px * var(--dp-fs)) !important;
-  font-weight: 650 !important;
-  letter-spacing: -.5px !important;
-  line-height: 1.25 !important;
+    margin: 0 !important;
+    font-size: calc(26px * var(--dp-fs)) !important;
+    font-weight: 650 !important;
+    letter-spacing: -.5px !important;
+    line-height: 1.25 !important;
 }
 :host ::ng-deep app-page-header p {
-  margin-top: calc(6px * var(--dp-k)) !important;
-  font-size: calc(13.5px * var(--dp-fs)) !important;
-  line-height: 1.5 !important;
+    margin-top: calc(6px * var(--dp-k)) !important;
+    font-size: calc(13.5px * var(--dp-fs)) !important;
+    line-height: 1.5 !important;
 }
 :host ::ng-deep app-page-header nav,
 :host ::ng-deep app-page-header ol,
 :host ::ng-deep app-page-header [class*="crumb"],
 :host ::ng-deep app-page-header [class*="eyebrow"] {
-  font-size: calc(11px * var(--dp-fs)) !important;
-  letter-spacing: 1px !important;
+    display: block !important;
+    margin: 0 0 calc(6px * var(--dp-k)) !important;
+    padding: 0 !important;
+    font-size: calc(11px * var(--dp-fs)) !important;
+    line-height: calc(16px * var(--dp-fs)) !important;
+    letter-spacing: 1px !important;
 }
+
+/* the actions slot is no longer used on this page, so it never takes space */
+:host ::ng-deep app-page-header [class*="action"]:empty { display: none !important; }
 
 /* ---------- density by screen width ----------
    CSS px: 32"/27" ≈ 2560-1920 · 24" ≈ 1920 · 15.6" ≈ 1536 · 14" ≈ 1366-1440 (zooming in lowers these too) */
@@ -1997,3 +2003,261 @@ display: block;
 @media (max-width: 1600px) { :host { --dp-k: .9; } }
 @media (max-width: 1440px) { :host { --dp-k: .86; } }
 @media (max-width: 1280px) { :host { --dp-k: .84; } }
+
+
+/* =====================================================================
+   MOBILE FIXES  (UI-027, UI-028, UI-029)
+   ===================================================================== */
+
+/* ---------- UI-027: header buttons parallel to the title, smaller ---------- */
+@media (max-width: 760px) {
+    .dp-head {
+        gap: 10px;
+    }
+
+    :host ::ng-deep .dp-head app-page-header h1 {
+        font-size: calc(22px * var(--dp-fs)) !important;
+    }
+
+    .dp-head-acts {
+        --dp-title-lh: calc(27.5px * var(--dp-fs));
+        --dp-btn-h: 30px;
+        gap: 6px;
+    }
+
+    .dp-head-acts .pf-hbtn {
+        padding: 0 10px !important;
+        gap: 4px !important;
+        border-radius: 8px !important;
+        font-size: calc(12px * var(--dp-fs)) !important;
+    }
+
+    .dp-head-acts .og-ico {
+        width: 13px;
+        height: 13px;
+    }
+}
+
+/* mobile: icon-only header buttons (labels stay for screen readers via aria-label) */
+@media (max-width: 760px) {
+    .dp-head-acts {
+        --dp-btn-h: 34px;
+    }
+
+    .dp-head-acts .pf-hbtn {
+        width: 34px !important;
+        min-width: 34px !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        justify-content: center !important;
+    }
+
+    .dp-head-acts .og-ico {
+        width: 16px;
+        height: 16px;
+    }
+
+    .dp-head-acts .dp-btn-txt {
+        display: none;
+    }
+}
+
+/* ---------- UI-028: view popup - compact header, 2-column facts ---------- */
+@media (max-width: 760px) {
+    .og-overlay {
+        padding: 12px;
+    }
+
+    .og-dialog {
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        border-radius: 14px;
+    }
+
+    .og-pop-head {
+        gap: 12px;
+        padding: 12px 16px !important;
+    }
+
+    .og-pop-head h2 {
+        font-size: calc(16px * var(--dp-pfs));
+        line-height: 1.3;
+    }
+
+    .og-xbox,
+    .og-drawer .og-xbox {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+    }
+
+    .og-xbox svg,
+    .og-drawer .og-xbox svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .og-pop-body {
+        padding: 14px 16px 16px !important;
+    }
+
+    .og-pop-top {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .og-pop .og-pop-name {
+        font-size: calc(17px * var(--dp-pfs)) !important;
+    }
+
+    .og-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px 14px;
+        margin: 14px 0;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+    }
+
+    .og-facts dd {
+        margin-top: 2px;
+    }
+
+    .og-subtags {
+        margin-bottom: 14px;
+    }
+
+    .og-note {
+        padding: 12px 14px;
+        line-height: 1.55;
+    }
+
+    .og-pop-foot {
+        padding: 10px 16px !important;
+    }
+
+    .og-pop:not(.og-delete) .og-pop-foot .pf-hbtn {
+        flex: 1 1 0;
+        justify-content: center;
+    }
+
+    .og-delete .og-pop-head {
+        padding: 14px 16px 10px !important;
+    }
+
+    .og-del-body {
+        padding: 0 16px 14px !important;
+    }
+}
+
+/* ---------- UI-029: edit drawer - compact header, 2-column grid ---------- */
+@media (max-width: 760px) {
+    .og-drawer,
+    .og-drawer--form {
+        max-width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        border-left: none;
+    }
+
+    .og-drawer--form .og-pop-head {
+        align-items: flex-start;
+        padding: 12px 16px !important;
+    }
+
+    .og-drawer--form .og-mtitle .og-eyebrow {
+        margin: 0 !important;
+        line-height: 1.4;
+    }
+
+    .og-drawer--form .og-pop-head h2 {
+        margin: 2px 0 0;
+        font-size: calc(17px * var(--dp-pfs));
+        line-height: 1.3;
+    }
+
+    .og-drawer--form .og-sub {
+        margin-top: 2px;
+        font-size: calc(12px * var(--dp-pfs));
+        line-height: 1.4;
+    }
+
+    .og-drawer--form .og-drawer-body {
+        gap: 10px;
+        padding: 12px !important;
+    }
+
+    .og-block {
+        padding: 12px 12px 2px;
+    }
+
+    .og-block-title {
+        margin-bottom: 10px;
+    }
+
+    /* two columns stay on mobile: code + order, sits under + head */
+    .og-grid2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 10px;
+    }
+
+    .og-field {
+        margin-bottom: 10px;
+    }
+
+    .og-field--last {
+        margin-bottom: 10px;
+    }
+
+    .og-input {
+        height: 36px;
+    }
+
+    .og-area {
+        min-height: 72px;
+    }
+
+    .og-quick--stack {
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .og-chips {
+        gap: 6px;
+    }
+
+    .og-toggle--row {
+        padding: 10px 12px;
+    }
+
+    .og-drawer-foot {
+        gap: 10px;
+        padding: 10px 16px !important;
+    }
+
+    .og-drawer-foot .pf-hbtn {
+        height: 34px !important;
+        padding: 0 12px !important;
+    }
+}
+
+/* very narrow phones: drop the helper line so the form gets the space */
+@media (max-width: 400px) {
+    .og-drawer--form .og-sub {
+        display: none;
+    }
+
+    .og-drawer-foot .og-req {
+        display: none;
+    }
+
+    .og-drawer-foot .og-foot-btns {
+        flex: 1;
+    }
+
+    .og-drawer-foot .og-foot-btns .pf-hbtn {
+        flex: 1 1 0;
+        justify-content: center;
+    }
+}

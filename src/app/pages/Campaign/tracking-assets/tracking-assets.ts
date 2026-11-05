@@ -1,4 +1,5 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, Directive, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CwIcon, CW_ICONS } from '../../../Shared/Campaign/cw-icons';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
@@ -8,6 +9,34 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { ASSET_STATUS_LABEL, ASSET_STATUS_TONE, AssetStatus, TrackingAsset, todayIso, daysBetween, fmtDate, inr } from '../../../Shared/Campaign/cw.data';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 
+/**
+ * Moves its element to <body> while it is shown, so the drawer is never trapped inside the page
+ * column (a layout parent with transform / z-index / containment kept it under the app top bar).
+ * The component's host attribute (_nghost-…) is copied onto the element, so this page's styles and
+ * :host tokens keep applying after the move. The page behind stops scrolling while it is open.
+ */
+@Directive({ selector: '[taPortal]', standalone: true })
+export class TaPortal implements OnInit, OnDestroy {
+  private readonly el = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly doc = inject(DOCUMENT);
+  private prevOverflow = '';
+
+  ngOnInit(): void {
+    const node = this.el.nativeElement;
+    // _ngcontent-abc → _nghost-abc: same component id, so :host rules match the moved wrapper
+    for (const attr of Array.from(node.attributes)) {
+      if (attr.name.startsWith('_ngcontent-')) node.setAttribute(attr.name.replace('_ngcontent-', '_nghost-'), '');
+    }
+    this.doc.body.appendChild(node);
+    this.prevOverflow = this.doc.body.style.overflow;
+    this.doc.body.style.overflow = 'hidden';
+  }
+
+  ngOnDestroy(): void {
+    this.doc.body.style.overflow = this.prevOverflow;
+    this.el.nativeElement.remove();
+  }
+}
 
 type Scope = 'campaign' | 'all';
 type RowAction = 'edit' | 'approve' | 'approveDisable' | 'requestDisable' | null;
@@ -16,7 +45,7 @@ type PageItem = number | null;
 
 @Component({
   selector: 'app-tracking-assets',
-  imports: [CwSelect, RouterLink,PageHeader],
+  imports: [CwSelect, RouterLink, PageHeader, TaPortal],
   templateUrl: './tracking-assets.html',
   styleUrls: ['../../../Shared/Campaign/cw-shared.css', './tracking-assets.css', '../../../Shared/layout/page-header/page-header.css']
 })
@@ -99,24 +128,23 @@ export class TrackingAssets {
   });
 
   /** 1 2 ... 10 style pager: first, last, and the pages around the current one. */
-protected readonly pages = computed<PageItem[]>(() => {
-  const total = this.totalPages();
-  const cur = this.safePage();
-  if (total <= 4) return Array.from({ length: total }, (_, i) => i + 1);
+  protected readonly pages = computed<PageItem[]>(() => {
+    const total = this.totalPages();
+    const cur = this.safePage();
+    if (total <= 4) return Array.from({ length: total }, (_, i) => i + 1);
 
-  const out: PageItem[] = [1];
-  const start = Math.max(2, cur - 1);
-  const end = Math.min(total - 1, cur + 1);
-  if (start > 2) out.push(null);
-  for (let p = start; p <= end; p++) out.push(p);
-  if (end < total - 1) out.push(null);
-  out.push(total);
-  return out;
-});
+    const out: PageItem[] = [1];
+    const start = Math.max(2, cur - 1);
+    const end = Math.min(total - 1, cur + 1);
+    if (start > 2) out.push(null);
+    for (let p = start; p <= end; p++) out.push(p);
+    if (end < total - 1) out.push(null);
+    out.push(total);
+    return out;
+  });
 
-protected prevPage(): void { this.goPage(this.safePage() - 1); }
-protected nextPage(): void { this.goPage(this.safePage() + 1); }
-
+  protected prevPage(): void { this.goPage(this.safePage() - 1); }
+  protected nextPage(): void { this.goPage(this.safePage() + 1); }
 
   protected readonly from = computed(() => (this.filtered().length ? (this.safePage() - 1) * this.pageSize() + 1 : 0));
   protected readonly to = computed(() => Math.min(this.safePage() * this.pageSize(), this.filtered().length));
