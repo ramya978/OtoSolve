@@ -1359,11 +1359,25 @@
 .fq-rows:focus-visible { outline: 2px solid var(--fu-primary); outline-offset: 2px; }
 
 /* ================= board ================= */
-.fq-board {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+/* BUG-201: the four columns (Due today · Upcoming · Overdue · Completed) always sit in ONE row and
+   always fit inside the card: no wrapping to a second line and no sideways scrolling. The columns
+   share the width equally and the cards inside get more compact as the screen gets narrower.
+   On phones the four columns become four tabs above a single full-width column. */
+.fq-main .fq-board {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-flow: row !important;
+  align-items: start;
   gap: calc(12px * var(--fus-k));
+  width: 100%;
+  box-sizing: border-box;
   padding: calc(16px * var(--fus-k)) calc(20px * var(--fus-k)) calc(20px * var(--fus-k));
+  overflow: hidden !important;
+}
+
+.fq-main .fq-board > .fq-col {
+  min-width: 0 !important;
+  max-width: none !important;
 }
 
 .fq-col {
@@ -2191,9 +2205,7 @@
     display: none;
   }
 
-  .fq-board {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
+  /* BUG-201: the board no longer drops to 2 columns here; it stays one row (see .fq-board) */
 
   /* planner: a narrower staff column leaves more room for the seven days */
   .fq-pl-row {
@@ -2353,10 +2365,6 @@
   }
 
   .fq-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .fq-board {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -2665,21 +2673,17 @@
   .fq-week-nav > span { min-width: 0; }
 }
 
-/* ---------- side cards: only beside the list ----------
-   Queue health · SLA monitor · Pending by age sit in the right column. When there is no room for
-   that column (narrow screens) or the calendar takes the full width, they hide instead of
-   stretching into a full-width row under the list. */
-.fq-grid.is-wide .fq-side { display: none; }
-/* laptops: keep the column beside the list (a little narrower) instead of dropping it below */
-@container fu (min-width: 901px) {
+/* ---------- side cards: big monitors only ----------
+   Queue health · SLA monitor · Pending by age sit in the right column only on big monitors
+   (24"-32", wider than 1600 CSS px). On laptops (14"-15.6"), tablets and phones they are hidden,
+   so the list, board and calendar get the full width. The calendar always takes the full width. */
+.fq-grid,
+.fq-grid:not(.is-wide) { grid-template-columns: minmax(0, 1fr); }
+.fq-grid .fq-side,
+.fq-grid:not(.is-wide) .fq-side { display: none; }
+@media (min-width: 1601px) {
   .fq-grid:not(.is-wide) { grid-template-columns: minmax(0, 1fr) minmax(0, calc(290px * var(--fus-k))); }
   .fq-grid:not(.is-wide) .fq-side { display: grid; grid-template-columns: minmax(0, 1fr); }
-}
-@container fu (max-width: 1180px) and (min-width: 901px) {
-  .fq-grid:not(.is-wide) { grid-template-columns: minmax(0, 1fr) minmax(0, calc(250px * var(--fus-k))); }
-}
-@container fu (max-width: 900px) {
-  .fq-side { display: none; }
 }
 
 /* ---------- small phones (≈300-520px): nothing may push the card wider than the screen ----------
@@ -2751,4 +2755,143 @@
   .fq-week-nav > span {
     flex: 1;
   }
+}
+
+/* ================= board: one look per screen size =================
+   No sideways scroll on any screen, and the columns never drop to a second line.
+   · Big monitor / laptop: four columns side by side, cards tighten on smaller laptops.
+   · Tablet:               four narrow columns, compact cards (reference hidden, owner kept).
+   · Phone:                four tabs (with counts) above one full-width column.
+   Each column scrolls inside itself, so a long column never stretches the page. */
+.fq-col-list {
+  max-height: min(64vh, calc(560px * var(--fus-k)));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fu-line) transparent;
+}
+.fq-col > header { min-width: 0; }
+.fq-col > header b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fq-none {
+  margin: 0;
+  padding: calc(14px * var(--fus-k)) calc(4px * var(--fus-k));
+  color: var(--fu-muted);
+  font-size: calc(12px * var(--fus-fs));
+  text-align: center;
+}
+
+/* card: nothing inside may push it wider than its column */
+.fq-kard { min-width: 0; overflow: hidden; }
+.fq-kard-top { min-width: 0; }
+.fq-kard-top small.fu-mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fq-kard-top .fq-ch { display: grid !important; flex: none; }
+.fq-kard-txt { overflow-wrap: anywhere; }
+.fq-kard-foot { min-width: 0; }
+.fq-kard-foot small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fq-kard-foot .fu-ava { flex: none; }
+
+/* phone tabs: hidden until the phone layout */
+.fq-board-tabs { display: none; }
+
+/* laptops: tighter spacing so four columns sit comfortably */
+@container fu (max-width: 1366px) {
+  .fq-main .fq-board { gap: calc(10px * var(--fus-k)); padding: calc(14px * var(--fus-k)) calc(16px * var(--fus-k)) calc(16px * var(--fus-k)); }
+  .fq-col > header { padding: calc(9px * var(--fus-k)) calc(10px * var(--fus-k)); }
+  .fq-col-list { gap: calc(6px * var(--fus-k)); padding: 0 calc(8px * var(--fus-k)) calc(8px * var(--fus-k)); }
+  .fq-kard { gap: 3px; padding: calc(9px * var(--fus-k)) calc(10px * var(--fus-k)); }
+  .fq-kard > b { font-size: calc(13px * var(--fus-fs)); }
+  .fq-kard-top { gap: calc(6px * var(--fus-k)); }
+  .fq-kard-top small { font-size: calc(10.5px * var(--fus-fs)); }
+}
+
+/* tablets: four narrow columns, compact cards */
+@container fu (max-width: 960px) {
+  .fq-main .fq-board { gap: calc(8px * var(--fus-k)); padding: calc(12px * var(--fus-k)); }
+  .fq-col > header { padding: calc(8px * var(--fus-k)); }
+  .fq-col > header b { font-size: calc(12.5px * var(--fus-fs)); }
+  .fq-col-list { padding: 0 calc(6px * var(--fus-k)) calc(6px * var(--fus-k)); }
+  .fq-kard { padding: calc(8px * var(--fus-k)); }
+  .fq-kard > b { font-size: calc(12.5px * var(--fus-fs)); }
+  .fq-kard-top small.fu-mono { display: none; }       /* reference stays in the details drawer */
+  .fq-kard-top small.fq-pri { margin-left: auto; }
+  .fq-kard-txt { font-size: calc(11.5px * var(--fus-fs)); }
+  .fq-kard-foot { gap: 4px; }
+  .fq-kard-foot svg { display: none; }
+}
+
+/* phones: four tabs above one full-width column */
+@container fu (max-width: 640px) {
+  .fq-board-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin: calc(12px * var(--fus-k)) calc(12px * var(--fus-k)) 0;
+    padding: 3px;
+    border: 1px solid var(--fu-row);
+    border-radius: var(--fu-btn-radius);
+    background: var(--fu-soft);
+  }
+  .fq-board-tabs button {
+    display: grid;
+    justify-items: center;
+    gap: 1px;
+    min-width: 0;
+    padding: calc(6px * var(--fus-k)) 2px;
+    border: 0;
+    border-radius: calc(var(--fu-btn-radius) - 2px);
+    background: none;
+    color: var(--fu-muted);
+    font-size: calc(11px * var(--fus-fs));
+    line-height: 1.25;
+    cursor: pointer;
+  }
+  .fq-board-tabs button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fq-board-tabs button em {
+    color: var(--fu-heading);
+    font-size: calc(13px * var(--fus-fs));
+    font-style: normal;
+    font-weight: 600;
+  }
+  .fq-board-tabs button.is-on {
+    background: var(--fu-card);
+    color: var(--fu-primary);
+    font-weight: 600;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--fu-heading) 12%, transparent);
+  }
+  .fq-board-tabs button.is-on em { color: var(--fu-primary); }
+
+  .fq-main .fq-board {
+    grid-template-columns: minmax(0, 1fr) !important;
+    padding: calc(10px * var(--fus-k)) calc(12px * var(--fus-k)) calc(12px * var(--fus-k));
+  }
+  .fq-main .fq-board > .fq-col:not(.is-on) { display: none !important; }
+  .fq-col > header { display: none; }                   /* the tab already names it */
+  .fq-col-list { max-height: none; padding: calc(8px * var(--fus-k)); }
+  .fq-kard { padding: calc(10px * var(--fus-k)) calc(12px * var(--fus-k)); }
+  .fq-kard > b { font-size: calc(14px * var(--fus-fs)); }
+  .fq-kard-top small.fu-mono { display: block; }
+  .fq-kard-top small.fq-pri { margin-left: 0; }
+  .fq-kard-txt { font-size: calc(12px * var(--fus-fs)); }
+  .fq-kard-foot svg { display: block; }
 }

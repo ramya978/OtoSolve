@@ -1,9 +1,10 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { CampaignApiService } from '../../../Service/campaign-api.service';
 import { CampaignStatistics } from '../../../Shared/models/campaign-contract.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { ToastService } from '../../../Shared/services/toast.service';
+import { AuthService } from '../../../Shared/Auth/auth.service';
 import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
@@ -70,6 +71,7 @@ const ICON_PATHS: Record<string, string> = {
   pause: 'M9 5v14 M15 5v14',
   money: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6.5v11 M14.5 9a2.5 2 0 0 0-2.5-1.5c-1.4 0-2.5.7-2.5 2s1.1 1.8 2.5 2 2.5.7 2.5 2-1.1 2-2.5 2A2.5 2 0 0 1 9.5 15',
   x: 'M18 6 6 18 M6 6l12 12',
+  play: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M10.2 8.6v6.8l5.6-3.4z',
   // ---- campaign logo marks ----
   walk: 'M13 4a1.6 1.6 0 1 0 0 .1 M10 21l2.5-6 2.5 2v4 M9 11l2.5-3 3 2.5 2.5 1 M11.5 8l-1 5.5',
   care: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z M9 11h2l1-2 1.5 4 1-2h1.5',
@@ -111,6 +113,9 @@ export type SortKey = 'name' | 'status' | 'progress' | 'owner' | 'launch' | 'end
 
 export type RowAction = 'view' | 'edit' | 'duplicate' | 'readiness' | 'launch' | 'delete';
 
+/** Row actions that ask for confirmation before they run (BUG-210 / TS-242). */
+export type ConfirmAction = Extract<RowAction, 'edit' | 'delete' | 'readiness' | 'launch'>;
+
 /** Custom dropdowns on the page (status = mobile / tablet replacement for the status tabs). */
 export type MenuKey = 'owner' | 'rows' | 'status';
 
@@ -124,19 +129,66 @@ export interface CampaignKpi {
   side: { value: string; label: string };
 }
 
+/** Row actions per status. Edit is offered for Draft only (BUG-212 / TS-243):
+ *  once a campaign is submitted, scheduled, active, paused, closing or closed it is no longer editable from the list. */
 const ACTIONS: Record<CampaignStatus, RowAction[]> = {
   draft: ['view', 'edit', 'duplicate', 'delete'],
   submitted: ['view', 'duplicate', 'readiness'],
-  scheduled: ['view', 'edit', 'duplicate', 'launch'],
-  active: ['view', 'edit', 'duplicate'],
-  paused: ['view', 'edit', 'duplicate'],
+  scheduled: ['view', 'duplicate', 'launch'],
+  active: ['view', 'duplicate'],
+  paused: ['view', 'duplicate'],
   closing: ['view', 'duplicate'],
   closed: ['view', 'duplicate']
+};
+
+/** BUG-211 / TS-243: a Campaign Manager cannot create, activate (execute) or delete campaigns.
+ *  These actions are hidden from the list and blocked in rowAction(). */
+const MANAGER_BLOCKED: RowAction[] = ['launch', 'delete'];
+
+/** Confirmation popup text per action (BUG-210 / TS-242). The campaign name + code are shown in front of "line". */
+const CONFIRM_META: Record<ConfirmAction, { title: string; line: string; ok: string; icon: string; danger: boolean }> = {
+  edit: {
+    title: 'Edit this campaign?',
+    line: 'will open in the campaign editor. Nothing changes until you save there.',
+    ok: 'Edit campaign',
+    icon: 'edit',
+    danger: false
+  },
+  delete: {
+    title: 'Delete this campaign?',
+    line: 'will be deleted permanently. This cannot be undone.',
+    ok: 'Delete campaign',
+    icon: 'trash',
+    danger: true
+  },
+  readiness: {
+    title: 'Approve this campaign?',
+    line: 'will be approved and can then be scheduled to launch.',
+    ok: 'Approve',
+    icon: 'check',
+    danger: false
+  },
+  launch: {
+    title: 'Activate this campaign?',
+    line: 'will go live now and its status will change to Active.',
+    ok: 'Activate',
+    icon: 'play',
+    danger: false
+  }
 };
 
 const STATUS_ORDER: CampaignStatus[] = ['draft', 'submitted', 'scheduled', 'active', 'paused', 'closing', 'closed'];
 
 const ownerBase = (o: string): string => o.replace(/\s\+\d+$/, '');
+
+/** "Campaign Manager" / "campaign_manager" / "CAMPAIGN-MANAGER" → "campaignmanager". */
+const roleKey = (r: unknown): string => {
+  const raw = r && typeof r === 'object' ? ((r as { name?: unknown; code?: unknown }).name ?? (r as { code?: unknown }).code) : r;
+  return String(raw ?? '').toLowerCase().replace(/[^a-z]/g, '');
+};
+const MANAGER_ROLE = 'campaignmanager';
+/** Roles that keep full rights even when the user also holds the Campaign Manager role. */
+const FULL_ROLES = ['admin', 'superadmin', 'administrator', 'orgadmin', 'organisationadmin', 'organizationadmin'];
 
 @Component({
   selector: 'app-campaign-register',
@@ -149,14 +201,50 @@ export class CampaignRegister {
   private readonly toast = inject(ToastService);
   private readonly store = inject(CampaignWorkspaceStore);
   private readonly api = inject(CampaignApiService);
+  private readonly auth = inject(AuthService);
   protected readonly paths = CW_PATHS;
 
   /** The server's counts per status (GET /campaigns/statistics), over every campaign rather than a loaded page. */
   private readonly stats = signal<CampaignStatistics | null>(null);
 
   constructor() {
+    // Read the list fresh every time the register opens. The store lives for the whole app, so the list
+    // it loaded earlier (possibly before sign-in or before the Organisation was picked) can be empty or old.
+    this.store.reload();
+    // Server counts: loaded on open, and again if the session's Organisation changes while the page is open.
+    effect(() => {
+      this.auth.user()?.org;
+      untracked(() => this.loadStats());
+    });
+  }
+
+  private loadStats(): void {
     this.api.getCampaignStatistics().subscribe({ next: (s) => this.stats.set(s), error: () => this.stats.set(null) });
   }
+
+  /** Organisation default currency (BUG-194 / TS-226), from the signed-in session's Organisation.
+   *  The KPI money figures always use this one, never the currency most campaigns happen to use. */
+  private readonly orgCurrency = computed<string>(() => this.auth.user()?.currency ?? '');
+
+  // ------------------------------------------------------------------
+  // ROLE (BUG-211 / TS-243)
+  // ------------------------------------------------------------------
+  /** Every role name on the signed-in user, normalised (reads role, roleName and roles[] - string or {name|code}). */
+  private readonly roleKeys = computed<string[]>(() => {
+    const u = this.auth.user() as unknown as { role?: unknown; roleName?: unknown; roles?: unknown } | null;
+    if (!u) return [];
+    const list: unknown[] = [u.role, u.roleName, ...(Array.isArray(u.roles) ? u.roles : [])];
+    return list.map(roleKey).filter(Boolean);
+  });
+
+  /** True for a Campaign Manager without an admin role: no Create, Activate or Delete. */
+  readonly isCampaignManager = computed<boolean>(() => {
+    const roles = this.roleKeys();
+    return roles.includes(MANAGER_ROLE) && !roles.some((r) => FULL_ROLES.includes(r));
+  });
+
+  /** Header "Create" button is hidden for a Campaign Manager. */
+  readonly canCreate = computed<boolean>(() => !this.isCampaignManager());
 
   private readonly rows = computed<CampaignRow[]>(() =>
     this.store.campaigns().map((c) => {
@@ -169,7 +257,7 @@ export class CampaignRegister {
         owner: owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : (owners[0] ?? '—'),
         owners: owners.filter(Boolean),
         launch: startDate ? fmtDate(startDate) : '—', ends: endDate ? fmtDate(endDate) : '—',
-        received: c.raised, target: c.target, currency: c.currency ?? '', delivered: 0, replies: 0, overdue: 0
+        received: c.raised, target: c.target, currency: (c.currency ?? '').trim().toUpperCase(), delivered: 0, replies: 0, overdue: 0
       };
     }));
   protected get campaigns(): CampaignRow[] { return this.rows(); }
@@ -189,6 +277,10 @@ export class CampaignRegister {
   readonly ownersFor = signal<CampaignRow | null>(null);
   /** Which custom dropdown is open ('owner' | 'rows' | 'status' | null). */
   readonly openMenu = signal<MenuKey | null>(null);
+  /** Pending action waiting for the user to confirm it (null = popup closed). */
+  readonly confirmFor = signal<{ row: CampaignRow; action: ConfirmAction } | null>(null);
+  /** True while the confirmed action is running on the server (buttons disabled, popup stays open). */
+  readonly confirmBusy = signal(false);
 
   get total(): number { return this.rows().length; }
   readonly pageSizes = [10, 25, 50];
@@ -199,6 +291,7 @@ export class CampaignRegister {
   readonly statusLabel = (s: CampaignStatus): string => STATUS_META[s].label;
   readonly statusTone = (s: CampaignStatus): string => STATUS_META[s].tone;
   readonly iconPath = (name: string): string => ICON_PATHS[name] ?? '';
+  readonly confirmMeta = (a: ConfirmAction) => CONFIRM_META[a];
 
   /** Label of the current status filter, for the mobile Status dropdown button. */
   statusFilterLabel(): string {
@@ -228,15 +321,20 @@ export class CampaignRegister {
     const lead = active.slice().sort((a, b) => b.progress - a.progress)[0];
     const avgProgress = active.length ? Math.round(active.reduce((t, r) => t + r.progress, 0) / active.length) : 0;
 
-    // Money is only added up within one currency: the most used one among these campaigns.
+    // BUG-194: money is shown in the organisation's default currency. The most-used campaign currency
+    // is only a fallback for when the organisation has no default set.
     const tally = new Map<string, number>();
-    for (const r of rows) tally.set(r.currency, (tally.get(r.currency) ?? 0) + 1);
-    const currency = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    for (const r of rows) if (r.currency) tally.set(r.currency, (tally.get(r.currency) ?? 0) + 1);
+    const mostUsed = [...tally.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    const currency = this.orgCurrency() || mostUsed;
     const money = (n: number): string => formatMoney(n, currency, { style: 'whole' });
-    const sameCurrency = rows.filter((r) => r.currency === currency);
+    // A campaign with no currency of its own is raised in the organisation currency.
+    const inOrgCurrency = (r: CampaignRow): boolean => !r.currency || r.currency === currency;
+    const sameCurrency = rows.filter(inOrgCurrency);
+    const otherCurrency = rows.length - sameCurrency.length;
 
     const pausedRows = rows.filter((r) => r.status === 'paused');
-    const pausedReceived = pausedRows.filter((r) => r.currency === currency).reduce((t, r) => t + r.received, 0);
+    const pausedReceived = pausedRows.filter(inOrgCurrency).reduce((t, r) => t + r.received, 0);
 
     const receivedTotal = sameCurrency.reduce((t, r) => t + r.received, 0);
     const targetTotal = sameCurrency.reduce((t, r) => t + r.target, 0);
@@ -261,6 +359,10 @@ export class CampaignRegister {
     const endedGoal = rows.filter((r) => (r.status === 'closing' || r.status === 'closed') && r.progress >= 100).length;
     const short = (d?: string) => (d ? d.split(' ').slice(0, 2).join(' ') : '—');
 
+    const receivedNote =
+      `${sameCurrency.length} campaign${sameCurrency.length === 1 ? '' : 's'} · target ${money(targetTotal)}` +
+      (otherCurrency ? ` · ${otherCurrency} in other currencies not counted` : '');
+
     return [
       {
         key: 'total', side: { value: String(owners), label: 'Owners' }, label: 'Campaigns', value: String(st?.total ?? rows.length), icon: 'case',
@@ -276,7 +378,7 @@ export class CampaignRegister {
       },
       {
         key: 'received', side: { value: receivedPct + '%', label: 'Of target' }, label: 'Received', value: money(receivedTotal), icon: 'money',
-        note: `${rows.length} campaign${rows.length === 1 ? '' : 's'} · target ${money(targetTotal)}`
+        note: receivedNote
       },
       {
         key: 'scheduled', side: { value: short(nextLaunch?.launch), label: 'Next launch' }, label: 'Scheduled to launch', value: String(scheduledCount), icon: 'calendar',
@@ -343,7 +445,7 @@ export class CampaignRegister {
 
   /** Page buttons with ellipsis: 1 2 … 10 (numbers, or '…' for gaps).
    *  Page 1 → 1 2 … 10 · Page 5 → 1 … 4 5 6 … 10 · Page 10 → 1 … 9 10 */
-   readonly pages = computed<(number | '…')[]>(() => {
+  readonly pages = computed<(number | '…')[]>(() => {
     const total = this.totalPages();
     const cur = this.page();
     if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
@@ -374,7 +476,6 @@ export class CampaignRegister {
   ownerExtra(owner: string): string {
     return owner.match(/\+\d+$/)?.[0] ?? '';
   }
-
 
   /** The campaign's real owners, main owner first. */
   ownersOf(r: CampaignRow): string[] {
@@ -457,9 +558,14 @@ export class CampaignRegister {
     return r.progress >= 100 ? 'Goal reached' : r.progress > 0 ? 'In progress' : 'Not started';
   }
 
-  /** Actions shown in the row for this campaign's state. */
+  /** Is this action allowed for the signed-in user's role? (BUG-211) */
+  private roleAllows(action: RowAction): boolean {
+    return !(this.isCampaignManager() && MANAGER_BLOCKED.includes(action));
+  }
+
+  /** Actions shown in the row for this campaign's state and the user's role. */
   actionsFor(r: CampaignRow): RowAction[] {
-    return ACTIONS[r.status];
+    return ACTIONS[r.status].filter((a) => this.roleAllows(a));
   }
 
   ownerLabel(): string {
@@ -604,15 +710,48 @@ export class CampaignRegister {
     this.router.navigate([CW_PATHS.detailFor(r.code)]);
   }
 
-  /** Header Create → full-page wizard. */
+  /** Header Create → full-page wizard (blocked for a Campaign Manager - BUG-211). */
   goCreate(): void {
+    if (!this.canCreate()) return;
     this.router.navigate([CW_PATHS.create]);
   }
 
-  /** Toolbar action for a row (view / edit / duplicate / delete / readiness / launch). */
+  /** Toolbar action for a row. Edit / Delete / Approve / Activate first open the confirmation popup (BUG-210). */
   rowAction(r: CampaignRow, action: RowAction): void {
+    // Guard: never run an action the row's status or the user's role does not offer.
+    if (!ACTIONS[r.status].includes(action) || !this.roleAllows(action)) return;
+
+    if (action === 'edit' || action === 'delete' || action === 'readiness' || action === 'launch') {
+      this.openMenu.set(null);
+      this.confirmBusy.set(false);
+      this.confirmFor.set({ row: r, action });
+      return;
+    }
+    this.runAction(r, action);
+  }
+
+  /** Confirm button in the popup → run the pending action. */
+  confirmAction(): void {
+    const c = this.confirmFor();
+    if (!c || this.confirmBusy()) return;
+    // Re-check: the row's status or the user's role may have changed while the popup was open.
+    if (!ACTIONS[c.row.status].includes(c.action) || !this.roleAllows(c.action)) {
+      this.confirmFor.set(null);
+      return;
+    }
+    this.runAction(c.row, c.action);
+  }
+
+  /** Cancel / overlay click / Escape → close the popup without doing anything (not while the action is running). */
+  cancelConfirm(): void {
+    if (this.confirmBusy()) return;
+    this.confirmFor.set(null);
+  }
+
+  private runAction(r: CampaignRow, action: RowAction): void {
     if (action === 'view') return this.openDetail(r);
     if (action === 'edit') {
+      this.confirmFor.set(null);
       this.store.ensureCampaign(this.toInfo(r));
       this.store.select(r.code);
       this.router.navigate([CW_PATHS.create], { queryParams: { code: r.code } });
@@ -625,13 +764,21 @@ export class CampaignRegister {
       this.router.navigate([CW_PATHS.readiness], { queryParams: { code: r.code } });
       return;
     }
-    const finish = (okTitle: string, okText: string, failTitle: string) => (error?: string) => {
+
+    // Server actions: keep the popup open with buttons disabled until the store answers.
+    this.confirmBusy.set(true);
+    const finish = (okTitle: string, okText: string, failTitle: string, onOk?: () => void) => (error?: string) => {
+      this.confirmBusy.set(false);
+      this.confirmFor.set(null);
       if (error) this.toast.show(failTitle, error, 'error');
-      else this.toast.show(okTitle, okText, 'success');
+      else {
+        onOk?.();
+        this.toast.show(okTitle, okText, 'success');
+      }
     };
     if (action === 'delete') {
-      this.store.removeCampaign(r.code, finish('Campaign deleted', `${r.code} was deleted.`, 'Campaign not deleted'));
-      this.checked.update((s) => { const n = new Set(s); n.delete(r.id); return n; });
+      this.store.removeCampaign(r.code, finish('Campaign deleted', `${r.code} was deleted.`, 'Campaign not deleted', () =>
+        this.checked.update((s) => { const n = new Set(s); n.delete(r.id); return n; })));
       return;
     }
     if (action === 'readiness') {
@@ -643,6 +790,7 @@ export class CampaignRegister {
       this.store.activateFromList(r.code, finish('Campaign activated', `${r.code} is now Active.`, 'Campaign not activated'));
       return;
     }
+    this.confirmBusy.set(false);
   }
 
   private toInfo(r: CampaignRow): CampaignInfo {
@@ -657,7 +805,7 @@ export class CampaignRegister {
       location: '',
       target: 0,
       raised: 0,
-      currency: r.currency,
+      currency: r.currency || this.orgCurrency(),
       monthlyRevenue: 0,
       monthlyRevenuePrev: 0,
       donors: 0,
@@ -686,7 +834,8 @@ export class CampaignRegister {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
-    if (this.openMenu()) this.openMenu.set(null);
+    if (this.confirmFor()) this.cancelConfirm();
+    else if (this.openMenu()) this.openMenu.set(null);
     else if (this.ownersFor()) this.closeOwners();
     else this.close();
   }

@@ -126,7 +126,7 @@
           </div>
           <dl class="i-kv">
             @for (r of registration; track r.label) {
-              <div><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
+              <div [class.is-missing]="r.value === '—'"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
             }
           </dl>
         </section>
@@ -137,7 +137,7 @@
           </div>
           <dl class="i-kv">
             @for (r of contact; track r.label) {
-              <div [class.is-wide]="r.label === 'E-mail' || r.label === 'Website'"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
+              <div [class.is-missing]="r.value === '—'" [class.is-wide]="r.label === 'E-mail' || r.label === 'Website'"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
             }
           </dl>
         </section>
@@ -336,7 +336,7 @@
                               [placeholder]="decidingOn()?.decision === 'Approve' ? 'Note (optional)' : 'Reason (required) - say what is wrong, so it can be corrected.'"
                               (input)="decisionNotes.set($any($event.target).value)"></textarea>
                     <footer class="og-c-foot">
-                      <span class="og-c-hint"></span>
+                      <span class="og-c-hint">{{ decisionNotes().length }} / {{ maxNote }}</span>
                       <div class="og-c-actions">
                         <button type="button" class="i-btn" (click)="cancelDecision()">Cancel</button>
                         <button type="button" class="i-btn i-btn--primary" [disabled]="docsBusy()" (click)="confirmDecision(s)">Confirm</button>

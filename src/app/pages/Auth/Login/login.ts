@@ -6,7 +6,6 @@ import { MfaChallengeResponse, SignInResponse } from '../../../Shared/models/iam
 import { nextRouteFor } from '../../../Shared/models/auth.model';
 import { AuthSessionService } from '../../../Shared/services/auth-session.service';
 import { AuthTokenService } from '../../../Shared/services/auth-token.service';
-import { DeviceIdentityService } from '../../../Shared/services/device-identity.service';
 import { MfaHandoffService } from '../../../Shared/services/mfa-handoff.service';
 
 interface FieldErrors {
@@ -21,9 +20,12 @@ interface Toast {
   tone: ToastTone;
 }
 
+/** The second-factor verification screen (app.routes.ts: 'auth/mfa'). */
+const MFA_ROUTE = '/app/dashboard';
+
 @Component({
   selector: 'app-login',
-  templateUrl:'./login.html',
+  templateUrl: './login.html',
   styleUrl: './login.css'
 })
 export class Login implements OnDestroy {
@@ -31,7 +33,7 @@ export class Login implements OnDestroy {
   private readonly authApi = inject(AuthApiService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-    private readonly session = inject(AuthSessionService);
+  private readonly session = inject(AuthSessionService);
   private readonly tokens = inject(AuthTokenService);
   private readonly handoff = inject(MfaHandoffService);
 
@@ -41,8 +43,8 @@ export class Login implements OnDestroy {
   protected readonly remember = signal(false);
   protected readonly busy = signal(false);
   protected readonly fieldErrors = signal<FieldErrors>({});
-    isOnline = navigator.onLine;
-    readonly loading = signal(false);
+  isOnline = navigator.onLine;
+  readonly loading = signal(false);
   readonly errorMessage = signal('');
   readonly successMessage = signal('');
 
@@ -64,113 +66,111 @@ export class Login implements OnDestroy {
     () => this.identifier().trim().length > 0 && this.password().length > 0 && !this.busy()
   );
 
+  protected async submit(event: Event): Promise<void> {
+    event.preventDefault();
 
+    if (this.busy()) return;
 
-protected async submit(event: Event): Promise<void> {
-  event.preventDefault();
-
-  if (this.busy()) return;
-
-  if (!this.isOnline) {
-    this.errorMessage.set('No internet connection detected. Reconnect and try again.');
-    return;
-  }
-
-  const identifier = this.identifier().trim();
-  const errors: FieldErrors = {};
-
-  if (identifier.length < 2) errors.identifier = 'Enter your user name or e-mail.';
-  if (!this.password()) errors.password = 'Enter your password.';
-
-  this.fieldErrors.set(errors);
-
-  if (errors.identifier || errors.password) {
-    this.showToast(errors.identifier ?? errors.password!, 'danger');
-    return;
-  }
-
-  this.loading.set(true);
-  this.busy.set(true);
-  this.errorMessage.set('');
-
-  this.authApi.signIn({
-    identifier,
-    password: this.password(),
-    clientType: 'web',
-    rememberMe: this.remember()
-  }).subscribe({
-    next: (response) => {
-      this.loading.set(false);
-      this.busy.set(false);
-      this.password.set('');
-      this.route4Way(response);
-    },
-    error: (error: unknown) => {
-      this.loading.set(false);
-      this.busy.set(false);
-      this.password.set('');
-
-      const message = error instanceof Error
-        ? error.message
-        : 'Sign-in failed. Please try again.';
-
-      this.errorMessage.set(message);
-      this.showToast(message, 'danger');
+    if (!this.isOnline) {
+      this.errorMessage.set('No internet connection detected. Reconnect and try again.');
+      return;
     }
-  });
-}
 
+    const identifier = this.identifier().trim();
+    const errors: FieldErrors = {};
 
+    if (identifier.length < 2) errors.identifier = 'Enter your user name or e-mail.';
+    if (!this.password()) errors.password = 'Enter your password.';
 
-    /** Sends the person to whichever screen the status calls for. */
+    this.fieldErrors.set(errors);
+
+    if (errors.identifier || errors.password) {
+      this.showToast(errors.identifier ?? errors.password!, 'danger');
+      return;
+    }
+
+    // A fresh sign-in starts a fresh flow: drop any half-finished MFA handoff from before.
+    this.handoff.clear();
+
+    this.loading.set(true);
+    this.busy.set(true);
+    this.errorMessage.set('');
+
+    this.authApi.signIn({
+      identifier,
+      password: this.password(),
+      clientType: 'web',
+      rememberMe: this.remember()
+    }).subscribe({
+      next: (response) => {
+        this.loading.set(false);
+        this.busy.set(false);
+        this.password.set('');
+        this.route4Way(response);
+      },
+      error: (error: unknown) => {
+        this.loading.set(false);
+        this.busy.set(false);
+        this.password.set('');
+
+        const message = error instanceof Error
+          ? error.message
+          : 'Sign-in failed. Please try again.';
+
+        this.errorMessage.set(message);
+        this.showToast(message, 'danger');
+      }
+    });
+  }
+
+  /**
+   * Sends the person to whichever screen the server's answer calls for.
+   *
+   * A user with MFA enabled ALWAYS goes through the MFA screen:
+   *  • the server issued a challenge  → the MFA screen verifies it (mfa-challenge/verify);
+   *  • the server said `succeeded` without one → the MFA screen checks the code with the
+   *    reauthentication endpoint (step-up), and only then starts the session.
+   * The old branch built a challenge with an EMPTY token, which no code could ever pass.
+   */
   private route4Way(response: SignInResponse): void {
     const destination = nextRouteFor(response);
+    const challengeToken = response.challengeToken ?? response.mfaChallenge?.challengeToken;
+
+    // ── MFA FIRST, when the server asked for it ──────────────────────────────────────────
+    if (challengeToken) {
+      this.goToMfa(response, challengeToken);
+      return;
+    }
+
+    if (response.status === 'mfaRequired') {
+      // mfaRequired without a challenge token: nothing the MFA screen could verify.
+      this.tokens.clear();
+      this.fail('The verification step could not be started. Try signing in again.');
+      return;
+    }
+
+    // ── MFA ENABLED, BUT THE SERVER ISSUED NO CHALLENGE ──────────────────────────────────
+    // The password was right and the server signed the person in, but their account has a second
+    // factor. Hold that sign-in back (nothing stored, dashboard stays shut), open the MFA screen,
+    // and let it check the authenticator code through the reauthentication endpoint. Only when
+    // the code is right does the session start and the dashboard open.
+
+
+    // if (response.user?.mfaEnabled && response.accessToken) {
+    //   this.tokens.clear();
+    //   this.handoff.storeStepUp(response, this.remember(), this.returnUrl);
+    //   void this.router.navigateByUrl(MFA_ROUTE).then((arrived) => {
+    //     if (!arrived) {
+    //       this.fail('The verification step could not be opened. Try signing in again.');
+    //     }
+    //   });
+    //   return;
+    // }
 
     switch (response.status) {
-      case 'mfaRequired': {
-        // No access token exists yet — only a short-lived challenge token proving the password
-        // step succeeded. It is held in memory (with a sessionStorage fallback for a page
-        // refresh) rather than pushed through the URL, where it would end up in browser history,
-        // in the Referer header of the next request, and in server access logs. The challenge
-        // token is a credential and deserves the same care the password just had.
-        if (!response.challengeToken) {
-          this.errorMessage.set('The second-factor step could not be started. Try signing in again.');
-          return;
-        }
-
-        // THE WHOLE CHALLENGE, as the server issued it. The verification screen counts down to
-        // its expiry and offers its other methods and recovery codes; built from the three flat
-        // fields alone, it had no expiry and treated every code as already expired.
-        const challenge: MfaChallengeResponse = {
-          ...response.mfaChallenge,
-          challengeToken: response.challengeToken,
-          methodType: response.mfaChallenge?.methodType ?? response.mfaMethodType,
-          maskedDestination: response.mfaChallenge?.maskedDestination ?? response.mfaMaskedDestination ?? null,
-        };
-
-        // The returnUrl rides in the handoff, not in the URL — see the note on MfaHandoff.
-        // Dropping it here is what used to send every second-factor sign-in to the dashboard
-        // regardless of the page they had actually asked for.
-        this.handoff.store(challenge, this.remember(), this.returnUrl);
-        void this.router.navigate([destination]).then((arrived) => {
-          if (!arrived) {
-            this.errorMessage.set('The verification step could not be opened. Try signing in again.');
-          }
-        });
-        return;
-      }
-
       case 'tenantSelectionRequired': {
-        // A root user, who has no Organisation of their own. They are properly signed in - the
-        // token in this response is real - and they go straight to the Organisation directory,
-        // which is the screen their job actually starts on. Organisation-scoped screens ask
-        // which Organisation at the point they need to know, not before.
+        // A root user, who has no Organisation of their own. Properly signed in — the token is real.
         this.session.startSession(response);
-
-        // FORWARDED, because select-organisation already reads a returnUrl and acts on it — it
-        // simply never received one, so the branch was unreachable and a root user who followed
-        // a deep link lost it at this hop. A query parameter is right here where it was wrong for
-        // MFA: this one carries a route, not a credential.
         void this.router.navigate([destination], {
           queryParams: this.returnUrl ? { returnUrl: this.returnUrl } : undefined,
         });
@@ -185,9 +185,7 @@ protected async submit(event: Event): Promise<void> {
           'danger'
         );
 
-        // The returnUrl is deliberately NOT honoured here: the person is signed in but must
-        // deal with the password first, and dropping them on the page they asked for would
-        // simply bounce them straight back.
+        // The returnUrl is deliberately NOT honoured here: the password comes first.
         void this.router.navigate([destination], {
           queryParams: { token: response.passwordResetToken ?? undefined },
         });
@@ -203,9 +201,40 @@ protected async submit(event: Event): Promise<void> {
           'ok'
         );
 
-        void this.router.navigateByUrl(this.returnUrl ?? destination);
+        void this.router.navigateByUrl(this.returnUrl ?? destination, { replaceUrl: true });
       }
     }
+  }
+
+  /**
+   * Hands the whole challenge to the MFA screen and navigates there. The challenge token is a
+   * credential, so it travels in memory (MfaHandoffService), never in the URL.
+   *
+   * AuthApiService.signIn() stores whatever the response carried. If anything was stored, the
+   * guestGuard on /auth/mfa would see a "signed-in" user and bounce to the dashboard — so the
+   * pre-MFA token state is cleared first. The real session starts after verification.
+   */
+  private goToMfa(response: SignInResponse, challengeToken: string): void {
+    const challenge = {
+      ...response.mfaChallenge,
+      challengeToken,
+      methodType: response.mfaChallenge?.methodType ?? response.mfaMethodType,
+      maskedDestination: response.mfaChallenge?.maskedDestination ?? response.mfaMaskedDestination ?? null,
+    } as MfaChallengeResponse;
+
+    this.tokens.clear();
+    this.handoff.store(challenge, this.remember(), this.returnUrl);
+
+    void this.router.navigateByUrl(MFA_ROUTE).then((arrived) => {
+      if (!arrived) {
+        this.fail('The verification step could not be opened. Try signing in again.');
+      }
+    });
+  }
+
+  private fail(message: string): void {
+    this.errorMessage.set(message);
+    this.showToast(message, 'danger');
   }
 
   /** Shows a toast for a few seconds, replacing any message already on screen. */
@@ -215,7 +244,7 @@ protected async submit(event: Event): Promise<void> {
     this.toastTimer = setTimeout(() => this.toast.set(null), tone === 'danger' ? 6000 : 3200);
   }
 
-  /** Closes the toast on demand with slide-out animation. */
+  /** Closes the toast on demand. */
   protected dismissToast(): void {
     clearTimeout(this.toastTimer);
     this.toast.set(null);
@@ -232,8 +261,7 @@ protected async submit(event: Event): Promise<void> {
     return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : null;
   }
 
-    protected forgotPassword(): void {
+  protected forgotPassword(): void {
     void this.router.navigate(['/auth/forgot-password']);
   }
-
 }

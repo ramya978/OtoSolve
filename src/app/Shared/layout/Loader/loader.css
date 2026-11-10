@@ -1,16 +1,25 @@
 /* ==========================================================================
-   Loader — bouncing dots
+   Loader — triple arc (web)
+   Theme: var(--primary) · flat · no shadows
    ========================================================================== */
 
 .ld-root {
   display: contents;
 }
 
+/* ---- Tokens ---- */
+.ld-inline,
+.ld-backdrop {
+  --ld-accent: var(--primary, #7a2944);
+  --ld-text: var(--text-muted, #4b5563);
+  --ld-surface: var(--surface, #ffffff);
+}
+
 /* ---- Inline variant ---- */
 .ld-inline {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px 0;
 }
 
@@ -22,76 +31,95 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(255, 255, 255);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  animation: ld-fade-in 0.2s ease-out;
+  background: var(--ld-surface);
+  animation: ld-fade-in 0.15s ease-out;
 }
 
 .ld-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 18px;
+  padding: 0 16px;
   text-align: center;
 }
 
-/* ---- Dots: centre dot + two pseudo-element dots ---- */
-.ld-spinner {
-  --ld-d: 12px;
-  --ld-gap: calc(var(--ld-d) * 1.7);
-  --ld-c1: #2563eb;
-  --ld-c2: #7c3aed;
+/* ---- Arcs ---- */
+.ld-arcs {
+  --ld-size: 44px;
+  --ld-stroke: 3px;
+  --ld-step: 7px;
 
   position: relative;
-  width: var(--ld-d);
-  height: var(--ld-d);
-  margin: 0 var(--ld-gap);
-  border-radius: 50%;
-  background: var(--ld-c2);
-  animation: ld-bounce 0.6s ease-in-out infinite alternate;
-  animation-delay: 0.15s;
+  flex-shrink: 0;
+  width: var(--ld-size);
+  height: var(--ld-size);
 }
 
-.ld-spinner::before,
-.ld-spinner::after {
-  content: "";
+.ld-arc {
   position: absolute;
-  top: 0;
-  width: 100%;
-  height: 100%;
   border-radius: 50%;
-  animation: ld-bounce 0.6s ease-in-out infinite alternate;
+  border: var(--ld-stroke) solid transparent;
+  box-sizing: border-box;
+  will-change: transform;
 }
 
-.ld-spinner::before {
-  left: calc(var(--ld-gap) * -1);
-  background: var(--ld-c1);
-  animation-delay: 0s;
+/* Outer — full colour, clockwise */
+.ld-arc-1 {
+  inset: 0;
+  border-top-color: var(--ld-accent);
+  animation: ld-spin 1.2s linear infinite;
 }
 
-.ld-spinner::after {
-  left: var(--ld-gap);
-  background: var(--ld-c1);
-  animation-delay: 0.3s;
+/* Middle — softer, anticlockwise */
+.ld-arc-2 {
+  inset: var(--ld-step);
+  border-top-color: color-mix(in srgb, var(--ld-accent) 65%, transparent);
+  animation: ld-spin 0.9s linear infinite reverse;
 }
 
-.ld-spinner.ld-sm { --ld-d: 8px; }
-.ld-spinner.ld-lg { --ld-d: 18px; }
+/* Inner — lightest, fastest */
+.ld-arc-3 {
+  inset: calc(var(--ld-step) * 2);
+  border-top-color: color-mix(in srgb, var(--ld-accent) 35%, transparent);
+  animation: ld-spin 0.6s linear infinite;
+}
+
+/* ---- Sizes ---- */
+.ld-arcs.ld-sm { --ld-size: 22px; --ld-stroke: 2px; --ld-step: 4px; }
+.ld-arcs.ld-md { --ld-size: 44px; --ld-stroke: 3px; --ld-step: 7px; }
+.ld-arcs.ld-lg { --ld-size: 64px; --ld-stroke: 4px; --ld-step: 10px; }
 
 /* ---- Message ---- */
 .ld-message {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
-  color: #4b5563;
-  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: var(--ld-text);
+  letter-spacing: 0.01em;
+}
+
+.ld-inline.ld-sm .ld-message { font-size: 0.8125rem; }
+.ld-inline.ld-lg .ld-message,
+.ld-backdrop .ld-message { font-size: 0.9375rem; }
+
+/* Screen-reader only label */
+.ld-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- Animations ---- */
-@keyframes ld-bounce {
-  from { transform: translateY(0);    opacity: 0.5; }
-  to   { transform: translateY(-70%); opacity: 1; }
+@keyframes ld-spin {
+  to { transform: rotate(360deg); }
 }
 
 @keyframes ld-fade-in {
@@ -100,8 +128,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ld-spinner,
-  .ld-spinner::before,
-  .ld-spinner::after { animation-duration: 1.4s; }
+  .ld-arc-1 { animation-duration: 3s; }
+  .ld-arc-2 { animation-duration: 3.6s; }
+  .ld-arc-3 { animation-duration: 4.2s; }
   .ld-backdrop { animation: none; }
 }

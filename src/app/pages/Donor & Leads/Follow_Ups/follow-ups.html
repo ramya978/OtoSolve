@@ -230,7 +230,7 @@
             <button type="button" class="fu-icon" (click)="moveWeek(-1)" aria-label="Previous week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('left')" /></svg></button>
             <span><b>{{ weekTitle().month }}</b><small>{{ weekTitle().range }}</small></span>
             <button type="button" class="fu-icon" (click)="moveWeek(1)" aria-label="Next week"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg></button>
-            <button type="button" class="fu-btn sm" (click)="thisWeek()">Today</button>
+            <button type="button" class="fu-btn sm" [class.is-active]="onToday()" [attr.aria-pressed]="onToday()" (click)="goToday()" title="Show today's follow-ups">Today</button>
           </div>
           <div class="fq-days">
             @for (d of week(); track d.iso) {
@@ -350,9 +350,18 @@
         }
 
         @case ('board') {
+          <!-- BUG-201: the four columns always share one row and fit the card (no sideways scroll).
+               On phones the tabs below pick which column shows. -->
+          <div class="fq-board-tabs" role="tablist" aria-label="Board columns">
+            @for (col of board(); track col.key) {
+              <button type="button" role="tab" [class.is-on]="boardCol() === col.key" [attr.aria-selected]="boardCol() === col.key" (click)="boardCol.set(col.key)">
+                <span>{{ col.label }}</span><em>{{ col.items.length }}</em>
+              </button>
+            }
+          </div>
           <div class="fq-board">
             @for (col of board(); track col.key) {
-              <section class="fq-col">
+              <section class="fq-col" [class.is-on]="boardCol() === col.key">
                 <header><b>{{ col.label }}</b><span class="fq-tag">{{ col.items.length }}</span></header>
                 <div class="fq-col-list">
                   @for (f of col.items; track f.id) {

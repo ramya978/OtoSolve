@@ -171,10 +171,7 @@ export class Users implements OnInit {
     { value: '', label: 'All roles' },
     ...this.store.roles().map((r) => ({ value: r.name ?? '', label: r.name ?? '', hint: r.code ?? '' }))
   ]);
-  private readonly roleChoiceC = computed<IamOption[]>(() =>
-    this.store.roles().map((r) => ({ value: r.name ?? '', label: r.name ?? '', hint: r.code ?? '', initials: initialsOf(r.name ?? '') })));
   get roleOptions(): IamOption[] { return this.roleOptionsC(); }
-  get roleChoice(): IamOption[] { return this.roleChoiceC(); }
   readonly unitChoice = computed<IamOption[]>(() => this.store.units().map((d) => ({ value: d.name ?? '', label: d.name ?? '', icon: 'unit' })));
   readonly deptChoice = computed<IamOption[]>(() => this.store.departments().map((d) => ({ value: d.name ?? '', label: d.name ?? '', icon: 'building' })));
 
@@ -525,9 +522,11 @@ export class Users implements OnInit {
     if (!d.mobile.trim()) return true;
     return /^\+?\d{1,4}$/.test(d.countryCode.trim()) && /^\d{6,15}$/.test(d.mobile.replace(/[\s-]/g, ''));
   }
+  /** BUG-209: the primary role is read-only in the edit drawer, so it is not checked here
+   *  (a person without a role could otherwise never be saved). */
   canSave(): boolean {
     const d = this.draft();
-    return d.name.trim().length > 1 && !!d.firstName.trim() && !!d.lastName.trim() && !!d.role
+    return d.name.trim().length > 1 && !!d.firstName.trim() && !!d.lastName.trim()
       && this.mobileOk() && d.reason.trim().length >= REASON_MIN;
   }
   save(): void {

@@ -1,529 +1,564 @@
 <!-- =====================================================================================================
-     CAMPAIGN REGISTER - list view
-     Heading with Export / Create · status tabs with live counts · search + owner dropdown (custom) ·
-     table (fixed layout - wraps, never scrolls sideways; on narrower screens Timeline, Owner,
-     Progress and Status hide in that order and a compact status line appears under the name) with avatar tiles, a status label with a
-     lifecycle stage track, a progress ring with caption, owner avatars and a launch → end
-     timeline · row actions that depend on the status (draft: view/edit/duplicate/delete · submitted:
-     view/duplicate/readiness · scheduled: view/edit/duplicate/launch · active: view/edit/duplicate ·
-     closing/closed: view/duplicate), each with its own hover animation · bulk bar · pager.
-     Mobile / tablet: the status tabs fold into a "Status" custom dropdown next to the owner one,
-     so the filter area stays two short rows (search, then Status + Owner).
-     ===================================================================================================== -->
-<app-page-header breadcrumb="Fundraising / Campaigns" heading="All campaigns" description="Fundraising campaigns across the workspace, with their status, progress and dates.">
-  <ng-container actions>
-    <div class="cr-headactions">
-      <!-- mobile / tablet: icon only (label hidden, still read out via aria-label, shown as tooltip) -->
-      <button type="button" class="btn-secondary pf-hbtn cr-hbtn" aria-label="Export" title="Export" (click)="exportAll()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
-        <span class="cr-hbtn-label">Export</span>
-      </button>
-      <button type="button" class="btn-primary pf-hbtn cr-hbtn" aria-label="Create" title="Create" (click)="goCreate()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
-        <span class="cr-hbtn-label">Create</span>
-      </button>
-    </div>
-  </ng-container>
-</app-page-header>
-
-<!-- KPI strip: 7 widgets in ONE row (never wraps). As the screen narrows the
-     lower-priority widgets hide: Closing & closed → Draft & submitted → Scheduled → Campaigns. -->
-<section class="card cr-kpis mb" aria-label="Campaign summary">
- <div class="cr-kpis-row">
-  @for (k of kpis(); track k.key) {
-    <div [class]="'cr-kpi cr-kpi--' + k.key">
-      <div class="cr-kpi-top">
-        <span class="cr-kpi-label">{{ k.label }}</span>
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath(k.icon)" /></svg>
-      </div>
-      <div class="cr-kpi-mid">
-        <strong class="cr-kpi-value num" [class.is-money]="k.key === 'received'">{{ k.value }}</strong>
-        <!-- second figure on the right: fills the empty side of the widget -->
-        <span class="cr-kpi-side">
-          <b>{{ k.side.value }}</b>
-          <small>{{ k.side.label }}</small>
-        </span>
-      </div>
-      <p class="cr-kpi-note">{{ k.note }}</p>
-    </div>
-  }
- </div>
-</section>
-
-<!-- register -->
-<section class="card cr-card mb" aria-labelledby="cr-reg-title">
-
-  <!-- title row: name + count, search, status dropdown (mobile only), owner dropdown -->
-  <div class="cr-bar">
-    <div class="cr-bar-title">
-      <h2 id="cr-reg-title">Campaigns</h2>
-      <span class="cr-count">{{ total }}</span>
-    </div>
-
-    <div class="cr-tools">
-      <label class="cr-search">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.55"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('search')" /></svg>
-        <input type="search" placeholder="Search name or code" aria-label="Search campaigns"
-               [value]="query()" (input)="setQuery($any($event.target).value)" />
-      </label>
-
-      <!-- status: custom dropdown - replaces the status tabs on mobile / tablet -->
-      <div class="cr-dd cr-dd-status" [class.is-open]="openMenu() === 'status'">
-        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'status'"
-                aria-label="Filter by status" (click)="toggleMenu('status', $event)">
-          <span class="cr-dd-key">Status</span>
-          @if (statusFilter() !== 'all') {
-            <i [class]="'cr-dot tone-' + statusFilterTone()" aria-hidden="true"></i>
-          }
-          <span class="cr-dd-val">{{ statusFilterLabel() }}</span>
-          <span class="cr-tab-n">{{ statusCounts()[statusFilter()] }}</span>
-          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+      CAMPAIGN REGISTER - list view
+      Heading with Export / Create · status tabs with live counts · search + owner dropdown (custom) ·
+      table (fixed layout - wraps, never scrolls sideways; on narrower screens Timeline, Owner,
+      Progress and Status hide in that order and a compact status line appears under the name) with avatar tiles, a status label with a
+      lifecycle stage track, a progress ring with caption, owner avatars and a launch → end
+      timeline · row actions that depend on the status (draft: edit/checklist/delete · submitted:
+      checklist/approve · scheduled: checklist/activate · others: checklist) and on the role
+      (a Campaign Manager never sees Create, Activate or Delete - BUG-211) · Edit, Delete, Approve and
+      Activate ask for confirmation first (BUG-210) · bulk bar · pager.
+      Mobile / tablet: the status tabs fold into a "Status" custom dropdown next to the owner one,
+      so the filter area stays two short rows (search, then Status + Owner).
+      ===================================================================================================== -->
+  <app-page-header breadcrumb="Fundraising / Campaigns" heading="All campaigns" description="Fundraising campaigns across the workspace, with their status, progress and dates.">
+    <ng-container actions>
+      <div class="cr-headactions">
+        <!-- mobile / tablet: icon only (label hidden, still read out via aria-label, shown as tooltip) -->
+        <button type="button" class="btn-secondary pf-hbtn cr-hbtn" aria-label="Export" title="Export" (click)="exportAll()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
+          <span class="cr-hbtn-label">Export</span>
         </button>
-        @if (openMenu() === 'status') {
-          <ul class="cr-dd-menu" role="listbox" aria-label="Status" (click)="$event.stopPropagation()">
-            <li role="option" [attr.aria-selected]="statusFilter() === 'all'" [class.is-on]="statusFilter() === 'all'"
-                tabindex="0" (click)="setStatus('all')" (keydown.enter)="setStatus('all')">
-              All statuses
-              <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
-              @if (statusFilter() === 'all') {
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
-              }
-            </li>
-            @for (s of statusOrder; track s) {
-              <li role="option" [attr.aria-selected]="statusFilter() === s" [class.is-on]="statusFilter() === s"
-                  tabindex="0" (click)="setStatus(s)" (keydown.enter)="setStatus(s)">
-                <i [class]="'cr-dot tone-' + statusTone(s)" aria-hidden="true"></i>{{ statusLabel(s) }}
-                <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
-                @if (statusFilter() === s) {
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
-                }
-              </li>
-            }
-          </ul>
+        <!-- Create: hidden for a Campaign Manager (BUG-211 / TS-243) -->
+        @if (canCreate()) {
+          <button type="button" class="btn-primary pf-hbtn cr-hbtn" aria-label="Create" title="Create" (click)="goCreate()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.9"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('plus')" /></svg>
+            <span class="cr-hbtn-label">Create</span>
+          </button>
         }
       </div>
+    </ng-container>
+  </app-page-header>
 
-      <!-- owner: custom dropdown -->
-      <div class="cr-dd cr-dd-owner" [class.is-open]="openMenu() === 'owner'">
-        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'owner'"
-                (click)="toggleMenu('owner', $event)">
-          <span class="cr-dd-key">Owner</span>
-          <span class="cr-dd-val">{{ ownerLabel() }}</span>
-          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
-        </button>
-        @if (openMenu() === 'owner') {
-          <ul class="cr-dd-menu" role="listbox" aria-label="Owner" (click)="$event.stopPropagation()">
-            <li role="option" [attr.aria-selected]="ownerFilter() === 'all'" [class.is-on]="ownerFilter() === 'all'"
-                tabindex="0" (click)="setOwner('all')" (keydown.enter)="setOwner('all')">
-              All owners
-              @if (ownerFilter() === 'all') {
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
-              }
-            </li>
-            @for (o of owners; track o) {
-              <li role="option" [attr.aria-selected]="ownerFilter() === o" [class.is-on]="ownerFilter() === o"
-                  tabindex="0" (click)="setOwner(o)" (keydown.enter)="setOwner(o)">
-                <span class="cr-dd-avatar" aria-hidden="true">{{ initials(o) }}</span>{{ o }}
-                @if (ownerFilter() === o) {
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
-                }
-              </li>
-            }
-          </ul>
-        }
+  <!-- KPI strip: 7 widgets in ONE row (never wraps). As the screen narrows the
+      lower-priority widgets hide: Closing & closed → Draft & submitted → Scheduled → Campaigns. -->
+  <section class="card cr-kpis mb" aria-label="Campaign summary">
+  <div class="cr-kpis-row">
+    @for (k of kpis(); track k.key) {
+      <div [class]="'cr-kpi cr-kpi--' + k.key">
+        <div class="cr-kpi-top">
+          <span class="cr-kpi-label">{{ k.label }}</span>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath(k.icon)" /></svg>
+        </div>
+        <div class="cr-kpi-mid">
+          <strong class="cr-kpi-value num" [class.is-money]="k.key === 'received'">{{ k.value }}</strong>
+          <!-- second figure on the right: fills the empty side of the widget -->
+          <span class="cr-kpi-side">
+            <b>{{ k.side.value }}</b>
+            <small>{{ k.side.label }}</small>
+          </span>
+        </div>
+        <p class="cr-kpi-note">{{ k.note }}</p>
       </div>
-
-      @if (hasFilters()) {
-        <button type="button" class="cr-reset" (click)="resetFilters()">Reset</button>
-      }
-    </div>
-  </div>
-
-  <!-- status tabs with counts (desktop; on mobile / tablet the Status dropdown above takes over) -->
-  <div class="cr-tabs" role="tablist" aria-label="Filter by status">
-    <button type="button" role="tab" class="cr-tab" [class.is-on]="statusFilter() === 'all'"
-            [attr.aria-selected]="statusFilter() === 'all'" (click)="setStatus('all')">
-      All <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
-    </button>
-    @for (s of statusOrder; track s) {
-      <button type="button" role="tab" [class]="'cr-tab tone-' + statusTone(s)" [class.is-on]="statusFilter() === s"
-              [attr.aria-selected]="statusFilter() === s" (click)="setStatus(s)">
-        <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(s) }} <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
-      </button>
     }
   </div>
+  </section>
 
-  <!-- bulk bar when rows are ticked -->
-  @if (checked().size) {
-    <div class="cr-bulk" role="status">
-      <strong>{{ checked().size }} selected</strong>
-      <button type="button" class="cr-bulk-btn" (click)="exportChecked()">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
-        Export selected
-      </button>
-      <button type="button" class="cr-bulk-clear" (click)="clearChecked()">Clear selection</button>
-    </div>
-  }
+  <!-- register -->
+  <section class="card cr-card mb" aria-labelledby="cr-reg-title">
 
-  <div class="cr-tablewrap">
-    <table class="cr-table">
-      <colgroup>
-        <col class="cr-c-check" />
-        <col class="cr-c-camp" />
-        <col class="cr-c-status" />
-        <col class="cr-c-progress" />
-        <col class="cr-c-owner" />
-        <col class="cr-c-when" />
-        <col class="cr-c-actions" />
-      </colgroup>
-      <thead>
-        <tr>
-          <th class="cr-checkcol">
-            <input type="checkbox" [checked]="allChecked()" (change)="toggleCheckAll()" aria-label="Select all rows" />
-          </th>
-          <th (click)="toggleSort('name')" class="is-sort cr-h-camp" [attr.aria-sort]="ariaSort('name')">Campaign <span class="cr-arrow">{{ sortMark('name') }}</span></th>
-          <th (click)="toggleSort('status')" class="is-sort cr-h-status" [attr.aria-sort]="ariaSort('status')">Status <span class="cr-arrow">{{ sortMark('status') }}</span></th>
-          <th (click)="toggleSort('progress')" class="is-sort cr-h-progress" [attr.aria-sort]="ariaSort('progress')">Progress <span class="cr-arrow">{{ sortMark('progress') }}</span></th>
-          <th (click)="toggleSort('owner')" class="is-sort cr-h-owner" [attr.aria-sort]="ariaSort('owner')">Owner <span class="cr-arrow">{{ sortMark('owner') }}</span></th>
-          <th (click)="toggleSort('launch')" class="is-sort cr-h-when" [attr.aria-sort]="ariaSort('launch')">Timeline <span class="cr-arrow">{{ sortMark('launch') }}</span></th>
-          <th class="cr-actionscol">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (r of pageRows(); track r.id) {
-          <tr [class.is-checked]="checked().has(r.id)" [class]="'tone-' + statusTone(r.status)">
-            <td class="cr-checkcol">
-              <input type="checkbox" [checked]="checked().has(r.id)" (change)="toggleCheck(r.id)"
-                     [attr.aria-label]="'Select ' + r.name" />
-            </td>
-            <td>
-              <div class="cr-camp">
-                <!-- campaign logo: white tile + colour-gradient mark (picked from the campaign code), no icon background -->
-                <span class="cr-logo" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <defs>
-                      <linearGradient [attr.id]="'crl-' + r.id" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22">
-                        <stop offset="0" [attr.stop-color]="logoColor(r, 0)" />
-                        <stop offset="1" [attr.stop-color]="logoColor(r, 1)" />
-                      </linearGradient>
-                    </defs>
-                    <path [attr.d]="iconPath(logoIcon(r))" fill="none" [attr.stroke]="'url(#crl-' + r.id + ')'"
-                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </span>
-                <span class="cr-camp-text">
-                  <button type="button" class="cr-camp-name" (click)="openDetail(r)">{{ r.name }}</button>
-                  <span class="cr-camp-code">{{ r.code }}</span>
-                  <!-- compact status + progress: only visible once those columns are hidden -->
-                  <span [class]="'cr-camp-meta tone-' + statusTone(r.status)">
-                    <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}
-                    <span class="cr-meta-sep" aria-hidden="true">·</span>{{ r.progress }}%
-                  </span>
-                </span>
-              </div>
-            </td>
-            <td class="cr-h-status">
-              <!-- status: label + lifecycle stage track (draft → closed) -->
-              <div [class]="'cr-stage tone-' + statusTone(r.status)">
-                <span class="cr-stage-label"><i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}</span>
-                <span class="cr-stage-track" aria-hidden="true">
-                  @for (s of statusOrder; track s; let i = $index) {
-                    <i [class.is-on]="i <= stageIndex(r.status)" [class.is-now]="i === stageIndex(r.status)"></i>
-                  }
-                </span>
-              </div>
-            </td>
-            <td class="cr-h-progress">
-              <!-- progress: ring + percentage + caption -->
-              <div class="cr-ring" [class.is-done]="r.progress >= 100" [class.is-zero]="r.progress === 0"
-                   role="img" [attr.aria-label]="r.progress + '% progress'">
-                <svg viewBox="0 0 36 36" aria-hidden="true">
-                  <circle class="cr-ring-bg" cx="18" cy="18" r="15" />
-                  <circle class="cr-ring-fg" cx="18" cy="18" r="15" pathLength="100"
-                          [attr.stroke-dasharray]="r.progress + ' 100'" />
-                </svg>
-                <span class="cr-ring-text">
-                  <strong>{{ r.progress }}%</strong>
-                  <small>{{ progressNote(r) }}</small>
-                </span>
-              </div>
-            </td>
-            <td class="cr-h-owner">
-              <!-- more than one owner: the cell is a button that opens the owners popup -->
-              @if (ownersOf(r).length > 1) {
-                <button type="button" class="cr-owner is-click" [attr.aria-label]="'Show all ' + ownersOf(r).length + ' owners of ' + r.name"
-                        (click)="openOwners(r, $event)">
-                  <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
-                </button>
-              } @else {
-                <div class="cr-owner">
-                  <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
-                </div>
-              }
-            </td>
-            <td class="cr-h-when">
-              <div class="cr-when">
-                <span class="cr-when-dates">{{ r.launch }} <span class="cr-when-arrow" aria-hidden="true">→</span> {{ r.ends }}</span>
-                <span class="cr-when-len">{{ duration(r) }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="cr-actions">
-                @for (a of actionsFor(r); track a) {
-                  @switch (a) {
-                  
-                    @case ('edit') {
-                      <!-- edit: the pencil writes and the line draws under it -->
-                      <button type="button" class="action-btn act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name"
-                              (click)="rowAction(r, 'edit')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <g class="pen"><path d="M4 18h3.5L18 7.5a2.1 2.1 0 0 0-3-3L4.5 15V18z M13.5 6l3 3" /></g>
-                          <path class="pen-line" d="M11 21h9" />
-                        </svg>
-                      </button>
-                    }
-                    @case ('duplicate') {
-                      <!-- duplicate: the sheets slide apart and the tick redraws -->
-                      <button type="button" class="action-btn act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name"
-                              (click)="rowAction(r, 'duplicate')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path class="sheet-back" d="M9 6V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H18" />
-                          <g class="sheet-front">
-                            <rect x="4" y="9" width="11" height="11" rx="1.5" />
-                            <path class="copy-tick" d="M7 14.5l2.2 2.2L12.5 13" />
-                          </g>
-                        </svg>
-                      </button>
-                    }
-                    @case ('readiness') {
-                      <!-- readiness check: the two ticks draw one after the other -->
-                      <button type="button" class="action-btn act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name"
-                              (click)="rowAction(r, 'readiness')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <path class="tick-1" d="M2 12.5l4.5 4.5L15 8.5" />
-                          <path class="tick-2" d="M10.5 16l1 1L20 8.5" />
-                        </svg>
-                      </button>
-                    }
-                    @case ('launch') {
-                      <!-- launch: the ring pulses and the play arrow nudges forward -->
-                      <button type="button" class="action-btn act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name"
-                              (click)="rowAction(r, 'launch')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <circle class="launch-ring" cx="12" cy="12" r="9" />
-                          <path class="launch-play" d="M10.2 8.6v6.8l5.6-3.4z" />
-                        </svg>
-                      </button>
-                    }
-                    @case ('delete') {
-                      <!-- delete: the lid opens and drops fall into the bin -->
-                      <button type="button" class="action-btn act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name"
-                              (click)="rowAction(r, 'delete')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <g class="bin-drops">
-                            <circle class="drop d1" cx="9.5" cy="10" r=".9" />
-                            <circle class="drop d2" cx="12" cy="10" r=".9" />
-                            <circle class="drop d3" cx="14.5" cy="10" r=".9" />
-                          </g>
-                          <g class="bin-lid"><path d="M4 7h16 M9 7V4.5A.5.5 0 0 1 9.5 4h5a.5.5 0 0 1 .5.5V7" /></g>
-                          <path class="bin-body" d="M6 7v12.5A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V7 M10 11v6 M14 11v6" />
-                        </svg>
-                      </button>
-                    }
-                  }
+    <!-- title row: name + count, search, status dropdown (mobile only), owner dropdown -->
+    <div class="cr-bar">
+      <div class="cr-bar-title">
+        <h2 id="cr-reg-title">Campaigns</h2>
+        <span class="cr-count">{{ total }}</span>
+      </div>
+
+      <div class="cr-tools">
+        <label class="cr-search">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.55"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('search')" /></svg>
+          <input type="search" placeholder="Search name or code" aria-label="Search campaigns"
+                [value]="query()" (input)="setQuery($any($event.target).value)" />
+        </label>
+
+        <!-- status: custom dropdown - replaces the status tabs on mobile / tablet -->
+        <div class="cr-dd cr-dd-status" [class.is-open]="openMenu() === 'status'">
+          <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'status'"
+                  aria-label="Filter by status" (click)="toggleMenu('status', $event)">
+            <span class="cr-dd-key">Status</span>
+            @if (statusFilter() !== 'all') {
+              <i [class]="'cr-dot tone-' + statusFilterTone()" aria-hidden="true"></i>
+            }
+            <span class="cr-dd-val">{{ statusFilterLabel() }}</span>
+            <span class="cr-tab-n">{{ statusCounts()[statusFilter()] }}</span>
+            <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+          </button>
+          @if (openMenu() === 'status') {
+            <ul class="cr-dd-menu" role="listbox" aria-label="Status" (click)="$event.stopPropagation()">
+              <li role="option" [attr.aria-selected]="statusFilter() === 'all'" [class.is-on]="statusFilter() === 'all'"
+                  tabindex="0" (click)="setStatus('all')" (keydown.enter)="setStatus('all')">
+                All statuses
+                <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
+                @if (statusFilter() === 'all') {
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
                 }
-              </div>
-            </td>
+              </li>
+              @for (s of statusOrder; track s) {
+                <li role="option" [attr.aria-selected]="statusFilter() === s" [class.is-on]="statusFilter() === s"
+                    tabindex="0" (click)="setStatus(s)" (keydown.enter)="setStatus(s)">
+                  <i [class]="'cr-dot tone-' + statusTone(s)" aria-hidden="true"></i>{{ statusLabel(s) }}
+                  <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
+                  @if (statusFilter() === s) {
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <!-- owner: custom dropdown -->
+        <div class="cr-dd cr-dd-owner" [class.is-open]="openMenu() === 'owner'">
+          <button type="button" class="cr-dd-btn" aria-haspopup="listbox" [attr.aria-expanded]="openMenu() === 'owner'"
+                  (click)="toggleMenu('owner', $event)">
+            <span class="cr-dd-key">Owner</span>
+            <span class="cr-dd-val">{{ ownerLabel() }}</span>
+            <svg class="cr-dd-chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+          </button>
+          @if (openMenu() === 'owner') {
+            <ul class="cr-dd-menu" role="listbox" aria-label="Owner" (click)="$event.stopPropagation()">
+              <li role="option" [attr.aria-selected]="ownerFilter() === 'all'" [class.is-on]="ownerFilter() === 'all'"
+                  tabindex="0" (click)="setOwner('all')" (keydown.enter)="setOwner('all')">
+                All owners
+                @if (ownerFilter() === 'all') {
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+                }
+              </li>
+              @for (o of owners; track o) {
+                <li role="option" [attr.aria-selected]="ownerFilter() === o" [class.is-on]="ownerFilter() === o"
+                    tabindex="0" (click)="setOwner(o)" (keydown.enter)="setOwner(o)">
+                  <span class="cr-dd-avatar" aria-hidden="true">{{ initials(o) }}</span>{{ o }}
+                  @if (ownerFilter() === o) {
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        @if (hasFilters()) {
+          <button type="button" class="cr-reset" (click)="resetFilters()">Reset</button>
+        }
+      </div>
+    </div>
+
+    <!-- status tabs with counts (desktop; on mobile / tablet the Status dropdown above takes over) -->
+    <div class="cr-tabs" role="tablist" aria-label="Filter by status">
+      <button type="button" role="tab" class="cr-tab" [class.is-on]="statusFilter() === 'all'"
+              [attr.aria-selected]="statusFilter() === 'all'" (click)="setStatus('all')">
+        All <span class="cr-tab-n">{{ statusCounts()['all'] }}</span>
+      </button>
+      @for (s of statusOrder; track s) {
+        <button type="button" role="tab" [class]="'cr-tab tone-' + statusTone(s)" [class.is-on]="statusFilter() === s"
+                [attr.aria-selected]="statusFilter() === s" (click)="setStatus(s)">
+          <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(s) }} <span class="cr-tab-n">{{ statusCounts()[s] }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- bulk bar when rows are ticked -->
+    @if (checked().size) {
+      <div class="cr-bulk" role="status">
+        <strong>{{ checked().size }} selected</strong>
+        <button type="button" class="cr-bulk-btn" (click)="exportChecked()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('download')" /></svg>
+          Export selected
+        </button>
+        <button type="button" class="cr-bulk-clear" (click)="clearChecked()">Clear selection</button>
+      </div>
+    }
+
+    <div class="cr-tablewrap">
+      <table class="cr-table">
+        <colgroup>
+          <col class="cr-c-check" />
+          <col class="cr-c-camp" />
+          <col class="cr-c-status" />
+          <col class="cr-c-progress" />
+          <col class="cr-c-owner" />
+          <col class="cr-c-when" />
+          <col class="cr-c-actions" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="cr-checkcol">
+              <input type="checkbox" [checked]="allChecked()" (change)="toggleCheckAll()" aria-label="Select all rows" />
+            </th>
+            <th (click)="toggleSort('name')" class="is-sort cr-h-camp" [attr.aria-sort]="ariaSort('name')">Campaign <span class="cr-arrow">{{ sortMark('name') }}</span></th>
+            <th (click)="toggleSort('status')" class="is-sort cr-h-status" [attr.aria-sort]="ariaSort('status')">Status <span class="cr-arrow">{{ sortMark('status') }}</span></th>
+            <th (click)="toggleSort('progress')" class="is-sort cr-h-progress" [attr.aria-sort]="ariaSort('progress')">Progress <span class="cr-arrow">{{ sortMark('progress') }}</span></th>
+            <th (click)="toggleSort('owner')" class="is-sort cr-h-owner" [attr.aria-sort]="ariaSort('owner')">Owner <span class="cr-arrow">{{ sortMark('owner') }}</span></th>
+            <th (click)="toggleSort('launch')" class="is-sort cr-h-when" [attr.aria-sort]="ariaSort('launch')">Timeline <span class="cr-arrow">{{ sortMark('launch') }}</span></th>
+            <th class="cr-actionscol">Actions</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @for (r of pageRows(); track r.id) {
+            <tr [class.is-checked]="checked().has(r.id)" [class]="'tone-' + statusTone(r.status)">
+              <td class="cr-checkcol">
+                <input type="checkbox" [checked]="checked().has(r.id)" (change)="toggleCheck(r.id)"
+                      [attr.aria-label]="'Select ' + r.name" />
+              </td>
+              <td>
+                <div class="cr-camp">
+                  <!-- campaign logo: white tile + colour-gradient mark (picked from the campaign code), no icon background -->
+                  <span class="cr-logo" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <defs>
+                        <linearGradient [attr.id]="'crl-' + r.id" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22">
+                          <stop offset="0" [attr.stop-color]="logoColor(r, 0)" />
+                          <stop offset="1" [attr.stop-color]="logoColor(r, 1)" />
+                        </linearGradient>
+                      </defs>
+                      <path [attr.d]="iconPath(logoIcon(r))" fill="none" [attr.stroke]="'url(#crl-' + r.id + ')'"
+                            stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </span>
+                  <span class="cr-camp-text">
+                    <button type="button" class="cr-camp-name" (click)="openDetail(r)">{{ r.name }}</button>
+                    <span class="cr-camp-code">{{ r.code }}</span>
+                    <!-- compact status + progress: only visible once those columns are hidden -->
+                    <span [class]="'cr-camp-meta tone-' + statusTone(r.status)">
+                      <i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}
+                      <span class="cr-meta-sep" aria-hidden="true">·</span>{{ r.progress }}%
+                    </span>
+                  </span>
+                </div>
+              </td>
+              <td class="cr-h-status">
+                <!-- status: label + lifecycle stage track (draft → closed) -->
+                <div [class]="'cr-stage tone-' + statusTone(r.status)">
+                  <span class="cr-stage-label"><i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}</span>
+                  <span class="cr-stage-track" aria-hidden="true">
+                    @for (s of statusOrder; track s; let i = $index) {
+                      <i [class.is-on]="i <= stageIndex(r.status)" [class.is-now]="i === stageIndex(r.status)"></i>
+                    }
+                  </span>
+                </div>
+              </td>
+              <td class="cr-h-progress">
+                <!-- progress: ring + percentage + caption -->
+                <div class="cr-ring" [class.is-done]="r.progress >= 100" [class.is-zero]="r.progress === 0"
+                    role="img" [attr.aria-label]="r.progress + '% progress'">
+                  <svg viewBox="0 0 36 36" aria-hidden="true">
+                    <circle class="cr-ring-bg" cx="18" cy="18" r="15" />
+                    <circle class="cr-ring-fg" cx="18" cy="18" r="15" pathLength="100"
+                            [attr.stroke-dasharray]="r.progress + ' 100'" />
+                  </svg>
+                  <span class="cr-ring-text">
+                    <strong>{{ r.progress }}%</strong>
+                    <small>{{ progressNote(r) }}</small>
+                  </span>
+                </div>
+              </td>
+              <td class="cr-h-owner">
+                <!-- more than one owner: the cell is a button that opens the owners popup -->
+                @if (ownersOf(r).length > 1) {
+                  <button type="button" class="cr-owner is-click" [attr.aria-label]="'Show all ' + ownersOf(r).length + ' owners of ' + r.name"
+                          (click)="openOwners(r, $event)">
+                    <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
+                  </button>
+                } @else {
+                  <div class="cr-owner">
+                    <ng-container *ngTemplateOutlet="ownerCell; context: { $implicit: r }" />
+                  </div>
+                }
+              </td>
+              <td class="cr-h-when">
+                <div class="cr-when">
+                  <span class="cr-when-dates">{{ r.launch }} <span class="cr-when-arrow" aria-hidden="true">→</span> {{ r.ends }}</span>
+                  <span class="cr-when-len">{{ duration(r) }}</span>
+                </div>
+              </td>
+              <td>
+                <!-- actionsFor() already drops the actions the user's role may not use (BUG-211) -->
+                <div class="cr-actions">
+                  @for (a of actionsFor(r); track a) {
+                    @switch (a) {
 
-    <!-- empty state sits outside the table: a colspan="7" cell kept the hidden columns alive on
-         mobile, so the header row only covered the visible columns (header looked too narrow) -->
-    @if (!pageRows().length) {
-      <div class="cr-empty">
-        No campaigns match this filter. Try a different search term or status.
-        @if (hasFilters()) { <button type="button" class="cr-reset" (click)="resetFilters()">Reset filters</button> }
-      </div>
-    }
-  </div>
-
-  <div class="card-foot cr-foot">
-    <div class="cr-foot-left">
-      <span class="cr-showing">
-        Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
-      </span>
-
-      <!-- rows per page: custom dropdown (opens upward) -->
-      <div class="cr-dd cr-dd-sm" [class.is-open]="openMenu() === 'rows'">
-        <button type="button" class="cr-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
-                [attr.aria-expanded]="openMenu() === 'rows'" (click)="toggleMenu('rows', $event)">
-          <span class="cr-dd-key-plain">Rows</span>
-          <span class="cr-dd-val">{{ pageSize() }}</span>
-          <svg class="cr-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
-        </button>
-        @if (openMenu() === 'rows') {
-          <ul class="cr-dd-menu is-up" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
-            @for (n of pageSizes; track n) {
-              <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
-                  (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
-            }
-          </ul>
-        }
-      </div>
-    </div>
-
-    <nav class="cr-pager" aria-label="Pagination">
-      <button type="button" class="cr-page cr-page-nav" [disabled]="page() === 1" (click)="prevPage()"
-              aria-label="Previous page">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-      </button>
-
-      @for (p of pages(); track $index) {
-        @if (p === '…') {
-          <span class="cr-page-gap" aria-hidden="true">...</span>
-        } @else {
-          <button type="button" class="cr-page" [class.active]="p === page()"
-                  [attr.aria-current]="p === page() ? 'page' : null"
-                  [attr.aria-label]="'Page ' + p" (click)="goToPage(p)">{{ p }}</button>
-        }
-      }
-
-      <button type="button" class="cr-page cr-page-nav" [disabled]="page() === totalPages()" (click)="nextPage()"
-              aria-label="Next page">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-      </button>
-    </nav>
-  </div>
-</section>
-
-<!-- owner cell content: overlapping photos (up to 3 + "+n") + name / co-owners -->
-<ng-template #ownerCell let-r>
-  <span class="cr-avatars">
-    @for (o of ownersOf(r); track o; let i = $index) {
-      @if (i < 3) {
-        <span class="cr-photo" [style.background]="avatarStyle(o)" [attr.title]="o">
-          {{ initials(o) }}
-          @if (ownerPhoto(o)) {
-            <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
+                      @case ('edit') {
+                        <!-- edit: the pencil writes and the line draws under it -->
+                        <button type="button" class="action-btn act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name"
+                                (click)="rowAction(r, 'edit')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <g class="pen"><path d="M4 18h3.5L18 7.5a2.1 2.1 0 0 0-3-3L4.5 15V18z M13.5 6l3 3" /></g>
+                            <path class="pen-line" d="M11 21h9" />
+                          </svg>
+                        </button>
+                      }
+                      @case ('duplicate') {
+                        <!-- readiness checklist: the sheets slide apart and the tick redraws -->
+                        <button type="button" class="action-btn act-copy" data-tip="Readiness checklist" [attr.aria-label]="'Readiness checklist for ' + r.name"
+                                (click)="rowAction(r, 'duplicate')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path class="sheet-back" d="M9 6V5.5A1.5 1.5 0 0 1 10.5 4h8A1.5 1.5 0 0 1 20 5.5v8a1.5 1.5 0 0 1-1.5 1.5H18" />
+                            <g class="sheet-front">
+                              <rect x="4" y="9" width="11" height="11" rx="1.5" />
+                              <path class="copy-tick" d="M7 14.5l2.2 2.2L12.5 13" />
+                            </g>
+                          </svg>
+                        </button>
+                      }
+                      @case ('readiness') {
+                        <!-- approve: the two ticks draw one after the other -->
+                        <button type="button" class="action-btn act-ready" data-tip="Approve" [attr.aria-label]="'Approve ' + r.name"
+                                (click)="rowAction(r, 'readiness')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path class="tick-1" d="M2 12.5l4.5 4.5L15 8.5" />
+                            <path class="tick-2" d="M10.5 16l1 1L20 8.5" />
+                          </svg>
+                        </button>
+                      }
+                      @case ('launch') {
+                        <!-- activate: the ring pulses and the play arrow nudges forward -->
+                        <button type="button" class="action-btn act-launch" data-tip="Activate" [attr.aria-label]="'Activate ' + r.name"
+                                (click)="rowAction(r, 'launch')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle class="launch-ring" cx="12" cy="12" r="9" />
+                            <path class="launch-play" d="M10.2 8.6v6.8l5.6-3.4z" />
+                          </svg>
+                        </button>
+                      }
+                      @case ('delete') {
+                        <!-- delete: the lid opens and drops fall into the bin -->
+                        <button type="button" class="action-btn act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name"
+                                (click)="rowAction(r, 'delete')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
+                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <g class="bin-drops">
+                              <circle class="drop d1" cx="9.5" cy="10" r=".9" />
+                              <circle class="drop d2" cx="12" cy="10" r=".9" />
+                              <circle class="drop d3" cx="14.5" cy="10" r=".9" />
+                            </g>
+                            <g class="bin-lid"><path d="M4 7h16 M9 7V4.5A.5.5 0 0 1 9.5 4h5a.5.5 0 0 1 .5.5V7" /></g>
+                            <path class="bin-body" d="M6 7v12.5A1.5 1.5 0 0 0 7.5 21h9a1.5 1.5 0 0 0 1.5-1.5V7 M10 11v6 M14 11v6" />
+                          </svg>
+                        </button>
+                      }
+                    }
+                  }
+                </div>
+              </td>
+            </tr>
           }
-        </span>
+        </tbody>
+      </table>
+
+      <!-- empty state sits outside the table: a colspan="7" cell kept the hidden columns alive on
+          mobile, so the header row only covered the visible columns (header looked too narrow) -->
+      @if (!pageRows().length) {
+        <div class="cr-empty">
+          No campaigns match this filter. Try a different search term or status.
+          @if (hasFilters()) { <button type="button" class="cr-reset" (click)="resetFilters()">Reset filters</button> }
+        </div>
       }
-    }
-    @if (ownersOf(r).length > 3) {
-      <span class="cr-photo cr-photo-more">+{{ ownersOf(r).length - 3 }}</span>
-    }
-  </span>
-  <span class="cr-owner-text">
-    <span class="cr-owner-name">{{ ownerName(r.owner) }}</span>
-    @if (ownersOf(r).length > 1) {
-      <small class="cr-owner-sub cr-owner-more">+ {{ ownersOf(r).length - 1 }} co-owner{{ ownersOf(r).length > 2 ? 's' : '' }}</small>
-    } @else {
-      <small class="cr-owner-sub">Owner</small>
-    }
-  </span>
-</ng-template>
-
-<!-- owners popup: every owner of one campaign -->
-@if (ownersFor(); as row) {
-  <div class="cr-overlay" (click)="closeOwners()">
-    <div class="cr-dialog cr-owners-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-owners-title"
-         (click)="$event.stopPropagation()">
-      <header class="cr-owners-head">
-        <div>
-          <span class="cr-dialog-eyebrow">{{ row.code }} · {{ row.name }}</span>
-          <h2 id="cr-owners-title">Owners <span class="cr-count">{{ ownersOf(row).length }}</span></h2>
-        </div>
-        <button type="button" class="cr-dialog-x" (click)="closeOwners()" aria-label="Close owners">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
-        </button>
-      </header>
-
-      <ul class="cr-owners-list">
-        @for (o of ownersOf(row); track o; let i = $index) {
-          <li>
-            <span class="cr-photo cr-photo-lg" [style.background]="avatarStyle(o)">
-              {{ initials(o) }}
-              @if (ownerPhoto(o)) {
-                <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
-              }
-            </span>
-            <span class="cr-owners-name">
-              <strong>{{ o }}</strong>
-              <small>{{ i === 0 ? 'Owner' : 'Co-owner' }}</small>
-            </span>
-            @if (i === 0) { <span class="cr-owners-tag">Main</span> }
-          
-          </li>
-        }
-      </ul>
-
-      <footer class="cr-owners-foot">
-        <button type="button" class="btn-primary pf-hbtn" (click)="closeOwners()">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
-          Done
-        </button>
-      </footer>
     </div>
-  </div>
-}
 
-<!-- full-page preview: row click goes straight to the detail page, so keep only
-     an explicit "open detail" footer inside the fallback dialog -->
-@if (selected(); as row) {
-  <div class="cr-overlay" (click)="close()">
-    <div class="cr-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-dialog-title"
-         (click)="$event.stopPropagation()">
-      <header [class]="'cr-dialog-head tone-' + statusTone(row.status)">
-        <span class="cr-tile cr-tile-lg" aria-hidden="true">{{ initials(row.name) }}</span>
-        <div>
-          <span class="cr-dialog-eyebrow">{{ row.code }}</span>
-          <h2 id="cr-dialog-title">{{ row.name }}</h2>
+    <div class="card-foot cr-foot">
+      <div class="cr-foot-left">
+        <span class="cr-showing">
+          Showing <strong>{{ from() }}–{{ to() }}</strong> of <strong>{{ filtered().length }}</strong>
+        </span>
+
+        <!-- rows per page: custom dropdown (opens upward) -->
+        <div class="cr-dd cr-dd-sm" [class.is-open]="openMenu() === 'rows'">
+          <button type="button" class="cr-dd-btn" aria-haspopup="listbox" aria-label="Rows per page"
+                  [attr.aria-expanded]="openMenu() === 'rows'" (click)="toggleMenu('rows', $event)">
+            <span class="cr-dd-key-plain">Rows</span>
+            <span class="cr-dd-val">{{ pageSize() }}</span>
+            <svg class="cr-dd-chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('chevronDown')" /></svg>
+          </button>
+          @if (openMenu() === 'rows') {
+            <ul class="cr-dd-menu is-up" role="listbox" aria-label="Rows per page" (click)="$event.stopPropagation()">
+              @for (n of pageSizes; track n) {
+                <li role="option" tabindex="0" [attr.aria-selected]="pageSize() === n" [class.is-on]="pageSize() === n"
+                    (click)="setPageSize(n)" (keydown.enter)="setPageSize(n)">{{ n }}</li>
+              }
+            </ul>
+          }
         </div>
-        <button type="button" class="cr-dialog-x" (click)="close()" aria-label="Close dialog">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
+      </div>
+
+      <nav class="cr-pager" aria-label="Pagination">
+        <button type="button" class="cr-page cr-page-nav" [disabled]="page() === 1" (click)="prevPage()"
+                aria-label="Previous page">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
         </button>
-      </header>
-      <div class="cr-dialog-body">
-        <div class="cr-dialog-progress">
-          <div><span>Progress</span><strong>{{ row.progress }}%</strong></div>
-          <span class="cr-track"><i [style.width.%]="row.progress"></i></span>
-        </div>
-        <dl class="cr-fields">
-          <div class="cr-field"><dt>Status</dt>
-            <dd><span [class]="'cr-status tone-' + statusTone(row.status)"><i class="cr-dot"></i>{{ statusLabel(row.status) }}</span></dd></div>
-          <div class="cr-field"><dt>Owner</dt><dd>{{ row.owner }}</dd></div>
-          <div class="cr-field"><dt>Launch</dt><dd>{{ row.launch }}</dd></div>
-          <div class="cr-field"><dt>Ends</dt><dd>{{ row.ends }}</dd></div>
-          <div class="cr-field"><dt>Duration</dt><dd>{{ duration(row) }}</dd></div>
-        </dl>
-        <button type="button" class="btn-primary pf-hbtn" style="margin-top:12px" (click)="openDetail(row)">
-          Open full detail page
+
+        @for (p of pages(); track $index) {
+          @if (p === '…') {
+            <span class="cr-page-gap" aria-hidden="true">...</span>
+          } @else {
+            <button type="button" class="cr-page" [class.active]="p === page()"
+                    [attr.aria-current]="p === page() ? 'page' : null"
+                    [attr.aria-label]="'Page ' + p" (click)="goToPage(p)">{{ p }}</button>
+          }
+        }
+
+        <button type="button" class="cr-page cr-page-nav" [disabled]="page() === totalPages()" (click)="nextPage()"
+                aria-label="Next page">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
         </button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- owner cell content: overlapping photos (up to 3 + "+n") + name / co-owners -->
+  <ng-template #ownerCell let-r>
+    <span class="cr-avatars">
+      @for (o of ownersOf(r); track o; let i = $index) {
+        @if (i < 3) {
+          <span class="cr-photo" [style.background]="avatarStyle(o)" [attr.title]="o">
+            {{ initials(o) }}
+            @if (ownerPhoto(o)) {
+              <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
+            }
+          </span>
+        }
+      }
+      @if (ownersOf(r).length > 3) {
+        <span class="cr-photo cr-photo-more">+{{ ownersOf(r).length - 3 }}</span>
+      }
+    </span>
+    <span class="cr-owner-text">
+      <span class="cr-owner-name">{{ ownerName(r.owner) }}</span>
+      @if (ownersOf(r).length > 1) {
+        <small class="cr-owner-sub cr-owner-more">+ {{ ownersOf(r).length - 1 }} co-owner{{ ownersOf(r).length > 2 ? 's' : '' }}</small>
+      } @else {
+        <small class="cr-owner-sub">Owner</small>
+      }
+    </span>
+  </ng-template>
+
+  <!-- owners popup: every owner of one campaign -->
+  @if (ownersFor(); as row) {
+    <div class="cr-overlay" (click)="closeOwners()">
+      <div class="cr-dialog cr-owners-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-owners-title"
+          (click)="$event.stopPropagation()">
+        <header class="cr-owners-head">
+          <div>
+            <span class="cr-dialog-eyebrow">{{ row.code }} · {{ row.name }}</span>
+            <h2 id="cr-owners-title">Owners <span class="cr-count">{{ ownersOf(row).length }}</span></h2>
+          </div>
+          <button type="button" class="cr-dialog-x" (click)="closeOwners()" aria-label="Close owners">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
+          </button>
+        </header>
+
+        <ul class="cr-owners-list">
+          @for (o of ownersOf(row); track o; let i = $index) {
+            <li>
+              <span class="cr-photo cr-photo-lg" [style.background]="avatarStyle(o)">
+                {{ initials(o) }}
+                @if (ownerPhoto(o)) {
+                  <img [src]="ownerPhoto(o)" [attr.alt]="o" loading="lazy" (error)="imgFail($event)" />
+                }
+              </span>
+              <span class="cr-owners-name">
+                <strong>{{ o }}</strong>
+                <small>{{ i === 0 ? 'Owner' : 'Co-owner' }}</small>
+              </span>
+              @if (i === 0) { <span class="cr-owners-tag">Main</span> }
+            </li>
+          }
+        </ul>
+
+        <footer class="cr-owners-foot">
+          <button type="button" class="btn-primary pf-hbtn" (click)="closeOwners()">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('check')" /></svg>
+            Done
+          </button>
+        </footer>
       </div>
     </div>
-  </div>
-}
+  }
+
+  <!-- confirmation popup: Edit / Delete / Approve / Activate (BUG-210 / TS-242) -->
+  @if (confirmFor(); as c) {
+    <div class="cr-overlay" (click)="cancelConfirm()">
+      <div class="cr-dialog cr-confirm" [class.is-danger]="confirmMeta(c.action).danger" role="alertdialog" aria-modal="true"
+          aria-labelledby="cr-confirm-title" aria-describedby="cr-confirm-text" (click)="$event.stopPropagation()">
+        <div class="cr-confirm-body">
+          <span class="cr-confirm-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round"><path [attr.d]="iconPath(confirmMeta(c.action).icon)" /></svg>
+          </span>
+          <div>
+            <h2 id="cr-confirm-title">{{ confirmMeta(c.action).title }}</h2>
+            <p id="cr-confirm-text">
+              <strong class="cr-confirm-name">{{ c.row.name }}</strong>
+              <span class="cr-confirm-code">({{ c.row.code }})</span>
+              {{ confirmMeta(c.action).line }}
+            </p>
+          </div>
+        </div>
+        <footer class="cr-confirm-foot">
+          <button type="button" class="btn-secondary pf-hbtn" [disabled]="confirmBusy()" (click)="cancelConfirm()">Cancel</button>
+          <button type="button" class="pf-hbtn" [class.btn-primary]="!confirmMeta(c.action).danger"
+                  [class.cr-btn-danger]="confirmMeta(c.action).danger"
+                  [disabled]="confirmBusy()" [attr.aria-busy]="confirmBusy()" (click)="confirmAction()">
+            {{ confirmBusy() ? 'Please wait…' : confirmMeta(c.action).ok }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- full-page preview: row click goes straight to the detail page, so keep only
+      an explicit "open detail" footer inside the fallback dialog -->
+  @if (selected(); as row) {
+    <div class="cr-overlay" (click)="close()">
+      <div class="cr-dialog" role="dialog" aria-modal="true" aria-labelledby="cr-dialog-title"
+          (click)="$event.stopPropagation()">
+        <header [class]="'cr-dialog-head tone-' + statusTone(row.status)">
+          <span class="cr-tile cr-tile-lg" aria-hidden="true">{{ initials(row.name) }}</span>
+          <div>
+            <span class="cr-dialog-eyebrow">{{ row.code }}</span>
+            <h2 id="cr-dialog-title">{{ row.name }}</h2>
+          </div>
+          <button type="button" class="cr-dialog-x" (click)="close()" aria-label="Close dialog">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7"
+                stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path [attr.d]="iconPath('x')" /></svg>
+          </button>
+        </header>
+        <div class="cr-dialog-body">
+          <div class="cr-dialog-progress">
+            <div><span>Progress</span><strong>{{ row.progress }}%</strong></div>
+            <span class="cr-track"><i [style.width.%]="row.progress"></i></span>
+          </div>
+          <dl class="cr-fields">
+            <div class="cr-field"><dt>Status</dt>
+              <dd><span [class]="'cr-status tone-' + statusTone(row.status)"><i class="cr-dot"></i>{{ statusLabel(row.status) }}</span></dd></div>
+            <div class="cr-field"><dt>Owner</dt><dd>{{ row.owner }}</dd></div>
+            <div class="cr-field"><dt>Launch</dt><dd>{{ row.launch }}</dd></div>
+            <div class="cr-field"><dt>Ends</dt><dd>{{ row.ends }}</dd></div>
+            <div class="cr-field"><dt>Duration</dt><dd>{{ duration(row) }}</dd></div>
+          </dl>
+          <button type="button" class="btn-primary pf-hbtn" style="margin-top:12px" (click)="openDetail(row)">
+            Open full detail page
+          </button>
+        </div>
+      </div>
+    </div>
+  }

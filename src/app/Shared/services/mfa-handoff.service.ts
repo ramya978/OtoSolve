@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { AccountRecoveryGuidanceResponse, MfaChallengeResponse } from '../models/auth.model';
+import { AccountRecoveryGuidanceResponse, MfaChallengeResponse, SignInResponse } from '../models/auth.model';
 
 /** What the MFA screen needs to carry on from where sign-in stopped. */
 export interface MfaHandoff {
@@ -17,6 +17,14 @@ export interface MfaHandoff {
    * Referer and the access log.
    */
   returnUrl?: string | null;
+
+  /**
+   * STEP-UP MODE. Set when the server signed the person in (`succeeded`) without issuing a
+   * challenge, but the user has MFA enabled. The MFA screen then checks the code with the
+   * reauthentication endpoint, and only on success starts this session and opens the dashboard.
+   * Held in memory only - it carries the access token, so it is never written to sessionStorage.
+   */
+  pendingSignIn?: SignInResponse | null;
 }
 
 /** What the account-unavailable screen needs to explain itself and offer recovery. */
@@ -61,6 +69,20 @@ export class MfaHandoffService {
     const handoff: MfaHandoff = { challenge, rememberDevice, returnUrl: returnUrl ?? null };
     this.mfaState.set(handoff);
     sessionStorage.setItem(MfaHandoffService.MFA_KEY, JSON.stringify(handoff));
+  }
+
+  /**
+   * Step-up after a sign-in that already succeeded. Memory only: a refresh drops it and the
+   * MFA screen sends the person back to sign in, which is the safe outcome.
+   */
+  storeStepUp(response: SignInResponse, rememberDevice: boolean, returnUrl?: string | null): void {
+    const challenge: MfaChallengeResponse = {
+      challengeToken: null,
+      methodType: response.mfaChallenge?.methodType ?? response.mfaMethodType ?? 'authenticatorApp',
+      maskedDestination: response.mfaChallenge?.maskedDestination ?? response.mfaMaskedDestination ?? null,
+    };
+    sessionStorage.removeItem(MfaHandoffService.MFA_KEY);
+    this.mfaState.set({ challenge, rememberDevice, returnUrl: returnUrl ?? null, pendingSignIn: response });
   }
 
   /** Replaces the challenge after a resend or a switch of method, keeping the same token. */

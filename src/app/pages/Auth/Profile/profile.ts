@@ -56,15 +56,22 @@ export interface AssignmentStep {
   detail: string;
 }
 
-/** Security / session rows: right side is either a chip or an action button. */
+/** Security / session rows: right side is either a status chip or an action button. */
 export interface SecurityRow {
   icon: string;
   title: string;
   detail: string;
   extra?: string;
   chip?: string;
-  chipTone?: 'neutral' | 'primary';
+  chipTone?: 'neutral' | 'primary' | 'green' | 'amber';
   action?: string;
+}
+
+/** One line of the "Access information" panel in the Access rail. */
+export interface InfoItem {
+  label: string;
+  value: string;
+  muted?: boolean;
 }
 
 /** Header block shown in the hero and the access glance card. */
@@ -94,6 +101,7 @@ const ICON_PATHS: Record<string, string> = {
   edit: 'M12 20h9 M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z',
   pencil: 'M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z',
   save: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8',
+  close: 'M18 6 6 18 M6 6l12 12',
   user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
   shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z M9 12l2 2 4-4',
   lock: 'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M7 11V7a5 5 0 0 1 10 0v4 M12 15v3',
@@ -118,7 +126,7 @@ const dateOrNull = (iso?: string | null): string | null => (iso ? fmtDate(iso) :
 
 @Component({
   selector: 'app-profile',
-  imports: [NgTemplateOutlet,PageHeader],
+  imports: [NgTemplateOutlet, PageHeader],
   templateUrl: './profile.html',
   styleUrl: './profile.css'
 })
@@ -248,10 +256,20 @@ export class Profile implements OnInit {
     this.serverErrors.set({});
   }
 
-  protected cancelEdit(): void { if (!this.saving()) this.editingCard.set(null); }
+  /** Leave edit mode without saving: unsaved input is thrown away and the stored values show again. */
+  protected cancelEdit(): void {
+    if (this.saving()) return;
+    this.editingCard.set(null);
+    this.editReason.set('');
+    this.editTried.set(false);
+    this.serverErrors.set({});
+  }
 
   @HostListener('document:keydown.escape')
-  protected onEscape(): void { if (this.editingCard()) this.cancelEdit(); }
+  protected onEscape(): void {
+    if (this.editingCard()) { this.cancelEdit(); return; }
+    if (this.accessInfoOpen()) this.accessInfoOpen.set(false);
+  }
 
   protected setField(key: keyof ProfileForm, value: string): void {
     this.serverErrors.set({});
@@ -438,13 +456,67 @@ export class Profile implements OnInit {
   });
   protected get assignmentSteps(): AssignmentStep[] { return this.assignmentStepsC(); }
 
+  // ---------- Access rail: "Access information" panel (BUG-191) ----------
+  /** The Access information button opens / closes this inline panel. */
+  readonly accessInfoOpen = signal(false);
+
+  protected toggleAccessInfo(): void {
+    this.accessInfoOpen.update((v) => !v);
+  }
+
+  protected readonly accessInfo = computed<InfoItem[]>(() => {
+    const u = this.userC();
+    const roles = this.roleList();
+    const primary = roles.find((r) => r.isPrimary) ?? roles[0];
+    const n = roles.length;
+    return [
+      { label: 'Organisation', value: this.orgName() || 'Not provided', muted: !this.orgName() },
+      { label: 'Primary role', value: u.role || 'Not assigned', muted: !u.role },
+      { label: 'Data scope', value: u.dataScope || 'Whole organisation' },
+      { label: 'Assignments', value: `${n} ${n === 1 ? 'role' : 'roles'}` },
+      { label: 'Assigned by', value: primary?.assignedByName || 'An administrator', muted: !primary?.assignedByName },
+      { label: 'Term', value: primary?.effectiveToUtc ? 'Until ' + fmtDate(primary.effectiveToUtc) : 'Permanent' },
+      { label: 'Access from', value: u.accessFrom ? fmtDate(u.accessFrom) : 'Not set', muted: !u.accessFrom },
+      { label: 'Invitation', value: u.invitation }
+    ];
+  });
+
+  // ---------- Security tab rows (BUG-190: no dead "View setup steps" / "View password flow" buttons) ----------
   private readonly signInRowsC = computed<SecurityRow[]>(() => {
     const u = this.userC(); const s = this.sec();
     return [
-      { icon: 'mail', title: 'Sign-in email', detail: u.email, chip: 'Managed identity' },
-      { icon: 'shield', title: 'Two-step verification', detail: u.mfaEnrolled ? 'Enrolled · a second factor protects every sign-in.' : 'Not enrolled · a second verification method adds protection at sign-in.', action: 'View setup steps' },
-      { icon: 'lock', title: 'Password', detail: s?.passwordChangedAtUtc ? 'Last changed ' + fmtDate(s.passwordChangedAtUtc) : 'Password age has not been loaded.', action: 'View password flow' },
-      { icon: 'shield', title: 'Lockout state', detail: s ? (s.isLockedOut ? 'Locked out' + (s.lockoutReason ? ' · ' + s.lockoutReason : '') : `${s.accessFailedCount ?? 0} failed sign-ins · ${s.attemptsRemaining ?? 0} attempts left`) : 'The account lockout status is currently unavailable.', chip: s ? (s.isLockedOut ? 'Locked' : 'Clear') : 'Not loaded' }
+      {
+        icon: 'mail', title: 'Sign-in email', detail: u.email || 'Not provided',
+        extra: 'Used to sign in and to receive account notices.', chip: 'Managed identity'
+      },
+      {
+        icon: 'shield', title: 'Two-step verification',
+        detail: u.mfaEnrolled
+          ? 'Enrolled · a second factor protects every sign-in.'
+          : 'Not enrolled · a second verification method adds protection at sign-in.',
+        extra: u.mfaEnrolled
+          ? 'If you lose access to your verification method, ask your administrator to reset it.'
+          : 'Ask your organisation administrator to enable a verification method for this account.',
+        chip: u.mfaEnrolled ? 'Enrolled' : 'Not enrolled',
+        chipTone: u.mfaEnrolled ? 'green' : 'amber'
+      },
+      {
+        icon: 'lock', title: 'Password',
+        detail: s?.passwordChangedAtUtc ? 'Last changed ' + fmtDate(s.passwordChangedAtUtc) + '.' : 'Password age has not been loaded.',
+        extra: 'Passwords are never shown here. Use the sign-in page to reset a forgotten password.',
+        chip: s?.passwordChangedAtUtc ? 'Set' : 'Not loaded',
+        chipTone: s?.passwordChangedAtUtc ? 'green' : 'neutral'
+      },
+      {
+        icon: 'shield', title: 'Lockout state',
+        detail: s
+          ? (s.isLockedOut
+              ? 'Locked out' + (s.lockoutReason ? ' · ' + s.lockoutReason : '')
+              : `${s.accessFailedCount ?? 0} failed sign-ins · ${s.attemptsRemaining ?? 0} attempts left`)
+          : 'The account lockout status is currently unavailable.',
+        chip: s ? (s.isLockedOut ? 'Locked' : 'Clear') : 'Not loaded',
+        chipTone: s ? (s.isLockedOut ? 'amber' : 'green') : 'neutral'
+      }
     ];
   });
   protected get signInRows(): SecurityRow[] { return this.signInRowsC(); }
@@ -504,6 +576,7 @@ export class Profile implements OnInit {
 
   setTab(tab: ProfileTab): void {
     this.tab.set(tab);
+    this.accessInfoOpen.set(false);
   }
 
   setRoleQuery(value: string): void {

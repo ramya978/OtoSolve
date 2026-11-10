@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
@@ -19,13 +20,14 @@ type AbDialog = 'assign' | 'history' | null;
 @Component({
   selector: 'app-assignment-board',
   standalone: true,
-  imports:[PageHeader],
+  imports: [PageHeader],
   templateUrl: './assignment-board.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './assignment-board.css']
 })
 export class AssignmentBoard implements OnInit {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
   private readonly api = inject(DonorApiService);
   protected readonly store = inject(FollowUpStore);
 
@@ -81,6 +83,8 @@ export class AssignmentBoard implements OnInit {
   private readonly bulkMax = signal(50);
   private readonly permitted = signal<string[]>([]);
   protected readonly loadingBoard = signal(false);
+  /** BUG-199: the signed-in role may not open the board at all (e.g. Donor care). Shown as a no-access state, not a raw error. */
+  protected readonly denied = signal(false);
   private campaignOptions: DonLookupItem[] = [];
   private slaOptionsServer: DonLookupItem[] = [];
   private recordTypes: DonLookupItem[] = [];
@@ -90,6 +94,14 @@ export class AssignmentBoard implements OnInit {
   private seq = 0;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly sideDone = new Set<string>();
+
+  /**
+   * BUG-199: Assign / Reassign / Bulk route only when the server lists one of them in permittedActions.
+   * Until the board has loaded the list is empty, so nothing that changes ownership is shown early.
+   */
+  protected readonly canAssign = computed(() =>
+    this.permitted().some((a) => { const n = this.norm(a); return n.includes('assign') || n.includes('route'); })
+  );
 
   /**
    * The leads the queue handed over (Assign / Reassign on one row, or Assign on a ticked set). The board
@@ -111,6 +123,10 @@ export class AssignmentBoard implements OnInit {
   }
 
   private norm(v: string | null | undefined): string { return (v ?? '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  private isForbidden(e: unknown): boolean {
+    const status = (e as { status?: number } | null)?.status;
+    return status === 401 || status === 403;
+  }
   private slaKey(state: string | null | undefined): AbSla {
     const n = this.norm(state);
     if (n.includes('breach') || n.includes('overdue')) return 'breached';
@@ -160,8 +176,14 @@ export class AssignmentBoard implements OnInit {
     const type = this.type();
     this.loadingBoard.set(true);
     this.api.getAssignmentBoard(this.buildFilter(type)).subscribe({
-      next: (r) => { if (n === this.seq) this.apply(r, type); },
-      error: (e: unknown) => { if (n === this.seq) { this.loadingBoard.set(false); this.showToast(apiErrorMessage(e)); } }
+      next: (r) => { if (n === this.seq) { this.denied.set(false); this.apply(r, type); } },
+      error: (e: unknown) => {
+        if (n !== this.seq) return;
+        this.loadingBoard.set(false);
+        // BUG-199: no permission → a clear no-access state instead of an exception toast over an empty board.
+        if (this.isForbidden(e)) { this.denied.set(true); this.permitted.set([]); this.selected.set([]); return; }
+        this.showToast(apiErrorMessage(e));
+      }
     });
   }
 
@@ -183,14 +205,15 @@ export class AssignmentBoard implements OnInit {
       return p;
     });
     this.boardRows.set(people);
-    // Rows handed over from the queue arrive ticked, ready for Assign.
-    if (this.pinned().length && !this.selected().length) this.selected.set(people.map((p) => p.code));
+    this.permitted.set(r.permittedActions ?? []);
+    // Rows handed over from the queue arrive ticked, ready for Assign - only when this role may assign.
+    if (this.pinned().length && !this.selected().length && this.canAssign()) this.selected.set(people.map((p) => p.code));
+    if (!this.canAssign()) this.selected.set([]);
     this.totalRows.set(r.rows.totalCount);
     this.pageCount.set(Math.max(1, r.rows.totalPages));
     this.boardOwners.set(r.owners ?? []);
     this.views.set(r.views ?? []);
     this.bulkMax.set(r.bulkRouteMaximumItems || 50);
-    this.permitted.set(r.permittedActions ?? []);
     this.campaignOptions = r.campaignOptions ?? [];
     this.slaOptionsServer = r.slaStateOptions ?? [];
     this.recordTypes = r.recordTypeOptions ?? [];
@@ -304,9 +327,7 @@ export class AssignmentBoard implements OnInit {
     return out;
   });
 
-
   goPage(n: number): void { this.page.set(Math.min(Math.max(1, n), this.totalPages())); this.loadBoard(); }
-
 
   protected readonly chips = computed(() => {
     const c: { key: string; label: string }[] = [];
@@ -318,7 +339,6 @@ export class AssignmentBoard implements OnInit {
     return c;
   });
   protected readonly filterCount = computed(() => (this.fOwner() ? 1 : 0) + (this.fCampaign() ? 1 : 0) + this.fSla().length);
-
 
   protected readonly allOnPage = computed(() => this.pageRows().length > 0 && this.pageRows().every((p) => this.selected().includes(p.code)));
 
@@ -382,15 +402,20 @@ export class AssignmentBoard implements OnInit {
   clearAll(): void { this.pinned.set([]); this.fOwner.set(null); this.fCampaign.set(null); this.fSla.set([]); this.query.set(''); this.dueToday.set(false); this.reset(); }
   setRows(n: number): void { this.rows.set(n); this.menu.set(null); this.page.set(1); this.loadBoard(); }
 
-
-  toggleSel(p: FuPerson): void { this.selected.update((l) => (l.includes(p.code) ? l.filter((x) => x !== p.code) : [...l, p.code])); }
+  toggleSel(p: FuPerson): void {
+    if (!this.canAssign()) return;
+    this.selected.update((l) => (l.includes(p.code) ? l.filter((x) => x !== p.code) : [...l, p.code]));
+  }
   togglePage(): void {
+    if (!this.canAssign()) return;
     const codes = this.pageRows().map((p) => p.code);
     this.selected.update((l) => (this.allOnPage() ? l.filter((x) => !codes.includes(x)) : [...new Set([...l, ...codes])]));
   }
 
   startAssign(codes: string[]): void {
     if (!codes.length) return;
+    // BUG-199: never open the dialog for a role the server does not let assign.
+    if (!this.canAssign()) { this.showToast('You do not have permission to assign or reassign records.'); return; }
     if (codes.length > this.bulkMax()) {
       this.showToast(`Bulk assign takes at most ${this.bulkMax()} records at a time. ${codes.length} are selected.`);
       return;
@@ -407,6 +432,7 @@ export class AssignmentBoard implements OnInit {
   confirmAssign(): void {
     this.tried.set(true);
     if (this.aError()) return;
+    if (!this.canAssign()) { this.closeDialog(); this.showToast('You do not have permission to assign or reassign records.'); return; }
     const people = this.targetPeople();
     const n = people.length;
     const owner = this.aOwner()!;
@@ -416,7 +442,10 @@ export class AssignmentBoard implements OnInit {
     const reason = note.length >= 10 ? note : 'Assigned from the assignment board.';
     const recordType = people[0]?.type === 'donor' ? 'Donor' as const : 'Lead' as const;
     const done = (msg: string) => { this.showToast(msg); this.selected.set([]); this.closeDialog(); this.loadBoard(); };
-    const fail = (e: unknown) => this.showToast(apiErrorMessage(e));
+    const fail = (e: unknown) => {
+      if (this.isForbidden(e)) { this.closeDialog(); this.showToast('You do not have permission to assign or reassign records.'); return; }
+      this.showToast(apiErrorMessage(e));
+    };
 
     if (n > 1 && this.permitted().includes('Bulk route')) {
       // One request for the lot; the answer reports every record, so skipped ones are named.
@@ -454,6 +483,7 @@ export class AssignmentBoard implements OnInit {
     this.router.navigate([this.planPath], { queryParams: { ref: p.code, [p.type === 'lead' ? 'leadId' : 'donorId']: p.id } });
   }
   closeDialog(): void { this.dialog.set(null); this.menu.set(null); }
+  goBack(): void { this.location.back(); }
 
   /** The board as CSV under the same filters, written and logged by the server. */
   exportCsv(): void {

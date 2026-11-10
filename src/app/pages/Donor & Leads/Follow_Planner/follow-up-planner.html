@@ -50,7 +50,10 @@
       </div>
       <div class="fp-fact">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>
-        <span><span class="fu-eyebrow">Consent</span><b>{{ consentCount() }} of {{ channels.length }} channels</b></span>
+        <span><span class="fu-eyebrow">Consent</span>
+          @if (consentReady()) { <b>{{ consentCount() }} of {{ channels.length }} channels</b> }
+          @else { <b class="fp-none-txt">Checking…</b> }
+        </span>
       </div>
     </section>
 
@@ -60,7 +63,7 @@
         <section class="fu-card fp-card">
           <header class="fp-card-head">
             <div><h3>Plan details</h3><p>Owner, priority, channel and timing for this follow-up.</p></div>
-            <span class="fp-tag">{{ doneCount() }} of 5 filled</span>
+            <span class="fp-tag">{{ doneCount() }} of {{ checklist().length }} filled</span>
           </header>
 
           <!-- assigned user -->
@@ -109,10 +112,19 @@
             <span class="fp-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('sms')" /></svg></span>
             <div class="fp-row-txt">
               <b>Channel <em>*</em></b>
-              @if (!consentOk()) {
-                <span class="fp-warn">No consent for {{ chLabel(channel()) }}. Pick another channel.</span>
-              } @else if (blockedChannels().length) {
-                <span>No consent on record for {{ blockedChannels().join(', ') }}.</span>
+              @if (!consentReady()) {
+                <span>Checking consent…</span>
+              } @else if (channelConsent() === 'blocked') {
+                <span class="fp-warn">Consent for {{ chLabel(channel()) }} was withdrawn. Pick another channel.</span>
+              } @else if (channelConsent() === 'caution') {
+                <span class="fp-caution">No consent on record for {{ chLabel(channel()) }}. Confirm permission below.</span>
+              } @else if (channelConsent() === 'ok') {
+                <span>Consent on record for {{ chLabel(channel()) }}.</span>
+              } @else if (withdrawnChannels().length || unrecordedChannels().length) {
+                <span>
+                  @if (unrecordedChannels().length) { No consent on record for {{ unrecordedChannels().join(', ') }}. }
+                  @if (withdrawnChannels().length) { Withdrawn for {{ withdrawnChannels().join(', ') }}. }
+                </span>
               } @else {
                 <span>Every channel is allowed for this record.</span>
               }
@@ -120,11 +132,21 @@
             <div class="fp-row-ctl">
               <div class="fp-pills" role="radiogroup">
                 @for (c of channels; track c.key) {
-                  <button type="button" role="radio" [attr.aria-checked]="channel() === c.key" [class.is-on]="channel() === c.key" [class.is-off]="!hasConsent(c.key)" [attr.title]="hasConsent(c.key) ? 'Consent on record' : 'No consent on record'" (click)="channel.set(c.key)">
+                  <button type="button" role="radio" [attr.aria-checked]="channel() === c.key" [class.is-on]="channel() === c.key" [class.is-warn]="consentOf(c.key) === 'caution'" [class.is-off]="consentOf(c.key) === 'blocked'" [attr.title]="consentTitle(c.key)" (click)="pickChannel(c.key)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.icon)" /></svg>{{ c.label }}
                   </button>
                 }
               </div>
+              @if (needsAck()) {
+                <label class="fp-consent" [class.has-err]="tried() && errors().consent">
+                  <input type="checkbox" [checked]="consentAck()" (change)="setConsentAck($event)" />
+                  <span>
+                    <b>No consent on record for {{ chLabel(channel()) }}</b>
+                    I confirm {{ p.name }} has given permission to be contacted by {{ chLabel(channel()).toLowerCase() }}.
+                  </span>
+                </label>
+                @if (tried() && errors().consent) { <p class="fu-err">{{ errors().consent }}</p> }
+              }
               @if (tried() && errors().channel) { <p class="fu-err">{{ errors().channel }}</p> }
             </div>
           </div>

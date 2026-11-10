@@ -116,26 +116,19 @@ export class CreateOrganisation implements OnDestroy {
       },
       error: () => undefined
     });
+
+    // Regional defaults (time zone, currency, language) are only loaded as options.
+    // Nothing is pre-selected: the field stays "Not set" until the person picks a value (BUG-202).
     this.geo.getTimeZoneOptions().subscribe({
-      next: (list) => {
-        this.timezoneList.set(list.map((z) => ({ value: z.ianaKey, label: z.name })));
-        const home = list.find((z) => z.ianaKey === 'Asia/Kolkata') ?? list.find((z) => z.ianaKey === 'Asia/Calcutta');
-        if (!this.f().timezone && home) this.set('timezone', home.ianaKey);
-      },
+      next: (list) => this.timezoneList.set(list.map((z) => ({ value: z.ianaKey, label: z.name }))),
       error: () => undefined
     });
     this.geo.getCurrencies().subscribe({
-      next: (list) => {
-        this.currencyList.set(list.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` })));
-        if (!this.f().currency && list.some((c) => c.code === 'INR')) this.set('currency', 'INR');
-      },
+      next: (list) => this.currencyList.set(list.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }))),
       error: () => undefined
     });
     this.geo.getLanguageOptions().subscribe({
-      next: (list) => {
-        this.languageList.set(list.map((l) => ({ value: l.cultureCode, label: l.displayLabel })));
-        if (!this.f().language && list.some((l) => l.cultureCode === 'en-IN')) this.set('language', 'en-IN');
-      },
+      next: (list) => this.languageList.set(list.map((l) => ({ value: l.cultureCode, label: l.displayLabel }))),
       error: () => undefined
     });
 
@@ -203,12 +196,12 @@ export class CreateOrganisation implements OnDestroy {
   /** summary of every step for the review page, with readable labels */
   readonly review = computed(() => {
     const f = this.f();
-    const label = (list: Opt[], v: string) => list.find((o) => o.value === v)?.label ?? v;
+    const label = (list: Opt[], v: string) => (v ? list.find((o) => o.value === v)?.label ?? v : 'Not set');
     const tzList = this.timezoneList(), curList = this.currencyList(), langList = this.languageList();
     const dash = (v: string) => v.trim() || '—';
     return [
       { step: 0, icon: 'org', title: 'Organisation', note: 'The details from the first step.', rows: [
-        ['Name', dash(f.name)], ['Registered legal name', dash(f.legalName)], ['Type', label(TYPES, f.type)],
+        ['Name', dash(f.name)], ['Registered legal name', dash(f.legalName)], ['Type', TYPES.find((t) => t.value === f.type)?.label ?? f.type],
         ['Reference code', f.code.trim() || 'Auto-generated'], ['Web address', f.domain.trim() ? (this.domainCheck()?.hostName || f.domain.trim() + this.suffix) : '—'],
         ['Description', dash(f.description)]
       ] },
@@ -345,7 +338,7 @@ export class CreateOrganisation implements OnDestroy {
   another(): void {
     this.serverErrors.set({});
     this.result.set(null);
-    this.f.set(blank());
+    this.f.set({ ...blank(), phoneCode: this.phoneCodeList().includes('+91') ? '+91' : '' });
     this.domainCheck.set(null);
     this.domainTouched = false;
     this.created.set(false);

@@ -572,3 +572,150 @@ html[data-mode="dark"] .lg-card {
   .lg-frame > .lg-brand-row .lg-brand-name { display: none; }
   .lg-frame ::ng-deep .lg-title { padding-right: calc(42px * var(--lg-k)); }
 }
+
+
+
+
+/* Second factor at sign-in - same layout as the reference screen, in the OtoSolve colours.
+   Loaded after ../Login/login.css, so lg-title / lg-submit / lg-input / lg-spinner come from there.
+   No Bootstrap or icon font needed: icons are inline SVG. */
+
+:host {
+  --mfa-primary: #7a3045;          /* OtoSolve maroon (Verify button) */
+  --mfa-primary-soft: rgba(122, 48, 69, 0.1);
+  --mfa-app: #059669;
+  --mfa-app-soft: rgba(16, 185, 129, 0.12);
+  --mfa-text: #1f2329;
+  --mfa-muted: #6b7280;
+  --mfa-line: #e5e7eb;
+  --mfa-box-border: #d5d8de;
+  display: block;
+}
+
+.mfa { margin-top: 4px; }
+
+/* ---- Header -------------------------------------------------------------------------- */
+
+.mfa-head { text-align: center; margin-bottom: 20px; }
+
+.mfa-icon {
+  width: 64px;
+  height: 64px;
+  margin: 4px auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--mfa-primary-soft);
+  color: var(--mfa-primary);
+}
+.mfa-icon.is-app { background: var(--mfa-app-soft); color: var(--mfa-app); }
+.mfa-icon svg {
+  width: 28px; height: 28px;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.mfa-h { font-size: 18px; font-weight: 600; color: var(--mfa-text); margin: 0 0 6px; }
+.mfa-sub { color: var(--mfa-muted); margin: 0; font-size: 14px; line-height: 1.5; }
+.mfa-dest { font-weight: 600; color: var(--mfa-text); margin: 6px 0 0; }
+
+/* ---- Alerts --------------------------------------------------------------------------- */
+
+.mfa-alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 11px 14px; margin-bottom: 16px;
+  border-radius: 10px; font-size: 14px; line-height: 1.45;
+}
+.mfa-alert svg {
+  flex: 0 0 auto; width: 18px; height: 18px; margin-top: 1px;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.mfa-alert small { display: block; margin-top: 3px; opacity: 0.85; }
+.mfa-alert.is-danger { background: #fdecee; color: #a4243b; border: 1px solid #f6c9d0; }
+.mfa-alert.is-warn   { background: #fff7e6; color: #8a5a00; border: 1px solid #fde3a7; }
+
+/* ---- Code boxes ----------------------------------------------------------------------- */
+
+.mfa-label {
+  display: block; text-align: center; margin-bottom: 12px;
+  font-size: 14px; font-weight: 500; color: var(--mfa-text);
+}
+.mfa-label.is-left { text-align: left; margin-bottom: 6px; }
+
+.otp-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+
+.otp-box {
+  /* Fixed squares read as "one character each" without a label saying so. */
+  width: 52px; height: 60px; padding: 0;
+  text-align: center; font-size: 24px; font-weight: 600; color: var(--mfa-text);
+  background: #fff;
+  border: 1.5px solid var(--mfa-box-border);
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -moz-appearance: textfield;
+}
+.otp-box::-webkit-outer-spin-button,
+.otp-box::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.otp-box.has-value { border-color: #b9a0a8; }
+.otp-box:focus { border-color: var(--mfa-primary); box-shadow: 0 0 0 3px var(--mfa-primary-soft); }
+.otp-box:disabled { background: #f3f4f6; opacity: 0.7; }
+
+/* Six 52px boxes overflow a small phone, so they shrink rather than wrap. */
+@media (max-width: 420px) {
+  .otp-row { gap: 6px; }
+  .otp-box { width: 42px; height: 52px; font-size: 20px; }
+}
+
+.mfa-note { text-align: center; font-size: 13px; color: var(--mfa-muted); margin: 0 0 16px; line-height: 1.5; }
+.mfa-note.is-left { text-align: left; margin-top: 8px; }
+.mfa-note b { color: var(--mfa-text); font-weight: 600; }
+
+/* ---- Trust device ---------------------------------------------------------------------- */
+
+.mfa-check {
+  display: flex; justify-content: center; align-items: center; gap: 8px;
+  margin-bottom: 16px; font-size: 14px; color: var(--mfa-text); cursor: pointer;
+}
+.mfa-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--mfa-primary); cursor: pointer; }
+
+/* ---- Recovery code ---------------------------------------------------------------------- */
+
+.recovery-input {
+  width: 100%;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.recovery-input::placeholder { letter-spacing: 2px; text-transform: none; }
+
+/* ---- Links and secondary buttons ------------------------------------------------------- */
+
+.mfa-link {
+  display: block; width: 100%; margin-top: 10px; padding: 6px;
+  background: none; border: 0; cursor: pointer;
+  font: inherit; font-size: 14px; font-weight: 500; color: var(--mfa-primary);
+}
+.mfa-link:hover:not(:disabled) { text-decoration: underline; }
+.mfa-link:disabled { opacity: 0.6; cursor: default; }
+.mfa-link.is-danger { color: #b42318; margin-top: 2px; }
+
+.mfa-trouble { border-top: 1px solid var(--mfa-line); margin-top: 18px; padding-top: 16px; }
+.mfa-trouble-h { font-size: 13px; color: var(--mfa-muted); margin: 0 0 10px; }
+.mfa-alt { display: flex; flex-direction: column; gap: 8px; }
+
+.mfa-btn-outline {
+  display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
+  width: 100%; padding: 9px 12px;
+  background: #fff; border: 1px solid var(--mfa-box-border); border-radius: 8px;
+  font: inherit; font-size: 14px; color: var(--mfa-text); cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.mfa-btn-outline:hover:not(:disabled) { background: #f8f6f7; border-color: #c3b6bb; }
+.mfa-btn-outline:disabled { opacity: 0.6; cursor: default; }
+.mfa-btn-outline svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+.mfa-muted { color: var(--mfa-muted); }

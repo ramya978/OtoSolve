@@ -272,7 +272,7 @@
               <li [class.is-ok]="c.ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(c.ok ? 'check' : 'clock')" /></svg>{{ c.label }}</li>
             }
           </ul>
-          <button type="button" class="fu-btn fe-wide" (click)="startQualification()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg> Start qualification</button>
+          <!-- <button type="button" class="fu-btn fe-wide" (click)="startQualification()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg> Start qualification</button> -->
           <nav class="fe-links">
             <button type="button" (click)="openTimeline()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg> Communication timeline <svg class="fe-go" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upright')" /></svg></button>
             <button type="button" [disabled]="f.status === 'escalated'" (click)="startEscalate()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('flag')" /></svg> {{ f.status === 'escalated' ? 'Already escalated' : 'Escalate this follow-up' }} <svg class="fe-go" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('upright')" /></svg></button>

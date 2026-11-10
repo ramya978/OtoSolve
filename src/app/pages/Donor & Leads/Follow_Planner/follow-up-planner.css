@@ -333,6 +333,10 @@
   color: var(--fu-red);
 }
 
+.fp-row-txt .fp-caution {
+  color: var(--fu-amber, #b54708);
+}
+
 .fp-row-ctl {
   display: grid;
   gap: calc(8px * var(--fp-k));
@@ -389,6 +393,66 @@
 .fp-pills button.is-on.is-off {
   border-color: var(--fu-red);
   background: var(--fu-red);
+}
+
+/* no consent on record: allowed only after the user confirms permission */
+.fp-pills button.is-warn {
+  border-style: dashed;
+}
+
+.fp-pills button.is-warn svg {
+  color: var(--fu-amber, #b54708);
+}
+
+.fp-pills button.is-on.is-warn {
+  border-style: solid;
+  border-color: var(--fu-amber, #b54708);
+  background: var(--fu-amber, #b54708);
+  color: var(--white, #fff);
+}
+
+.fp-pills button.is-on.is-warn svg {
+  color: currentColor;
+}
+
+/* consent confirmation box */
+.fp-consent {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(10px * var(--fp-k));
+  padding: calc(10px * var(--fp-k)) calc(12px * var(--fp-k));
+  border: 1px solid var(--fu-amber-line, #fedf89);
+  border-radius: var(--fu-btn-radius);
+  background: var(--fu-amber-soft, #fffaeb);
+  color: var(--fu-ink);
+  font-size: calc(12.5px * var(--fp-fs));
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.fp-consent.has-err {
+  border-color: var(--fu-red);
+}
+
+.fp-consent input {
+  width: calc(16px * var(--fp-k));
+  height: calc(16px * var(--fp-k));
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.fp-consent span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fp-consent b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--fu-heading);
+  font-weight: 600;
 }
 
 /* quick picks under date / time */

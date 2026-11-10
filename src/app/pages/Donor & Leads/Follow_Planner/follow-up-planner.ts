@@ -9,13 +9,14 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
 type PlMenu = 'owner' | 'date' | 'time' | null;
+type ConsentState = 'ok' | 'caution' | 'blocked';
 
 const MAX_TEXT = 500;
 
 @Component({
   selector: 'app-follow-up-planner',
   standalone: true,
-  imports:[PageHeader],
+  imports: [PageHeader],
   templateUrl: './follow-up-planner.html',
   styleUrls: ['../../../Shared/layout/Donors_Leads/fu-shared.css', './follow-up-planner.css']
 })
@@ -60,6 +61,8 @@ export class FollowUpPlanner {
   protected readonly time = signal<string | null>(null);
   protected readonly purpose = signal('');
   protected readonly outcome = signal('');
+  /** The user confirms they have permission to contact on a channel with no consent on record. */
+  protected readonly consentAck = signal(false);
 
   protected readonly menu = signal<PlMenu>(null);
   protected readonly pickMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -67,8 +70,10 @@ export class FollowUpPlanner {
   protected readonly saving = signal(false);
   protected readonly toast = signal('');
 
-  /** Per channel: ok, caution (no consent on record - acknowledged when scheduling) or blocked (withdrawn). */
-  private readonly consentMap = signal<Partial<Record<FuChannel, 'ok' | 'caution' | 'blocked'>>>({});
+  /** Per channel: ok, caution (no consent on record - must be confirmed before scheduling) or blocked (withdrawn). */
+  private readonly consentMap = signal<Partial<Record<FuChannel, ConsentState>>>({});
+  /** False until the consent check for this person has answered - scheduling waits for it. */
+  protected readonly consentReady = signal(false);
 
   constructor() {
     const q = this.route.snapshot.queryParamMap;
@@ -95,11 +100,22 @@ export class FollowUpPlanner {
       if (p?.owner && this.owner() === null) this.owner.set(p.owner);
     });
     // Asked once per person: the signal is set once, so the five channel checks are not repeated.
+    // If the check fails, every channel is treated as "no consent on record" so it must be confirmed.
     effect(() => {
       const p = this.person();
       this.consentMap.set({});
+      this.consentReady.set(false);
+      this.consentAck.set(false);
       if (!p?.id) return;
-      this.store.consentFor(p).subscribe((m) => this.consentMap.set(m));
+      this.store.consentFor(p).subscribe({
+        next: (m) => { this.consentMap.set(m); this.consentReady.set(true); },
+        error: () => {
+          const all: Partial<Record<FuChannel, ConsentState>> = {};
+          this.channels.forEach((c) => (all[c.key] = 'caution'));
+          this.consentMap.set(all);
+          this.consentReady.set(true);
+        }
+      });
     });
   }
 
@@ -107,12 +123,19 @@ export class FollowUpPlanner {
   protected readonly ownerInfo = computed(() => (this.store.options(), this.owners).find((o) => o.name === this.owner()) ?? null);
   protected readonly maxLoad = computed(() => Math.max(1, ...this.owners.map((o) => this.store.load().get(o.name) ?? 0)));
 
-  protected readonly consentOk = computed(() => {
+  /** Consent state of the chosen channel (null when no channel is chosen). */
+  protected readonly channelConsent = computed<ConsentState | null>(() => {
     const c = this.channel();
-    return !c || this.consentMap()[c] !== 'blocked';
+    return c ? this.consentMap()[c] ?? 'ok' : null;
   });
-  protected readonly blockedChannels = computed(() =>
-    this.channels.filter((c) => (this.consentMap()[c.key] ?? 'ok') !== 'ok').map((c) => c.label));
+  protected readonly consentOk = computed(() => this.channelConsent() !== 'blocked');
+  /** The chosen channel has no consent on record: the user must tick the confirmation. */
+  protected readonly needsAck = computed(() => this.channelConsent() === 'caution');
+
+  protected readonly withdrawnChannels = computed(() =>
+    this.channels.filter((c) => this.consentMap()[c.key] === 'blocked').map((c) => c.label));
+  protected readonly unrecordedChannels = computed(() =>
+    this.channels.filter((c) => this.consentMap()[c.key] === 'caution').map((c) => c.label));
 
   protected readonly consentCount = computed(() => {
     const p = this.person();
@@ -120,13 +143,19 @@ export class FollowUpPlanner {
   });
 
   /** Side-card checklist: what is filled in so far. */
-  protected readonly checklist = computed(() => [
-    { label: 'Assigned user', value: this.owner() ?? '', ok: !!this.owner() },
-    { label: 'Channel', value: this.channel() ? this.chLabel(this.channel()) : '', ok: !!this.channel() && this.consentOk() },
-    { label: 'Date', value: this.when()?.short ?? '', ok: !!this.date() },
-    { label: 'Time', value: this.time() ? this.timeLabel(this.time()) : '', ok: !!this.time() },
-    { label: 'Purpose', value: this.purpose().trim() ? 'Written' : '', ok: !!this.purpose().trim() }
-  ]);
+  protected readonly checklist = computed(() => {
+    const list = [
+      { label: 'Assigned user', value: this.owner() ?? '', ok: !!this.owner() },
+      { label: 'Channel', value: this.channel() ? this.chLabel(this.channel()) : '', ok: !!this.channel() && this.consentOk() }
+    ];
+    if (this.needsAck()) list.push({ label: 'Consent confirmed', value: this.consentAck() ? 'Yes' : '', ok: this.consentAck() });
+    list.push(
+      { label: 'Date', value: this.when()?.short ?? '', ok: !!this.date() },
+      { label: 'Time', value: this.time() ? this.timeLabel(this.time()) : '', ok: !!this.time() },
+      { label: 'Purpose', value: this.purpose().trim() ? 'Written' : '', ok: !!this.purpose().trim() }
+    );
+    return list;
+  });
   protected readonly doneCount = computed(() => this.checklist().filter((c) => c.ok).length);
 
   protected readonly when = computed(() => {
@@ -144,7 +173,9 @@ export class FollowUpPlanner {
     const m: string[] = [];
     if (!this.owner()) m.push('Assigned user');
     if (!this.channel()) m.push('Channel');
+    else if (!this.consentReady()) m.push('Consent check');
     else if (!this.consentOk()) m.push('A channel with consent');
+    else if (this.needsAck() && !this.consentAck()) m.push('Consent confirmation');
     if (!this.date()) m.push('Date');
     if (!this.time()) m.push('Time');
     if (!this.purpose().trim()) m.push('Purpose');
@@ -153,7 +184,8 @@ export class FollowUpPlanner {
 
   protected readonly errors = computed(() => ({
     owner: !this.owner() ? 'Choose who will do this follow-up.' : '',
-    channel: !this.channel() ? 'Choose how to reach them.' : !this.consentOk() ? 'There is no consent on record for this channel.' : '',
+    channel: !this.channel() ? 'Choose how to reach them.' : !this.consentOk() ? 'Consent for this channel was withdrawn.' : '',
+    consent: this.needsAck() && !this.consentAck() ? 'Confirm you have permission before scheduling.' : '',
     date: !this.date() ? 'Pick a date.' : '',
     time: !this.time() ? 'Pick a time.' : '',
     purpose: !this.purpose().trim() ? 'Say why you are following up.' : ''
@@ -167,7 +199,12 @@ export class FollowUpPlanner {
   ini(n: string): string { return initials(n); }
   load(name: string): number { return this.store.load().get(name) ?? 0; }
   timeLabel(t: string | null): string { return t ? fmtTime(`2000-01-01T${t}`) : 'Select a time'; }
-  hasConsent(k: FuChannel): boolean { return (this.consentMap()[k] ?? 'ok') === 'ok'; }
+  consentOf(k: FuChannel): ConsentState { return this.consentMap()[k] ?? 'ok'; }
+  hasConsent(k: FuChannel): boolean { return this.consentOf(k) === 'ok'; }
+  consentTitle(k: FuChannel): string {
+    const s = this.consentOf(k);
+    return s === 'ok' ? 'Consent on record' : s === 'blocked' ? 'Consent withdrawn' : 'No consent on record - confirmation needed';
+  }
   priTone(k: FuPriority): string { return this.priorities.find((p) => p.key === k)!.tone; }
   priLabel(k: FuPriority): string { return this.priorities.find((p) => p.key === k)!.label; }
   chLabel(k: FuChannel | null): string { return k ? this.channels.find((c) => c.key === k)!.label : ''; }
@@ -185,6 +222,12 @@ export class FollowUpPlanner {
   }
   movePick(n: number): void { const m = this.pickMonth(); this.pickMonth.set(new Date(m.getFullYear(), m.getMonth() + n, 1)); }
   pickOwner(o: string): void { this.owner.set(o); this.menu.set(null); }
+  /** A confirmation belongs to one channel: switching channel clears it. */
+  pickChannel(k: FuChannel): void {
+    if (this.channel() !== k) this.consentAck.set(false);
+    this.channel.set(k);
+  }
+  setConsentAck(e: Event): void { this.consentAck.set((e.target as HTMLInputElement).checked); }
   pickDate(iso: string): void { if (iso < this.todayIso) return; this.date.set(iso); this.menu.set(null); }
   pickTime(t: string): void { this.time.set(t); this.menu.set(null); }
   setText(which: 'purpose' | 'outcome', e: Event): void {
@@ -196,8 +239,10 @@ export class FollowUpPlanner {
     this.tried.set(true);
     const p = this.person();
     if (!p || this.missing().length || this.saving()) return;
+    const caution = this.needsAck();
+    if (caution && !this.consentAck()) return; // never schedule on an unconfirmed channel
     this.saving.set(true);
-    const caution = this.consentMap()[this.channel()!] === 'caution';
+    const label = this.chLabel(this.channel());
     this.store.create({
       person: p,
       owner: this.owner()!,
@@ -206,11 +251,11 @@ export class FollowUpPlanner {
       priority: this.priority(),
       purpose: this.purpose().trim(),
       nextAction: this.outcome().trim() || this.purpose().trim(),
-      acknowledged: caution
+      acknowledged: caution && this.consentAck()
     }).subscribe({
       next: () => {
         this.toast.set(caution
-          ? `Follow-up scheduled for ${p.name} - no consent is on record for this channel, confirm permission before contact`
+          ? `Follow-up scheduled for ${p.name} - you confirmed permission to contact by ${label}`
           : `Follow-up scheduled for ${p.name}`);
         setTimeout(() => this.router.navigate([this.queuePath]), caution ? 1500 : 700);
       },

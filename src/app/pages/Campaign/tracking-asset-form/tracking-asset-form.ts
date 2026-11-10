@@ -21,6 +21,20 @@ interface AssetDraft {
   place: string;
 }
 
+/**
+ * Campaign states that can NOT take a new tracking asset (BUG-214).
+ * Every other state - submitted, approved, scheduled, active, live, in progress, paused… - is allowed,
+ * so campaigns assigned to a Campaign Executive show in the dropdown whatever state name the API uses.
+ */
+const ASSET_BLOCKED_LIFECYCLES = new Set([
+  'draft', 'rejected', 'completed', 'complete', 'closed', 'ended', 'archived', 'cancelled', 'canceled', 'expired'
+]);
+
+/** 'In Progress', 'in-progress', ' ACTIVE ' → 'in_progress', 'active' */
+function normLifecycle(l: unknown): string {
+  return String(l ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+}
+
 @Component({
   selector: 'app-tracking-asset-form',
   imports: [CwSelect, CwDatePicker, PageHeader],
@@ -53,14 +67,26 @@ export class TrackingAssetForm {
       });
     } else {
       const c = this.store.campaign();
-      if (this.eligible(c.lifecycle)) this.pickCampaign(c.code);
+      if (c && this.eligible(c.lifecycle)) this.pickCampaign(c.code);
     }
     this.initial = JSON.stringify(this.draft());
   }
 
-  protected readonly campaignOptions = computed<CwOption[]>(() =>
-    this.store.campaigns().filter((c) => this.eligible(c.lifecycle)).map((c) => ({ value: c.code, label: c.name, hint: c.code }))
-  );
+  /**
+   * Campaigns in the user's scope that can take an asset (BUG-214).
+   * - state check is case-insensitive and excludes only closed-type states
+   * - the campaign of a draft being edited always stays in the list
+   * - one entry per campaign code, sorted by name
+   */
+  protected readonly campaignOptions = computed<CwOption[]>(() => {
+    const current = this.draft().campaign;
+    const seen = new Set<string>();
+    return (this.store.campaigns() ?? [])
+      .filter((c) => !!c?.code && (this.eligible(c.lifecycle) || (!!this.editingRef && c.code === current)))
+      .filter((c) => (seen.has(c.code) ? false : (seen.add(c.code), true)))
+      .sort((a, b) => String(a.name ?? '').localeCompare(String(b.name ?? '')))
+      .map((c) => ({ value: c.code, label: c.name || c.code, hint: c.code }));
+  });
   private readonly mediumOptionsC = computed<CwOption[]>(() => {
     const names = this.store.channelNames();
     return (names.length ? names : MEDIUMS).map((m) => ({ value: m, label: m }));
@@ -70,7 +96,11 @@ export class TrackingAssetForm {
   protected readonly campaign = computed(() => this.store.findCampaign(this.draft().campaign) ?? null);
   protected readonly campaignHint = computed(() => {
     const c = this.campaign();
-    return c ? `${LIFECYCLE_LABEL[c.lifecycle]} · ${fmtDate(c.start)}` : 'Fills the campaign dates';
+    if (c) {
+      const label = LIFECYCLE_LABEL[c.lifecycle as keyof typeof LIFECYCLE_LABEL] ?? c.lifecycle;
+      return `${label} · ${fmtDate(c.start)}`;
+    }
+    return this.campaignOptions().length ? 'Fills the campaign dates' : 'No eligible campaigns in your scope';
   });
 
   /** The URL the asset will open. */
@@ -107,7 +137,11 @@ export class TrackingAssetForm {
     const d = this.draft();
     const c = this.campaign();
     const e: Partial<Record<'campaign' | 'medium' | 'type' | 'url' | 'from' | 'to', string>> = {};
-    if (!d.campaign) e.campaign = 'Choose the campaign this asset raises money for.';
+    if (!d.campaign) {
+      e.campaign = this.campaignOptions().length
+        ? 'Choose the campaign this asset raises money for.'
+        : 'No campaigns are assigned to you yet. Ask your manager to add one to your scope.';
+    }
     if (!d.medium) e.medium = 'Choose where the asset will be used.';
     if (!d.type) e.type = 'Pick a QR code or a landing page.';
     if (d.ownUrl && !/^https?:\/\/\S+\.\S+/i.test(d.url.trim()) && !/^https?:\/\/localhost/i.test(d.url.trim())) {
@@ -200,7 +234,9 @@ export class TrackingAssetForm {
     this.confirmLeave.set(false);
   }
 
-  private eligible(l: string): boolean {
-    return l === 'submitted' || l === 'scheduled' || l === 'active' || l === 'paused';
+  /** A campaign can take a new asset unless it is a draft or already closed (BUG-214). */
+  private eligible(l: unknown): boolean {
+    const s = normLifecycle(l);
+    return !!s && !ASSET_BLOCKED_LIFECYCLES.has(s);
   }
 }

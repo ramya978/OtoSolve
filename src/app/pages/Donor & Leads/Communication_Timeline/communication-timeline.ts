@@ -25,7 +25,7 @@ interface Preview {
   status: 'loading' | 'ready' | 'missing' | 'error';
   /** Object URL of the downloaded file (images and Download use it). */
   url: string | null;
-  /** The same URL trusted for the iframe (PDF and text). */
+  /** The same URL trusted for the iframe (text, and PDF when a new tab was blocked). */
   frame: SafeResourceUrl | null;
   message: string;
 }
@@ -41,6 +41,9 @@ const MIME: Record<string, string> = {
   txt: 'text/plain;charset=utf-8', log: 'text/plain;charset=utf-8',
   csv: 'text/plain;charset=utf-8', json: 'application/json'
 };
+
+/** Escapes text written into the new tab's HTML (file names come from users). */
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
 @Component({
   selector: 'app-communication-timeline',
@@ -132,6 +135,7 @@ export class CommunicationTimeline {
     return {
       weeks: weeks.map((w) => ({ ...w, pct: w.n ? Math.max(18, Math.round((w.n / max) * 100)) : 0, tip: `Week of ${w.label}: ${w.n} ${w.n === 1 ? 'entry' : 'entries'}` })),
       active: days.size,
+      total: weeks.reduce((s, w) => s + w.n, 0),
       first: weeks[0].label
     };
   });
@@ -202,15 +206,65 @@ export class CommunicationTimeline {
       : OFFICE_EXT.includes(ext) ? 'office' : 'other';
   }
 
-  /** Fetches the entry's file from the server (with the caller's token) and opens the preview. */
+  /** PDFs open in a new browser tab; every other file opens in the preview popup. */
   openAttachment(e: CommEntry, ev?: Event): void {
     ev?.stopPropagation();
     if (!e.attachment) return;
+    if (this.fileExt(e.attachment) === 'pdf') { this.openPdfInTab(e); return; }
+    this.showPreview(e);
+  }
+
+  /**
+   * Opens the PDF in a new tab. The tab is opened straight away, inside the click, so Chrome does not
+   * block it as a popup; the file is then fetched with the caller's token and shown in that tab.
+   * If the browser blocks the tab, the PDF opens in the preview popup instead.
+   */
+  private openPdfInTab(e: CommEntry): void {
+    const tab = window.open('', '_blank');
+    if (!tab) { this.showPreview(e); return; }
+
+    const name = e.attachment!;
+    this.writeTab(tab, name, '<p class="msg">Opening the file…</p>');
+
+    this.api.getCommunicationAttachment(e.id).subscribe({
+      next: ({ blob, fileName }) => {
+        if (tab.closed) return;
+        const realName = fileName && fileName !== 'attachment' ? fileName : name;
+        const url = URL.createObjectURL(new Blob([blob], { type: MIME['pdf'] }));
+        this.writeTab(tab, realName, `<iframe src="${url}" title="${esc(realName)}"></iframe>`);
+        this.revokeWhenClosed(tab, url);
+      },
+      error: (err: unknown) => {
+        if (!tab.closed) tab.close();
+        this.closePreview();
+        this.previewing.set(this.failed({ name, ext: 'pdf', kind: 'pdf', status: 'loading', url: null, frame: null, message: '' }, err));
+      }
+    });
+  }
+
+  /** Writes a small page into the new tab: the file name as the tab title, the file filling the page. */
+  private writeTab(tab: Window, name: string, body: string): void {
+    tab.document.open();
+    tab.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(name)}</title>
+<style>html,body{margin:0;height:100%;background:#525659}iframe{display:block;width:100%;height:100%;border:0}
+.msg{margin:40vh 0 0;color:#fff;font:14px system-ui,sans-serif;text-align:center}</style></head><body>${body}</body></html>`);
+    tab.document.close();
+  }
+
+  /** Keeps the file's blob URL while its tab is open (so reloading the tab still works), then frees it. */
+  private revokeWhenClosed(tab: Window, url: string): void {
+    const timer = setInterval(() => {
+      if (tab.closed) { clearInterval(timer); URL.revokeObjectURL(url); }
+    }, 5000);
+  }
+
+  /** Fetches the entry's file from the server (with the caller's token) and opens the preview popup. */
+  private showPreview(e: CommEntry): void {
     this.closePreview();
 
-    const ext = this.fileExt(e.attachment);
+    const ext = this.fileExt(e.attachment!);
     const kind = this.kindOf(ext);
-    this.previewing.set({ name: e.attachment, ext, kind, status: 'loading', url: null, frame: null, message: '' });
+    this.previewing.set({ name: e.attachment!, ext, kind, status: 'loading', url: null, frame: null, message: '' });
 
     this.previewSub = this.api.getCommunicationAttachment(e.id).subscribe({
       next: ({ blob, fileName }) => {
@@ -226,18 +280,22 @@ export class CommunicationTimeline {
         });
       },
       error: (err: unknown) => {
-        const status = err instanceof HttpErrorResponse ? err.status : 0;
         const p = this.previewing();
-        if (!p) return;
-        this.previewing.set({
-          ...p,
-          status: status === 404 ? 'missing' : 'error',
-          message: status === 403 ? 'You do not have access to this file.'
-            : status === 0 ? 'The server could not be reached. Check the connection and try again.'
-            : 'The file could not be opened. Try again in a moment.'
-        });
+        if (p) this.previewing.set(this.failed(p, err));
       }
     });
+  }
+
+  /** The preview in its "missing" (404) or "error" state, with a message for the status code. */
+  private failed(p: Preview, err: unknown): Preview {
+    const status = err instanceof HttpErrorResponse ? err.status : 0;
+    return {
+      ...p,
+      status: status === 404 ? 'missing' : 'error',
+      message: status === 403 ? 'You do not have access to this file.'
+        : status === 0 ? 'The server could not be reached. Check the connection and try again.'
+        : 'The file could not be opened. Try again in a moment.'
+    };
   }
 
   downloadAttachment(p: Preview): void {

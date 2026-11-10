@@ -2,6 +2,7 @@
      ORGANISATION — Edit page (Workspace Kit)
      page heading (same as profile) · lock banner · stacked section cards:
      Registration & identity · Contact | Regional settings · Registered address · action bar
+     Dropdowns use the custom cw-select and the date uses cw-date-picker (BUG-213 - no native tags).
      ===================================================================================== -->
 <div class="og-page">
   <header class="i-head oe-head">
@@ -51,32 +52,40 @@
             <span class="oe-label">Registered legal name</span>
             <input class="oe-input" type="text" [value]="form().legalName" [disabled]="locked" (input)="set('legalName', $any($event.target).value)" />
           </label>
-          <label class="oe-field">
-            <span class="oe-label">Type</span>
-            <select class="oe-input oe-select" [disabled]="locked" (change)="set('type', $any($event.target).value)">
-              @for (o of withCurrent(types, 'type'); track o) { <option [value]="o" [selected]="o === form().type">{{ o }}</option> }
-            </select>
-          </label>
-          <label class="oe-field">
-            <span class="oe-label">Established on</span>
-            <input class="oe-input" type="date" [value]="form().established" [disabled]="locked" (input)="set('established', $any($event.target).value)" />
-          </label>
+          <div class="oe-field">
+            <label class="oe-label" for="oe-type">Type</label>
+            @if (locked) {
+              <input id="oe-type" class="oe-input" type="text" [value]="form().type" disabled />
+            } @else {
+              <cw-select inputId="oe-type" placeholder="Select" [options]="typeOpts()" [value]="form().type"
+                         (valueChange)="set('type', $event)" />
+            }
+          </div>
+          <div class="oe-field">
+            <label class="oe-label" for="oe-established">Established on</label>
+            @if (locked) {
+              <input id="oe-established" class="oe-input" type="text" [value]="form().established" disabled />
+            } @else {
+              <cw-date-picker inputId="oe-established" placeholder="Choose date" [value]="form().established" [max]="today"
+                              (valueChange)="set('established', $event)" />
+            }
+          </div>
 
           <label class="oe-field">
             <span class="oe-label">Registration number</span>
-            <input class="oe-input" type="text" [value]="form().regNo" [disabled]="locked" (input)="set('regNo', $any($event.target).value)" />
+            <input class="oe-input" type="text" [value]="form().regNo" [disabled]="locked" (input)="set('regNo', $any($event.target).value.replace(/[^A-Za-z0-9]/g, ''))" pattern="[A-Za-z0-9]*" />
           </label>
           <label class="oe-field">
             <span class="oe-label">Tax identification number</span>
-            <input class="oe-input" type="text" [value]="form().taxId" [disabled]="locked" (input)="set('taxId', $any($event.target).value)" />
+            <input class="oe-input" type="text" [value]="form().taxId" [disabled]="locked" (input)="set('taxId', $any($event.target).value.replace(/[^A-Za-z0-9]/g, ''))" pattern="[A-Za-z0-9]*" />
           </label>
           <label class="oe-field">
             <span class="oe-label">PAN</span>
-            <input class="oe-input" type="text" [value]="form().pan" [disabled]="locked" (input)="set('pan', $any($event.target).value)" />
+            <input class="oe-input" type="text" [value]="form().pan" [disabled]="locked" (input)="set('pan', $any($event.target).value.replace(/[^A-Za-z0-9]/g, ''))" pattern="[A-Za-z0-9]*" />
           </label>
           <label class="oe-field">
             <span class="oe-label">GST</span>
-            <input class="oe-input" type="text" [value]="form().gst" [disabled]="locked" (input)="set('gst', $any($event.target).value)" />
+            <input class="oe-input" type="text" [value]="form().gst" [disabled]="locked" (input)="set('gst', $any($event.target).value.replace(/[^A-Za-z0-9]/g, ''))" pattern="[A-Za-z0-9]*" />
           </label>
 
           <label class="oe-field oe-span4">
@@ -106,13 +115,12 @@
               <input class="oe-input" type="email" [value]="form().email" (input)="set('email', $any($event.target).value)" />
             </label>
             <div class="oe-field">
-              <span class="oe-label">Telephone</span>
+              <label class="oe-label" for="oe-phone">Telephone</label>
               <div class="oe-phone">
-                <select class="oe-input oe-select" aria-label="Country code" (change)="set('dial', $any($event.target).value)">
-                  <option value="" [selected]="!form().dial">Select</option>
-                  @for (o of withCurrent(dialCodes, 'dial'); track o) { <option [value]="o" [selected]="o === form().dial">{{ o }}</option> }
-                </select>
-                <input class="oe-input" type="tel" aria-label="Phone number" [value]="form().phone" (input)="set('phone', $any($event.target).value)" />
+                <cw-select inputId="oe-dial" placeholder="Code" [options]="dialOpts()" [value]="form().dial"
+                           (valueChange)="set('dial', $event)" />
+                <input id="oe-phone" class="oe-input" type="tel" aria-label="Phone number" [value]="form().phone"
+                       (input)="set('phone', $any($event.target).value.replace(/[^0-9]/g, ''))" pattern="[0-9]*" />
               </div>
             </div>
             <label class="oe-field">
@@ -130,27 +138,21 @@
         </div>
         <div class="oe-cb">
           <div class="oe-grid oe-grid--2">
-            <label class="oe-field oe-span2">
-              <span class="oe-label">Time zone</span>
-              <select class="oe-input oe-select" (change)="set('timezone', $any($event.target).value)">
-                <option value="" [selected]="!form().timezone">Select</option>
-                @for (o of withCurrent(timezones, 'timezone'); track o) { <option [value]="o" [selected]="o === form().timezone">{{ o }}</option> }
-              </select>
-            </label>
-            <label class="oe-field">
-              <span class="oe-label">Currency</span>
-              <select class="oe-input oe-select" (change)="set('currency', $any($event.target).value)">
-                <option value="" [selected]="!form().currency">Select</option>
-                @for (o of withCurrent(currencies, 'currency'); track o) { <option [value]="o" [selected]="o === form().currency">{{ o }}</option> }
-              </select>
-            </label>
-            <label class="oe-field">
-              <span class="oe-label">Language</span>
-              <select class="oe-input oe-select" (change)="set('language', $any($event.target).value)">
-                <option value="" [selected]="!form().language">Select</option>
-                @for (o of withCurrent(languages, 'language'); track o) { <option [value]="o" [selected]="o === form().language">{{ o }}</option> }
-              </select>
-            </label>
+            <div class="oe-field oe-span2">
+              <label class="oe-label" for="oe-tz">Time zone</label>
+              <cw-select inputId="oe-tz" placeholder="Select" [options]="timezoneOpts()" [value]="form().timezone"
+                         (valueChange)="set('timezone', $event)" />
+            </div>
+            <div class="oe-field">
+              <label class="oe-label" for="oe-currency">Currency</label>
+              <cw-select inputId="oe-currency" placeholder="Select" [options]="currencyOpts()" [value]="form().currency"
+                         (valueChange)="set('currency', $event)" />
+            </div>
+            <div class="oe-field">
+              <label class="oe-label" for="oe-language">Language</label>
+              <cw-select inputId="oe-language" placeholder="Select" [options]="languageOpts()" [value]="form().language"
+                         (valueChange)="set('language', $event)" />
+            </div>
           </div>
         </div>
       </section>
@@ -173,27 +175,23 @@
             <input class="oe-input" type="text" [value]="form().line2" (input)="set('line2', $any($event.target).value)" />
           </label>
 
-          <label class="oe-field">
-            <span class="oe-label">Country</span>
-            <select class="oe-input oe-select" (change)="set('country', $any($event.target).value)">
-              <option value="" [selected]="!form().country">Select</option>
-              @for (o of withCurrent(countries, 'country'); track o) { <option [value]="o" [selected]="o === form().country">{{ o }}</option> }
-            </select>
-          </label>
-          <label class="oe-field">
-            <span class="oe-label">State or province</span>
-            <select class="oe-input oe-select" (change)="set('state', $any($event.target).value)">
-              <option value="" [selected]="!form().state">Select</option>
-              @for (o of withCurrent(states, 'state'); track o) { <option [value]="o" [selected]="o === form().state">{{ o }}</option> }
-            </select>
-          </label>
-          <label class="oe-field">
-            <span class="oe-label">City</span>
-            <select class="oe-input oe-select" (change)="set('city', $any($event.target).value)">
-              <option value="" [selected]="!form().city">Select</option>
-              @for (o of withCurrent(cities, 'city'); track o) { <option [value]="o" [selected]="o === form().city">{{ o }}</option> }
-            </select>
-          </label>
+          <div class="oe-field">
+            <label class="oe-label" for="oe-country">Country</label>
+            <cw-select inputId="oe-country" placeholder="Select" [options]="countryOpts()" [value]="form().country"
+                       (valueChange)="set('country', $event)" />
+          </div>
+          <div class="oe-field">
+            <label class="oe-label" for="oe-state">State or province</label>
+            <cw-select inputId="oe-state" [placeholder]="form().country ? 'Select' : 'Choose a country first'"
+                       [options]="stateOpts()" [value]="form().state" [disabled]="!form().country"
+                       (valueChange)="set('state', $event)" />
+          </div>
+          <div class="oe-field">
+            <label class="oe-label" for="oe-city">City</label>
+            <cw-select inputId="oe-city" [placeholder]="form().state ? 'Select' : 'Choose a state first'"
+                       [options]="cityOpts()" [value]="form().city" [disabled]="!form().state"
+                       (valueChange)="set('city', $event)" />
+          </div>
           <label class="oe-field">
             <span class="oe-label">Postal code</span>
             <input class="oe-input" type="text" [value]="form().postcode" (input)="set('postcode', $any($event.target).value)" />
@@ -211,7 +209,7 @@
       <div class="oe-bar-actions">
         <button type="button" class="i-btn" (click)="cancel()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>Cancel</button>
-        <button type="button" class="i-btn i-btn--primary" [disabled]="!valid()" (click)="save()">
+        <button type="button" class="i-btn i-btn--primary" [disabled]="!valid() || saving()" (click)="save()">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>Save</button>
       </div>
     </div>

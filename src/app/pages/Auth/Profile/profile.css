@@ -21,6 +21,7 @@
   --pf-green: var(--status-success-ink);
   --pf-green-bg: var(--status-success-bg);
   --pf-amber: var(--status-warning-ink);
+  --pf-amber-bg: var(--status-warning-bg, color-mix(in srgb, var(--status-warning-ink, #b26a00) 12%, var(--white)));
 
   display: block;
   color: var(--pf-ink);
@@ -152,6 +153,11 @@
 .pf-chip.green {
   background: var(--pf-green-bg);
   color: var(--pf-green)
+}
+
+.pf-chip.amber {
+  background: var(--pf-amber-bg);
+  color: var(--pf-amber)
 }
 
 .pf-chip.primary {
@@ -608,7 +614,7 @@
 }
 
 /* last row of each column has no line */
-.pf-fields > .pf-field:nth-last-child(-n+2) {
+.pf-fields>.pf-field:nth-last-child(-n+2) {
   border-bottom: 0
 }
 
@@ -787,7 +793,7 @@
   text-align: center
 }
 
-.pf-table + .pf-footnote {
+.pf-table+.pf-footnote {
   border-top: 0
 }
 
@@ -971,7 +977,7 @@
   margin-top: 18px
 }
 
-.pf-rail-card > .pf-link {
+.pf-rail-card>.pf-link {
   margin-top: 12px
 }
 
@@ -998,6 +1004,47 @@
 
 .pf-rail-card h3.pf-rail-h {
   margin-top: 16px
+}
+
+/* "Access information" details panel (BUG-191) */
+.pf-info {
+  display: grid;
+  margin: 14px 0 0;
+  padding: 0
+}
+
+.pf-info>div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--pf-row-line);
+  font-size: calc(12px * var(--font-scale, 1))
+}
+
+.pf-info>div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0
+}
+
+.pf-info dt {
+  color: var(--pf-muted)
+}
+
+.pf-info dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--pf-heading);
+  font-weight: 550;
+  text-align: right;
+  overflow-wrap: anywhere
+}
+
+.pf-info dd.notset {
+  color: var(--pf-muted);
+  font-style: italic;
+  font-weight: 400
 }
 
 /* plain note under the rail cards */
@@ -1084,11 +1131,11 @@
     grid-template-columns: 1fr
   }
 
-  .pf-fields > .pf-field:nth-last-child(2) {
+  .pf-fields>.pf-field:nth-last-child(2) {
     border-bottom: 1px solid var(--pf-row-line)
   }
 
-  .pf-fields > .pf-field-blank {
+  .pf-fields>.pf-field-blank {
     display: none
   }
 
@@ -1119,8 +1166,8 @@
     flex-wrap: wrap
   }
 
-  .pf-sec > .pf-outline,
-  .pf-sec > .pf-chip {
+  .pf-sec>.pf-outline,
+  .pf-sec>.pf-chip {
     margin-left: 48px
   }
 
@@ -1130,47 +1177,192 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   :host *,
   :host *::before,
-  :host *::after { animation: none !important; transition: none !important }
+  :host *::after {
+    animation: none !important;
+    transition: none !important
+  }
 }
 
 /* ---------- inline card editing (replaces the edit popup) ---------- */
-.pf-dlg-f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.pf-dlg-f > span { color: var(--pf-muted); font-size: calc(11px * var(--font-scale, 1)); font-weight: 600; }
-.pf-dlg-f input, .pf-dlg-f select { height: 36px; padding: 0 10px; border: 1px solid var(--pf-line); border-radius: var(--btn-radius); background: var(--white); color: var(--pf-ink); font: inherit; min-width: 0; }
-.pf-dlg-f input.bad { border-color: var(--status-danger-ink, #b3261e); }
-.pf-dlg-f small { color: var(--status-danger-ink, #b3261e); font-size: calc(11px * var(--font-scale, 1)); }
-.pf-dlg-row { display: grid; grid-template-columns: 84px 1fr; gap: 10px; align-items: start; }
-.pf-dlg-wide { grid-column: 1 / -1; }
+.pf-dlg-f {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pf-dlg-f>span {
+  color: var(--pf-muted);
+  font-size: calc(11px * var(--font-scale, 1));
+  font-weight: 600;
+}
+
+.pf-dlg-f input,
+.pf-dlg-f select {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--pf-line);
+  border-radius: var(--btn-radius);
+  background: var(--white);
+  color: var(--pf-ink);
+  font: inherit;
+  min-width: 0;
+}
+
+.pf-dlg-f input.bad {
+  border-color: var(--status-danger-ink, #b3261e);
+}
+
+.pf-dlg-f small {
+  color: var(--status-danger-ink, #b3261e);
+  font-size: calc(11px * var(--font-scale, 1));
+}
+
+.pf-dlg-row {
+  display: grid;
+  grid-template-columns: 84px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.pf-dlg-wide {
+  grid-column: 1 / -1;
+}
+
 /* bar shown below the cards when a card (or all) is being edited inline */
-.pf-edit-bar { margin: 10px 16px 14px; padding: 10px 14px; border: 1px solid var(--pf-line); border-radius: var(--btn-radius); background: color-mix(in srgb, var(--pf-primary) 4%, var(--white)); display: flex; flex-direction: column; gap: 10px; }
-.pf-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-@media (max-width: 560px) { .pf-edit-bar { margin: 10px; padding: 10px 12px; } }
+.pf-edit-bar {
+  margin: 10px 16px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--pf-line);
+  border-radius: var(--btn-radius);
+  background: color-mix(in srgb, var(--pf-primary) 4%, var(--white));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
+.pf-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
 
-/* Append this to profile.css (replaces the earlier .pf-edit-foot / .pf-edit-btns rules). */
+@media (max-width: 560px) {
+  .pf-edit-bar {
+    margin: 10px;
+    padding: 10px 12px;
+  }
+}
 
 /* An edited row keeps the same label-left / value-right layout as the read-only rows. */
-.pf-field-edit { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.pf-field-edit .pf-field-label { flex: 0 0 auto; }
-.pf-ctl { flex: 1 1 0; min-width: 0; max-width: 340px; display: flex; flex-direction: column; gap: 4px; }
-.pf-ctl input, .pf-ctl select, .pf-ctl textarea {
-  width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit; color: inherit;
-  background: var(--surface, #fff); border: 1px solid var(--border, #d9dce3); border-radius: 8px;
+.pf-field-edit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
-.pf-ctl input, .pf-ctl select { height: 36px; }
-.pf-ctl textarea { resize: vertical; min-height: 60px; }
-.pf-ctl input:focus, .pf-ctl select:focus, .pf-ctl textarea:focus { outline: 2px solid var(--primary, #7a2e4d); outline-offset: 1px; }
-.pf-ctl .bad { border-color: #c0392b; }
-.pf-err { color: #c0392b; font-size: 12px; }
-.pf-phone { display: flex; gap: 8px; }
-.pf-phone .pf-code { flex: 0 0 76px; width: 76px; }
+
+.pf-field-edit .pf-field-label {
+  flex: 0 0 auto;
+}
+
+.pf-ctl {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pf-ctl input,
+.pf-ctl select,
+.pf-ctl textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  color: inherit;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #d9dce3);
+  border-radius: 8px;
+}
+
+.pf-ctl input,
+.pf-ctl select {
+  height: 36px;
+}
+
+.pf-ctl textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.pf-ctl input:focus,
+.pf-ctl select:focus,
+.pf-ctl textarea:focus {
+  outline: 2px solid var(--primary, #7a2e4d);
+  outline-offset: 1px;
+}
+
+.pf-ctl .bad {
+  border-color: #c0392b;
+}
+
+.pf-err {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+.pf-phone {
+  display: flex;
+  gap: 8px;
+}
+
+.pf-phone .pf-code {
+  flex: 0 0 76px;
+  width: 76px;
+}
 
 /* Reason for this change: full-width row, label above the box. */
-.pf-field-wide { grid-column: 1 / -1; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; }
-.pf-field-wide .pf-ctl { max-width: none; }
+.pf-field-wide {
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.pf-field-wide .pf-ctl {
+  max-width: none;
+}
 
 /* The pencil turns into a save icon while the card is being edited. */
-.pf-iconbtn-save { color: var(--primary, #7a2e4d); }
-.pf-iconbtn-save:disabled { opacity: .5; cursor: progress; }
+.pf-iconbtn-save {
+  color: var(--primary, #7a2e4d);
+}
+
+.pf-iconbtn-save:disabled {
+  opacity: .5;
+  cursor: progress;
+}
+
+/* ---------- cancel control while editing (BUG-189) ---------- */
+.pf-iconbtn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.pf-iconbtn:disabled:hover {
+  background: none;
+}
+
+/* Header Cancel sits before Save profile; both are disabled while a save is running. */
+.pf-hbtn:disabled {
+  opacity: .6;
+  cursor: progress;
+}

@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { IAM_ICONS } from '../../../Shared/IAM/iam-icons';
 import { OrgStore } from '../../../Shared/Organization/org.store';
@@ -10,6 +10,8 @@ import { apiErrorMessage, apiFieldErrors } from '../../../Shared/models/api-resp
 import { CountryLookup } from '../../../Shared/models/geo-lookup.model';
 import { MasterLookup } from '../../../Shared/models/global-master.model';
 import { OrganisationDetailResponse } from '../../../Shared/models/iam-contract.model';
+import { CwSelect, CwOption } from '../../../Shared/Campaign/cw-select';
+import { CwDatePicker } from '../../../Shared/Campaign/cw-date-picker';
 
 type FieldKey =
   | 'name' | 'legalName' | 'type' | 'established' | 'regNo' | 'taxId' | 'pan' | 'gst' | 'about'
@@ -34,14 +36,30 @@ const ICONS: Record<string, string> = {
   back: 'M19 12H5 M12 19l-7-7 7-7'
 };
 
-/** Organisation — edit page (Workspace Kit). Registered details are locked once the organisation is approved. */
+/** height a dropdown menu needs (search box + ~6 rows + padding) before it opens downwards */
+const MENU_ROOM = 340;
+
+/** today as yyyy-mm-dd in the user's local time (max for "Established on") */
+function localToday(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+/**
+ * Organisation — edit page (Workspace Kit). Registered details are locked once the organisation is approved.
+ * BUG-213: all dropdowns use the custom cw-select and the date uses cw-date-picker (no native select / date tags).
+ * Dropdowns near the bottom of the screen open upwards so the menu is never cut off.
+ */
 @Component({
   selector: 'app-iam-organisation-edit',
+  imports: [CwSelect, CwDatePicker],
   templateUrl: './organisation-edit.html',
   styleUrls: ['../../../Shared/IAM/iam-shared.css', './organisation-edit.css']
 })
 export class OrganisationEdit implements OnInit {
   private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly store = inject(OrgStore);
   private readonly api = inject(OrganisationApiService);
   private readonly geo = inject(GeoMasterService);
@@ -51,6 +69,7 @@ export class OrganisationEdit implements OnInit {
   /** profile page (the edit page lives at <profile>/edit) */
   static readonly PROFILE_PATH = '/app/administration/organisation/details';
 
+  readonly today = localToday();
   readonly saving = signal(false);
   private readonly detail = signal<OrganisationDetailResponse | null>(null);
   private readonly countryRows = signal<CountryLookup[]>([]);
@@ -92,6 +111,16 @@ export class OrganisationEdit implements OnInit {
     line1: '', line2: '', country: '', state: '', city: '', postcode: ''
   });
 
+  // ---- options for the custom dropdowns (rebuilt only when their list or value changes) ----
+  readonly typeOpts = computed(() => this.opts(this.types, 'type'));
+  readonly dialOpts = computed(() => this.opts(this.dialCodes, 'dial'));
+  readonly timezoneOpts = computed(() => this.opts(this.timezones, 'timezone'));
+  readonly currencyOpts = computed(() => this.opts(this.currencies, 'currency'));
+  readonly languageOpts = computed(() => this.opts(this.languages, 'language'));
+  readonly countryOpts = computed(() => this.opts(this.countries, 'country'));
+  readonly stateOpts = computed(() => this.opts(this.states, 'state'));
+  readonly cityOpts = computed(() => this.opts(this.cities, 'city'));
+
   ngOnInit(): void {
     this.geo.getCountries().subscribe((c) => { this.countryRows.set(c); this.loadStates(this.form().country, this.form().state); });
     this.geo.getTimeZoneOptions().subscribe((z) => this.tzRows.set(z.map((t) => t.ianaKey)));
@@ -102,6 +131,24 @@ export class OrganisationEdit implements OnInit {
       next: (d) => { this.detail.set(d); this.form.set(this.toForm(d)); this.loadStates(d.country ?? '', d.state ?? ''); },
       error: (e: unknown) => this.toast.error('Organisation not loaded', apiErrorMessage(e, 'The organisation could not be loaded.'))
     });
+  }
+
+  /**
+   * Before a dropdown opens (click or keyboard focus), decide its direction:
+   * when there is not enough room below the field and more room above, the field gets "oe-up"
+   * and the menu opens upwards (see organisation-edit.css).
+   */
+  @HostListener('pointerdown', ['$event'])
+  @HostListener('focusin', ['$event'])
+  protected placeMenu(ev: Event): void {
+    const target = ev.target as HTMLElement | null;
+    const select = target?.closest('cw-select') as HTMLElement | null;
+    if (!select || !this.host.nativeElement.contains(select)) return;
+    const field = (select.closest('.oe-field') as HTMLElement | null) ?? select;
+    const r = select.getBoundingClientRect();
+    const below = window.innerHeight - r.bottom;
+    const above = r.top;
+    field.classList.toggle('oe-up', below < MENU_ROOM && above > below);
   }
 
   private toForm(d: OrganisationDetailResponse): Form {
@@ -132,6 +179,7 @@ export class OrganisationEdit implements OnInit {
   readonly valid = computed(() => !!this.form().name.trim() && !!this.form().line1.trim());
 
   set(key: FieldKey, value: string): void {
+    value = value ?? '';
     this.form.update((f) => ({
       ...f,
       [key]: key === 'about' ? value.slice(0, this.maxAbout) : value,
@@ -145,9 +193,14 @@ export class OrganisationEdit implements OnInit {
   }
 
   /** option list that always contains the current value */
-  withCurrent(list: string[], key: FieldKey): string[] {
+  private withCurrent(list: string[], key: FieldKey): string[] {
     const cur = this.form()[key];
     return cur && !list.includes(cur) ? [cur, ...list] : list;
+  }
+
+  /** string list → options for cw-select, current value included */
+  private opts(list: string[], key: FieldKey): CwOption[] {
+    return this.withCurrent(list, key).map((v) => ({ value: v, label: v }));
   }
 
   icon(name: string): string {

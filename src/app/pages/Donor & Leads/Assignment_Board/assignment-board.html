@@ -4,28 +4,41 @@
      + Owners side card → assign / history popups.
      Phones: Export sits top-right beside the title as an icon button; the Leads / Donors switch moves to a
      full-width row under the header.
+     BUG-199: roles without assign permission (e.g. Donor care) get no Assign / Reassign / select controls,
+     and a role that cannot open the board sees a no-access state instead of an exception.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor &amp; Leads / Lead Work Queue"  heading="Assignment board" description="Give every lead and donor an owner, and see who is carrying how much.">
   <ng-container actions>
-    <div class="ab-hactions">
-      <!-- desktop: Leads / Donors switch in the header -->
-      <div class="fu-seg ab-types ab-types-head" role="tablist" aria-label="Record type">
-        <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
-        </button>
-        <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+    @if (!denied()) {
+      <div class="ab-hactions">
+        <!-- desktop: Leads / Donors switch in the header -->
+        <div class="fu-seg ab-types ab-types-head" role="tablist" aria-label="Record type">
+          <button type="button" role="tab" [class.is-on]="type() === 'lead'" [attr.aria-selected]="type() === 'lead'" (click)="setType('lead')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg> Leads <em>{{ typeCounts().lead }}</em>
+          </button>
+          <button type="button" role="tab" [class.is-on]="type() === 'donor'" [attr.aria-selected]="type() === 'donor'" (click)="setType('donor')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('donor')" /></svg> Donors <em>{{ typeCounts().donor }}</em>
+          </button>
+        </div>
+        <button type="button" class="fu-btn ab-export" aria-label="Export" title="Export" (click)="exportCsv()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
+          <span class="ab-btn-text">Export</span>
         </button>
       </div>
-      <button type="button" class="fu-btn ab-export" aria-label="Export" title="Export" (click)="exportCsv()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
-        <span class="ab-btn-text">Export</span>
-      </button>
-    </div>
+    }
   </ng-container>
 </app-page-header>
 
 <div class="ab">
+
+  @if (denied()) {
+    <!-- ===== no access (BUG-199) ===== -->
+    <section class="fu-card ab-empty" role="alert">
+      <b>You don't have access to the assignment board</b>
+      <span>Your role can't assign or reassign leads and donors. Ask a manager if a record needs a new owner.</span>
+      <button type="button" class="fu-btn" style="margin-top: 12px" (click)="goBack()">Go back</button>
+    </section>
+  } @else {
 
   <!-- phones: Leads / Donors switch as a full-width row under the header -->
   <div class="fu-seg ab-types ab-types-body" role="tablist" aria-label="Record type">
@@ -125,7 +138,7 @@
         </div>
       }
 
-      @if (selected().length) {
+      @if (canAssign() && selected().length) {
         <div class="ab-bulk">
           <span><b>{{ selected().length }}</b> selected</span>
           <button type="button" class="fu-btn sm is-primary" (click)="startAssign(selected())"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg> Assign</button>
@@ -135,11 +148,13 @@
 
           <table class="ab-table">
             <colgroup>
-              <col class="c-sel" /><col /><col class="c-camp" /><col class="c-own" /><col class="c-sla" /><col class="c-next" /><col class="c-act" />
+              @if (canAssign()) { <col class="c-sel" /> }<col /><col class="c-camp" /><col class="c-own" /><col class="c-sla" /><col class="c-next" /><col class="c-act" />
             </colgroup>
             <thead>
               <tr>
-                <th class="c-sel"><button type="button" class="ab-check" [class.is-on]="allOnPage()" (click)="togglePage()" aria-label="Select page">@if (allOnPage()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></th>
+                @if (canAssign()) {
+                  <th class="c-sel"><button type="button" class="ab-check" [class.is-on]="allOnPage()" (click)="togglePage()" aria-label="Select page">@if (allOnPage()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></th>
+                }
                 <th>Record</th>
                 <th class="c-camp">Campaign</th>
                 <th class="c-own">Owner</th>
@@ -151,7 +166,9 @@
             <tbody>
               @for (p of pageRows(); track p.code) {
                 <tr [class.is-sel]="isSel(p)">
-                  <td class="c-sel"><button type="button" class="ab-check" [class.is-on]="isSel(p)" (click)="toggleSel(p)" [attr.aria-label]="'Select ' + p.name">@if (isSel(p)) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></td>
+                  @if (canAssign()) {
+                    <td class="c-sel"><button type="button" class="ab-check" [class.is-on]="isSel(p)" (click)="toggleSel(p)" [attr.aria-label]="'Select ' + p.name">@if (isSel(p)) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</button></td>
+                  }
                   <td>
                     <div class="ab-rec">
                       <span class="fu-ava">{{ ini(p.name) }}</span>
@@ -167,14 +184,16 @@
                   <td class="c-next"><span class="ab-two"><span>{{ due(p) }}</span><small>{{ dueTime(p) }}</small></span></td>
                   <td class="c-act">
                     <div class="ab-acts">
-                      <button type="button" class="action-btn" (click)="startAssign([p.code])" [attr.aria-label]="'Assign ' + p.name" title="Assign"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg></button>
+                      @if (canAssign()) {
+                        <button type="button" class="action-btn" (click)="startAssign([p.code])" [attr.aria-label]="'Assign ' + p.name" title="Assign"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg></button>
+                      }
                       <button type="button" class="action-btn" (click)="showHistory(p)" [attr.aria-label]="'History of ' + p.name" title="History"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg></button>
                       <button type="button" class="action-btn" (click)="schedule(p)" [attr.aria-label]="'Schedule follow-up for ' + p.name" title="Schedule follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
                     </div>
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="7" class="ab-empty"><b>No records match</b><span>Try another tab or clear the filters.</span></td></tr>
+                <tr><td [attr.colspan]="canAssign() ? 7 : 6" class="ab-empty"><b>No records match</b><span>Try another tab or clear the filters.</span></td></tr>
               }
             </tbody>
           </table>
@@ -223,7 +242,6 @@
   </nav>
 </footer>
 
-
     </section>
 
     <!-- ===== owners ===== -->
@@ -253,8 +271,10 @@
     </aside>
   </div>
 
+  }
+
   <!-- ===== assign ===== -->
-  @if (dialog() === 'assign') {
+  @if (dialog() === 'assign' && canAssign()) {
     <div class="fu-overlay" (click)="closeDialog()">
       <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="ab-a-title" (click)="$event.stopPropagation()">
         <header class="fu-dlg-head">

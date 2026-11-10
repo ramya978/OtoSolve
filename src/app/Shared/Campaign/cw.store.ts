@@ -1,8 +1,9 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
-import { forkJoin, of } from 'rxjs';
+import { Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Subscription, forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { CampaignApiService } from '../../Service/campaign-api.service';
 import { AuthService } from '../Auth/auth.service';
+import { AuthTokenService } from '../services/auth-token.service';
 import { PaymentApiService } from '../../Service/payment-api.service';
 import { DonationListItem } from '../models/payment.model';
 import { fetchAllPages } from '../services/paging';
@@ -58,6 +59,7 @@ const minute = (iso: string | null | undefined): string => (iso ?? '').slice(0, 
 export class CampaignWorkspaceStore {
   private readonly api = inject(CampaignApiService);
   private readonly auth = inject(AuthService);
+  private readonly tokens = inject(AuthTokenService);
   private readonly payments = inject(PaymentApiService);
   private readonly directory = inject(PeopleDirectoryService);
 
@@ -102,10 +104,51 @@ export class CampaignWorkspaceStore {
   private readonly actorIds = new Map<string, (string | null)[]>();
   private readonly requesterIds = new Map<string, { ready: string | null; close: string | null }>();
 
+  /** The in-flight register load; a newer load cancels it so an older answer never overwrites a newer one. */
+  private loadSub?: Subscription;
+  /** The session (signed-in + Organisation) the current data was loaded for; null = nothing loaded yet. */
+  private loadedFor: string | null = null;
+
   constructor() {
-    this.load();
+    // Load for the current session, and again whenever the sign-in or the Organisation changes.
+    // The store is created once for the whole app - often before sign-in or before an Organisation
+    // is picked - so loading only in the constructor left the register empty until a page reload.
+    effect(() => {
+      const key = this.sessionKey();
+      untracked(() => {
+        if (key === this.loadedFor) return;
+        if (key) this.load();
+        else this.reset();
+      });
+    });
     // Names come from the people directory, which loads on its own clock: apply them again when it lands.
     effect(() => { this.directory.all(); this.applyNames(); });
+  }
+
+  /** '' when nobody is signed in, otherwise the Organisation the session operates in ('global' when none). */
+  private sessionKey(): string {
+    return this.tokens.user() ? (this.tokens.organisationCode() || 'global') : '';
+  }
+
+  /** Drops everything loaded for the previous session (sign-out), so another session never sees it. */
+  private reset(): void {
+    this.loadSub?.unsubscribe();
+    this.loadedFor = '';
+    this.ids.clear();
+    this.checkMeta.clear();
+    this.assetMeta.clear();
+    this.actorIds.clear();
+    this.requesterIds.clear();
+    this.people = [];
+    this.campaigns.set([]);
+    this.checks.set([]);
+    this.assets.set([]);
+    this.activity.set([]);
+    this.donationList.set([]);
+    this.reference.set(null);
+    this.selectedCode.set('');
+    this.loading.set(false);
+    this.loadError.set('');
   }
 
   /** Writes "who did it" onto the activity lines and the readiness / close requests, by name. */
@@ -126,9 +169,15 @@ export class CampaignWorkspaceStore {
 
   // ------------------------------------------------------------------ loading
   load(): void {
+    const key = untracked(() => this.sessionKey());
+    if (!key) { this.reset(); return; }
+    // A different Organisation than the data on screen: clear it first so the old org's rows never flash.
+    if (this.loadedFor && this.loadedFor !== key) this.reset();
+    this.loadedFor = key;
+    this.loadSub?.unsubscribe();
     this.loading.set(true);
     this.loadError.set('');
-    forkJoin({
+    this.loadSub = forkJoin({
       list: fetchAllPages((page, pageSize) => this.api.searchCampaigns({ page, pageSize })),
       assets: fetchAllPages((page, pageSize) => this.api.searchTrackingAssets({ page, pageSize })).pipe(catchError(() => of([] as TrackingAssetListItem[]))),
       reference: this.api.getReferenceData().pipe(catchError(() => of(null))),
@@ -153,6 +202,8 @@ export class CampaignWorkspaceStore {
       error: (e) => {
         this.loadError.set(apiErrorMessage(e, 'Campaigns could not be loaded.'));
         this.loading.set(false);
+        // Let the next page visit or session change try again instead of treating this session as loaded.
+        this.loadedFor = null;
       },
     });
   }
@@ -300,7 +351,7 @@ export class CampaignWorkspaceStore {
   }
 
   // ------------------------------------------------------------------ register actions
-  /** Re-reads the register after the wizard saved something. */
+  /** Re-reads the register (after the wizard saved something, or when the register page opens). */
   reload(): void { this.load(); }
 
   /** Duplicates a campaign as a new draft (code auto-suffixed until unique). */

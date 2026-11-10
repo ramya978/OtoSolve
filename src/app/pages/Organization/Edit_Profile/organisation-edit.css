@@ -5,6 +5,22 @@
   --oe-k: 1;
   --oe-fs: calc(var(--font-scale, 1) * var(--oe-k));
   display: block;
+
+  /* the custom cw-select / cw-date-picker read the Workspace Kit --w-* tokens; on this IAM page they
+     follow the IAM theme (BUG-213) */
+  --w-primary: var(--i-primary);
+  --w-primary-ink: var(--i-primary);
+  --w-primary-soft: var(--i-tint);
+  --w-primary-on: #fff;
+  --w-line: var(--i-line);
+  --w-field: var(--i-line);
+  --w-row: var(--i-line);
+  --w-card: #fff;
+  --w-soft: var(--i-tint);
+  --w-ink: var(--i-heading);
+  --w-heading: var(--i-heading);
+  --w-muted: var(--i-muted);
+  --w-radius: var(--i-radius);
 }
 
 .og-page {
@@ -78,8 +94,9 @@
   height: 100%;
 }
 
+/* visible so dropdown menus can open past the card edge */
 .oe-card {
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* card header */
@@ -247,17 +264,6 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--i-primary) 14%, transparent);
 }
 
-.oe-select {
-  padding-right: calc(38px * var(--oe-k));
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: calc(16px * var(--oe-k));
-}
-
 .oe-textarea {
   height: auto;
   min-height: calc(92px * var(--oe-k));
@@ -284,6 +290,73 @@
 .oe-textarea:disabled {
   border-bottom: 0;
   line-height: 1.6;
+}
+
+/* ---------- custom dropdowns + date picker (BUG-213) ----------
+   Same height, radius and text size as the other fields on this page. */
+.oe-field cw-select,
+.oe-field cw-date-picker {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.oe-field cw-date-picker {
+  --cw-dp-h: calc(42px * var(--oe-k));
+  --cw-dp-fs: calc(14px * var(--oe-fs));
+}
+
+.oe-field cw-select ::ng-deep button[aria-haspopup],
+.oe-field cw-select ::ng-deep [role="combobox"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: calc(42px * var(--oe-k)) !important;
+  min-height: 0 !important;
+  border-radius: 10px !important;
+  font-size: calc(14px * var(--oe-fs)) !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.oe-field cw-select ::ng-deep [role="option"],
+.oe-field cw-select ::ng-deep [role="listbox"] span {
+  font-size: calc(14px * var(--oe-fs)) !important;
+}
+
+/* menus at least as wide as their field; menu items wrap instead of widening the menu */
+.oe-field cw-select ::ng-deep *:has(> [role="listbox"]),
+.oe-field cw-select ::ng-deep [role="listbox"] {
+  box-sizing: border-box;
+  min-width: 100% !important;
+  max-width: calc(100cqw - 32px) !important;
+  z-index: 20;
+}
+
+.oe-field cw-select ::ng-deep [role="option"] {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+/* the list shows about 6 rows and scrolls inside the menu; never taller than ~40% of the screen */
+.oe-field cw-select ::ng-deep [role="listbox"] {
+  max-height: min(calc(250px * var(--oe-k)), 40vh) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+/* not enough room below the field (decided in placeMenu() in the .ts): the menu opens upwards */
+.oe-field.oe-up cw-select ::ng-deep *:has(> [role="listbox"]) {
+  top: auto !important;
+  bottom: calc(100% + 6px) !important;
+  margin-top: 0 !important;
+}
+
+/* the 96px country-code field gets a slightly wider menu */
+.oe-phone cw-select ::ng-deep *:has(> [role="listbox"]),
+.oe-phone cw-select ::ng-deep [role="listbox"] {
+  min-width: calc(140px * var(--oe-k)) !important;
 }
 
 /* action bar */

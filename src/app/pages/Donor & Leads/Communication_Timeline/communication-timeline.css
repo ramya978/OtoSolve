@@ -1,8 +1,11 @@
-/* COMMUNICATION TIMELINE - page header, profile card (identity + figures), timeline card with dated
+/* COMMUNICATION TIMELINE - page header, profile card (identity + stat cards), timeline card with dated
    rail entries, side cards, entry popup, attachment preview. Theme tokens only.
    Mobile fix UI-007: header shows Back · ⋯ More · Log communication as compact icon buttons beside the
    title; Schedule follow-up and Export move into the More menu.
-   TS-217: attachments open in a preview popup (fetched from the API with the caller's token). */
+   TS-217: attachments open in a preview popup (fetched from the API with the caller's token).
+   BUG-198 (TS-230): stat cards looked spacey - the four stats now sit inside the profile row between the
+   name and the owner, each only as wide as its content, split by hairlines. On narrower screens they
+   drop to their own row under the name; on phones they become a 2 × 2 grid. */
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
      sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
@@ -477,15 +480,15 @@
   display: flex;
   align-items: center;
   gap: calc(16px * var(--ctl-k));
-  padding: calc(20px * var(--ctl-k)) calc(24px * var(--ctl-k));
+  padding: calc(16px * var(--ctl-k)) calc(20px * var(--ctl-k));
 }
 
 .ct-avatar {
   display: grid;
   flex: none;
   place-items: center;
-  width: calc(56px * var(--ctl-k));
-  height: calc(56px * var(--ctl-k));
+  width: calc(52px * var(--ctl-k));
+  height: calc(52px * var(--ctl-k));
   border-radius: var(--ct-radius);
   background: var(--ct-primary-soft);
   color: var(--ct-primary);
@@ -556,11 +559,8 @@
   flex: none;
   align-items: center;
   gap: calc(12px * var(--ctl-k));
-  max-width: calc(300px * var(--ctl-k));
-  padding: calc(10px * var(--ctl-k)) calc(14px * var(--ctl-k));
-  border: 1px solid var(--ct-row);
-  border-radius: var(--ct-btn-radius);
-  background: var(--ct-soft);
+  max-width: calc(260px * var(--ctl-k));
+  padding: 2px 0 2px calc(18px * var(--ctl-k));
 }
 
 .ct-owner-ava {
@@ -570,8 +570,8 @@
   width: calc(34px * var(--ctl-k));
   height: calc(34px * var(--ctl-k));
   border-radius: 50%;
-  background: var(--ct-card);
-  color: var(--ct-heading);
+  background: var(--ct-primary-soft);
+  color: var(--ct-primary);
 }
 
 .ct-owner-ava svg {
@@ -597,51 +597,66 @@
   white-space: nowrap;
 }
 
+/* ================= stats inside the profile row (BUG-198) =================
+   Each stat is only as wide as its content and they sit between the name and the owner box,
+   so no cell is left half empty. Label on top, value with a short sub-text under it. */
 .ct-figs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--ct-row);
+  display: flex;
+  flex: none;
+  align-items: stretch;
+  margin: 0;
 }
 
 .ct-fig {
   display: grid;
-  align-content: start;
-  gap: 4px;
+  align-content: center;
+  gap: 2px;
   min-width: 0;
-  padding: calc(16px * var(--ctl-k)) calc(24px * var(--ctl-k));
+  padding: 2px calc(18px * var(--ctl-k));
 }
 
-.ct-fig+.ct-fig {
+.ct-fig,
+.ct-figs+.ct-owner {
   border-left: 1px solid var(--ct-row);
 }
 
-.ct-fig>b {
+.ct-fig dd {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  margin: 0;
+}
+
+.ct-fig dd>b {
   color: var(--ct-heading);
   font-size: calc(17px * var(--ctl-fs));
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.25;
+  white-space: nowrap;
 }
 
-.ct-fig>b small {
+.ct-fig dd>b small {
+  margin-left: 2px;
   color: var(--ct-muted);
   font-size: calc(12px * var(--ctl-fs));
   font-weight: 500;
 }
 
-.ct-fig>em {
+.ct-fig dd>span {
+  max-width: calc(150px * var(--ctl-k));
   overflow: hidden;
   color: var(--ct-muted);
   font-size: calc(12px * var(--ctl-fs));
-  font-style: normal;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ct-fig>em.ct-tone {
+.ct-fig dd>span.ct-tone {
   color: var(--t);
   font-weight: 600;
 }
 
+/* meter (Activity side card) */
 .ct-meter {
   display: block;
   height: 4px;
@@ -655,77 +670,6 @@
   height: 100%;
   border-radius: inherit;
   background: var(--t, var(--ct-primary));
-}
-
-.ct-weeks {
-  display: grid;
-  gap: 3px;
-  margin-top: 2px;
-}
-
-.ct-weeks ol {
-  position: relative;
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.ct-weeks ol::before {
-  position: absolute;
-  top: 50%;
-  right: calc(8px * var(--ctl-k));
-  left: calc(8px * var(--ctl-k));
-  height: 1px;
-  background: var(--ct-line);
-  content: '';
-}
-
-.ct-weeks li {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: calc(16px * var(--ctl-k));
-  height: calc(16px * var(--ctl-k));
-}
-
-.ct-weeks li i {
-  display: grid;
-  place-items: center;
-  width: calc(8px * var(--ctl-k));
-  height: calc(8px * var(--ctl-k));
-  box-sizing: border-box;
-  border: 1.5px solid var(--ct-line);
-  border-radius: 50%;
-  background: var(--ct-card);
-  color: var(--white, #fff);
-  font-size: calc(9px * var(--ctl-fs));
-  font-style: normal;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.ct-weeks li.has i {
-  width: calc(16px * var(--ctl-k));
-  height: calc(16px * var(--ctl-k));
-  border: 0;
-  background: var(--cc-btn, var(--ct-primary));
-}
-
-.ct-weeks li.is-now i {
-  box-shadow: 0 0 0 3px var(--ct-primary-soft);
-  border-color: var(--ct-primary);
-}
-
-.ct-weeks-axis {
-  display: flex;
-  justify-content: space-between;
-  color: var(--ct-muted);
-}
-
-.ct-weeks-axis small {
-  font-size: calc(10.5px * var(--ctl-fs));
 }
 
 /* ================= layout ================= */
@@ -1682,17 +1626,39 @@
 }
 
 /* ================= responsive ================= */
-@container ct (max-width: 1200px) {
-  .ct-figs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+/* not enough room for one row: stats move to their own row under the name, owner stays top-right */
+@container ct (max-width: 1280px) {
+  .ct-id {
+    flex-wrap: wrap;
+    row-gap: calc(14px * var(--ctl-k));
   }
 
-  .ct-fig:nth-child(3) {
+  .ct-id-txt {
+    flex: 1 1 0;
+  }
+
+  .ct-owner {
+    order: 2;
+  }
+
+  .ct-figs {
+    order: 3;
+    flex: 1 1 100%;
+    padding-top: calc(12px * var(--ctl-k));
+    border-top: 1px solid var(--ct-row);
+  }
+
+  .ct-fig:first-child {
+    padding-left: 0;
     border-left: 0;
   }
 
-  .ct-fig:nth-child(n + 3) {
-    border-top: 1px solid var(--ct-row);
+  .ct-figs+.ct-owner {
+    border-left: 0;
+  }
+
+  .ct-owner {
+    border-left: 1px solid var(--ct-row);
   }
 }
 
@@ -1717,9 +1683,17 @@
   }
 
   .ct-owner {
+    order: 1;
     width: 100%;
     max-width: none;
     box-sizing: border-box;
+    padding: 0;
+    border-left: 0;
+  }
+
+  .ct-figs {
+    flex-wrap: wrap;
+    row-gap: calc(10px * var(--ctl-k));
   }
 
   .ct-side {
@@ -1754,20 +1728,26 @@
   }
 
   .ct-id {
-    padding: calc(16px * var(--ctl-k));
+    padding: calc(14px * var(--ctl-k)) calc(16px * var(--ctl-k));
   }
 
+  /* phones: 2 × 2 stats */
   .ct-figs {
-    grid-template-columns: minmax(0, 1fr);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .ct-fig {
-    padding: calc(14px * var(--ctl-k)) calc(16px * var(--ctl-k));
-    border-left: 0 !important;
+    padding: 0 0 0 calc(12px * var(--ctl-k));
   }
 
-  .ct-fig+.ct-fig {
-    border-top: 1px solid var(--ct-row);
+  .ct-fig:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .ct-fig dd>span {
+    max-width: none;
   }
 
   .ct-main-head {

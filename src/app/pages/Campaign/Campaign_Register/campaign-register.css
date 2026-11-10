@@ -757,7 +757,8 @@
 .cr-table tbody tr.is-checked td:first-child {
   box-shadow: inset 3px 0 0 var(--tone, var(--cr-primary));
 }
-.cr-actions{
+
+.cr-actions {
   gap: 6px;
   display: flex;
 }
@@ -1025,12 +1026,14 @@
 }
 
 .cr-photo {
+  position: relative;
   display: grid;
   flex: none;
   place-items: center;
   width: calc(30px * var(--cr-k));
   height: calc(30px * var(--cr-k));
   margin-left: -9px;
+  overflow: hidden;
   border: 2px solid var(--cr-surface);
   border-radius: 50%;
   color: #fff;
@@ -1041,8 +1044,6 @@
   box-shadow: 0 1px 3px #10131c1f;
   transition: transform .15s ease;
 }
-
-.cr-photo { position: relative; overflow: hidden; }
 
 /* real profile photo over the initials fallback */
 .cr-photo img {
@@ -1103,8 +1104,6 @@ button.cr-owner {
   cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease;
 }
-
-
 
 button.cr-owner:focus-visible {
   outline: 2px solid var(--cr-primary-ink);
@@ -1260,12 +1259,6 @@ button.cr-owner:hover .cr-owner-more {
 }
 
 /* ---------- footer / pager ---------- */
-
-/* ---------- footer / pager ---------- */
-
-/* ---------- footer / pager ---------- */
-
-/* ---------- footer / pager ---------- */
 .cr-foot {
   display: flex;
   align-items: center;
@@ -1379,7 +1372,7 @@ button.cr-owner:hover .cr-owner-more {
 .cr-overlay {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 111111111;
   display: grid;
   place-items: center;
   padding: calc(20px * var(--cr-k));
@@ -1467,7 +1460,6 @@ button.cr-owner:hover .cr-owner-more {
   font-weight: 550;
 }
 
-
 .cr-tile-lg {
   width: 44px;
   height: calc(44px * var(--cr-k));
@@ -1510,6 +1502,104 @@ button.cr-owner:hover .cr-owner-more {
 @keyframes cr-fade {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ---------- confirmation popup (Edit / Delete / Approve / Activate - BUG-210) ----------
+   Same surface as the other dialogs; Delete gets the danger tone on the icon and the confirm button. */
+.cr-confirm {
+  max-width: 440px;
+}
+
+.cr-confirm-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: calc(14px * var(--cr-k));
+  padding: calc(22px * var(--cr-k)) calc(22px * var(--cr-k)) calc(18px * var(--cr-k));
+}
+
+.cr-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: calc(40px * var(--cr-k));
+  height: calc(40px * var(--cr-k));
+  border-radius: 12px;
+  background: var(--cr-primary-soft);
+  color: var(--cr-primary-ink);
+}
+
+.cr-confirm.is-danger .cr-confirm-icon {
+  background: var(--status-danger-bg, color-mix(in srgb, var(--cr-danger) 12%, var(--white)));
+  color: var(--status-danger-ink, var(--cr-danger));
+}
+
+.cr-confirm h2 {
+  color: var(--cr-heading);
+  font-family: var(--cr-heading-font);
+  font-size: calc(17px * var(--cr-fs));
+  font-weight: 650;
+  letter-spacing: -.2px;
+  line-height: 1.3;
+}
+
+.cr-confirm p {
+  margin: calc(6px * var(--cr-k)) 0 0;
+  color: var(--cr-muted);
+  font-size: calc(13.5px * var(--cr-fs));
+  line-height: 1.55;
+}
+
+.cr-confirm-name {
+  color: var(--cr-heading);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cr-confirm-code {
+  font-variant-numeric: tabular-nums;
+}
+
+.cr-confirm-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: calc(10px * var(--cr-k));
+  padding: calc(12px * var(--cr-k)) calc(22px * var(--cr-k)) calc(16px * var(--cr-k));
+  border-top: 1px solid var(--cr-line);
+  background: var(--cr-field-bg);
+}
+
+.cr-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--cr-danger);
+  border-radius: var(--btn-radius, 8px);
+  background: var(--cr-danger);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+
+.cr-btn-danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--cr-danger) 85%, #000);
+  background: color-mix(in srgb, var(--cr-danger) 85%, #000);
+}
+
+.cr-btn-danger:focus-visible {
+  outline: 2px solid var(--cr-danger);
+  outline-offset: 2px;
+}
+
+.cr-confirm-foot button:disabled {
+  opacity: .6;
+  cursor: progress;
+}
+
+@media (max-width: 480px) {
+  .cr-confirm-foot { flex-direction: column-reverse; }
+  .cr-confirm-foot button { width: 100%; justify-content: center; }
 }
 
 /* ---------- empty state ----------
@@ -1640,8 +1730,6 @@ html[data-motion="reduce"] .cr-overlay {
   .cr-camp-meta { display: inline-flex; }
 
   .cr-c-actions { width: 120px; }
-
-  /* .cr-actions { gap: 0; } */
 
   .cr-act { width: 26px; height: calc(26px * var(--cr-k)); }
 

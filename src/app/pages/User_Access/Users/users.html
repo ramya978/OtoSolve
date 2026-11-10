@@ -464,12 +464,12 @@
 
         <section class="i-detail-sec">
           <h3>Access</h3>
-          <div class="i-field">
-            <span class="i-field-label">Primary role <em>*</em></span>
-            <iam-select [options]="roleChoice" [value]="draft().role" placeholder="Choose a role" [invalid]="tried() && !draft().role"
-                        (valueChange)="patch('role', $event)" />
-            <span class="i-help">The primary role decides what they can see and do.</span>
-          </div>
+          <!-- BUG-209: the primary role is read-only here (the update call never sends it) -->
+          <label class="i-field">
+            <span class="i-field-label">Primary role</span>
+            <input class="i-input" [value]="draft().role ? roleName(draft().role) : '—'" disabled aria-readonly="true" />
+            <span class="i-help">The primary role decides what they can see and do. It can't be changed here.</span>
+          </label>
         </section>
 
         <section class="i-detail-sec">

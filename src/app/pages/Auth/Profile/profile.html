@@ -74,30 +74,50 @@
   </div>
 </ng-template>
 
-<!-- ============================ page header ============================ -->
-
-
-<app-page-header breadcrumb="Account workspace"  heading="My profile" description="Your identity, organisation context and account access in one place.">
-  <ng-container actions>
-<header class="pf-pagehead">
- 
-  <div class="pf-head-actions">
-    @if (canEdit) {
-      @if (editingCard() === 'all') {
-        <button type="button" class="pf-hbtn btn-primary" [disabled]="saving()" (click)="saveEdit()">
-          <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'save' }" />
-          {{ saving() ? 'Saving…' : 'Save profile' }}
-        </button>
-      } @else {
-        <button type="button" class="pf-hbtn btn-primary" (click)="startEdit('all')">
-          <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'edit' }" />
-          Edit profile
-        </button>
-      }
+<!-- card head action: pencil in view mode, save icon while editing (cancel lives in the page header and on Esc).
+     `card` is the card's EditCard id, `label` its accessible name. -->
+<ng-template #cardEditActions let-card let-label="label">
+  @if (canEdit) {
+    @if (isCardEditable(card)) {
+      <button type="button" class="pf-iconbtn pf-iconbtn-save" [attr.aria-label]="'Save ' + label"
+              title="Save changes" [disabled]="saving()" (click)="saveEdit()">
+        <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'save' }" />
+      </button>
+    } @else {
+      <button type="button" class="pf-iconbtn" [attr.aria-label]="'Edit ' + label" (click)="startEdit(card)">
+        <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'pencil' }" />
+      </button>
     }
-  </div>
-</header>
-</ng-container>
+  }
+</ng-template>
+
+<!-- ============================ page header ============================ -->
+<app-page-header breadcrumb="Account workspace" heading="My profile" description="Your identity, organisation context and account access in one place.">
+  <ng-container actions>
+    <header class="pf-pagehead">
+      <div class="pf-head-actions">
+        @if (canEdit) {
+          @if (editingCard()) {
+            <button type="button" class="pf-hbtn btn-secondary" [disabled]="saving()" (click)="cancelEdit()">
+              <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'close' }" />
+              Cancel
+            </button>
+          }
+          @if (editingCard() === 'all') {
+            <button type="button" class="pf-hbtn btn-primary" [disabled]="saving()" (click)="saveEdit()">
+              <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'save' }" />
+              {{ saving() ? 'Saving…' : 'Save profile' }}
+            </button>
+          } @else if (!editingCard()) {
+            <button type="button" class="pf-hbtn btn-primary" (click)="startEdit('all')">
+              <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'edit' }" />
+              Edit profile
+            </button>
+          }
+        }
+      </div>
+    </header>
+  </ng-container>
 </app-page-header>
 
 <!-- ============================ identity hero ============================ -->
@@ -176,17 +196,7 @@
               <h3>Identity &amp; contact</h3>
               <p>Keep personal details clear and separate from sign-in credentials.</p>
             </div>
-            @if (canEdit) {
-              @if (isCardEditable('identity')) {
-                <button type="button" class="pf-iconbtn pf-iconbtn-save" aria-label="Save identity and contact" title="Save changes" [disabled]="saving()" (click)="saveEdit()">
-                  <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'save' }" />
-                </button>
-              } @else {
-                <button type="button" class="pf-iconbtn" aria-label="Edit identity and contact" (click)="startEdit('identity')">
-                  <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'pencil' }" />
-                </button>
-              }
-            }
+            <ng-container *ngTemplateOutlet="cardEditActions; context: { $implicit: 'identity', label: 'identity and contact' }" />
           </header>
           <div class="pf-fields">
             @for (p of pairs(identityLeft, identityRight); track $index) {
@@ -203,17 +213,7 @@
               <h3>Organisation &amp; reporting</h3>
               <p>Place this account in the right unit, department and reporting line.</p>
             </div>
-            @if (canEdit) {
-              @if (isCardEditable('organisation')) {
-                <button type="button" class="pf-iconbtn pf-iconbtn-save" aria-label="Save organisation and reporting" title="Save changes" [disabled]="saving()" (click)="saveEdit()">
-                  <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'save' }" />
-                </button>
-              } @else {
-                <button type="button" class="pf-iconbtn" aria-label="Edit organisation and reporting" (click)="startEdit('organisation')">
-                  <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'pencil' }" />
-                </button>
-              }
-            }
+            <ng-container *ngTemplateOutlet="cardEditActions; context: { $implicit: 'organisation', label: 'organisation and reporting' }" />
           </header>
           <div class="pf-fields">
             @for (p of pairs(orgLeft, orgRight); track $index) {
@@ -403,9 +403,17 @@
           <span class="pf-rail-label">Current organisation</span>
           <h3 class="pf-rail-big">{{ profile.organisation }}</h3>
           <p class="pf-rail-text">This is the profile's sample organisation. Switching header context does not edit this assignment.</p>
-          <button type="button" class="pf-outline">
-            <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'help' }" /> Access information
-          </button>
+       
+          @if (accessInfoOpen()) {
+            <dl class="pf-info" id="pf-access-info">
+              @for (i of accessInfo(); track i.label) {
+                <div>
+                  <dt>{{ i.label }}</dt>
+                  <dd [class.notset]="i.muted">{{ i.value }}</dd>
+                </div>
+              }
+            </dl>
+          }
         </section>
 
         <div class="pf-note">
@@ -433,7 +441,7 @@
   </aside>
 </div><!-- /.pf-body -->
 
-<!-- security / session row -->
+<!-- security / session row: right side shows an action button or a status chip -->
 <ng-template #secRow let-r>
   <div class="pf-sec">
     <span class="pf-tile"><ng-container *ngTemplateOutlet="ico; context: { $implicit: r.icon }" /></span>
@@ -443,12 +451,10 @@
       @if (r.extra) { <small>{{ r.extra }}</small> }
     </div>
     @if (r.action) {
-      <button type="button" class="pf-outline sm">
-        {{ r.action }}
-        @if (r.action !== 'View revoke flow') { <ng-container *ngTemplateOutlet="ico; context: { $implicit: 'arrow' }" /> }
-      </button>
+      <button type="button" class="pf-outline sm">{{ r.action }}</button>
     } @else if (r.chip) {
-      <span class="pf-chip" [class.primary]="r.chipTone === 'primary'">{{ r.chip }}</span>
+      <span class="pf-chip" [class.primary]="r.chipTone === 'primary'" [class.green]="r.chipTone === 'green'"
+            [class.amber]="r.chipTone === 'amber'">{{ r.chip }}</span>
     }
   </div>
 </ng-template>

@@ -1,54 +1,172 @@
+<!--
+  Second factor at sign-in - same layout as the reference screen:
+  method badge → heading → instruction → six code boxes → countdown → trust device → Verify
+  → "Having trouble?" (recovery code, other methods, cancel).
+  Everything that differs between an authenticator app and an e-mailed code follows isAuthenticatorApp().
+-->
 <app-auth-frame>
   <h1 class="lg-title">Verify it's you</h1>
-  <p class="lg-sub">
-    @if (infoMessage()) { {{ infoMessage() }} }
-    @else if (isAuthenticatorApp()) { Enter the 6-digit code from your authenticator app. }
-    @else { Enter the 6-digit code we sent you{{ challenge()?.maskedDestination ? ' (' + challenge()?.maskedDestination + ')' : '' }}. }
-  </p>
 
-  @if (errorMessage()) { <p class="field-error" role="alert">{{ errorMessage() }}</p> }
-
-  @if (mode() === 'code') {
-    <form (submit)="verify($event)" novalidate>
-      <div class="lg-field">
-        <input class="lg-input" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
-               placeholder="6-digit code" aria-label="Verification code" [value]="code()" (input)="onCode($event)">
+  <div class="mfa">
+    <!-- ===== Header ===== -->
+    <div class="mfa-head">
+      <div class="mfa-icon" [class.is-app]="isAuthenticatorApp()" aria-hidden="true">
+        @if (isAuthenticatorApp()) {
+          <!-- phone -->
+          <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><path d="M10.5 18h3" /></svg>
+        } @else {
+          <!-- mail + lock -->
+          <svg viewBox="0 0 24 24"><path d="M20 11V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h7" /><path d="m3 7 8.5 6L20 7" /><rect x="15" y="15" width="7" height="6" rx="1.2" /><path d="M16.5 15v-1.5a2 2 0 0 1 4 0V15" /></svg>
+        }
       </div>
-      <p class="lg-foot">
-        @if (expired()) { This code has expired. Start again from the sign-in screen. }
-        @else { Expires in {{ countdownLabel() }} · {{ attemptsLabel() }} }
-      </p>
-      <button type="submit" class="lg-submit" [disabled]="!canSubmitCode() || expired()">
-        @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Verifying… } @else { Verify }
-      </button>
-    </form>
 
-    <div class="lg-forgot-row">
-      @if (!isAuthenticatorApp()) {
-        <button type="button" class="lg-forgot" [disabled]="resending()" (click)="resend()">{{ resending() ? 'Sending…' : 'Resend code' }}</button>
-      }
-      @if (recoveryAvailable()) {
-        <button type="button" class="lg-forgot" (click)="setMode('recovery')">Use a recovery code</button>
+      <h2 class="mfa-h">Two-step verification</h2>
+
+      @if (mode() === 'code') {
+        <p class="mfa-sub">{{ subtitle() }}</p>
+        @if (!isAuthenticatorApp() && challenge()?.maskedDestination) {
+          <p class="mfa-dest">{{ challenge()?.maskedDestination }}</p>
+        }
+      } @else {
+        <p class="mfa-sub">Enter one of the recovery codes you saved when you set up your account. Each code can be used once.</p>
       }
     </div>
-    @for (m of alternatives(); track $index) {
-      <div class="lg-forgot-row">
-        <button type="button" class="lg-forgot" (click)="switchMethod(m.id)">Use {{ m.label || methodLabel(m.methodType) }}</button>
+
+    <!-- ===== Messages ===== -->
+    @if (errorMessage()) {
+      <div class="mfa-alert is-danger" role="alert" aria-live="assertive">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>
+        <div>
+          <div>{{ errorMessage() }}</div>
+          @if (attemptsLeft() > 0) { <small>{{ attemptsLeft() }} attempt(s) remaining.</small> }
+        </div>
       </div>
     }
-  } @else {
-    <form (submit)="useRecovery($event)" novalidate>
-      <div class="lg-field">
-        <input class="lg-input" type="text" name="recovery" autocomplete="off" placeholder="Recovery code"
-               aria-label="Recovery code" [value]="recoveryCode()" (input)="onRecovery($event)">
-      </div>
-      <p class="lg-foot">Each recovery code works once.</p>
-      <button type="submit" class="lg-submit" [disabled]="!canSubmitRecovery()">
-        @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Checking… } @else { Use recovery code }
-      </button>
-    </form>
-    <div class="lg-forgot-row"><button type="button" class="lg-forgot" (click)="setMode('code')">Back to code entry</button></div>
-  }
 
-  <p class="lg-foot"><button type="button" class="lg-forgot" (click)="cancel()">Cancel and return to sign in</button></p>
+    @if (expired()) {
+      <div class="mfa-alert is-warn" role="alert">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+        <span>This sign-in has expired. Return to the sign-in screen and start again.</span>
+      </div>
+    }
+
+    <!-- ===== Code entry ===== -->
+    @if (mode() === 'code') {
+      <form (submit)="verify($event)" novalidate>
+        <label class="mfa-label" for="mfa-digit-0">Verification code</label>
+
+        <!-- Six boxes: shows the expected length at a glance; paste and backspace behave as expected. -->
+        <div class="otp-row" (paste)="onPaste($event)">
+          @for (digit of digits(); track $index) {
+            <input
+              [id]="'mfa-digit-' + $index"
+              type="text"
+              inputmode="numeric"
+              [attr.autocomplete]="$index === 0 ? 'one-time-code' : 'off'"
+              maxlength="1"
+              class="otp-box"
+              [class.has-value]="!!digit"
+              [value]="digit"
+              [attr.aria-label]="'Digit ' + ($index + 1) + ' of 6'"
+              [disabled]="submitting() || expired()"
+              (input)="onDigitInput($index, $event)"
+              (keydown)="onDigitKeydown($index, $event)"
+              (focus)="selectBox($event)">
+          }
+        </div>
+
+        <!-- The countdown means different things for the two methods, so it says so. -->
+        @if (hasExpiry() && !expired()) {
+          <p class="mfa-note">
+            @if (isAuthenticatorApp()) {
+              This sign-in expires in <b>{{ countdownLabel() }}</b>. Your app shows a new code every 30 seconds.
+            } @else {
+              The code expires in <b>{{ countdownLabel() }}</b>.
+            }
+          </p>
+        } @else if (!hasExpiry() && isAuthenticatorApp()) {
+          <p class="mfa-note">Your app shows a new code every 30 seconds.</p>
+        }
+
+        @if (!stepUp()) {
+          <label class="mfa-check">
+            <input type="checkbox" [checked]="rememberDevice()" (change)="onRemember($event)">
+            <span>Trust this device for 30 days</span>
+          </label>
+        }
+
+        @if (expired()) {
+          <button type="button" class="lg-submit" (click)="cancel()">Start again</button>
+        } @else {
+          <button type="submit" class="lg-submit" [disabled]="!canSubmitCode()">
+            @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Verifying… } @else { Verify and sign in }
+          </button>
+        }
+
+        <!-- Resend only exists when something was actually sent. -->
+        @if (canResend() && !expired()) {
+          <button type="button" class="mfa-link" [disabled]="resending()" (click)="resend()">
+            {{ resending() ? 'Sending…' : 'Send the code again' }}
+          </button>
+        }
+      </form>
+    }
+
+    <!-- ===== Recovery code entry ===== -->
+    @if (mode() === 'recovery') {
+      <form (submit)="useRecovery($event)" novalidate>
+        <label class="mfa-label is-left" for="recoveryCode">Recovery code</label>
+        <input
+          id="recoveryCode"
+          type="text"
+          class="lg-input recovery-input"
+          placeholder="XXXXX-XXXXX"
+          autocomplete="off"
+          spellcheck="false"
+          [value]="recoveryCode()"
+          (input)="onRecovery($event)"
+          [disabled]="submitting()">
+
+        <p class="mfa-note is-left">
+          Using a code consumes it permanently. Generate a fresh set from <b>My Security</b> once you are signed in.
+        </p>
+
+        <button type="submit" class="lg-submit" [disabled]="!canSubmitRecovery()">
+          @if (submitting()) { <span class="lg-spinner" aria-hidden="true"></span> Checking… } @else { Use recovery code }
+        </button>
+      </form>
+    }
+
+    <!-- ===== Other ways in ===== -->
+    <div class="mfa-trouble">
+      <p class="mfa-trouble-h">Having trouble?</p>
+
+      <div class="mfa-alt">
+        @if (mode() === 'code' && recoveryAvailable()) {
+          <button type="button" class="mfa-btn-outline" (click)="setMode('recovery')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9M17 6l3 3M15 8l2 2" /></svg>
+            Use a recovery code instead
+          </button>
+        }
+
+        @if (mode() === 'recovery') {
+          <button type="button" class="mfa-btn-outline" (click)="setMode('code')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" /></svg>
+            Back to the verification code
+          </button>
+        }
+
+        <!-- Only shown when the account really has another enrolled method. -->
+        @for (method of alternatives(); track $index) {
+          <button type="button" class="mfa-btn-outline" [disabled]="submitting()" (click)="switchMethod(method.id)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h12l-3-3M17 17H5l3 3" /></svg>
+            Use {{ method.label || methodLabel(method.methodType) }}
+            @if (method.maskedDestination) { <span class="mfa-muted">({{ method.maskedDestination }})</span> }
+          </button>
+        }
+
+        <button type="button" class="mfa-link is-danger" (click)="cancel()">Cancel and return to sign in</button>
+      </div>
+    </div>
+  </div>
 </app-auth-frame>

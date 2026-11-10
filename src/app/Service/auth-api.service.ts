@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, tap } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -415,6 +415,19 @@ export class AuthApiService {
     return this.http
       .post<ApiResponse<ReauthenticateResponse>>(
         `${this.usersUrl}/session-timeout-and-reauthentication`, payload)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * The second-factor check right after a sign-in that did not issue a challenge (the server said
+   * `succeeded`, but the user has MFA enabled). The session is not stored yet - the dashboard must
+   * stay shut until the code is right - so the access token from that sign-in is sent explicitly.
+   */
+  reauthenticateWithToken(accessToken: string, payload: ReauthenticateRequest): Observable<ReauthenticateResponse> {
+    return this.http
+      .post<ApiResponse<ReauthenticateResponse>>(
+        `${this.usersUrl}/session-timeout-and-reauthentication`, payload,
+        { headers: new HttpHeaders({ Authorization: `Bearer ${accessToken}` }) })
       .pipe(map((response) => response.data!));
   }
 }

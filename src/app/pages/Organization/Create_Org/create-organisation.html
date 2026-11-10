@@ -164,23 +164,26 @@
                   <div class="oc-field">
                     <label for="oc-tz">Time zone</label>
                     <select id="oc-tz" class="oc-input" (change)="set('timezone', $any($event.target).value)">
+                      <option value="" [selected]="!f().timezone">Not set</option>
                       @for (t of timezones; track t.value) { <option [value]="t.value" [selected]="f().timezone === t.value">{{ t.label }}</option> }
                     </select>
                   </div>
                   <div class="oc-field">
                     <label for="oc-cur">Currency</label>
                     <select id="oc-cur" class="oc-input" (change)="set('currency', $any($event.target).value)">
+                      <option value="" [selected]="!f().currency">Not set</option>
                       @for (c of currencies; track c.value) { <option [value]="c.value" [selected]="f().currency === c.value">{{ c.label }}</option> }
                     </select>
                   </div>
                   <div class="oc-field">
                     <label for="oc-lang">Language</label>
                     <select id="oc-lang" class="oc-input" (change)="set('language', $any($event.target).value)">
+                      <option value="" [selected]="!f().language">Not set</option>
                       @for (l of languages; track l.value) { <option [value]="l.value" [selected]="f().language === l.value">{{ l.label }}</option> }
                     </select>
                   </div>
                 </div>
-                <small class="oc-hint">Applied platform-wide until the organisation changes them.</small>
+                <small class="oc-hint">Optional. Applied platform-wide until the organisation changes them.</small>
               </div>
 
               <div class="oc-group">

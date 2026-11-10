@@ -248,8 +248,9 @@ export class FollowUps implements OnDestroy {
       s === 'priority' ? PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.dueAt.localeCompare(b.dueAt) :
       b.dueAt.localeCompare(a.dueAt));
   });
+  /** The week-strip day counts as a filter too, so the "N filters" note shows it is on. */
   protected readonly filterCount = computed(() =>
-    this.fStatus().length + this.fChannel().length + this.fPriority().length + (this.fOwner() ? 1 : 0) + (this.fCampaign() ? 1 : 0) + (this.fFrom() || this.fTo() ? 1 : 0));
+    this.fStatus().length + this.fChannel().length + this.fPriority().length + (this.fOwner() ? 1 : 0) + (this.fCampaign() ? 1 : 0) + (this.fFrom() || this.fTo() ? 1 : 0) + (this.fDay() ? 1 : 0));
 
 
   protected readonly allOnPage = computed(() => this.pageRows().length > 0 && this.pageRows().every((f) => this.selected().includes(f.id)));
@@ -275,8 +276,12 @@ export class FollowUps implements OnDestroy {
     const s = this.weekStart(), e = addDays(s, 6);
     return { month: `${MONTHS_LONG[s.getMonth()]} ${s.getFullYear()}`, range: `${s.getDate()} ${MONTHS[s.getMonth()]} – ${e.getDate()} ${MONTHS[e.getMonth()]}` };
   });
+  /** True when the week strip is showing today's follow-ups (drives the Today button's pressed state). */
+  protected readonly onToday = computed(() => this.fDay() === this.todayIso());
 
   /* ---------- board ---------- */
+  /** Phone layout only: which of the four board columns is showing (the tabs above the board). */
+  protected readonly boardCol = signal<string>('today');
   protected readonly board = computed(() => {
     const list = this.filtered();
     return [
@@ -451,7 +456,27 @@ export class FollowUps implements OnDestroy {
   /* ---------- week strip ---------- */
   private mondayOf(d: Date): Date { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return addDays(x, -((x.getDay() + 6) % 7)); }
   moveWeek(step: number): void { this.weekStart.set(addDays(this.weekStart(), step * 7)); }
-  thisWeek(): void { this.weekStart.set(this.mondayOf(this.now())); this.fDay.set(null); }
+  /** Calendar view "This week": back to the current week, whole week shown. */
+  thisWeek(): void {
+    this.now.set(new Date());
+    this.weekStart.set(this.mondayOf(this.now()));
+    this.fDay.set(null);
+    this.page.set(1);
+  }
+  /**
+   * Week strip "Today" (BUG-200): jump to the current week AND select today, so the list shows
+   * today's follow-ups. Before, it only reset the week, which did nothing visible when you were
+   * already on this week. The clock is refreshed too, so a tab left open past midnight lands on
+   * the real today.
+   */
+  goToday(): void {
+    this.now.set(new Date());
+    this.weekStart.set(this.mondayOf(this.now()));
+    this.fDay.set(this.todayIso());
+    this.page.set(1);
+    this.selected.set([]);
+    this.menu.set(null);
+  }
   pickDay(iso: string): void { this.fDay.set(this.fDay() === iso ? null : iso); this.page.set(1); }
 
   /* ---------- calendar (week planner) ---------- */

@@ -20,6 +20,8 @@ export interface AuthUser {
   role: string;
   initials: string;
   org: string;
+  /** The Organisation's default currency (ISO code, e.g. "INR"), or '' when not known. */
+  currency: string;
 }
 
 const initialsOf = (name: string): string =>
@@ -52,7 +54,8 @@ export class AuthService {
       email: identity.email ?? '',
       role: roleLabel(this.tokens.roles()[0] ?? ''),
       initials: initialsOf(name),
-      org: this.tokens.organisationName() || 'Platform'
+      org: this.tokens.organisationName() || 'Platform',
+      currency: this.tokens.organisationCurrency()
     };
   });
 

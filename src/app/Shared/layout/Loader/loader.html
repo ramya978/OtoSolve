@@ -1,17 +1,29 @@
 ﻿@if (fullPage()) {
   <div class="ld-backdrop" role="status" aria-live="polite">
     <div class="ld-wrap">
-      <div class="ld-spinner ld-{{ size() }}" aria-hidden="true"></div>
+      <div class="ld-arcs ld-{{ size() }}" aria-hidden="true">
+        <span class="ld-arc ld-arc-1"></span>
+        <span class="ld-arc ld-arc-2"></span>
+        <span class="ld-arc ld-arc-3"></span>
+      </div>
       @if (message()) {
         <p class="ld-message">{{ message() }}</p>
+      } @else {
+        <span class="ld-sr">Loading</span>
       }
     </div>
   </div>
 } @else {
-  <div class="ld-inline" role="status" aria-live="polite">
-    <div class="ld-spinner ld-{{ size() }}" aria-hidden="true"></div>
+  <div class="ld-inline ld-{{ size() }}" role="status" aria-live="polite">
+    <div class="ld-arcs ld-{{ size() }}" aria-hidden="true">
+      <span class="ld-arc ld-arc-1"></span>
+      <span class="ld-arc ld-arc-2"></span>
+      <span class="ld-arc ld-arc-3"></span>
+    </div>
     @if (message()) {
       <p class="ld-message">{{ message() }}</p>
+    } @else {
+      <span class="ld-sr">Loading</span>
     }
   </div>
 }

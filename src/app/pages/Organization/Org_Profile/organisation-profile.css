@@ -446,6 +446,15 @@
   min-height: calc(92px * var(--og-k));
 }
 
+/* missing required field indicator */
+.i-kv > div.is-missing dt {
+  color: var(--i-danger);
+  font-weight: 600;
+}
+.i-kv > div.is-missing dd {
+  color: var(--i-danger);
+}
+
 .og-err {
   color: var(--og-danger);
   font-size: calc(12px * var(--og-fs));

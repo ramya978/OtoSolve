@@ -1,10 +1,11 @@
 <!-- =====================================================================================================
      COMMUNICATION TIMELINE
      Page header (eyebrow · title · actions)
-     → profile card: identity (avatar · name · stage · contact | owner) + four figures in one card
+     → profile card: identity (avatar · name · stage · contact | owner) + four stat cards in one card
      → [ timeline card: tabs + search + filters in the head · month groups · dated rail entries · pager
        | side cards: standing · record · activity ] → entry popup → attachment preview popup.
      Mobile header: Back · ⋯ More (Schedule follow-up, Export) · Log communication - compact icon buttons.
+     BUG-198: the four stats sit inside the profile row (between name and owner), sized to their content.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor & Leads / Lead Work Queue"  heading="Communication timeline" description="Every call, e-mail, meeting and note with this lead in one place.">
   <ng-container actions>
@@ -54,7 +55,9 @@
   </ng-container>
 </app-page-header>
 
-  <!-- ===== profile card: identity + figures ===== -->
+  <!-- ===== profile card: identity · stats · owner in ONE row (BUG-198) =====
+       Wide screens: avatar + name | Logged · Last contact · Health · Last 8 weeks | Owner.
+       Narrower: stats drop to their own full-width row under the name, still sized to content. -->
   <section class="ct-card ct-profile">
     <div class="ct-id">
       <span class="ct-avatar">{{ initials() }}</span>
@@ -70,47 +73,53 @@
           <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('globe')" /></svg>{{ lead().language }}</span>
         </p>
       </div>
+
+      <dl class="ct-figs">
+        <div class="ct-fig">
+          <dt class="ct-eyebrow">Logged</dt>
+          <dd>
+            <b>{{ figures()[0].value }}</b>
+            <span [attr.title]="figures()[1].value + ' calls · ' + figures()[2].value + ' e-mails · ' + figures()[3].value + ' meetings'">
+{{ figures()[0].sub }}</span>
+          </dd>
+        </div>
+
+        <div class="ct-fig">
+          <dt class="ct-eyebrow">Last contact</dt>
+          <dd>
+            @if (lastContact(); as lc) {
+              <b>{{ lc.ago }}</b>
+              <span [attr.title]="lc.date + ' · ' + lc.channel">{{ lc.channel }}</span>
+            } @else {
+              <b>Never</b>
+              <span>Nothing yet</span>
+            }
+          </dd>
+        </div>
+
+        <div [class]="'ct-fig tone-' + health().tone">
+          <dt class="ct-eyebrow">Health</dt>
+          <dd>
+            <b>{{ health().value }}<small>/100</small></b>
+            <span class="ct-tone">{{ health().label }}</span>
+          </dd>
+        </div>
+
+        <div class="ct-fig">
+          <dt class="ct-eyebrow">Last 8 weeks</dt>
+          <dd>
+            <b>{{ heat().active }}</b>
+            <span [attr.title]="heat().total + ' entries in the last 8 weeks'">active day{{ heat().active === 1 ? '' : 's' }}</span>
+          </dd>
+        </div>
+      </dl>
+
       <div class="ct-owner">
         <span class="ct-owner-ava"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg></span>
         <div>
           <span class="ct-eyebrow">Owner</span>
           <b>{{ lead().owner }}</b>
           <small [attr.title]="lead().campaign">{{ lead().campaign }}</small>
-        </div>
-      </div>
-    </div>
-
-    <div class="ct-figs">
-      <div class="ct-fig">
-        <span class="ct-eyebrow">Logged</span>
-        <b>{{ figures()[0].value }} <small>{{ figures()[0].sub }}</small></b>
-        <em>{{ figures()[1].value }} call{{ figures()[1].value === 1 ? '' : 's' }} · {{ figures()[2].value }} e-mail{{ figures()[2].value === 1 ? '' : 's' }} · {{ figures()[3].value }} meeting{{ figures()[3].value === 1 ? '' : 's' }}</em>
-      </div>
-      <div class="ct-fig">
-        <span class="ct-eyebrow">Last contact</span>
-        @if (lastContact(); as lc) {
-          <b>{{ lc.ago }}</b>
-          <em>{{ lc.date }} · {{ lc.channel }}</em>
-        } @else {
-          <b>Never</b><em>Nothing logged yet</em>
-        }
-      </div>
-      <div [class]="'ct-fig tone-' + health().tone">
-        <span class="ct-eyebrow">Health</span>
-        <b>{{ health().value }} <small>/ 100</small></b>
-        <span class="ct-meter"><i [style.width]="health().value + '%'"></i></span>
-        <em class="ct-tone">{{ health().label }}</em>
-      </div>
-      <div class="ct-fig">
-        <span class="ct-eyebrow">Last 8 weeks</span>
-        <b>{{ heat().active }} <small>active day{{ heat().active === 1 ? '' : 's' }}</small></b>
-        <div class="ct-weeks" aria-label="Entries per week over the last 8 weeks">
-          <ol>
-            @for (w of heat().weeks; track w.from) {
-              <li [class.has]="w.n" [class.is-now]="w.current" [attr.title]="w.tip"><i>{{ w.n || '' }}</i></li>
-            }
-          </ol>
-          <span class="ct-weeks-axis"><small>{{ heat().first }}</small><small>This week</small></span>
         </div>
       </div>
     </div>

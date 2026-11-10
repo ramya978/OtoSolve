@@ -124,6 +124,12 @@ export class LeadWorkQueue implements OnInit {
   private readonly convertedTotal = signal(0);
   private convertedLoaded = false;
   protected readonly loading = signal(false);
+  /**
+   * BUG-199: whether the signed-in role may assign / reassign (Donor care may not).
+   * Asked from the assignment board's own permittedActions, so the rule lives on the server, not in a role name here.
+   * Stays false until the answer arrives, so the Assign icon never flashes up for a role without the right.
+   */
+  protected readonly canAssign = signal(false);
   /** The rows the current tab works over. */
   private readonly current = computed(() => (this.tab() === 'converted' ? this.convertedRows() : this.rows()));
   protected get all(): LeadRow[] { return this.rows(); }
@@ -272,6 +278,8 @@ export class LeadWorkQueue implements OnInit {
   readonly rowOpts: Opt[] = [10, 25, 50].map((n) => ({ value: String(n), label: String(n) }));
   exportSelected(): void { this.doExport(); }
   assignSelected(): void {
+    // BUG-199: no route to the assignment board for a role that may not assign.
+    if (!this.canAssign()) { this.flash('You do not have permission to assign or reassign leads.'); return; }
     const ids = [...this.checked()];
     this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: ids.length ? { leadIds: ids.join(',') } : {} });
   }
@@ -282,6 +290,7 @@ export class LeadWorkQueue implements OnInit {
     if (kind === 'view') return this.openLead(r);
     // The conversation icon opens this lead's communication timeline; the assign icon opens the board.
     if (kind === 'note') { this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: r.ref } }); return; }
+    if (!this.canAssign()) { this.flash('You do not have permission to assign or reassign leads.'); return; }
     this.router.navigate(['/app/fundraising/relationships/assignment-board'], { queryParams: { leadId: r.id } });
   }
   doExport(): void {
@@ -297,7 +306,21 @@ export class LeadWorkQueue implements OnInit {
     });
   }
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.load(); this.loadAssignAccess(); }
+
+  /**
+   * BUG-199: one-row call to the assignment board. Its permittedActions say whether this role may assign;
+   * a 401 / 403 (e.g. Donor care) or any error means no - the Assign icon and "Assign selected" stay hidden.
+   */
+  private loadAssignAccess(): void {
+    this.api.getAssignmentBoard({ page: 1, pageSize: 1, recordType: 'Lead' }).subscribe({
+      next: (r) => this.canAssign.set((r.permittedActions ?? []).some((a) => {
+        const n = (a ?? '').toLowerCase().replace(/[^a-z]/g, '');
+        return n.includes('assign') || n.includes('route');
+      })),
+      error: () => this.canAssign.set(false),
+    });
+  }
 
   private fetch(isConverted: boolean | null) {
     return fetchAllPages((p, size) => this.api.getLeadWorkQueue({

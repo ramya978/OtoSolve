@@ -7,6 +7,15 @@ import {
 } from '../models/auth.model';
 
 /**
+ * Organisation defaults the sign-in / select-tenant API sends on the tenant context
+ * (e.g. defaultCurrency: "INR", defaultCulture: "en-IN"). Declared here so this file compiles
+ * whether or not `TenantContextResponse` in auth.model lists them yet.
+ */
+type TenantDefaults = {
+  defaultCurrency?: string | null;
+};
+
+/**
  * The one place the browser keeps anything to do with the signed-in identity.
  *
  * WHERE EACH TOKEN LIVES, AND WHY
@@ -63,6 +72,14 @@ export class AuthTokenService {
 
   readonly organisationName = computed(() => this.tenantState()?.tenantName ?? '');
   readonly organisationCode = computed(() => this.tenantState()?.tenantCode ?? '');
+
+  /**
+   * The Organisation's default currency as an ISO code ("INR", "USD"), or '' when the session has
+   * no Organisation or the server did not send one. Money summaries (for example the campaign KPI
+   * strip) are shown in this currency (BUG-194).
+   */
+  readonly organisationCurrency = computed(() =>
+    ((this.tenantState() as (TenantContextResponse & TenantDefaults) | null)?.defaultCurrency ?? '').trim().toUpperCase());
 
   /**
    * True when a global caller has stepped into an Organisation.
