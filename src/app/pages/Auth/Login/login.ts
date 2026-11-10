@@ -155,17 +155,17 @@ export class Login implements OnDestroy {
     // and let it check the authenticator code through the reauthentication endpoint. Only when
     // the code is right does the session start and the dashboard open.
 
-
-    // if (response.user?.mfaEnabled && response.accessToken) {
-    //   this.tokens.clear();
-    //   this.handoff.storeStepUp(response, this.remember(), this.returnUrl);
-    //   void this.router.navigateByUrl(MFA_ROUTE).then((arrived) => {
-    //     if (!arrived) {
-    //       this.fail('The verification step could not be opened. Try signing in again.');
-    //     }
-    //   });
-    //   return;
-    // }
+    
+    if (response.user?.mfaEnabled && response.accessToken) {
+      this.tokens.clear();
+      this.handoff.storeStepUp(response, this.remember(), this.returnUrl);
+      void this.router.navigateByUrl(MFA_ROUTE).then((arrived) => {
+        if (!arrived) {
+          this.fail('The verification step could not be opened. Try signing in again.');
+        }
+      });
+      return;
+    }
 
     switch (response.status) {
       case 'tenantSelectionRequired': {
