@@ -524,6 +524,9 @@ export class DonorApiService {
    * the record's owner makes. Answers with the new entry's id; reload the timeline to show it.
    *
    * OUTGOING CONTACT IS CHECKED AGAINST CONSENT, as contactLead is.
+   *
+   * THE FILE IS NOT PART OF THIS CALL. This sends JSON, so it can only ever carry the file's name.
+   * Upload the file itself with uploadCommunicationAttachment once this returns the entry id.
    */
   logCommunication(request: LogCommunicationRequest): Observable<string> {
     return this.http
@@ -545,6 +548,38 @@ export class DonorApiService {
         isImportant,
       })
       .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * Uploads the file for a logged communication (TS-217).
+   *
+   * MULTIPART, NOT JSON. No Content-Type header is set here on purpose: the browser writes the
+   * multipart boundary itself, and an interceptor that forces `application/json` on every request
+   * would break this call - FormData bodies must be left alone there.
+   */
+  uploadCommunicationAttachment(id: string, file: File): Observable<string> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+
+    return this.http
+      .post<ApiResponse<string>>(`${this.baseUrl}/communication-timeline/${id}/attachment`, form)
+      .pipe(map((response) => response.data!));
+  }
+
+  /**
+   * The file attached to a communication, as a blob with the name the server gives it.
+   *
+   * FETCHED THROUGH HttpClient rather than opened as a plain link, so the caller's token goes with
+   * it and the server can apply the same read permission as the timeline. A 404 means the entry
+   * holds a file name but no file - entries logged before uploads existed.
+   */
+  getCommunicationAttachment(id: string): Observable<{ blob: Blob; fileName: string }> {
+    return this.http
+      .get(`${this.baseUrl}/communication-timeline/${id}/attachment`, {
+        responseType: 'blob',
+        observe: 'response',
+      })
+      .pipe(map((response) => this.toDownload(response, 'attachment')));
   }
 
   // =========================================================================================

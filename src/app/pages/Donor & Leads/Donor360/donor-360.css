@@ -1,6 +1,7 @@
 /* DONOR 360 - flat identity bar + two aligned columns of section cards. Theme tokens only.
    Mobile fixes: UI-009 follow-up table titles no longer overlap · UI-010 giving-journey widgets keep their
-   dividing lines · UI-011 header shows ⋯ More + Create intent beside the name, contact details spaced. */
+   dividing lines · UI-011 header shows ⋯ More + Create intent beside the name, contact details spaced.
+   BUG-175: follow-up rows show View + Execute (or Closed / Blocked) instead of "Mark done". */
 :host {
   /* density: 1 on big screens (24"-32"), a step smaller on laptops (14"-15.6") and when zoomed;
      sizes below multiply by these, so nothing looks oversized on a small or zoomed screen */
@@ -709,7 +710,8 @@ col.w-st { width: 14%; }
 col.w-due { width: calc(140px * var(--d3-k)); }
 col.w-owner { width: 17%; }
 col.w-pri { width: 12%; }
-col.w-act { width: calc(100px * var(--d3-k)); }
+/* BUG-175: room for View + Execute side by side */
+col.w-act { width: calc(170px * var(--d3-k)); }
 
 .dx-due { display: inline-flex; align-items: center; gap: calc(8px * var(--d3-k)); }
 .dx-due b { color: var(--dx-heading); font-size: calc(15px * var(--d3-fs)); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -718,6 +720,32 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 
 .dx-closed { display: inline-flex; align-items: center; gap: 5px; color: var(--dx-muted); font-size: calc(12px * var(--d3-fs)); }
 .dx-closed svg { width: calc(13px * var(--d3-k)); height: calc(13px * var(--d3-k)); }
+.dx-closed.is-blocked { color: var(--c-red); cursor: help; }
+
+/* ---- BUG-175: follow-up row actions (View · Execute) ---- */
+.dx-row-acts { display: inline-flex; align-items: center; justify-content: flex-end; gap: calc(12px * var(--d3-k)); }
+.dx-row-acts .dx-link { display: inline-flex; align-items: center; gap: 4px; }
+.dx-row-acts .dx-link svg { width: calc(14px * var(--d3-k)); height: calc(14px * var(--d3-k)); }
+
+.dx-exec {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: calc(28px * var(--d3-k));
+  padding: 0 calc(10px * var(--d3-k));
+  border: 1px solid var(--cc-btn, var(--dx-primary));
+  border-radius: var(--dx-btn-radius);
+  background: var(--cc-btn, var(--dx-primary));
+  color: var(--cc-btn-ink, var(--primary-on, #fff)) !important;
+  font-size: calc(12px * var(--d3-fs));
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dx-exec svg { width: calc(13px * var(--d3-k)); height: calc(13px * var(--d3-k)); transition: transform 0.2s; }
+.dx-exec:hover { background: color-mix(in srgb, var(--cc-btn, var(--dx-primary)) 88%, #000); }
+.dx-exec:hover svg { transform: translateX(2px); }
 
 /* ================= small bits ================= */
 .dx-mono { font-family: ui-monospace, Consolas, Menlo, monospace; font-size: calc(12px * var(--d3-fs)); letter-spacing: 0.2px; }
@@ -922,8 +950,10 @@ col.w-act { width: calc(100px * var(--d3-k)); }
   .dx-follow-table colgroup { display: none; }
   .dx-follow-table tr {
     display: grid;
-    grid-template-columns: calc(84px * var(--d3-k)) minmax(0, 1fr) calc(84px * var(--d3-k));
+    /* BUG-175: the Action column holds View + Execute */
+    grid-template-columns: calc(76px * var(--d3-k)) minmax(0, 1fr) auto;
     align-items: center;
+    column-gap: 6px;
     border-bottom: 1px solid var(--dx-row);
   }
   .dx-follow-table tbody tr:last-child { border-bottom: 0; }
@@ -939,6 +969,8 @@ col.w-act { width: calc(100px * var(--d3-k)); }
   .dx-follow-table .dx-due { gap: 6px; }
   .dx-follow-table .dx-due small { display: none; }
   .dx-follow-table td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
+  /* actions stack (View above Execute) so the title keeps its room */
+  .dx-follow-table .dx-row-acts { flex-direction: column; align-items: flex-end; gap: 6px; }
 
   /* UI-011 · contact details: e-mail on its own line, the rest two per row */
   .dx-inline {
@@ -953,17 +985,21 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 
 /* =====================================================================
    Columns always end on the same line, however many activity events:
-     - the MAIN column decides the row height
-     - the SIDE column is stretched to exactly that height
+     - the row is as tall as the taller of: MAIN column, or
+       SIDE column = Profile + Consent + a minimum-height Activity card
      - Profile + Consent keep their natural size
      - the Activity card takes the remaining height and scrolls inside
+   Design fix: the old rule put `contain: size` on the whole side column, so a
+   tall Consent card + Activity pushed past the row and ran over Follow-ups.
+   Now only the activity LIST is size-contained: its events never stretch the
+   row, but Profile + Consent + the card's minimum always fit inside it.
    ===================================================================== */
 .dx-cols {
-  min-height: calc(900px * var(--d3-k)); /* safety: Profile + Consent + a usable Activity card */
+  min-height: 0;
 }
 
 .dx-col.is-side {
-  contain: size;
+  contain: none;
 }
 
 .dx-col.is-side > .dx-sec:not(:last-child) {
@@ -972,13 +1008,14 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 
 /* Activity: fills what is left and scrolls inside */
 .dx-col.is-side > #dx-activity {
-  flex: 1 1 0;
-  min-height: calc(280px * var(--d3-k));
+  flex: 1 1 auto;
+  min-height: calc(320px * var(--d3-k));
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
 }
 
 .dx-col.is-side > #dx-activity .dx-act {
+  contain: size;            /* the events scroll; they never add to the row height */
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -996,9 +1033,15 @@ col.w-act { width: calc(100px * var(--d3-k)); }
 .dx-col.is-side > #dx-activity .dx-feed-foot {
   position: sticky;
   bottom: 0;
-  margin-top: auto;
+  z-index: 1;
+  margin: auto calc(-18px * var(--d3-k)) 0;   /* match the card's 18px side padding - no spill past the edge */
+  padding: calc(12px * var(--d3-k)) calc(18px * var(--d3-k));
   background: var(--dx-card);
 }
+
+/* a section card never paints outside its own box */
+.dx-sec { position: relative; }
+.dx-follow { isolation: isolate; }
 
 /* Campaign history is the last main card */
 .dx-col.is-main > #dx-campaigns {
@@ -1023,6 +1066,7 @@ col.w-act { width: calc(100px * var(--d3-k)); }
   }
 
   .dx-col.is-side > #dx-activity .dx-act {
+    contain: none;
     max-height: calc(520px * var(--d3-k));
   }
 }

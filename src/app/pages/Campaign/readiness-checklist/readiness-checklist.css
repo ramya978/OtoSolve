@@ -395,7 +395,7 @@
 
 .rc-actions {
   display: flex;
-  gap: 2px;
+  gap: 9px;
 }
 
 .rc-empty {

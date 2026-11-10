@@ -31,6 +31,20 @@ const ASSET_STATUS: Record<TrackingAssetStatus, AssetStatus> = {
   draft: 'draft', submitted: 'submitted', approved: 'active', active: 'active', disableRequested: 'disable-requested', inactive: 'disabled'
 };
 
+/**
+ * The rich-text fields of a campaign, exactly as the API returns them (the *Html ones keep the
+ * editor's bold / bullet formatting). Kept on the campaign so the detail page can show the Purpose,
+ * Public description and Terms & notice as written - without them the page had nothing to show.
+ */
+export interface CampaignTextFields {
+  purpose?: string;
+  purposeHtml?: string;
+  publicDescription?: string;
+  publicDescriptionHtml?: string;
+  termsAndNotice?: string;
+  termsAndNoticeHtml?: string;
+}
+
 const title = (s: string): string => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const day = (iso: string | null | undefined): string => (iso ?? '').slice(0, 10);
 const minute = (iso: string | null | undefined): string => (iso ?? '').slice(0, 16);
@@ -185,7 +199,15 @@ export class CampaignWorkspaceStore {
     this.ids.set(d.code, { id: d.id, version: d.version });
     this.requesterIds.set(d.code, { ready: d.submittedByUserId, close: d.pendingCloseRequest?.requestedByUserId ?? null });
     const location = [d.countryName, d.stateName, d.cityName, d.zipCode].filter(Boolean).join(' · ');
+    // the *Html fields may not be in the CampaignDetail model yet; read them when the API sends them
+    const rich = d as CampaignDetail & CampaignTextFields;
     this.patchCampaign(d.code, {
+      purpose: rich.purpose ?? '',
+      purposeHtml: rich.purposeHtml ?? '',
+      publicDescription: rich.publicDescription ?? '',
+      publicDescriptionHtml: rich.publicDescriptionHtml ?? '',
+      termsAndNotice: rich.termsAndNotice ?? '',
+      termsAndNoticeHtml: rich.termsAndNoticeHtml ?? '',
       id: d.id, version: d.version, lifecycle: LIFECYCLE[d.status] ?? 'draft', description: d.publicDescription || d.purpose,
       location, fund: d.fundOrProgramme, start: day(d.startDate), end: day(d.endDate), target: d.targetAmount, currency: d.currencyCode ?? '',
       readinessRequest: d.status === 'submitted' ? { by: this.directory.name(d.submittedByUserId), at: minute(d.submittedAtUtc) } : undefined,
@@ -560,7 +582,7 @@ export class CampaignWorkspaceStore {
     this.toastTimer = window.setTimeout(() => this.toast.set(null), 3800);
   }
 
-  private patchCampaign(code: string, patch: Partial<CampaignInfo>, stamp = true): void {
+  private patchCampaign(code: string, patch: Partial<CampaignInfo & CampaignTextFields>, stamp = true): void {
     this.campaigns.update((list) => list.map((c) => (c.code === code ? { ...c, ...patch, ...(stamp ? { updatedAt: this.now() } : {}) } : c)));
   }
 

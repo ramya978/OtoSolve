@@ -95,6 +95,34 @@ export class DonorForm implements OnInit, OnDestroy {
   protected readonly state = signal('');
   protected readonly city = signal('');
   protected readonly pin = signal('');
+
+  /** BUG-221: both optional fields accept ASCII digits only. */
+  protected readonly mobileError = signal('');
+  protected readonly pinError = signal('');
+
+  protected onDigitsInput(event: Event, field: 'mobile' | 'pin'): void {
+    const input = event.target as HTMLInputElement;
+    const maxLength = field === 'mobile' ? 15 : 10;
+    const cleaned = input.value.replace(/[^0-9]/g, '').slice(0, maxLength);
+    const invalid = cleaned !== input.value;
+    input.value = cleaned; // immediately fixes typing, paste, and autofill changes
+    if (field === 'mobile') {
+      this.mobile.set(cleaned);
+      this.mobileError.set(invalid ? 'Only numbers are allowed in mobile number.' : '');
+    } else {
+      this.pin.set(cleaned);
+      this.pinError.set(invalid ? 'Only numbers are allowed in PIN / postal code.' : '');
+    }
+  }
+
+  private numericFieldsValid(): boolean {
+    const mobileOK = /^[0-9]{0,15}$/.test(this.mobile());
+    const pinOK = /^[0-9]{0,10}$/.test(this.pin());
+    if (!mobileOK) this.mobileError.set('Enter a valid numeric mobile number.');
+    if (!pinOK) this.pinError.set('Enter a valid numeric PIN / postal code.');
+    return mobileOK && pinOK;
+  }
+
   protected readonly addressExpanded = signal(false);
 
   /* ---------- consent ---------- */
@@ -135,6 +163,8 @@ export class DonorForm implements OnInit, OnDestroy {
       !!this.email().trim() &&
       !!this.amountValue() &&
       this.privacy() &&
+      /^[0-9]{0,15}$/.test(this.mobile()) &&
+      /^[0-9]{0,10}$/.test(this.pin()) &&
       !this.saving()
   );
 
@@ -305,7 +335,7 @@ export class DonorForm implements OnInit, OnDestroy {
       next: (intent) => {
         this.fullName.set(intent.donorName);
         this.email.set(intent.email ?? '');
-        this.mobile.set(intent.mobile ?? '');
+        this.mobile.set((intent.mobile ?? '').replace(/[^0-9]/g, '').slice(0, 15));
         this.amount.set(String(intent.amount.amount));
         this.amountFixed.set(true);
         this.useCurrency(intent.amount.currencyCode);
@@ -349,7 +379,7 @@ export class DonorForm implements OnInit, OnDestroy {
   }
 
   protected submit(): void {
-    if (!this.canSubmit()) return;
+    if (!this.numericFieldsValid() || !this.canSubmit()) return;
 
     // A reopened donation is continued, never duplicated.
     if (this.intentReference) { this.continueToPayment(); return; }

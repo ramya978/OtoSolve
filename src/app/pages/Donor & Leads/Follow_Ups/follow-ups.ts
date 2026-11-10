@@ -80,6 +80,7 @@ export class FollowUps implements OnDestroy {
   protected readonly dialog = signal<FuDialog>(null);
   protected readonly targets = signal<string[]>([]);               // ids for reassign / escalate
   protected readonly dialogDay = signal<string | null>(null);
+  protected readonly dialogStaff = signal<string | null>(null);    // day popup opened from one staff member's "+ more"
   protected readonly rOwner = signal<string | null>(null);
   protected readonly rReason = signal('');
   protected readonly eTo = signal<string | null>(null);
@@ -296,14 +297,13 @@ export class FollowUps implements OnDestroy {
     }));
   });
   protected readonly calTitle = computed(() => `${MONTHS_LONG[this.calMonth().getMonth()]} ${this.calMonth().getFullYear()}`);
-  protected readonly dayItems = computed(() => {
-    const d = this.dialogDay();
-    return d ? this.filtered().filter((f) => this.dueDay(f) === d).sort((a, b) => a.dueAt.localeCompare(b.dueAt)) : [];
-  });
 
   /* ---------- calendar view: week × staff planner ---------- */
+  /** At most this many follow-ups show in one staff/day cell; the rest sit behind "+N more". */
+  protected readonly cellLimit = 3;
   protected readonly cCat = signal<FuChannel | null>(null);       // category = channel
   protected readonly cStaff = signal<string | null>(null);
+  protected readonly cBusy = signal(false);                       // hide staff with nothing this week
   protected readonly goDate = signal<string | null>(null);
   protected readonly weekDays = computed(() =>
     Array.from({ length: 7 }, (_, i) => {
@@ -323,8 +323,16 @@ export class FollowUps implements OnDestroy {
     const it = this.weekItems();
     return { total: it.length, staff: new Set(it.map((f) => f.owner)).size, open: it.filter(isOpen).length, overdue: it.filter((f) => this.isOverdue(f)).length };
   });
+  /** Follow-ups per day of the selected week (for the day headings). */
+  protected readonly dayCounts = computed(() => {
+    const m = new Map<string, number>();
+    for (const f of this.weekItems()) { const d = this.dueDay(f); m.set(d, (m.get(d) ?? 0) + 1); }
+    return m;
+  });
+  dayCount(iso: string): number { return this.dayCounts().get(iso) ?? 0; }
   protected readonly planner = computed(() => {
     const items = this.weekItems();
+    const limit = this.cellLimit;
     return this.store.owners
       .filter((o) => !this.cStaff() || o.name === this.cStaff())
       .map((o) => {
@@ -334,9 +342,19 @@ export class FollowUps implements OnDestroy {
           team: o.team,
           count: mine.length,
           open: mine.filter(isOpen).length,
-          days: this.weekDays().map((d) => ({ iso: d.iso, items: mine.filter((f) => this.dueDay(f) === d.iso).sort((a, b) => a.dueAt.localeCompare(b.dueAt)) }))
+          days: this.weekDays().map((d) => {
+            const dayItems = mine.filter((f) => this.dueDay(f) === d.iso).sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+            return { iso: d.iso, items: dayItems, shown: dayItems.slice(0, limit), more: Math.max(0, dayItems.length - limit) };
+          })
         };
-      });
+      })
+      .filter((r) => !this.cBusy() || r.count > 0);
+  });
+  /** The day popup: the whole day, or one staff member's day when opened from "+N more". */
+  protected readonly dayItems = computed(() => {
+    const d = this.dialogDay();
+    const s = this.dialogStaff();
+    return d ? this.weekItems().filter((f) => this.dueDay(f) === d && (!s || f.owner === s)).sort((a, b) => a.dueAt.localeCompare(b.dueAt)) : [];
   });
 
   /* ---------- date picker (filters) ---------- */
@@ -445,7 +463,8 @@ export class FollowUps implements OnDestroy {
   addFor(owner: string): void { this.router.navigate([this.newPath], { queryParams: { owner } }); }
   moveMonth(step: number): void { const m = this.calMonth(); this.calMonth.set(new Date(m.getFullYear(), m.getMonth() + step, 1)); }
   calToday(): void { const n = this.now(); this.calMonth.set(new Date(n.getFullYear(), n.getMonth(), 1)); }
-  openDay(iso: string): void { this.dialogDay.set(iso); this.dialog.set('day'); }
+  /** Day heading → the whole day; "+N more" in a cell → that staff member's day only. */
+  openDay(iso: string, staff: string | null = null): void { this.dialogDay.set(iso); this.dialogStaff.set(staff); this.dialog.set('day'); }
 
   /* ---------- selection + paging ---------- */
   toggleSel(id: string): void { this.selected.update((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id])); }

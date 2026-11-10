@@ -30,23 +30,106 @@ type Range = '12m' | '90d' | 'all';
 /** Which text the description dialog shows. */
 type DocKind = 'public' | 'terms';
 
-/** Optional text fields a campaign may carry; the dialog falls back when they are missing. */
+/**
+ * Text fields a campaign carries, exactly as the API returns them. They come from the rich-text
+ * editors, so the *Html fields hold the formatting (bold, bullet lists, line breaks ...); the plain
+ * fields are used only when the API sends no *Html version. No made-up default text is ever shown.
+ */
 interface CampaignTexts {
   name: string;
   description: string;
   fund?: string;
+  purpose?: string;
+  purposeHtml?: string;
   publicDescription?: string;
+  publicDescriptionHtml?: string;
   terms?: string;
+  termsAndNotice?: string;
+  termsAndNoticeHtml?: string;
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-/** Used when a campaign has no terms text of its own. */
-const DEFAULT_TERMS =
-  'Donations are eligible for deduction under Section 80G of the Income Tax Act, 1961. A receipt is e-mailed as soon as your payment is confirmed; please give your PAN to claim the deduction. ' +
-  'Your gift is applied to the programme named on this page, and where a campaign is over-subscribed the balance supports the same cause in the next programme cycle. ' +
-  'Donations are not ordinarily refunded; write to donor care within seven days of a duplicate or mistaken payment. ' +
-  'Your contact details are used only to service your donation and to send the updates you have agreed to receive.';
+// ---- rich text helpers (text editor output) ----
+
+/** True when the text holds editor markup rather than plain text. */
+const HAS_TAGS = /<\/?[a-z][a-z0-9]*(\s[^>]*)?\/?>/i;
+
+const escapeHtml = (s: string): string =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** A plain-text bullet line: "- item", "* item", "• item" (also –, ▪, ◦). */
+const BULLET = /^\s*[-*•–▪◦]\s+(.*)$/;
+/** A plain-text numbered line: "1. item" or "1) item". */
+const NUMBERED = /^\s*\d+[.)]\s+(.*)$/;
+
+/**
+ * Editor HTML is passed through as is (Angular's [innerHTML] sanitizes it).
+ * Plain text is escaped and laid out: lines starting with -, *, • become a bullet list, lines
+ * starting with 1. / 1) become a numbered list, blank lines start a new paragraph and other
+ * line breaks become <br>.
+ */
+function toHtml(text: string | null | undefined): string {
+  const t = (text ?? '').replace(/\r\n?/g, '\n').trim();
+  if (!t) return '';
+  if (HAS_TAGS.test(t)) return t;
+
+  const out: string[] = [];
+  let para: string[] = [];
+  let list: { tag: 'ul' | 'ol'; items: string[] } | null = null;
+
+  const flushPara = (): void => {
+    if (para.length) out.push(`<p>${para.map(escapeHtml).join('<br>')}</p>`);
+    para = [];
+  };
+  const flushList = (): void => {
+    if (list) out.push(`<${list.tag}>${list.items.map((i) => `<li>${escapeHtml(i)}</li>`).join('')}</${list.tag}>`);
+    list = null;
+  };
+
+  for (const raw of t.split('\n')) {
+    const line = raw.trim();
+    const bullet = BULLET.exec(line);
+    const numbered = bullet ? null : NUMBERED.exec(line);
+    if (bullet || numbered) {
+      const tag = bullet ? 'ul' : 'ol';
+      flushPara();
+      if (list && list.tag !== tag) flushList();
+      if (!list) list = { tag, items: [] };
+      list.items.push((bullet ?? numbered)![1]);
+    } else if (!line) {
+      flushPara();
+      flushList();
+    } else {
+      flushList();
+      para.push(line);
+    }
+  }
+  flushPara();
+  flushList();
+  return out.join('');
+}
+
+/** Readable plain text of editor HTML - for word count, reading time and "Copy text". */
+function toPlain(html: string): string {
+  return html
+    .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '\n• ')
+    .replace(/<\/(p|div|li|ul|ol|h[1-6]|blockquote|tr)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .split('\n')
+    .map((l) => l.replace(/[ \t\u00a0]+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 
 @Component({
   selector: 'app-campaign-detail',
@@ -80,6 +163,11 @@ export class CampaignDetail {
   private leave(message: string): void {
     this.store.showToast(message, 'warn');
     this.router.navigate([CW_PATHS.register]);
+  }
+
+  /** The campaign's text fields (from the text editors). */
+  private texts(): CampaignTexts {
+    return this.c() as unknown as CampaignTexts;
   }
 
   // ---- KPIs ----
@@ -216,22 +304,40 @@ export class CampaignDetail {
   // ---- activity ----
   protected readonly activity = computed<Activity[]>(() => this.store.activityFor(this.c().code));
 
+  // ---- campaign description (overview card) ----
+  /**
+   * The short description on the overview card: plain text only, no bold or bullet points - the
+   * formatted version (bullets) is shown in the Public description / Terms & notice popup.
+   */
+  protected readonly descriptionHtml = computed(() => {
+    const t = this.texts();
+    const plain = t.purpose || t.description || (t.purposeHtml ? toPlain(t.purposeHtml) : '');
+    const oneLine = plain.replace(/•/g, ' ').replace(/\s+/g, ' ').trim();
+    return oneLine ? `<p>${escapeHtml(oneLine)}</p>` : '';
+  });
+
   // ---- public description / terms & notice dialog ----
   protected readonly docOpen = signal<DocKind | null>(null);
 
-  /** Content of the open dialog: title, paragraphs, word count and reading time. */
+  /** Content of the open dialog: title, formatted HTML, plain text, word count and reading time. */
   protected readonly doc = computed(() => {
     const kind = this.docOpen();
     if (!kind) return null;
-    const c = this.c() as CampaignTexts;
-    const text = (kind === 'public'
-      ? c.publicDescription || c.description
-      : c.terms || DEFAULT_TERMS) ?? '';
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const t = this.texts();
+    // exactly what the API returned for this field - its own formatted version when the API sends one
+    // (publicDescriptionHtml / termsAndNoticeHtml), otherwise its plain text as is. Formatting is never
+    // borrowed from another field, so plain text with no bullets shows with no bullets.
+    const source = kind === 'public'
+      ? t.publicDescriptionHtml || t.publicDescription
+      : t.termsAndNoticeHtml || t.termsAndNotice || t.terms;
+    const html = toHtml(source);
+    const plain = toPlain(html);
+    const words = plain ? plain.split(/\s+/).filter((w) => w && w !== '•').length : 0;
     return {
       kind,
       title: kind === 'public' ? 'Public description' : 'Terms and notice',
-      paragraphs: text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
+      html,
+      plain,
       words,
       minutes: Math.max(1, Math.ceil(words / 200))
     };
@@ -253,15 +359,25 @@ export class CampaignDetail {
     this.copied.set(false);
   }
 
-  /** Copy the text of the open tab to the clipboard. */
+  /** Copy the open text to the clipboard - formatted where the browser allows it, plain text otherwise. */
   protected copyDoc(): void {
     const d = this.doc();
-    if (!d || !navigator.clipboard) return;
-    navigator.clipboard.writeText(d.paragraphs.join('\n\n')).then(() => {
+    const cb = typeof navigator !== 'undefined' ? navigator.clipboard : undefined;
+    if (!d || !d.words || !cb) return;
+    const plainCopy = () => cb.writeText(d.plain);
+    const write = typeof ClipboardItem !== 'undefined' && typeof cb.write === 'function'
+      ? cb.write([
+          new ClipboardItem({
+            'text/html': new Blob([d.html], { type: 'text/html' }),
+            'text/plain': new Blob([d.plain], { type: 'text/plain' })
+          })
+        ]).catch(plainCopy)
+      : plainCopy();
+    write.then(() => {
       this.copied.set(true);
       clearTimeout(this.copiedTimer);
       this.copiedTimer = setTimeout(() => this.copied.set(false), 1600);
-    });
+    }).catch(() => this.store.showToast('Could not copy the text.', 'warn'));
   }
 
   // ---- close decision ----

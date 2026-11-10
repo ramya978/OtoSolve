@@ -32,7 +32,12 @@
   --status-neutral: #5a637a;
   --status-neutral-bg: #eeeff2;
   --status-neutral-ink: #5a637a;
-  --status-neutral-line: #c2c6cf
+  --status-neutral-line: #c2c6cf;
+
+  /* action icon button tones (common across all pages) */
+  --action-yellow: #f59e0b;
+  --action-yellow-bg: color-mix(in srgb, #f59e0b 10%, var(--white));
+  --action-yellow-line: color-mix(in srgb, #f59e0b 30%, transparent);
 }
 
 html[data-mode="dark"] {
@@ -55,7 +60,11 @@ html[data-mode="dark"] {
   --status-danger-line: #6c3542;
   --status-neutral-bg: #262b38;
   --status-neutral-ink: #acb1bc;
-  --status-neutral-line: #424a5c
+  --status-neutral-line: #424a5c;
+
+  --action-yellow: #fbbf24;
+  --action-yellow-bg: color-mix(in srgb, #fbbf24 15%, #14171f);
+  --action-yellow-line: color-mix(in srgb, #fbbf24 35%, transparent);
 }
 
 .main > .content {

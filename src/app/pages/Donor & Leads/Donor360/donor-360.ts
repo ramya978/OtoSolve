@@ -13,7 +13,11 @@ export type ActivityKind = D360Activity['kind'];
 export interface D360Gift { ref: string; date: string; campaign: string; amount: number; status: 'Recorded' | 'Reconciled' | 'Pending'; }
 export interface D360Campaign { name: string; code: string; via: string; converted: string; given: number; gifts: number; status: 'Converted' | 'Open' | 'Lost'; }
 export interface D360Promise { due: string; amount: number; status: 'Pending' | 'Fulfilled'; }
-export interface D360FollowUp { due: string; title: string; owner: string; priority: 'Urgent' | 'High' | 'Normal'; status: 'Open' | 'Completed'; }
+export interface D360FollowUp {
+  /** BUG-175: the follow-up's id (for Execute) and its reference (for View). */
+  id: string; reference: string;
+  due: string; title: string; owner: string; priority: 'Urgent' | 'High' | 'Normal'; status: 'Open' | 'Completed';
+}
 export interface D360Channel {
   channel: string; state: 'Granted' | 'Withdrawn' | 'Pending'; since: string; publicThanks: boolean;
   /** The API's channel code, the consent record in force and its version, and what this caller may do ("Grant" / "Withdraw"). */
@@ -71,6 +75,12 @@ const humanize = (code: string | null | undefined): string => {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Activity';
 };
 
+/** The follow-up's own id, whichever name the API gives it (id / followUpId). */
+const followUpId = (f: unknown): string => {
+  const x = f as { id?: string | number | null; followUpId?: string | number | null };
+  return String(x.id ?? x.followUpId ?? '');
+};
+
 function toD360(r: Donor360Response): D360Donor {
   const d = r.donor;
   const tones: D360Donor['stages'][number]['tone'][] = ['primary', 'green', 'amber', 'blue'];
@@ -119,6 +129,7 @@ function toD360(r: Donor360Response): D360Donor {
       due: dayOf(p.dueAtUtc), amount: p.amount, status: n(p.statusLabel ?? p.status).startsWith('fulfil') ? 'Fulfilled' as const : 'Pending' as const
     })),
     followUps: (r.followUps ?? []).map((f) => ({
+      id: followUpId(f), reference: f.followUpReference ?? '',
       due: dayOf(f.dueAtUtc), title: f.nextAction ?? f.purpose ?? f.followUpReference, owner: f.relationshipOwnerName ?? '',
       priority: n(f.priority) === 'urgent' ? 'Urgent' as const : n(f.priority) === 'high' ? 'High' as const : 'Normal' as const,
       status: f.isOpen ? 'Open' as const : 'Completed' as const
@@ -243,6 +254,11 @@ export class Donor360 implements OnInit {
   protected readonly intentNum = (n: number): string => formatMoney(n, this.iCurrency(), { style: 'whole', marker: false });
   protected readonly listPath = '/app/fundraising/relationships/all-donors';
   protected readonly editPath = '/app/fundraising/relationships/donor-360/edit';
+  /** BUG-173: the header's Timeline button opens the Communication Timeline for this donor. */
+  protected readonly timelinePath = '/app/fundraising/relationships/communication-timeline';
+  /** BUG-175: follow-up row actions - View opens the queue, Execute opens the execution screen (?id=). */
+  protected readonly followQueuePath = '/app/fundraising/relationships/follow-up-queue';
+  protected readonly followExecutePath = '/app/fundraising/relationships/follow-up-queue/execute';
   /** "today" for overdue checks - the server date in the real app */
   private readonly today = new Date().toISOString().slice(0, 10);
 
@@ -440,6 +456,33 @@ export class Donor360 implements OnInit {
       .filter((x) => !q || (x.title + ' ' + x.owner).toLowerCase().includes(q))
       .sort((a, b) => b.due.localeCompare(a.due));
   });
+
+  /** BUG-175: Execute is offered only for an open follow-up on a donor who may still be contacted. */
+  protected canExecute(f: D360FollowUp): boolean {
+    const c = this.d().consent;
+    return this.isOpen(f) && !!f.id && !c.doNotContact && c.state !== 'Withdrawn';
+  }
+
+  /** Why Execute is not offered on an open follow-up (shown as the button's tooltip). */
+  protected executeBlockedReason(f: D360FollowUp): string {
+    if (!this.isOpen(f)) return '';
+    const c = this.d().consent;
+    if (c.doNotContact) return 'Donor is marked Do not contact';
+    if (c.state === 'Withdrawn') return 'Donor has withdrawn consent';
+    if (!f.id) return 'This follow-up cannot be opened';
+    return '';
+  }
+
+  /** View: open the follow-up in the follow-up queue. */
+  protected viewFollowUp(f: D360FollowUp): void {
+    this.router.navigate([this.followQueuePath], { queryParams: { search: f.reference || f.title } });
+  }
+
+  /** Execute: open the follow-up execution screen for this follow-up. */
+  protected executeFollowUp(f: D360FollowUp): void {
+    if (!this.canExecute(f)) return;
+    this.router.navigate([this.followExecutePath], { queryParams: { id: f.id } });
+  }
 
   /** Next open follow-up. */
   protected readonly nextFollow = computed(() =>
@@ -729,7 +772,11 @@ export class Donor360 implements OnInit {
   }
 
   // ---------- actions ----------
-  timeline(): void { this.tab.set('activity'); }
+  /** BUG-173: open this donor's Communication Timeline (was only switching a tab that no longer exists). */
+  timeline(): void {
+    this.moreOpen.set(false);
+    this.router.navigate([this.timelinePath], { queryParams: { ref: this.d().code } });
+  }
   schedule(): void {
     this.router.navigate(['/app/fundraising/relationships/follow-up-queue/plan'], { queryParams: { ref: this.d().code } });
   }

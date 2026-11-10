@@ -274,7 +274,12 @@
         <div><dt>Fundraising target</dt><dd>{{ inr(c().target) }}</dd></div>
       </dl>
       <div class="cd-desc">
-        <p>{{ c().description }}</p>
+        <!-- text editor output: shown with its formatting (bold, lists, line breaks); Angular sanitizes it -->
+        @if (descriptionHtml()) {
+          <div class="cd-rich" [innerHTML]="descriptionHtml()"></div>
+        } @else {
+          <p class="cd-rich-none">No description has been written yet.</p>
+        }
         <div class="cd-desc-links">
           <a class="w-link" href="#" role="button" aria-haspopup="dialog"
              (click)="$event.preventDefault(); openDoc('public')">Public description →</a>
@@ -374,11 +379,11 @@
       </button>
     </header>
 
-
     <div class="cd-doc-body">
-      @for (p of d.paragraphs; track $index) {
-        <p>{{ p }}</p>
-      } @empty {
+      @if (d.words) {
+        <!-- text editor output with its formatting; Angular sanitizes it -->
+        <div class="cd-rich" [innerHTML]="d.html"></div>
+      } @else {
         <p class="cd-doc-none">Nothing has been written here yet.</p>
       }
     </div>

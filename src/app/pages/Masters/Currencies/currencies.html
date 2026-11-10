@@ -165,19 +165,19 @@
               </td>
               <td class="is-right">
                 <div class="ml-actions">
-                  <button type="button" class="m-icon-btn" title="View" [attr.aria-label]="'View ' + title(r)" (click)="viewing.set(r)">
+                  <button type="button" class="m-icon-btn action-btn action-eye" title="View" [attr.aria-label]="'View ' + title(r)" (click)="viewing.set(r)">
                     <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /><circle class="eye-pupil" cx="12" cy="12" r="3" /></svg>
                   </button>
-                  <button type="button" class="m-icon-btn" title="Edit" [attr.aria-label]="'Edit ' + title(r)" (click)="edit(r)">
+                  <button type="button" class="m-icon-btn action-btn" title="Edit" [attr.aria-label]="'Edit ' + title(r)" (click)="edit(r)">
                     <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
                   </button>
-                  <button type="button" class="m-icon-btn ml-power" [class.is-on]="r['status'] === 'active'"
+                  <button type="button" class="m-icon-btn action-btn ml-power" [class.is-on]="r['status'] === 'active'"
                           [title]="r['status'] === 'active' ? 'Deactivate' : 'Activate'"
                           [attr.aria-label]="(r['status'] === 'active' ? 'Deactivate ' : 'Activate ') + title(r)" (click)="togglePower(r)">
                     <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('power')" /></svg>
                   </button>
-                  <button type="button" class="m-icon-btn is-danger" title="Delete" [attr.aria-label]="'Delete ' + title(r)" (click)="deleting.set(r)">
-                    <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /><path class="trash-lid" [attr.d]="trashLid" /></svg>
+                  <button type="button" class="m-icon-btn action-btn action-delete is-danger" title="Delete" [attr.aria-label]="'Delete ' + title(r)" (click)="deleting.set(r)">
+                    <svg class="m-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /><circle class="drop d1" cx="9.5" cy="10" r=".9" /><circle class="drop d2" cx="12" cy="10" r=".9" /><circle class="drop d3" cx="14.5" cy="10" r=".9" /><path class="trash-lid" [attr.d]="trashLid" /></svg>
                   </button>
                 </div>
               </td>

@@ -29,7 +29,11 @@ type FieldKey =
 type IconName =
   | 'plus' | 'back' | 'check' | 'close' | 'chevron' | 'calendar' | 'help' | 'info' | 'arrow' | 'eye' | 'pen'
   | 'search' | 'fund' | 'donor' | 'receipt' | 'user' | 'left' | 'right' | 'alert' | 'clock'
-  | 'alignLeft' | 'alignCenter' | 'alignRight' | 'image' | 'upload' | 'trash';
+  | 'alignLeft' | 'alignCenter' | 'alignRight' | 'image' | 'upload' | 'trash' | 'save';
+
+type SaveMode = 'launch' | 'draft';
+type CreateArg = Parameters<CampaignApiService['createCampaign']>[0];
+type UpdateArg = Parameters<CampaignApiService['updateCampaign']>[1];
 
 export interface CampaignForm {
   name: string;
@@ -40,7 +44,8 @@ export interface CampaignForm {
   amount: string;
   target: string;
   fund: string;
-  ownerId: string | null;
+  /** One or more accountable owners (employee references). */
+  ownerIds: string[];
   purpose: string;
   country: string | null;
   state: string | null;
@@ -72,6 +77,8 @@ interface Owner {
   id: string;
   name: string;
   role: string;
+  /** Profile image URL; null = show the first letter of the name. */
+  avatar: string | null;
 }
 
 interface Section {
@@ -131,7 +138,7 @@ const CODE = /^[A-Z0-9-]{3,20}$/;
 const ZIP = /^[A-Za-z0-9 -]{3,10}$/;
 
 const EMPTY_FORM: CampaignForm = {
-  name: '', code: '', startDate: null, endDate: null, amount: '', target: '', fund: '', ownerId: null,
+  name: '', code: '', startDate: null, endDate: null, amount: '', target: '', fund: '', ownerIds: [],
   purpose: '', country: null, state: null, city: null, zip: '', activation: 'manual', daysBefore: '',
   remHour: null, remMinute: null, remPeriod: 'AM', publicDescription: '', terms: '',
   logo: null, logoName: '', logoSize: 0
@@ -140,6 +147,9 @@ const EMPTY_FORM: CampaignForm = {
 /** Campaign logo rules. */
 const LOGO_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 const LOGO_MAX_BYTES = 2 * 1024 * 1024;
+
+/** Fields the people directory may use for a profile image. Change to match your IAM model. */
+const AVATAR_KEYS = ['profileImageUrl', 'profileImage', 'photoUrl', 'avatarUrl', 'imageUrl', 'photo', 'avatar'];
 
 const ICONS: Record<IconName, string> = {
   plus: 'M12 5v14M5 12h14',
@@ -167,7 +177,8 @@ const ICONS: Record<IconName, string> = {
   alignRight: 'M4 6h16M10 10h10M4 14h16M10 18h10',
   image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM21 15l-5-5L5 21',
   upload: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12',
-  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6'
+  trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6',
+  save: 'M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2zM17 21v-8H7v8M7 3v5h8'
 };
 
 /** Local yyyy-mm-dd (no timezone shift). */
@@ -177,6 +188,16 @@ const toIso = (d: Date): string =>
 const fromIso = (iso: string): Date => {
   const [y, m, d] = iso.split('-').map(Number);
   return new Date(y, m - 1, d);
+};
+
+/** First usable profile image URL on a directory record, or null. */
+const avatarOf = (record: unknown): string | null => {
+  const r = (record ?? {}) as Record<string, unknown>;
+  for (const k of AVATAR_KEYS) {
+    const v = r[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
 };
 
 @Component({
@@ -202,13 +223,23 @@ export class NewCampaign {
   private readonly cityRows = signal<MasterLookup[]>([]);
   private editDetail: CampaignDetail | null = null;
   protected readonly saving = signal(false);
+  /** Which button started the current save ('launch' or 'draft'), for the button labels. */
+  protected readonly savingMode = signal<SaveMode | null>(null);
+  /** Status of the record being edited, as the API returns it (e.g. 'Draft', 'Scheduled'). */
+  private readonly editStatus = signal('');
+  /** True when the record being edited is still a draft. */
+  protected readonly isDraftRecord = computed(() => this.editStatus().trim().toLowerCase() === 'draft');
+  /** The code is locked once a campaign is launched; a draft can still change it. */
+  protected readonly codeLocked = computed(() => this.isEdit() && !this.isDraftRecord());
+  /** Main button: a live campaign is saved, a new one or a draft is launched. */
+  protected readonly primaryLabel = computed(() => (this.isEdit() && !this.isDraftRecord() ? 'Save' : 'Launch'));
 
   protected readonly paths = CW_PATHS;
 
   // ---- static data ----
   protected readonly sections: Section[] = [
     {
-      id: 'basic', no: '01', title: 'Basic information', sub: 'Campaign identity, dates, amounts and the accountable owner.',
+      id: 'basic', no: '01', title: 'Basic information', sub: 'Campaign identity, dates, amounts and the accountable owners.',
       fields: ['name', 'code', 'startDate', 'endDate', 'amount', 'target', 'fund', 'owner', 'purpose']
     },
     {
@@ -257,7 +288,7 @@ export class NewCampaign {
   protected readonly submitted = signal(false);
 
   /** Campaign code opened for editing (?code=XXX). Null = create mode. */
-  protected readonly editingCode: string | null;
+  protected readonly editingCode = signal<string | null>(null);
   /** True when editing an existing campaign instead of creating one. */
   protected readonly isEdit = signal(false);
 
@@ -267,6 +298,8 @@ export class NewCampaign {
   protected readonly activeIndex = signal(0);
   protected readonly ownerQuery = signal('');
   protected readonly countryQuery = signal('');
+  /** Owners whose profile image failed to load - they fall back to the letter. */
+  private readonly brokenAvatars = signal<ReadonlySet<string>>(new Set());
   protected readonly calMonth = signal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   protected readonly currentSection = signal<SectionId>('basic');
   protected readonly previewing = signal<ReadonlySet<EditorKey>>(new Set());
@@ -296,9 +329,15 @@ export class NewCampaign {
 
   /** People a campaign can be made accountable to - from IAM, within the caller's scope. */
   private readonly owners = computed<Owner[]>(() =>
-    this.people.staffAssignable().map((p) => ({ id: p.reference, name: p.name, role: p.context })));
+    this.people.staffAssignable().map((p) => ({ id: p.reference, name: p.name, role: p.context, avatar: avatarOf(p) })));
 
-  protected readonly owner = computed(() => this.owners().find((o) => o.id === this.form().ownerId) ?? null);
+  /** Chosen owners, in the order they were picked. */
+  protected readonly selectedOwners = computed<Owner[]>(() => {
+    const all = this.owners();
+    return this.form().ownerIds
+      .map((id) => all.find((o) => o.id === id))
+      .filter((o): o is Owner => !!o);
+  });
 
   protected readonly filteredOwners = computed(() => {
     const q = this.ownerQuery().trim().toLowerCase();
@@ -362,7 +401,7 @@ export class NewCampaign {
           ? 'Enter an amount like 1000000.'
           : MONEY.test(f.amount) && target < amount ? 'Target can’t be lower than the campaign amount.' : null,
       fund: !f.fund.trim() ? 'Enter the fund or programme.' : null,
-      owner: !f.ownerId ? 'Choose an eligible owner.' : null,
+      owner: !f.ownerIds.length ? 'Choose at least one eligible owner.' : null,
       purpose: !t.purpose.trim() ? 'Describe the purpose.' : t.purpose.length > 1000 ? 'Keep it within 1000 characters.' : null,
       country: !f.country ? 'Choose a country.' : null,
       zip: !f.zip.trim() ? 'Enter the zip code.' : !ZIP.test(f.zip.trim()) ? 'Enter a valid zip / postal code.' : null,
@@ -378,7 +417,7 @@ export class NewCampaign {
     const f = this.form();
     const t = this.editorText();
     return [
-      f.name.trim(), f.code, f.startDate, f.endDate, f.amount, f.target, f.fund.trim(), f.ownerId, t.purpose.trim(),
+      f.name.trim(), f.code, f.startDate, f.endDate, f.amount, f.target, f.fund.trim(), f.ownerIds.length, t.purpose.trim(),
       f.country, f.zip.trim(), f.daysBefore.trim(), f.remHour && f.remMinute, t.publicDescription.trim(), t.terms.trim()
     ].filter(Boolean).length;
   });
@@ -415,7 +454,7 @@ export class NewCampaign {
 
     // edit mode: /campaign-wizard?code=XXX pre-fills the wizard from the campaign's full record
     const code = this.route.snapshot.queryParamMap.get('code');
-    this.editingCode = code;
+    this.editingCode.set(code);
     const meta = code ? this.store.findCampaign(code) : undefined;
     if (code && meta?.id) this.loadForEdit(meta.id);
     else if (code) {
@@ -452,26 +491,32 @@ export class NewCampaign {
       next: (d) => {
         this.editDetail = d;
         this.editCurrency.set(d.currencyCode ?? '');
+        this.editStatus.set(String((d as CampaignDetail & { status?: string | null }).status ?? ''));
+        this.editingCode.set(d.code ?? this.editingCode());
         this.isEdit.set(true);
+        // a draft can come back with empty dates, amounts or time - keep those fields empty
         const hm = /^(\d{1,2}):(\d{2})/.exec(d.reminderTime ?? '');
         const h24 = hm ? Number(hm[1]) : 10;
         this.form.set({
-          name: d.name, code: d.code, startDate: d.startDate.slice(0, 10), endDate: d.endDate.slice(0, 10),
-          amount: String(d.campaignAmount), target: String(d.targetAmount), fund: d.fundOrProgramme,
-          ownerId: d.ownerIds[0] ?? null, purpose: d.purposeHtml ?? d.purpose,
-          country: d.countryName, state: d.stateName, city: d.cityName, zip: d.zipCode ?? '',
-          activation: d.lifecycleActivation, daysBefore: String(d.daysBeforeStart ?? ''),
-          remHour: String(((h24 + 11) % 12) + 1).padStart(2, '0'), remMinute: hm ? hm[2] : '00', remPeriod: h24 < 12 ? 'AM' : 'PM',
+          name: d.name ?? '', code: d.code ?? '',
+          startDate: d.startDate ? d.startDate.slice(0, 10) : null, endDate: d.endDate ? d.endDate.slice(0, 10) : null,
+          amount: d.campaignAmount != null ? String(d.campaignAmount) : '',
+          target: d.targetAmount != null ? String(d.targetAmount) : '',
+          fund: d.fundOrProgramme ?? '',
+          ownerIds: [...(d.ownerIds ?? [])], purpose: d.purposeHtml ?? d.purpose ?? '',
+          country: d.countryName ?? null, state: d.stateName ?? null, city: d.cityName ?? null, zip: d.zipCode ?? '',
+          activation: d.lifecycleActivation ?? 'manual', daysBefore: d.daysBeforeStart != null ? String(d.daysBeforeStart) : '',
+          remHour: hm ? String(((h24 + 11) % 12) + 1).padStart(2, '0') : null, remMinute: hm ? hm[2] : null, remPeriod: h24 < 12 ? 'AM' : 'PM',
           publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '',
           // the saved logo (if the API returns one) is shown in the field; a new upload replaces it
           logo: (d as CampaignDetail & { logoUrl?: string | null }).logoUrl ?? null,
           logoName: (d as CampaignDetail & { logoUrl?: string | null }).logoUrl ? 'Current logo' : '', logoSize: 0
         });
         this.logoDims.set(null);
-        this.editorText.set({ purpose: d.purpose, publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '' });
+        this.editorText.set({ purpose: d.purpose ?? '', publicDescription: d.publicDescription ?? '', terms: d.termsAndNotice ?? '' });
         setTimeout(() => {
           const els = this.editorEls();
-          const html = [d.purposeHtml ?? d.purpose, d.publicDescription ?? '', d.termsAndNotice ?? ''];
+          const html = [d.purposeHtml ?? d.purpose ?? '', d.publicDescription ?? '', d.termsAndNotice ?? ''];
           els.forEach((r, i) => { if (html[i] !== undefined) r.nativeElement.innerHTML = html[i]; });
         });
         const country = this.countryRows().find((c) => c.id === d.countryId);
@@ -561,6 +606,29 @@ export class NewCampaign {
   protected touch(key: FieldKey): void {
     if (this.touched().has(key)) return;
     this.touched.update((s) => new Set(s).add(key));
+  }
+
+  // =================================================================================================
+  // owner avatars
+  // =================================================================================================
+  /** First letter of the owner's name, used when there is no profile image. */
+  protected initial(name: string): string {
+    return (name.trim().charAt(0) || '?').toUpperCase();
+  }
+
+  /** True when the owner has a profile image that has not failed to load. */
+  protected hasAvatar(o: Owner): boolean {
+    return !!o.avatar && !this.brokenAvatars().has(o.id);
+  }
+
+  /** A profile image that fails to load falls back to the letter. */
+  protected avatarFailed(id: string): void {
+    if (this.brokenAvatars().has(id)) return;
+    this.brokenAvatars.update((s) => new Set(s).add(id));
+  }
+
+  protected isOwnerSelected(id: string): boolean {
+    return this.form().ownerIds.includes(id);
   }
 
   // =================================================================================================
@@ -726,9 +794,29 @@ export class NewCampaign {
     if (this.openMenu() !== id) this.openMenuFor(id);
   }
 
-  protected pickOwner(o: Owner): void {
-    this.patch({ ownerId: o.id });
-    this.closeMenu();
+  /** Multi-select: clicking an owner adds or removes them; the list stays open for more picks. */
+  protected toggleOwner(o: Owner): void {
+    const ids = this.form().ownerIds;
+    this.patch({ ownerIds: ids.includes(o.id) ? ids.filter((i) => i !== o.id) : [...ids, o.id] });
+  }
+
+  protected removeOwner(id: string, event?: Event): void {
+    event?.stopPropagation();
+    this.patch({ ownerIds: this.form().ownerIds.filter((i) => i !== id) });
+    this.touch('owner');
+  }
+
+  /** Owner search box: Backspace on an empty search removes the last chosen owner. */
+  protected ownerKey(event: KeyboardEvent): void {
+    if (event.key === 'Backspace' && !this.ownerQuery()) {
+      const ids = this.form().ownerIds;
+      if (ids.length) {
+        event.preventDefault();
+        this.patch({ ownerIds: ids.slice(0, -1) });
+      }
+      return;
+    }
+    this.menuKey(event, 'owner');
   }
 
   protected pickCountry(name: string): void {
@@ -798,7 +886,7 @@ export class NewCampaign {
 
   private menuList(id: string): { count: number; pick: (i: number) => void } | null {
     switch (id) {
-      case 'owner': return { count: this.filteredOwners().length, pick: (i) => this.pickOwner(this.filteredOwners()[i]) };
+      case 'owner': return { count: this.filteredOwners().length, pick: (i) => this.toggleOwner(this.filteredOwners()[i]) };
       case 'country': return { count: this.filteredCountries().length, pick: (i) => this.pickCountry(this.filteredCountries()[i]) };
       case 'state': return { count: this.states().length, pick: (i) => this.pickState(this.states()[i]) };
       case 'city': return { count: this.cities().length, pick: (i) => this.pickCity(this.cities()[i]) };
@@ -929,69 +1017,112 @@ export class NewCampaign {
     this.host.nativeElement.querySelector(`[data-section="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  /** Launch: every required detail must be valid. Schedules the campaign. */
   protected launch(): void {
-    this.submitted.set(true);
-    this.closeMenu();
+    this.persist('launch');
+  }
 
+  /** Save as draft: runs the same validation as Launch, but the campaign is saved as a Draft. */
+  protected saveDraft(): void {
+    this.persist('draft');
+  }
+
+  private persist(mode: SaveMode): void {
+    if (this.saving()) return;
+    this.closeMenu();
+    const draft = mode === 'draft';
+
+    // Draft and Launch validate the same way: every field shows its error and the save is stopped
+    // until all of them are fixed. The only difference is the status the campaign is saved with.
+    this.submitted.set(true);
     if (!this.ready()) {
       const first = this.sections.find((s) => s.fields.some((k) => this.errors()[k]));
       if (first) this.goTo(first.id);
       const n = this.invalidCount();
-      this.showToast(`${n} required detail${n === 1 ? '' : 's'} still need attention.`, 'warn');
+      this.showToast(
+        `${n} required detail${n === 1 ? '' : 's'} still need attention before you ${draft ? 'save the draft' : 'launch'}.`,
+        'warn'
+      );
       return;
     }
 
-    if (this.saving()) return;
     const f = this.form();
     const country = this.countryRows().find((c) => c.name === f.country);
     const state = this.stateRows().find((r) => r.name === f.state);
     const city = this.cityRows().find((r) => r.name === f.city);
+    const hasTime = !!f.remHour && !!f.remMinute;
     const h12 = Number(f.remHour ?? 12) % 12;
     const h24 = f.remPeriod === 'PM' ? h12 + 12 : h12;
     const t = this.editorText();
     const channels = (this.store.reference()?.channels ?? []).filter((c) => c.isActive).map((c) => c.id);
+    // a draft sends empty or not-yet-valid values as null instead of failing on them
+    const money = (v: string): number | null => (MONEY.test(v) ? Number(v) : null);
+    const blank = draft ? null : '';
     const shared = {
       name: f.name.trim(), purpose: t.purpose.trim(), purposeHtml: f.purpose || null, fundOrProgramme: f.fund.trim(),
-      startDate: f.startDate ?? '', endDate: f.endDate ?? '', campaignAmount: Number(f.amount), targetAmount: Number(f.target),
-      countryId: country?.id ?? '', ownerIds: f.ownerId ? [f.ownerId] : [], stateId: state?.id ?? '', cityId: city?.id ?? '',
-      zipCode: f.zip.trim(), lifecycleActivation: f.activation, daysBeforeStart: Number(f.daysBefore),
-      reminderTime: `${String(h24).padStart(2, '0')}:${f.remMinute ?? '00'}`,
+      startDate: f.startDate ?? blank, endDate: f.endDate ?? blank,
+      campaignAmount: draft ? money(f.amount) : Number(f.amount),
+      targetAmount: draft ? money(f.target) : Number(f.target),
+      countryId: country?.id ?? blank, ownerIds: [...f.ownerIds], stateId: state?.id ?? '', cityId: city?.id ?? '',
+      zipCode: f.zip.trim(), lifecycleActivation: f.activation,
+      daysBeforeStart: /^\d{1,3}$/.test(f.daysBefore.trim()) ? Number(f.daysBefore) : (draft ? null : 0),
+      reminderTime: hasTime ? `${String(h24).padStart(2, '0')}:${f.remMinute}` : blank,
       publicDescription: t.publicDescription.trim(), termsAndNotice: t.terms.trim(),
       // campaign logo as a data URL (null = none). Rename / remove to match your campaign API.
       logo: f.logo,
+      // true keeps the record as a Draft; false launches it (Draft -> Scheduled). Rename to match your API.
+      saveAsDraft: draft,
     };
+
     this.saving.set(true);
-    const done = (code: string): void => {
+    this.savingMode.set(mode);
+    const finish = (): void => {
       this.saving.set(false);
+      this.savingMode.set(null);
+    };
+    const done = (res: unknown): void => {
+      finish();
+      const d = (res ?? {}) as Partial<CampaignDetail>;
       this.store.reload();
-      this.router.navigate([CW_PATHS.detailFor(code)]);
+      if (!draft) {
+        const code = d.code ?? f.code;
+        this.router.navigate([CW_PATHS.detailFor(code)]);
+        return;
+      }
+      // draft: stay on the page and keep editing the saved record (next save updates it, no duplicate)
+      this.showToast('Draft saved. You can finish it and launch later.', 'ok');
+      const code = d.code ?? f.code;
+      this.editingCode.set(code);
+      this.router.navigate([], { relativeTo: this.route, queryParams: { code }, replaceUrl: true });
+      if (d.id) this.loadForEdit(d.id);
     };
     const fail = (e: unknown): void => {
-      this.saving.set(false);
-      this.showToast(apiErrorMessage(e, 'The campaign could not be saved.'), 'warn');
+      finish();
+      this.showToast(apiErrorMessage(e, draft ? 'The draft could not be saved.' : 'The campaign could not be saved.'), 'warn');
     };
+
     const editing = this.editDetail;
     if (editing) {
-      this.api.updateCampaign(editing.id, {
-        ...shared, expectedVersion: editing.version, currencyId: editing.currencyId,
-        channelIds: editing.channelIds.length ? editing.channelIds : channels,
-      }).subscribe({ next: (d) => done(d.code), error: fail });
+      const body = {
+        ...shared, code: f.code, expectedVersion: editing.version, currencyId: editing.currencyId,
+        channelIds: editing.channelIds?.length ? editing.channelIds : channels,
+      };
+      this.api.updateCampaign(editing.id, body as unknown as UpdateArg).subscribe({ next: done, error: fail });
       return;
     }
     // The wizard has no currency or channel step: the country's default currency and every active
     // channel are used, and both can be changed on the campaign afterwards.
     const currencyId = country?.defaultCurrencyId ?? '';
     const create = (currency: string): void => {
-      this.api.createCampaign({ ...shared, code: f.code, currencyId: currency, channelIds: channels }).subscribe({
-        next: (d) => done(d.code), error: fail,
-      });
+      const body = { ...shared, code: f.code, currencyId: currency || null, channelIds: channels };
+      this.api.createCampaign(body as unknown as CreateArg).subscribe({ next: done, error: fail });
     };
-    if (currencyId) create(currencyId);
-    else this.geo.getCurrencies(country?.id).subscribe({ next: (list) => create(list[0]?.id ?? ''), error: fail });
+    if (currencyId || !country) create(currencyId); // a draft without a country saves without a currency
+    else this.geo.getCurrencies(country.id).subscribe({ next: (list) => create(list[0]?.id ?? ''), error: fail });
   }
 
   protected discard(): void {
-    this.form.set({ ...EMPTY_FORM });
+    this.form.set({ ...EMPTY_FORM, ownerIds: [] });
     this.editorText.set({ purpose: '', publicDescription: '', terms: '' });
     this.editorEls().forEach((r) => (r.nativeElement.innerHTML = ''));
     this.touched.set(new Set());

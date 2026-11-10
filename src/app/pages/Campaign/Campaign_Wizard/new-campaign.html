@@ -18,7 +18,9 @@
     <p>A permanent campaign ID is generated when you launch. The campaign code is locked after launch.</p>
   </div>
   <div class="cp-create-actions">
-    <span class="cp-pill">{{ isEdit() ? 'Editing ' + (editingCode ?? '') : 'New record' }}</span>
+    <span class="cp-pill" [class.is-draft]="isDraftRecord()">
+      {{ isDraftRecord() ? 'Draft · ' + (editingCode() ?? '') : isEdit() ? 'Editing ' + (editingCode() ?? '') : 'New record' }}
+    </span>
   </div>
 </section>
 
@@ -62,7 +64,7 @@
       <span class="cp-progress" aria-hidden="true">
         <span [style.width.%]="(filledCount() / requiredTotal) * 100"></span>
       </span>
-      <p>Presence only. Validation runs when you launch.</p>
+      <p>Presence only. Validation runs when you save a draft or launch.</p>
     </div>
   </aside>
 
@@ -74,7 +76,7 @@
         <span class="cp-num">01</span>
         <div>
           <h3 id="cp-s1">Basic information</h3>
-          <p>Campaign identity, dates, amounts and the accountable owner.</p>
+          <p>Campaign identity, dates, amounts and the accountable owners.</p>
         </div>
       </header>
 
@@ -151,12 +153,12 @@
             <span class="cp-help" tabindex="0" data-tip="Short unique code used on receipts. Locked after launch.">?</span>
           </div>
           <input id="cp-code" class="cp-input cp-mono" type="text" placeholder="e.g. EDU2025"
-                 [class.is-invalid]="showError('code')" [value]="form().code" [disabled]="isEdit()"
+                 [class.is-invalid]="showError('code')" [value]="form().code" [disabled]="codeLocked()"
                  (input)="setCode($event)" (blur)="touch('code')" />
           @if (showError('code'); as err) {
             <p class="cp-error">{{ err }}</p>
           } @else {
-            <p class="cp-hint">{{ isEdit() ? 'Code is locked while editing.' : 'Capital letters, numbers and hyphens.' }}</p>
+            <p class="cp-hint">{{ codeLocked() ? 'Code is locked after launch.' : 'Capital letters, numbers and hyphens.' }}</p>
           }
         </div>
 
@@ -260,35 +262,45 @@
           }
         </div>
 
-        <!-- owner (searchable) -->
+        <!-- owners (searchable, multi-select) -->
         <div class="cp-field">
           <div class="cp-label-row">
-            <label class="cp-label" for="cp-owner">Owner <span class="cp-req">*</span></label>
-            <span class="cp-help" tabindex="0" data-tip="The employee accountable for this campaign.">?</span>
+            <label class="cp-label" for="cp-owner">Owners <span class="cp-req">*</span></label>
+            <span class="cp-help" tabindex="0" data-tip="The employees accountable for this campaign. Pick one or more.">?</span>
           </div>
           <div class="cp-dd" data-menu>
             <div class="cp-input cp-combo" [class.is-open]="openMenu() === 'owner'" [class.is-invalid]="showError('owner')">
               <svg class="cp-ico cp-ico-muted" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('search')" /></svg>
               <input id="cp-owner" type="text" autocomplete="off" role="combobox" aria-controls="cp-owner-list"
                      [attr.aria-expanded]="openMenu() === 'owner'"
-                     [placeholder]="owner() ? owner()!.name : 'Search eligible owners in scope…'"
-                     [class.has-value]="owner()"
-                     [value]="openMenu() === 'owner' ? ownerQuery() : (owner()?.name ?? '')"
+                     [placeholder]="selectedOwners().length ? 'Search to add another owner…' : 'Search eligible owners in scope…'"
+                     [value]="openMenu() === 'owner' ? ownerQuery() : ''"
                      (focus)="openCombo('owner')" (click)="openCombo('owner')"
-                     (input)="search('owner', $event)" (keydown)="menuKey($event, 'owner')" />
+                     (input)="search('owner', $event)" (keydown)="ownerKey($event)" />
+              @if (selectedOwners().length) {
+                <span class="cp-count-badge">{{ selectedOwners().length }}</span>
+              }
               <svg class="cp-ico cp-chev" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chevron')" /></svg>
             </div>
             @if (openMenu() === 'owner') {
-              <ul class="cp-menu" id="cp-owner-list" role="listbox">
+              <ul class="cp-menu" id="cp-owner-list" role="listbox" aria-multiselectable="true">
                 @for (o of filteredOwners(); track o.id; let i = $index) {
-                  <li role="option" [attr.aria-selected]="o.id === form().ownerId"
-                      [class.is-active]="i === activeIndex()" [class.is-selected]="o.id === form().ownerId"
-                      (mouseenter)="activeIndex.set(i)" (mousedown)="$event.preventDefault()" (click)="pickOwner(o)">
-                    <span class="cp-avatar">{{ o.name.charAt(0) }}</span>
+                  <li role="option" [attr.aria-selected]="isOwnerSelected(o.id)"
+                      [class.is-active]="i === activeIndex()" [class.is-selected]="isOwnerSelected(o.id)"
+                      (mouseenter)="activeIndex.set(i)" (mousedown)="$event.preventDefault()" (click)="toggleOwner(o)">
+                    <span class="cp-check" aria-hidden="true">
+                      @if (isOwnerSelected(o.id)) {
+                        <svg viewBox="0 0 24 24"><path [attr.d]="icon('check')" /></svg>
+                      }
+                    </span>
+                    <span class="cp-avatar">
+                      @if (hasAvatar(o)) {
+                        <img [src]="o.avatar" alt="" loading="lazy" (error)="avatarFailed(o.id)" />
+                      } @else {
+                        {{ initial(o.name) }}
+                      }
+                    </span>
                     <span class="cp-opt-copy"><b>{{ o.name }}</b><small>{{ o.role }}</small></span>
-                    @if (o.id === form().ownerId) {
-                      <svg class="cp-ico cp-tick" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-                    }
                   </li>
                 } @empty {
                   <li class="cp-empty" >No owner matches “{{ ownerQuery() }}”.</li>
@@ -296,10 +308,35 @@
               </ul>
             }
           </div>
+
+          @if (selectedOwners().length) {
+            <ul class="cp-chips" aria-label="Selected owners">
+              @for (o of selectedOwners(); track o.id) {
+                <li class="cp-chip" [attr.title]="o.role">
+                  <span class="cp-avatar cp-avatar-sm">
+                    @if (hasAvatar(o)) {
+                      <img [src]="o.avatar" alt="" loading="lazy" (error)="avatarFailed(o.id)" />
+                    } @else {
+                      {{ initial(o.name) }}
+                    }
+                  </span>
+                  <span class="cp-chip-name">{{ o.name }}</span>
+                  <button type="button" class="cp-chip-x" [attr.aria-label]="'Remove ' + o.name" (click)="removeOwner(o.id, $event)">
+                    <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+
           @if (showError('owner'); as err) {
             <p class="cp-error">{{ err }}</p>
           } @else {
-            <p class="cp-hint">{{ owner() ? owner()!.role : 'Uses a linked employee record.' }}</p>
+            <p class="cp-hint">
+              {{ selectedOwners().length
+                  ? selectedOwners().length + ' owner' + (selectedOwners().length === 1 ? '' : 's') + ' selected.'
+                  : 'Pick one or more linked employee records.' }}
+            </p>
           }
         </div>
 
@@ -537,7 +574,7 @@
           @if (showError('reminder'); as err) {
             <p class="cp-error">{{ err }}</p>
           } @else {
-            <p class="cp-hint">Sent to the campaign owner.</p>
+            <p class="cp-hint">Sent to the campaign owners.</p>
           }
         </div>
       </div>
@@ -566,15 +603,29 @@
 
     <!-- ===== ACTION BAR ===== -->
     <footer class="cp-actionbar">
-      <p>Check every detail above before you launch — launching schedules this campaign.</p>
+      <p>
+        @if (!isEdit() || isDraftRecord()) {
+          Both buttons check every detail. Save as draft keeps it as a draft; Launch schedules the campaign.
+        } @else {
+          Check every detail above before you save.
+        }
+      </p>
       <div class="cp-actionbar-btns">
-        <button type="button" class="cp-btn btn-secondary" (click)="discard()">
+        <button type="button" class="cp-btn btn-secondary" [disabled]="saving()" (click)="discard()">
           <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('close')" /></svg>
           Discard
         </button>
-        <button type="button" class="cp-btn btn-primary" (click)="launch()">
+        @if (!isEdit() || isDraftRecord()) {
+          <button type="button" class="cp-btn btn-secondary" [disabled]="saving()" (click)="saveDraft()">
+            <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('save')" /></svg>
+            <span class="cp-l-long">{{ savingMode() === 'draft' ? 'Saving draft…' : 'Save as draft' }}</span>
+            <span class="cp-l-short">{{ savingMode() === 'draft' ? 'Saving…' : 'Draft' }}</span>
+          </button>
+        }
+        <button type="button" class="cp-btn btn-primary" [disabled]="saving()" (click)="launch()">
           <svg class="cp-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
-          <span class="cp-l-long">{{ isEdit() ? 'Save' : 'Launch' }}</span><span class="cp-l-short">{{ isEdit() ? 'Save' : 'Launch' }}</span>
+          <span class="cp-l-long">{{ savingMode() === 'launch' ? (primaryLabel() === 'Save' ? 'Saving…' : 'Launching…') : primaryLabel() }}</span>
+          <span class="cp-l-short">{{ savingMode() === 'launch' ? 'Saving…' : primaryLabel() }}</span>
         </button>
       </div>
     </footer>

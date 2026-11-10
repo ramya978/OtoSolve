@@ -103,7 +103,11 @@
               </div>
               <div class="df-field">
                 <span class="df-lbl">Mobile number</span>
-                <input #mobileBox type="tel" class="df-input" placeholder="Enter mobile number" autocomplete="tel" [value]="mobile()" (input)="mobile.set(mobileBox.value)" />
+                <input #mobileBox type="tel" class="df-input" placeholder="Enter mobile number"
+                       autocomplete="tel" inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                       [attr.aria-invalid]="!!mobileError()"
+                       [value]="mobile()" (input)="onDigitsInput($event, 'mobile')" />
+                @if (mobileError()) { <p class="df-err" role="alert">{{ mobileError() }}</p> }
               </div>
               <div class="df-field">
                 <span class="df-lbl">PAN or tax identifier</span>
@@ -205,7 +209,11 @@
 
               <div class="df-field df-narrow">
                 <span class="df-lbl">PIN / postal code</span>
-                <input #pinBox type="text" class="df-input" placeholder="Enter PIN code" autocomplete="postal-code" [value]="pin()" (input)="pin.set(pinBox.value)" />
+                <input #pinBox type="text" class="df-input" placeholder="Enter PIN code"
+                       autocomplete="postal-code" inputmode="numeric" pattern="[0-9]*" maxlength="10"
+                       [attr.aria-invalid]="!!pinError()"
+                       [value]="pin()" (input)="onDigitsInput($event, 'pin')" />
+                  @if (pinError()) { <p class="df-err" role="alert">{{ pinError() }}</p> }
               </div>
             </div>
           }

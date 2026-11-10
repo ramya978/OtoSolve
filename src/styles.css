@@ -1,6 +1,7 @@
 
 @import './app/Shared/styles/common-buttons.css';
 @import './app/Shared/styles/theme.css';
+@import './app/Shared/styles/action-icons.css';
 
 
 :host button,

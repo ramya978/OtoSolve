@@ -3,7 +3,7 @@
      Page header (eyebrow · title · actions)
      → profile card: identity (avatar · name · stage · contact | owner) + four figures in one card
      → [ timeline card: tabs + search + filters in the head · month groups · dated rail entries · pager
-       | side cards: standing · record · activity ] → entry popup.
+       | side cards: standing · record · activity ] → entry popup → attachment preview popup.
      Mobile header: Back · ⋯ More (Schedule follow-up, Export) · Log communication - compact icon buttons.
      ===================================================================================================== -->
 <app-page-header breadcrumb="Donor & Leads / Lead Work Queue"  heading="Communication timeline" description="Every call, e-mail, meeting and note with this lead in one place.">
@@ -195,7 +195,12 @@
                   <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg><i class="ct-m-date">{{ date(e.at) }}, {{ time(e.at) }} · </i>{{ ago(e.at) }}</span>
                   @if (e.channel !== 'note') { <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(e.direction)" /></svg>{{ e.direction === 'out' ? 'Outgoing' : 'Incoming' }}</span> }
                   <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ e.by }}</span>
-                  @if (e.attachment) { <span class="ct-file" [attr.title]="e.attachment"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg>{{ e.attachment }}</span> }
+                  @if (e.attachment) {
+                    <button type="button" class="ct-file" (click)="openAttachment(e, $event)"
+                            [attr.title]="'Open ' + e.attachment" [attr.aria-label]="'Open attachment ' + e.attachment">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg><span>{{ e.attachment }}</span>
+                    </button>
+                  }
                 </p>
               </div>
             </article>
@@ -303,7 +308,18 @@
             <div><dt>Logged by</dt><dd>{{ v.by }}</dd></div>
             <div><dt>Engagement</dt><dd class="is-cap">{{ v.engagement ?? '—' }}</dd></div>
             <div><dt>Conversation quality</dt><dd class="is-cap">{{ v.quality ?? '—' }}</dd></div>
-            <div><dt>Attachment</dt><dd>{{ v.attachment ?? '—' }}</dd></div>
+            <div>
+              <dt>Attachment</dt>
+              <dd>
+                @if (v.attachment) {
+                  <button type="button" class="ct-attach" (click)="openAttachment(v, $event)" [attr.title]="'Open ' + v.attachment">
+                    <span class="ct-attach-ext">{{ fileExt(v.attachment) || 'file' }}</span>
+                    <span class="ct-attach-name">{{ v.attachment }}</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+                  </button>
+                } @else { — }
+              </dd>
+            </div>
           </dl>
           <p class="ct-dlg-note">{{ v.note || 'No internal note.' }}</p>
         </div>
@@ -312,6 +328,66 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('star')" /></svg> {{ v.important ? 'Unmark important' : 'Mark as important' }}
           </button>
           <button type="button" class="ct-btn" (click)="viewing.set(null)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close</button>
+        </footer>
+      </div>
+    </div>
+  }
+
+  <!-- ===== attachment preview popup ===== -->
+  @if (previewing(); as p) {
+    <div class="ct-overlay is-top" (click)="closePreview()">
+      <div class="ct-dialog ct-preview" role="dialog" aria-modal="true" aria-labelledby="ct-prv-title" (click)="$event.stopPropagation()">
+        <header class="ct-dlg-head">
+          <h2 id="ct-prv-title" class="ct-prv-title">
+            <span class="ct-attach-ext">{{ p.ext || 'file' }}</span>
+            <span [attr.title]="p.name">{{ p.name }}</span>
+          </h2>
+          <button type="button" class="ct-dlg-x" (click)="closePreview()" aria-label="Close preview"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
+        </header>
+
+        <div class="ct-prv-body">
+          @switch (p.status) {
+            @case ('loading') {
+              <div class="ct-empty" role="status">
+                <span class="ct-spin" aria-hidden="true"></span>
+                <b>Opening the file…</b>
+              </div>
+            }
+            @case ('ready') {
+              @if (p.kind === 'image' && p.url) {
+                <img class="ct-prv-img" [src]="p.url" [alt]="p.name" />
+              } @else if (p.frame) {
+                <iframe class="ct-prv-frame" [src]="p.frame" [title]="p.name"></iframe>
+              } @else {
+                <div class="ct-empty">
+                  <span class="ct-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg></span>
+                  <b>No preview for this file type</b>
+                  <span>{{ (p.ext || 'This').toUpperCase() }} files can't be shown in the browser. Download it to open it.</span>
+                </div>
+              }
+            }
+            @case ('missing') {
+              <div class="ct-empty">
+                <span class="ct-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg></span>
+                <b>File not saved</b>
+                <span>Only the file name was recorded for this entry. The file itself was not uploaded, so there is nothing to open.</span>
+              </div>
+            }
+            @default {
+              <div class="ct-empty">
+                <span class="ct-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></span>
+                <b>Could not open the file</b>
+                <span>{{ p.message }}</span>
+              </div>
+            }
+          }
+        </div>
+
+        <footer class="ct-dlg-foot">
+          <button type="button" class="ct-btn" [disabled]="p.status !== 'ready'" (click)="downloadAttachment(p)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg> Download
+          </button>
+          <button type="button" class="ct-btn" (click)="closePreview()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Close</button>
         </footer>
       </div>
     </div>

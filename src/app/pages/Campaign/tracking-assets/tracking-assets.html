@@ -144,12 +144,12 @@
           <td class="ta-h-usage ta-num">{{ a.usage.toLocaleString('en-IN') }}</td>
           <td class="ta-act-col">
             @if (rowAction(a); as act) {
-              <button type="button" [class]="'ta-act is-' + act" [attr.aria-label]="actionLabel(act) + ' ' + a.ref"
+              <button type="button" [class]="'action-btn action-' + act" [attr.aria-label]="actionLabel(act) + ' ' + a.ref"
                       [attr.data-tip]="actionLabel(act)" (click)="$event.stopPropagation(); doAction(a, act)">
                 <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path pathLength="100" [attr.d]="icon(actionIcon(act))" /></svg>
               </button>
             } @else {
-              <button type="button" class="ta-act is-view" [attr.aria-label]="'View ' + a.ref" data-tip="View details"
+              <button type="button" class="action-btn action-view" [attr.aria-label]="'View ' + a.ref" data-tip="View details"
                       (click)="$event.stopPropagation(); openAsset(a)">
                 <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
               </button>
@@ -242,7 +242,7 @@
           <span>{{ a.medium }}</span>
         </div>
       </div>
-      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="openRef.set(null)">
+      <button type="button" class="action-btn" aria-label="Close" (click)="openRef.set(null)">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
       </button>
     </header>

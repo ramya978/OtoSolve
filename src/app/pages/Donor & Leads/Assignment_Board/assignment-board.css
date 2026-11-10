@@ -221,8 +221,6 @@
 .ab-unassigned { color: var(--fu-amber) !important; font-weight: 600; }
 .ab-sla { color: var(--t); font-size: calc(12px * var(--ab-fs)); font-weight: 600; white-space: nowrap; }
 .ab-acts { display: flex; justify-content: flex-end; gap: 4px; }
-.ab-acts .fu-icon { width: calc(30px * var(--ab-k)); height: calc(30px * var(--ab-k)); color: var(--fu-primary) !important; }
-.ab-acts .fu-icon:hover { border-color: var(--fu-primary-line) !important; background: var(--fu-primary-soft) !important; }
 .ab-empty { display: grid; justify-items: center; gap: 2px; padding: calc(40px * var(--ab-k)) calc(20px * var(--ab-k)) !important; text-align: center; }
 td.ab-empty { display: table-cell; }
 .ab-empty b { display: block; color: var(--fu-heading); }

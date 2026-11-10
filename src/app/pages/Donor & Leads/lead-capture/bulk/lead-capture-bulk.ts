@@ -8,12 +8,15 @@ import { apiErrorMessage } from '../../../../Shared/models/api-response.model';
 import { LC_ICONS, LC_PATHS, TEMPLATE_COLUMNS } from '../lc-shared';
 
 type Step = 1 | 2 | 3;
+type ReportFilter = 'all' | 'imported' | 'skipped';
 
 /** One spreadsheet row after mapping to the template columns. */
 interface UploadRow {
   n: number;
   v: Record<string, string>;
   errors: string[];
+  /** Set after the import: what happened to this row. */
+  outcome?: 'imported' | 'skipped';
 }
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -50,16 +53,27 @@ export class LeadCaptureBulk implements OnInit {
   protected readonly file = signal<{ name: string; size: number; kind: 'csv' | 'xlsx' } | null>(null);
   protected readonly rows = signal<UploadRow[]>([]);
   protected readonly fileError = signal('');
+  protected readonly reading = signal(false);
   protected readonly dragOver = signal(false);
   protected readonly errorsOnly = signal(false);
   protected readonly importing = signal(false);
   protected readonly result = signal<{ imported: number; skipped: number } | null>(null);
+  /** Filter for the row-wise import report. */
+  protected readonly reportFilter = signal<ReportFilter>('all');
   /** Header names in the file that did not match any template column. */
   protected readonly unknownHeaders = signal<string[]>([]);
 
   protected readonly okCount = computed(() => this.rows().filter((r) => !r.errors.length).length);
   protected readonly badCount = computed(() => this.rows().length - this.okCount());
   protected readonly shownRows = computed(() => (this.errorsOnly() ? this.rows().filter((r) => r.errors.length) : this.rows()));
+
+  /** Row-wise report after the import. */
+  protected readonly importedRows = computed(() => this.rows().filter((r) => r.outcome === 'imported').length);
+  protected readonly skippedRows = computed(() => this.rows().filter((r) => r.outcome === 'skipped').length);
+  protected readonly reportRows = computed(() => {
+    const f = this.reportFilter();
+    return f === 'all' ? this.rows() : this.rows().filter((r) => r.outcome === f);
+  });
 
   ngOnInit(): void {
     this.api.getLeadCaptureForm().subscribe({
@@ -76,6 +90,10 @@ export class LeadCaptureBulk implements OnInit {
 
   size(bytes: number): string {
     return bytes < 1024 ? bytes + ' B' : bytes < 1024 * 1024 ? (bytes / 1024).toFixed(1) + ' KB' : (bytes / 1024 / 1024).toFixed(1) + ' MB';
+  }
+
+  name(r: UploadRow): string {
+    return [r.v['first_name'], r.v['last_name']].filter(Boolean).join(' ') || '—';
   }
 
   // ---------- step 1: attach ----------
@@ -102,16 +120,21 @@ export class LeadCaptureBulk implements OnInit {
     if (!kind) { this.fileError.set('Use a .csv or .xlsx file.'); return; }
     if (f.size > MAX_BYTES) { this.fileError.set('The file is larger than 10 MB.'); return; }
     this.file.set({ name: f.name, size: f.size, kind });
+    this.rows.set([]);
+    this.unknownHeaders.set([]);
+    this.reading.set(true);
     if (kind === 'xlsx') {
-      this.rows.set([]);
-      this.unknownHeaders.set([]);
-      readXlsxRows(f).then((grid) => this.ingest(grid)).catch((e: unknown) => {
-        this.fileError.set(e instanceof Error ? e.message : 'Could not read that workbook. Save it as CSV and attach that.');
-      });
+      readXlsxRows(f)
+        .then((grid) => this.ingest(grid))
+        .catch((e: unknown) => {
+          this.fileError.set(e instanceof Error ? e.message : 'Could not read that workbook. Save it as CSV and attach that.');
+        })
+        .finally(() => this.reading.set(false));
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => this.load(String(reader.result ?? ''));
+    reader.onload = () => { this.load(String(reader.result ?? '')); this.reading.set(false); };
+    reader.onerror = () => { this.fileError.set('Could not read that file.'); this.reading.set(false); };
     reader.readAsText(f);
   }
 
@@ -133,11 +156,11 @@ export class LeadCaptureBulk implements OnInit {
   }
 
   private load(text: string): void {
-    this.ingest(this.parseCsv(text));
+    this.ingest(this.parseCsv(text.replace(/^\uFEFF/, '')));
   }
 
   private ingest(grid: string[][]): void {
-    const table = grid.filter((r) => r.some((c) => (c ?? '').trim()));
+    const table = grid.filter((r) => r.some((c) => String(c ?? '').trim()));
     if (table.length < 2) {
       this.rows.set([]);
       this.fileError.set('No rows found under the header row.');
@@ -145,12 +168,12 @@ export class LeadCaptureBulk implements OnInit {
     }
     const lookup = new Map<string, string>();
     for (const c of TEMPLATE_COLUMNS) { lookup.set(norm(c.key), c.key); lookup.set(norm(c.label), c.key); }
-    const head = table[0].map((h) => lookup.get(norm(h)) ?? '');
-    this.unknownHeaders.set(table[0].filter((_, i) => !head[i]).map((h) => h.trim()).filter((h) => h));
+    const head = table[0].map((h) => lookup.get(norm(String(h ?? ''))) ?? '');
+    this.unknownHeaders.set(table[0].filter((_, i) => !head[i]).map((h) => String(h ?? '').trim()).filter((h) => h));
 
     this.rows.set(table.slice(1).map((cells, i) => {
       const v: Record<string, string> = {};
-      head.forEach((k, j) => { if (k) v[k] = (cells[j] ?? '').trim(); });
+      head.forEach((k, j) => { if (k) v[k] = String(cells[j] ?? '').trim(); });
       return { n: i + 2, v, errors: this.check(v) };
     }));
   }
@@ -197,18 +220,19 @@ export class LeadCaptureBulk implements OnInit {
     this.rows.set([]);
     this.unknownHeaders.set([]);
     this.fileError.set('');
+    this.reading.set(false);
   }
 
   // ---------- navigation ----------
   canNext(): boolean {
-    if (this.step() === 1) return !!this.file() && (this.file()?.kind === 'xlsx' || this.rows().length > 0);
-    if (this.step() === 2) return this.file()?.kind === 'xlsx' || this.okCount() > 0;
+    if (this.step() === 1) return !!this.file() && !this.reading() && this.rows().length > 0;
+    if (this.step() === 2) return this.okCount() > 0;
     return false;
   }
 
   next(): void {
     if (!this.canNext()) return;
-    if (this.step() === 1) { this.errorsOnly.set(false); this.step.set(2); return; }
+    if (this.step() === 1) { this.errorsOnly.set(false); this.importError.set(''); this.step.set(2); return; }
     if (this.step() === 2) this.runImport();
   }
 
@@ -225,7 +249,8 @@ export class LeadCaptureBulk implements OnInit {
     this.importing.set(true);
     this.importError.set('');
     this.step.set(3);
-    const rows: BulkLeadImportRow[] = this.rows().filter((r) => !r.errors.length).map((r) => ({
+    const sent = this.rows().filter((r) => !r.errors.length);
+    const rows: BulkLeadImportRow[] = sent.map((r) => ({
       rowNumber: r.n,
       firstName: r.v['first_name'] || null,
       lastName: r.v['last_name'] || null,
@@ -239,12 +264,19 @@ export class LeadCaptureBulk implements OnInit {
     }));
     this.api.bulkImportLeads({ rows, defaultCampaignId: null, defaultSource: null }).subscribe({
       next: (res) => {
-        // Rows the server rejected are reported with its reason, next to the ones rejected here.
-        const reasons = new Map(res.results.filter((x) => !x.imported).map((x) => [x.rowNumber, x.reason ?? 'Rejected by the server']));
-        this.rows.update((list) => list.map((r) => (reasons.has(r.n) ? { ...r, errors: [reasons.get(r.n)!] } : r)));
-        this.result.set({ imported: res.importedCount, skipped: this.badCount() });
+        // Every row gets an outcome: rows rejected here keep their own reason,
+        // rows the server rejected get the server's reason, the rest are imported.
+        const server = new Map((res.results ?? []).map((x) => [x.rowNumber, x]));
+        this.rows.update((list) => list.map((r) => {
+          if (r.errors.length) return { ...r, outcome: 'skipped' as const };
+          const s = server.get(r.n);
+          if (s && !s.imported) return { ...r, errors: [s.reason ?? 'Rejected by the server'], outcome: 'skipped' as const };
+          return { ...r, outcome: 'imported' as const };
+        }));
+        this.result.set({ imported: this.importedRows(), skipped: this.skippedRows() });
+        this.reportFilter.set('all');
         this.importing.set(false);
-        this.toast.show('Upload processed', res.message, res.rejectedCount > 0 ? 'warning' : 'success');
+        this.toast.show('Upload processed', res.message, this.skippedRows() > 0 ? 'warning' : 'success');
       },
       error: (e: unknown) => {
         this.importing.set(false);
@@ -259,7 +291,20 @@ export class LeadCaptureBulk implements OnInit {
     this.removeFile();
     this.result.set(null);
     this.importing.set(false);
+    this.reportFilter.set('all');
     this.step.set(1);
+  }
+
+  /** Full row-wise report: every row with its result and reason, as CSV. */
+  downloadReport(): void {
+    const lines = ['Row,First name,Last name,Mobile,E-mail,City,Campaign,Result,Reason'];
+    for (const r of this.rows()) {
+      lines.push([
+        r.n, r.v['first_name'] ?? '', r.v['last_name'] ?? '', r.v['mobile'] ?? '', r.v['email'] ?? '',
+        r.v['city'] ?? '', r.v['campaign'] ?? '', r.outcome === 'imported' ? 'Imported' : 'Skipped', r.errors.join('; '),
+      ].map((c) => '"' + String(c).replace(/"/g, '""') + '"').join(','));
+    }
+    this.save('lead-upload-report.csv', lines.join('\n'));
   }
 
   /** Error report for skipped rows (row number + reason), as CSV. */
@@ -280,7 +325,7 @@ export class LeadCaptureBulk implements OnInit {
   }
 
   private save(name: string, text: string): void {
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = name;

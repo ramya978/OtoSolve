@@ -148,6 +148,11 @@
   background: var(--secondary-press)
 }
 
+.cp-btn:disabled {
+  opacity: .6;
+  pointer-events: none
+}
+
 .cp-link {
   border: 0;
   background: transparent;
@@ -238,6 +243,12 @@
   color: var(--cp-strong);
   font-size: calc(11px * var(--cp-fs));
   font-weight: 600
+}
+
+/* a saved draft is marked in amber, like other "not live yet" states */
+.cp-pill.is-draft {
+  background: var(--cp-amber-soft);
+  color: var(--cp-amber)
 }
 
 /* =====================================================================================================
@@ -948,16 +959,131 @@ input.cp-input:focus,
   font-weight: 400
 }
 
+/* owner avatar: profile image when there is one, otherwise the first letter */
 .cp-avatar {
   display: grid;
   place-items: center;
   flex: 0 0 calc(28px * var(--cp-k));
+  width: calc(28px * var(--cp-k));
   height: calc(28px * var(--cp-k));
+  overflow: hidden;
   border-radius: 50%;
   background: var(--cp-soft);
   color: var(--cp-strong);
   font-size: calc(11px * var(--cp-fs));
-  font-weight: 650
+  font-weight: 650;
+  line-height: 1;
+  text-transform: uppercase
+}
+
+.cp-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover
+}
+
+.cp-avatar-sm {
+  flex-basis: calc(20px * var(--cp-k));
+  width: calc(20px * var(--cp-k));
+  height: calc(20px * var(--cp-k));
+  font-size: calc(9.5px * var(--cp-fs))
+}
+
+/* multi-select checkbox inside the owner list */
+.cp-check {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(16px * var(--cp-k));
+  height: calc(16px * var(--cp-k));
+  border: 1.5px solid var(--cp-field-hover);
+  border-radius: 4px;
+  background: var(--white);
+  transition: background-color .12s, border-color .12s
+}
+
+.cp-check svg {
+  width: calc(11px * var(--cp-k));
+  height: calc(11px * var(--cp-k));
+  fill: none;
+  stroke: var(--primary-on, #fff);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round
+}
+
+.cp-menu li.is-selected .cp-check {
+  border-color: var(--cp-primary);
+  background: var(--cp-primary)
+}
+
+/* number of chosen owners inside the search box */
+.cp-count-badge {
+  display: grid;
+  place-items: center;
+  min-width: calc(20px * var(--cp-k));
+  height: calc(20px * var(--cp-k));
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--cp-soft);
+  color: var(--cp-strong);
+  font-size: calc(11px * var(--cp-fs));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums
+}
+
+/* chosen owners as removable chips under the search box */
+.cp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6px * var(--cp-k));
+  margin-top: calc(8px * var(--cp-k));
+  padding: 0;
+  list-style: none
+}
+
+.cp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: calc(28px * var(--cp-k));
+  padding: 0 3px 0 4px;
+  border: 1px solid var(--cp-line);
+  border-radius: 14px;
+  background: var(--cp-softer);
+  color: var(--cp-ink);
+  font-size: calc(12px * var(--cp-fs))
+}
+
+.cp-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap
+}
+
+.cp-chip-x {
+  display: grid;
+  place-items: center;
+  flex: 0 0 calc(20px * var(--cp-k));
+  height: calc(20px * var(--cp-k));
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--cp-muted);
+  transition: background-color .12s, color .12s
+}
+
+.cp-chip-x .cp-ico {
+  width: calc(12px * var(--cp-k));
+  height: calc(12px * var(--cp-k));
+  stroke-width: 2
+}
+
+.cp-chip-x:hover {
+  background: var(--cp-danger-soft);
+  color: var(--cp-danger)
 }
 
 .cp-tick {

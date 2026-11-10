@@ -490,90 +490,6 @@
 .pr-tag.tag-pending { background: var(--status-warning-bg); color: var(--status-warning-ink) }
 .pr-tag.tag-failed { background: var(--status-danger-bg); color: var(--status-danger-ink) }
 
-/* action: soft primary icon tile → solid primary on hover, the eye slides right, a "View" tip shows */
-.pr-view {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--btn-radius);
-  background: color-mix(in srgb, var(--pr-primary) 10%, var(--white));
-  color: var(--pr-primary);
-  cursor: pointer;
-  vertical-align: middle;
-  transition: background-color .18s ease, color .18s ease
-}
-
-.pr-view .pr-eye {
-  width: 16px;
-  height: 16px;
-  overflow: visible
-}
-
-/* the eye outline stays still; only the inner circle (pupil) moves */
-.pr-view .pr-eye-pupil {
-  transform: translateX(0);
-  transition: transform .2s ease
-}
-
-.pr-view:hover,
-.pr-view:focus-visible {
-  background: var(--pr-primary);
-  color: var(--primary-on, #fff)
-}
-
-.pr-view:hover .pr-eye-pupil,
-.pr-view:focus-visible .pr-eye-pupil {
-  transform: translateX(2.5px)
-}
-
-.pr-view:active {
-  background: color-mix(in srgb, var(--pr-primary) 80%, #000)
-}
-
-.pr-view:focus-visible {
-  outline: 2px solid var(--pr-primary-ink);
-  outline-offset: 3px
-}
-
-/* "View" tooltip under the button */
-.pr-view::after {
-  content: attr(data-tip);
-  position: absolute;
-  top: calc(100% + 7px);
-  left: 50%;
-  z-index: 3;
-  padding: 4px 9px;
-  border: 1px solid var(--pr-line);
-  border-radius: 6px;
-  background: var(--white);
-  color: var(--pr-ink);
-  font-size: calc(11px * var(--pr-fs));
-  font-weight: 550;
-  line-height: 1.4;
-  white-space: nowrap;
-  box-shadow: 0 6px 18px #19374b14;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-50%);
-  transition: opacity .15s ease
-}
-
-.pr-view:hover::after,
-.pr-view:focus-visible::after {
-  opacity: 1;
-  transition-delay: .25s
-}
-
-/* the tooltip on the last row would be clipped by the card - show it above instead */
-.pr-table tbody tr:last-child .pr-view::after {
-  top: auto;
-  bottom: calc(100% + 7px)
-}
-
 td.empty {
   padding: 30px 15px;
   color: var(--pr-muted);
@@ -845,6 +761,21 @@ td.empty {
   background: var(--secondary-hover);
   border-color: var(--secondary-line);
   color: var(--secondary-ink)
+}
+
+/* primary action button used for retry / continue payment in the view popup */
+.pr-btn-primary {
+  background: var(--pr-primary);
+  border-color: var(--pr-primary);
+  color: var(--primary-on, #ffffff)
+}
+.pr-btn-primary:hover:not(:disabled) {
+  filter: brightness(0.92);
+  color: var(--primary-on, #ffffff)
+}
+.pr-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed
 }
 
 @keyframes pr-fade { from { opacity: 0 } }

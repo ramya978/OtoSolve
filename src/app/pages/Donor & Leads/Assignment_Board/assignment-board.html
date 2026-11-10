@@ -167,9 +167,9 @@
                   <td class="c-next"><span class="ab-two"><span>{{ due(p) }}</span><small>{{ dueTime(p) }}</small></span></td>
                   <td class="c-act">
                     <div class="ab-acts">
-                      <button type="button" class="fu-icon" (click)="startAssign([p.code])" [attr.aria-label]="'Assign ' + p.name" title="Assign"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg></button>
-                      <button type="button" class="fu-icon" (click)="showHistory(p)" [attr.aria-label]="'History of ' + p.name" title="History"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg></button>
-                      <button type="button" class="fu-icon" (click)="schedule(p)" [attr.aria-label]="'Schedule follow-up for ' + p.name" title="Schedule follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
+                      <button type="button" class="action-btn" (click)="startAssign([p.code])" [attr.aria-label]="'Assign ' + p.name" title="Assign"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('reassign')" /></svg></button>
+                      <button type="button" class="action-btn" (click)="showHistory(p)" [attr.aria-label]="'History of ' + p.name" title="History"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('history')" /></svg></button>
+                      <button type="button" class="action-btn" (click)="schedule(p)" [attr.aria-label]="'Schedule follow-up for ' + p.name" title="Schedule follow-up"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></button>
                     </div>
                   </td>
                 </tr>

@@ -396,6 +396,11 @@ protected readonly pages = computed<number[]>(() => {
     this.router.navigate(['/app/fundraising/relationships/donor-360'], { queryParams: { ref: d.code } });
   }
 
+  /** Communication timeline opens with the donor reference in the query string. */
+  viewTimeline(d: Donor): void {
+    this.router.navigate(['/app/fundraising/relationships/communication-timeline'], { queryParams: { ref: d.code } });
+  }
+
   act(d: Donor, kind: 'note' | 'schedule' | 'more'): void {
     if (kind === 'note') {
       this.router.navigate(['/app/fundraising/relationships/communication-timeline/log'], { queryParams: { ref: d.code } });

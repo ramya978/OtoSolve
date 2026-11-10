@@ -1,6 +1,6 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { PaymentApiService } from '../../../Service/payment-api.service';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { Loader } from '../../../Shared/layout/Loader/loader';
@@ -9,7 +9,12 @@ import { GatewayCheckoutService } from '../../../Shared/services/gateway-checkou
 import { ToastService } from '../../../Shared/services/toast.service';
 import { AuthService } from '../../../Shared/Auth/auth.service';
 import { AuthTokenService } from '../../../Shared/services/auth-token.service';
-import { CheckoutSession, PublicCampaignSummary, PublicDonationFormSettings } from '../../../Shared/models/payment.model';
+import {
+  CheckoutSession,
+  PublicCampaignSummary,
+  PublicDonationFormSettings,
+  unpayableReason,
+} from '../../../Shared/models/payment.model';
 import { CountryLookup } from '../../../Shared/models/geo-lookup.model';
 import { MasterLookup } from '../../../Shared/models/global-master.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -105,6 +110,10 @@ export class NewDonation implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly tokens = inject(AuthTokenService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  /** The donation intent being continued, when the page was opened from the payments queue. */
+  private intentReference = '';
 
   protected get donorName(): string { return this.auth.user()?.name ?? ''; }
   protected get donorEmail(): string { return this.auth.user()?.email ?? ''; }
@@ -213,11 +222,14 @@ export class NewDonation implements OnInit {
 
   ngOnInit(): void {
     this.loading.set(true);
+    const q = this.route.snapshot.queryParamMap;
+    this.intentReference = (q.get('intent') ?? '').trim();
     this.api.getPublicCampaigns().subscribe({
       next: (list) => {
         this.campaigns = list;
         const org = this.tokens.tenant()?.tenantName ?? '';
         this.causeRows.set(list.map((c) => ({ id: c.id, code: c.code, name: c.name, org, amount: campaignAmount(c), currency: campaignCurrency(c) })));
+        if (this.intentReference) this.continueToPayment();
         // shows the campaign fields once, so a missing amount / currency is easy to trace
         if (list.length) console.info('[new-donation] campaign fields:', Object.keys(list[0]), list[0]);
       },
@@ -332,6 +344,35 @@ export class NewDonation implements OnInit {
         this.startPayment(intent.intentReference, intent.version);
       },
       error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+    });
+  }
+
+  /** A pending payment being continued from the payments queue: bind the intent's figures and open its checkout. */
+  private continueToPayment(): void {
+    this.saving.set(true);
+    this.api.getPublicIntent(this.intentReference).subscribe({
+      next: (intent) => {
+        const blocked = unpayableReason(intent.status);
+        if (blocked) {
+          this.saving.set(false);
+          this.toasts.show('Payment not available', blocked, 'warning');
+          return;
+        }
+        // Data bind the existing intent so the donor does not retype the gift.
+        this.amount.set(String(intent.amount.amount));
+        this.currency.set(intent.amount.currencyCode);
+        if (intent.campaignName) {
+          const hit = this.causeRows().find((c) => c.name === intent.campaignName);
+          if (hit) this.cause.set(hit.code);
+        }
+        this.privacy.set(true);
+        this.toasts.show('Continuing donation', `Donation ${intent.intentReference} is ready to be paid.`, 'success');
+        this.startPayment(intent.intentReference, intent.version);
+      },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        this.toasts.show('Payment unavailable', apiErrorMessage(e), 'error');
+      },
     });
   }
 

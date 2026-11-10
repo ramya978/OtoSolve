@@ -160,14 +160,17 @@ export class LeadWorkQueue implements OnInit {
   protected readonly owners = computed(() => [...new Set(this.rows().map((r) => r.owner).filter((o): o is string => !!o))].sort());
   protected readonly srcOpts = computed<Opt[]>(() => [{ value: 'all', label: 'All' }, ...this.sources().map((v) => ({ value: v, label: v }))]);
   protected readonly ownerOpts = computed<Opt[]>(() => [{ value: 'all', label: 'All' }, { value: 'none', label: 'Unassigned' }, ...this.owners().map((v) => ({ value: v, label: v }))]);
-  /** The five filter dropdowns, rendered with one @for. */
-  protected readonly filterDefs = computed<{ key: Dd; label: string; icon: string; opts: Opt[]; value: string }[]>(() => [
-    { key: 's', label: 'Stage', icon: 'flag', opts: this.stageOpts, value: this.fStage() },
-    { key: 't', label: 'Temperature', icon: 'thermo', opts: this.tempOpts, value: this.fTemp() },
-    { key: 'p', label: 'Potential', icon: 'diamond', opts: this.potOpts, value: this.fPot() },
-    { key: 'r', label: 'Source', icon: 'source', opts: this.srcOpts(), value: this.fSrc() },
-    { key: 'o', label: 'Owner', icon: 'user', opts: this.ownerOpts(), value: this.fOwner() },
-  ]);
+  /** The filter dropdowns, rendered with one @for. My Leads has no Owner filter - every lead is the user's own. */
+  protected readonly filterDefs = computed<{ key: Dd; label: string; icon: string; opts: Opt[]; value: string }[]>(() => {
+    const defs: { key: Dd; label: string; icon: string; opts: Opt[]; value: string }[] = [
+      { key: 's', label: 'Stage', icon: 'flag', opts: this.stageOpts, value: this.fStage() },
+      { key: 't', label: 'Temperature', icon: 'thermo', opts: this.tempOpts, value: this.fTemp() },
+      { key: 'p', label: 'Potential', icon: 'diamond', opts: this.potOpts, value: this.fPot() },
+      { key: 'r', label: 'Source', icon: 'source', opts: this.srcOpts(), value: this.fSrc() },
+    ];
+    if (!this.mine) defs.push({ key: 'o', label: 'Owner', icon: 'user', opts: this.ownerOpts(), value: this.fOwner() });
+    return defs;
+  });
   /** Number of filters that are not "All" - shown on the Filters button. */
   protected readonly activeFilters = computed(() => [this.fStage(), this.fTemp(), this.fPot(), this.fSrc(), this.fOwner()].filter((v) => v !== 'all').length);
   protected readonly counts = computed(() => ({

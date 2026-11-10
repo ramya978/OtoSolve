@@ -19,7 +19,7 @@ interface LeadForm {
   source: string; campaign: string; sourceDetails: string;
   consentOn: boolean; channels: string[]; recognition: '' | 'Anonymous' | 'Recognised';
   capturedThrough: string; consentState: string;
-  effDate: string; hh: string; mm: string; ampm: 'AM' | 'PM';
+  effDate: string;
   evidence: string; purpose: string; notes: string;
 }
 
@@ -32,7 +32,7 @@ const EMPTY: LeadForm = {
   address1: '', address2: '', zip: '', country: 'India', state: '', city: '',
   source: '', campaign: '', sourceDetails: '',
   consentOn: false, channels: [], recognition: '', capturedThrough: '', consentState: '',
-  effDate: '', hh: '', mm: '', ampm: 'AM', evidence: '', purpose: '', notes: '',
+  effDate: '', evidence: '', purpose: '', notes: '',
 };
 
 /** Which fields belong to which section (drives the section status and the summary checklist). */
@@ -41,7 +41,7 @@ const SECTION_FIELDS: Record<SectionId, string[]> = {
   contact: ['phone0', 'phone1', 'phone2', 'email', 'language'],
   location: ['address1', 'zip', 'country', 'state', 'city'],
   source: ['source', 'campaign', 'sourceDetails'],
-  consent: ['channels', 'recognition', 'capturedThrough', 'consentState', 'effDate', 'time', 'evidence', 'purpose'],
+  consent: ['channels', 'recognition', 'capturedThrough', 'consentState', 'effDate', 'evidence', 'purpose'],
 };
 
 const MOBILE = /^[6-9]\d{9}$/;
@@ -141,9 +141,6 @@ export class LeadCaptureSingle implements OnInit {
       need('capturedThrough', f.capturedThrough, 'Pick a channel');
       need('consentState', f.consentState, 'Pick a state');
       need('effDate', f.effDate, 'Pick a date');
-      const h = Number(f.hh), m = Number(f.mm);
-      if (!f.hh || !f.mm) e['time'] = 'Enter the time';
-      else if (!(h >= 1 && h <= 12) || !(m >= 0 && m <= 59)) e['time'] = 'Use HH 1-12 and MM 0-59';
       if (f.consentState === 'Granted' && !f.evidence) e['evidence'] = 'Evidence is needed when consent is granted';
       if (f.purpose.trim().length < 10) e['purpose'] = f.purpose.trim() ? 'Use at least 10 characters' : 'Required';
     }
@@ -288,7 +285,6 @@ export class LeadCaptureSingle implements OnInit {
     this.set('channels', c.includes(k) ? c.filter((x) => x !== k) : [...c, k]);
     this.touch('channels');
   }
-  setTime(k: 'hh' | 'mm', v: string): void { this.set(k, v.replace(/\D/g, '').slice(0, 2)); }
 
   onEvidence(e: Event): void {
     const file = (e.target as HTMLInputElement).files?.[0];
@@ -333,14 +329,15 @@ export class LeadCaptureSingle implements OnInit {
       error: (e: unknown) => {
         this.saving.set(false);
         const fields = apiFieldErrors(e);
-        const map: Record<string, string> = {
+        const fieldMap: Record<string, string> = {
           firstName: 'firstName', lastName: 'lastName', displayName: 'displayName', mobileNumber: 'phone0',
           emailAddress: 'email', preferredLanguage: 'language', addressLine: 'address1', country: 'country',
-          geographyCode: 'state', city: 'city', source: 'source', campaignId: 'campaign', notes: 'sourceDetails'
+          geographyCode: 'state', city: 'city', source: 'source', campaignId: 'campaign', notes: 'sourceDetails',
+          consentDateUtc: 'effDate'
         };
         const mapped: Record<string, string> = {};
         for (const [field, message] of Object.entries(fields)) {
-          const key = map[field.charAt(0).toLowerCase() + field.slice(1)];
+          const key = fieldMap[field.charAt(0).toLowerCase() + field.slice(1)];
           if (key) mapped[key] = message;
         }
         this.serverErrors.set(mapped);
@@ -355,9 +352,8 @@ export class LeadCaptureSingle implements OnInit {
     const [primary, ...others] = f.phones.map(e164).filter((p): p is string => !!p);
     let consent: CreateLeadRequest['consent'] = null;
     if (f.consentOn) {
-      let hour = Number(f.hh) % 12;
-      if (f.ampm === 'PM') hour += 12;
-      const at = new Date(`${f.effDate}T${String(hour).padStart(2, '0')}:${String(Number(f.mm)).padStart(2, '0')}:00+05:30`);
+      // Date only - consent takes effect from the start of the chosen day.
+      const at = new Date(`${f.effDate}T00:00:00+05:30`);
       consent = {
         collectConsent: true,
         emailConsent: f.channels.includes('email'),

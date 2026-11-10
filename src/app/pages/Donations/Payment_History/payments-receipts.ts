@@ -1,9 +1,18 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { PaymentApiService } from '../../../Service/payment-api.service';
-import { PaymentActivityRow, PaymentActivitySummary } from '../../../Shared/models/payment.model';
+import { GatewayCheckoutService } from '../../../Shared/services/gateway-checkout.service';
+import { ToastService } from '../../../Shared/services/toast.service';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { Loader } from '../../../Shared/layout/Loader/loader';
+import {
+  PaymentActivityRow,
+  PaymentActivitySummary,
+  canPerform,
+  CheckoutSession,
+  ConfirmCheckoutRequest,
+} from '../../../Shared/models/payment.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { fetchAllPages } from '../../../Shared/services/paging';
 import { map } from 'rxjs';
@@ -23,6 +32,12 @@ export interface ReceiptRow {
   currency: string;
   status: PaymentStatus;
   receivedAt: Date;
+  /** The donation intent this payment event belongs to, when there is one. */
+  donationIntentId: string | null;
+  /** Optimistic-concurrency version of the intent. */
+  version: number;
+  /** What the server lets this caller do next: Retry / ContinuePayment / ... */
+  permittedActions: string[];
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -49,7 +64,10 @@ function toRow(r: PaymentActivityRow): ReceiptRow {
     amount: r.amount?.amount ?? 0,
     currency: r.amount?.currencyCode ?? '',
     status,
-    receivedAt: new Date(r.occurredAtUtc ?? Date.now())
+    receivedAt: new Date(r.occurredAtUtc ?? Date.now()),
+    donationIntentId: r.donationIntentId ?? null,
+    version: r.version,
+    permittedActions: r.permittedActions ?? [],
   };
 }
 
@@ -103,6 +121,13 @@ const TONE_COLORS: Record<string, string> = {
 })
 export class PaymentsReceipts implements OnInit {
   private readonly api = inject(PaymentApiService);
+  private readonly router = inject(Router);
+  private readonly checkout = inject(GatewayCheckoutService);
+  private readonly toasts = inject(ToastService);
+  /** Retry / checkout is in flight. */
+  protected readonly busy = signal(false);
+  /** Exposes the server-permission helper to the template for rendering action buttons. */
+  protected readonly canPerform = canPerform;
   private readonly rows = signal<ReceiptRow[]>([]);
   private readonly summary = signal<PaymentActivitySummary | null>(null);
   readonly loading = signal(false);
@@ -201,6 +226,83 @@ export class PaymentsReceipts implements OnInit {
   setQuery(value: string): void {
     this.query.set(value);
     this.page.set(1);
+  }
+
+  /** Failed payment: read the latest intent, open the provider's checkout (Razorpay). */
+  retryPayment(row: ReceiptRow): void {
+    if (this.busy()) return;
+    if (!row.donationIntentId) {
+      this.toasts.show('Cannot retry', 'This payment has no donation intent to retry.', 'warning');
+      return;
+    }
+    this.busy.set(true);
+    // Read the latest intent state so the checkout session is not rejected with a 409.
+    this.api.getIntent(row.donationIntentId).subscribe({
+      next: (intent) => {
+        this.api
+          .createCheckoutSession(intent.intentReference, { expectedVersion: intent.version })
+          .subscribe({
+            next: (session) => {
+              this.close();
+              this.openCheckout(session);
+            },
+            error: (e: unknown) => {
+              this.busy.set(false);
+              this.toasts.show('Checkout could not be opened', apiErrorMessage(e), 'error');
+            },
+          });
+      },
+      error: (e: unknown) => {
+        this.busy.set(false);
+        this.toasts.show('Retry failed', apiErrorMessage(e), 'error');
+      },
+    });
+  }
+
+  /** Pending payment: open the donation page with this intent bound and its checkout started. */
+  continuePayment(row: ReceiptRow): void {
+    const intentReference = row.subRef;
+    if (!intentReference) {
+      this.toasts.show('Cannot continue', 'This payment has no intent reference.', 'warning');
+      return;
+    }
+    void this.router.navigate(['/app/donations/public-donation-initiation'], {
+      queryParams: { intent: intentReference },
+    });
+  }
+
+  /** Open the provider's checkout (Razorpay when that is the configured gateway). */
+  private openCheckout(session: CheckoutSession): void {
+    void this.checkout
+      .open(session, 'Donation', {
+        onSucceeded: (confirmation: ConfirmCheckoutRequest) => {
+          // Started first so it is already in flight when this page goes away; the result page verifies with the provider.
+          this.api
+            .confirmCheckout(session.intentReference, confirmation)
+            .subscribe({ next: () => undefined, error: () => undefined });
+          this.router.navigate(['/give/result'], {
+            queryParams: { intent: session.intentReference },
+          });
+        },
+        onFailed: () =>
+          this.router.navigate(['/give/result'], {
+            queryParams: { intent: session.intentReference },
+          }),
+        onDismissed: () => {
+          this.busy.set(false);
+          this.toasts.show(
+            'Payment not completed',
+            'The payment form was closed. The donation is saved - you can pay it again.',
+            'info'
+          );
+        },
+      })
+      .then((outcome) => {
+        if (outcome !== 'opened') {
+          this.busy.set(false);
+          this.toasts.show('Payment unavailable', 'The payment provider could not be opened.', 'error');
+        }
+      });
   }
 
   setStatus(value: string): void {

@@ -282,20 +282,10 @@
               <div class="cr-actions">
                 @for (a of actionsFor(r); track a) {
                   @switch (a) {
-                    @case ('view') {
-                      <!-- view: the eye blinks and the pupil looks around -->
-                      <button type="button" class="cr-act act-view" data-tip="View" [attr.aria-label]="'View ' + r.name"
-                              (click)="rowAction(r, 'view')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-                             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                          <g class="eye-lid"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" /></g>
-                          <g class="eye-pupil"><circle cx="12" cy="12" r="3" /></g>
-                        </svg>
-                      </button>
-                    }
+                  
                     @case ('edit') {
                       <!-- edit: the pencil writes and the line draws under it -->
-                      <button type="button" class="cr-act act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name"
+                      <button type="button" class="action-btn act-edit" data-tip="Edit" [attr.aria-label]="'Edit ' + r.name"
                               (click)="rowAction(r, 'edit')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -306,7 +296,7 @@
                     }
                     @case ('duplicate') {
                       <!-- duplicate: the sheets slide apart and the tick redraws -->
-                      <button type="button" class="cr-act act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name"
+                      <button type="button" class="action-btn act-copy" data-tip="Rediness checklist" [attr.aria-label]="'Rediness checklist ' + r.name"
                               (click)="rowAction(r, 'duplicate')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -320,7 +310,7 @@
                     }
                     @case ('readiness') {
                       <!-- readiness check: the two ticks draw one after the other -->
-                      <button type="button" class="cr-act act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name"
+                      <button type="button" class="action-btn act-ready" data-tip="Approve" [attr.aria-label]="'Readiness check for ' + r.name"
                               (click)="rowAction(r, 'readiness')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -331,7 +321,7 @@
                     }
                     @case ('launch') {
                       <!-- launch: the ring pulses and the play arrow nudges forward -->
-                      <button type="button" class="cr-act act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name"
+                      <button type="button" class="action-btn act-launch" data-tip="Activate" [attr.aria-label]="'Launch ' + r.name"
                               (click)="rowAction(r, 'launch')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -342,7 +332,7 @@
                     }
                     @case ('delete') {
                       <!-- delete: the lid opens and drops fall into the bin -->
-                      <button type="button" class="cr-act act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name"
+                      <button type="button" class="action-btn act-delete is-danger" data-tip="Delete" [attr.aria-label]="'Delete ' + r.name"
                               (click)="rowAction(r, 'delete')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
                              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

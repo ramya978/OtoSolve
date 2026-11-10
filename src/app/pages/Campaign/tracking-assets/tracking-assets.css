@@ -454,118 +454,7 @@ display: block;
   color: var(--w-muted);
 }
 
-/* ---------- row action with an animated icon ---------- */
-.ta-act {
-  --act: var(--w-primary-ink);
-  --act-bg: var(--w-primary-soft);
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: calc(36px * var(--ta-k));
-  height: calc(36px * var(--ta-k));
-  border: 1px solid transparent;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--act);
-  cursor: pointer;
-  transition: background-color .2s, border-color .2s, color .2s;
-}
-
-.ta-act .w-ico {
-  width: 17px;
-  height: calc(17px * var(--ta-k));
-  overflow: visible;
-}
-
-/* rest: just the icon · hover: soft tinted square with a light border */
-.ta-act:hover,
-.ta-act:focus-visible {
-  border-color: color-mix(in srgb, var(--act) 22%, transparent);
-  background: var(--act-bg);
-  outline: none;
-}
-
-.ta-act.is-edit { --act: var(--w-primary-ink); --act-bg: var(--w-primary-soft); }
-.ta-act.is-approve { --act: var(--status-success-ink, #35695a); --act-bg: var(--status-success-bg, #ecf2f0); }
-.ta-act.is-approveDisable { --act: var(--status-warning-ink, #7d561b); --act-bg: var(--status-warning-bg, #f5f0e9); }
-.ta-act.is-requestDisable { --act: var(--status-danger-ink, #a23c4c); --act-bg: var(--status-danger-bg, #f7ecee); }
-.ta-act.is-view { --act: var(--w-muted); --act-bg: var(--w-primary-soft); }
-
-/* edit: pencil writes */
-.ta-act.is-edit:hover .w-ico { animation: ta-write .6s ease-in-out; }
-@keyframes ta-write {
-  0%, 100% { transform: none; }
-  25% { transform: rotate(-14deg) translate(-1px, 1px); }
-  50% { transform: rotate(8deg) translate(1px, -1px); }
-  75% { transform: rotate(-6deg); }
-}
-
-/* approve: the tick draws itself */
-.ta-act.is-approve:hover path { animation: ta-draw .5s ease-out; }
-@keyframes ta-draw {
-  from { stroke-dasharray: 100; stroke-dashoffset: 100; }
-  to { stroke-dasharray: 100; stroke-dashoffset: 0; }
-}
-
-/* approve disable: the lock snaps shut */
-.ta-act.is-approveDisable:hover .w-ico { animation: ta-lock .5s ease-out; }
-@keyframes ta-lock {
-  0% { transform: translateY(0); }
-  40% { transform: translateY(-3px); }
-  70% { transform: translateY(1px); }
-  100% { transform: translateY(0); }
-}
-
-/* request disable: the cross turns */
-.ta-act.is-requestDisable:hover .w-ico { animation: ta-spin .45s ease-out; }
-@keyframes ta-spin {
-  from { transform: rotate(0); }
-  to { transform: rotate(90deg); }
-}
-
-/* view: the eye blinks */
-.ta-act.is-view:hover .w-ico { animation: ta-blink .5s ease-in-out; }
-@keyframes ta-blink {
-  0%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(.1); }
-}
-
-.ta-act .w-ico {
-  transform-origin: center;
-  transform-box: fill-box;
-}
-
-.ta-act:active {
-  transform: scale(.92);
-}
-
-/* tooltip (kept inside the card on the right) */
-.ta-act::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  z-index: 5;
-  padding: calc(4px * var(--ta-k)) calc(9px * var(--ta-k));
-  border-radius: 6px;
-  background: var(--inverse-bg, #24364a);
-  color: #fff;
-  font-size: calc(11px * var(--ta-fs));
-  white-space: nowrap;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-  transform: translateY(4px);
-  transition: opacity .15s, transform .15s, visibility 0s linear .15s;
-}
-
-.ta-act:hover::after,
-.ta-act:focus-visible::after {
-  opacity: 1;
-  visibility: visible;
-  transform: none;
-  transition-delay: .2s;
-}
+/* ---------- footer / pager ---------- */
 
 .ta-table td.ta-act-col {
   overflow: visible;
@@ -741,7 +630,7 @@ display: block;
    address bar never pushes the footer off-screen), and only the body scrolls - header and
    footer stay in view. */
 .w-overlay {
-  z-index: 1000 !important;
+  z-index:11111111!important;
 }
 
 .ta-drawer {

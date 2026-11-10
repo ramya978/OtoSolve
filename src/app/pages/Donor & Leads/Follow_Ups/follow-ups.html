@@ -430,12 +430,19 @@
                   <div class="fu-dd" [class.is-open]="menu() === 'c-staff'">
                     <button type="button" class="fu-input fu-dd-btn" (click)="toggleMenu('c-staff', $event)"><span>{{ cStaff() ?? 'Everyone' }}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chev')" /></svg></button>
                     @if (menu() === 'c-staff') {
-                      <ul class="fu-menu is-right" role="listbox" (click)="$event.stopPropagation()">
+                      <ul class="fu-menu is-right fq-pl-menu" role="listbox" (click)="$event.stopPropagation()">
                         <li><button type="button" [class.is-on]="!cStaff()" (click)="pickStaff(null)">Everyone</button></li>
                         @for (o of owners; track o) { <li><button type="button" [class.is-on]="cStaff() === o" (click)="pickStaff(o)"><span class="fu-ava">{{ ini(o) }}</span>{{ o }}</button></li> }
                       </ul>
                     }
                   </div>
+                </div>
+                <div class="fq-pl-f">
+                  <span class="fu-lbl">Rows</span>
+                  <button type="button" class="fu-input fq-pl-toggle" [class.is-on]="cBusy()" [attr.aria-pressed]="cBusy()" (click)="cBusy.set(!cBusy())">
+                    <span class="fq-check" [class.is-on]="cBusy()">@if (cBusy()) { <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> }</span>
+                    <span class="fq-pl-toggle-lbl">Busy staff only</span>
+                  </button>
                 </div>
               </div>
             </header>
@@ -449,42 +456,50 @@
               <small>Selected week and filters</small>
             </div>
 
-            <!-- grid -->
-            <div class="fq-pl-grid" role="table" aria-label="Follow-ups by staff member and day">
-              <div class="fq-pl-row fq-pl-head" role="row">
-                <span class="fq-pl-staff" role="columnheader">Staff member / load</span>
-                @for (d of weekDays(); track d.iso) {
-                  <button type="button" class="fq-pl-day" [class.is-today]="d.today" role="columnheader" (click)="openDay(d.iso)"><small>{{ d.wd }}</small><b>{{ d.label }}</b></button>
-                }
-              </div>
-              @for (r of planner(); track r.name) {
-                <div class="fq-pl-row" role="row">
-                  <div class="fq-pl-staff" role="rowheader">
-                    <b>{{ r.name }}</b>
-                    <span>{{ r.team }}</span>
-                    <small>{{ r.count }} follow-up{{ r.count === 1 ? '' : 's' }} · {{ r.open }} open</small>
-                  </div>
-                  @for (c of r.days; track c.iso; let i = $index) {
-                    <div class="fq-pl-cell" [class.is-empty]="!c.items.length" role="cell">
-                      <span class="fq-pl-dl">{{ weekDays()[i].wd }} {{ weekDays()[i].label }}</span>
-                      @for (f of c.items; track f.id) {
-                        <button type="button" [class]="'fq-pl-ev tone-' + evTone(f)" (click)="openDetails(f.id)">
-                          <small>{{ time(f.dueAt) }} · {{ chLabel(f) }}</small>
-                          <b>{{ f.name }}</b>
-                          <span>{{ st(f).label }}@if (isOverdue(f)) { · overdue }</span>
-                        </button>
-                      } @empty {
-                        <span class="fq-pl-none">No follow-ups</span>
-                        <button type="button" class="fq-pl-add" (click)="addFor(r.name)"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Add</button>
-                      }
-                    </div>
+            <!-- grid: scrolls inside its own box so a busy week or a big team never stretches the page -->
+            <div class="fq-pl-scroll">
+              <div class="fq-pl-grid" role="table" aria-label="Follow-ups by staff member and day">
+                <div class="fq-pl-row fq-pl-head" role="row">
+                  <span class="fq-pl-staff" role="columnheader">Staff member / load</span>
+                  @for (d of weekDays(); track d.iso) {
+                    <button type="button" class="fq-pl-day" [class.is-today]="d.today" role="columnheader" (click)="openDay(d.iso)" [attr.aria-label]="d.wd + ' ' + d.label + ', ' + dayCount(d.iso) + ' follow-ups'">
+                      <small>{{ d.wd }}</small><b>{{ d.label }}</b><em [class.is-zero]="!dayCount(d.iso)">{{ dayCount(d.iso) }}</em>
+                    </button>
                   }
                 </div>
-              }
+                @for (r of planner(); track r.name) {
+                  <div class="fq-pl-row" [class.is-idle]="!r.count" role="row">
+                    <div class="fq-pl-staff" role="rowheader">
+                      <b [attr.title]="r.name">{{ r.name }}</b>
+                      <span>{{ r.team }}</span>
+                      <small>{{ r.count }} follow-up{{ r.count === 1 ? '' : 's' }} · {{ r.open }} open</small>
+                    </div>
+                    @for (c of r.days; track c.iso; let i = $index) {
+                      <div class="fq-pl-cell" [class.is-empty]="!c.items.length" role="cell">
+                        <span class="fq-pl-dl">{{ weekDays()[i].wd }} {{ weekDays()[i].label }}</span>
+                        @for (f of c.shown; track f.id) {
+                          <button type="button" [class]="'fq-pl-ev tone-' + evTone(f)" (click)="openDetails(f.id)" [attr.title]="f.name + ' · ' + time(f.dueAt) + ' · ' + st(f).label">
+                            <small>{{ time(f.dueAt) }} · {{ chLabel(f) }}</small>
+                            <b>{{ f.name }}</b>
+                            <span>{{ st(f).label }}@if (isOverdue(f)) { · overdue }</span>
+                          </button>
+                        } @empty {
+                          <button type="button" class="fq-pl-add" (click)="addFor(r.name)" [attr.aria-label]="'Add a follow-up for ' + r.name"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg> Add</button>
+                        }
+                        @if (c.more) {
+                          <button type="button" class="fq-pl-more" (click)="openDay(c.iso, r.name)">+{{ c.more }} more</button>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @empty {
+                  <div class="fq-pl-blank"><b>No staff to show</b><span>Nobody matches the staff filter for this week.</span></div>
+                }
+              </div>
             </div>
 
             <footer class="fq-pl-foot">
-              <p>Counts include every follow-up due in the selected week that matches the list filters, the channel and the staff member.</p>
+              <p>Each cell shows up to {{ cellLimit }} follow-ups; open "+ more" or a day heading for the full list. Counts match the list filters, the channel and the staff member.</p>
               <p class="fq-legend"><span class="fu-dot tone-ink">Open</span><span class="fu-dot tone-amber">Escalated</span><span class="fu-dot tone-red">Overdue</span><span class="fu-dot tone-green">Done</span></p>
             </footer>
           </div>
@@ -748,13 +763,13 @@
     </div>
   }
 
-  <!-- ===== calendar day ===== -->
+  <!-- ===== calendar day (whole day, or one staff member's day from "+ more") ===== -->
   @if (dialog() === 'day') {
     <div class="fu-overlay" (click)="closeDialog()">
       <div class="fu-dialog" role="dialog" aria-modal="true" aria-labelledby="fq-d-title" (click)="$event.stopPropagation()">
         <header class="fu-dlg-head">
           <span class="fu-dlg-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('calendar')" /></svg></span>
-          <div><h2 id="fq-d-title">{{ dayTitle(dialogDay()) }}</h2><p>{{ dayItems().length }} follow-up{{ dayItems().length === 1 ? '' : 's' }} on this day. Choose one to see its details.</p></div>
+          <div><h2 id="fq-d-title">{{ dayTitle(dialogDay()) }}@if (dialogStaff()) { · {{ dialogStaff() }} }</h2><p>{{ dayItems().length }} follow-up{{ dayItems().length === 1 ? '' : 's' }} on this day. Choose one to see its details.</p></div>
           <button type="button" class="fu-dlg-x" (click)="closeDialog()" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg></button>
         </header>
         <div class="fu-dlg-body">
@@ -768,6 +783,8 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg>
                 </button>
               </li>
+            } @empty {
+              <li class="fq-none">No follow-ups on this day.</li>
             }
           </ul>
         </div>

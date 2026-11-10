@@ -1,6 +1,10 @@
-import { Component, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, computed, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { Subscription } from 'rxjs';
 import { CommunicationStore, OUTCOME_GROUPS, OutcomeGroup, CommEntry, healthLabel, CommChannel, channelOf, isoDay, MONTHS, outcomeOf, COMM_ICONS, entryTitle, outcomeTone, pad2, Temperature, Level3, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
+import { DonorApiService } from '../../../Service/donor-api.service';
 
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
@@ -8,6 +12,35 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 export type CtTab = 'all' | 'call' | 'email' | 'meeting' | 'important';
 /** Open popover: filters, rows-per-page, or the header's More menu (phones). */
 type CtMenu = 'filters' | 'rows' | 'more' | null;
+
+/** How an attachment can be shown in the browser. */
+type AttachKind = 'image' | 'pdf' | 'text' | 'office' | 'other';
+
+/** The attachment preview popup. The file is fetched with the caller's token and shown from a blob URL. */
+interface Preview {
+  name: string;
+  ext: string;
+  kind: AttachKind;
+  /** loading → ready, or missing (entry has a name but no stored file, 404) or error. */
+  status: 'loading' | 'ready' | 'missing' | 'error';
+  /** Object URL of the downloaded file (images and Download use it). */
+  url: string | null;
+  /** The same URL trusted for the iframe (PDF and text). */
+  frame: SafeResourceUrl | null;
+  message: string;
+}
+
+const IMAGE_EXT = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp'];
+const TEXT_EXT = ['txt', 'csv', 'log', 'json'];
+const OFFICE_EXT = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+/** Browsers only render a blob inline when its type is right; servers often send octet-stream. */
+const MIME: Record<string, string> = {
+  pdf: 'application/pdf',
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+  webp: 'image/webp', svg: 'image/svg+xml', bmp: 'image/bmp',
+  txt: 'text/plain;charset=utf-8', log: 'text/plain;charset=utf-8',
+  csv: 'text/plain;charset=utf-8', json: 'application/json'
+};
 
 @Component({
   selector: 'app-communication-timeline',
@@ -20,6 +53,8 @@ export class CommunicationTimeline {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly store = inject(CommunicationStore);
+  private readonly api = inject(DonorApiService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   protected readonly logPath = '/app/fundraising/relationships/communication-timeline/log';
   protected readonly backPath = '/app/fundraising/relationships/lead-work-queue';
@@ -29,7 +64,10 @@ export class CommunicationTimeline {
 
   private readonly ref = this.route.snapshot.queryParamMap.get('ref');
 
-  constructor() { this.store.load(this.ref); }
+  constructor() {
+    this.store.load(this.ref);
+    inject(DestroyRef).onDestroy(() => this.closePreview());
+  }
   protected readonly lead = computed(() => this.store.lead(this.ref));
   protected readonly all = computed(() => this.store.entriesFor(this.lead().code));
   protected readonly today = new Date();
@@ -43,8 +81,10 @@ export class CommunicationTimeline {
   protected readonly rows = signal(10);
   protected readonly page = signal(1);
   protected readonly viewing = signal<CommEntry | null>(null);
+  protected readonly previewing = signal<Preview | null>(null);
   protected readonly toast = signal('');
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
+  private previewSub: Subscription | null = null;
 
   /* ---------- figures ---------- */
   protected readonly initials = computed(() => this.lead().name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase());
@@ -150,6 +190,73 @@ export class CommunicationTimeline {
     return out;
   });
 
+  /* ---------- attachment ---------- */
+  fileExt(name: string): string {
+    return name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : '';
+  }
+
+  private kindOf(ext: string): AttachKind {
+    return IMAGE_EXT.includes(ext) ? 'image'
+      : ext === 'pdf' ? 'pdf'
+      : TEXT_EXT.includes(ext) ? 'text'
+      : OFFICE_EXT.includes(ext) ? 'office' : 'other';
+  }
+
+  /** Fetches the entry's file from the server (with the caller's token) and opens the preview. */
+  openAttachment(e: CommEntry, ev?: Event): void {
+    ev?.stopPropagation();
+    if (!e.attachment) return;
+    this.closePreview();
+
+    const ext = this.fileExt(e.attachment);
+    const kind = this.kindOf(ext);
+    this.previewing.set({ name: e.attachment, ext, kind, status: 'loading', url: null, frame: null, message: '' });
+
+    this.previewSub = this.api.getCommunicationAttachment(e.id).subscribe({
+      next: ({ blob, fileName }) => {
+        const name = fileName && fileName !== 'attachment' ? fileName : e.attachment!;
+        const realExt = this.fileExt(name) || ext;
+        const realKind = this.kindOf(realExt);
+        const typed = MIME[realExt] ? new Blob([blob], { type: MIME[realExt] }) : blob;
+        const url = URL.createObjectURL(typed);
+        const inFrame = realKind === 'pdf' || realKind === 'text';
+        this.previewing.set({
+          name, ext: realExt, kind: realKind, status: 'ready', url,
+          frame: inFrame ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null, message: ''
+        });
+      },
+      error: (err: unknown) => {
+        const status = err instanceof HttpErrorResponse ? err.status : 0;
+        const p = this.previewing();
+        if (!p) return;
+        this.previewing.set({
+          ...p,
+          status: status === 404 ? 'missing' : 'error',
+          message: status === 403 ? 'You do not have access to this file.'
+            : status === 0 ? 'The server could not be reached. Check the connection and try again.'
+            : 'The file could not be opened. Try again in a moment.'
+        });
+      }
+    });
+  }
+
+  downloadAttachment(p: Preview): void {
+    if (!p.url) return;
+    const a = document.createElement('a');
+    a.href = p.url;
+    a.download = p.name;
+    a.click();
+  }
+
+  /** Closes the preview, cancels a pending fetch and frees the blob URL. */
+  closePreview(): void {
+    this.previewSub?.unsubscribe();
+    this.previewSub = null;
+    const url = this.previewing()?.url;
+    if (url) URL.revokeObjectURL(url);
+    this.previewing.set(null);
+  }
+
   /* ---------- helpers ---------- */
   icon(n: string): string { return COMM_ICONS[n] ?? ''; }
   channelIcon(e: CommEntry): string { return COMM_ICONS[channelOf(e.channel).icon]; }
@@ -233,6 +340,7 @@ export class CommunicationTimeline {
   @HostListener('document:keydown.escape')
   onEscape(): void {
     if (this.menu()) { this.menu.set(null); return; }
+    if (this.previewing()) { this.closePreview(); return; }
     this.viewing.set(null);
   }
 }

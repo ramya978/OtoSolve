@@ -39,15 +39,16 @@ export class PlatformOverview implements OnInit {
 
   ngOnInit(): void {
     this.loading.set(true);
+    let remaining = 2;
+    const finish = () => { if (--remaining === 0) this.loading.set(false); };
     this.api.getBusinessUnit().subscribe({
-      next: (b) => this.bu.set(b),
-      error: (e: unknown) => this.toast.error('Platform not loaded', apiErrorMessage(e, 'The platform record could not be loaded.'))
+      next: (b) => { this.bu.set(b); finish(); },
+      error: (e: unknown) => { this.toast.error('Platform not loaded', apiErrorMessage(e, 'The platform record could not be loaded.')); finish(); }
     });
     this.api.getStatistics().subscribe({
-      next: (st) => this.stats.set(st),
-      error: (e: unknown) => this.toast.error('Counts not loaded', apiErrorMessage(e, 'The organisation counts could not be loaded.'))
+      next: (st) => { this.stats.set(st); finish(); },
+      error: (e: unknown) => { this.toast.error('Counts not loaded', apiErrorMessage(e, 'The organisation counts could not be loaded.')); finish(); }
     });
-    this.loading.set(false);
   }
 
   get platform(): PlatformRecord {

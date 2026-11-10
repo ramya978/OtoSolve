@@ -54,7 +54,7 @@
   height: 19px;
   flex-shrink: 0;
   fill: none;
-  stroke: currentColor;
+  stroke: rgb(0 0 0 / 41%);
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round
@@ -300,6 +300,32 @@
 .m-icon-btn.is-danger:hover {
   background: var(--status-danger-bg, #fff0f1);
   color: var(--status-danger-ink, #a12336)
+}
+
+/* When combined with the common action-btn class, let action-btn take over */
+.m-icon-btn.action-btn {
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+  display: inline-grid;
+  place-items: center;
+  transition: none;
+}
+.m-icon-btn.action-btn:hover,
+.m-icon-btn.action-btn:focus-visible {
+  background: inherit;
+  color: inherit;
+}
+.m-icon-btn.action-btn .m-ico {
+  width: auto;
+  height: auto;
+}
+.m-icon-btn.action-btn.action-eye .eye-pupil {
+  transform: none;
 }
 
 /* ---------- tags (kit .m-tag) ---------- */

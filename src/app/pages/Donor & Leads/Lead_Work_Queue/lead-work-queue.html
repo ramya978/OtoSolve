@@ -4,6 +4,7 @@
      summary tabs · lead table with animated row actions · pager · floating bulk-action bar · toast.
      Mobile: header actions turn icon-only beside the title · filters fold behind one "Filters" button ·
      summary tabs become a swipeable strip (all tabs reachable, nothing truncated).
+     My Leads (mine = true): every lead is the signed-in user's, so the Owner column and Owner filter are hidden.
      ===================================================================================================== -->
 <app-loader [fullPage]="true" [message]="'Loading leads…'" *ngIf="loading()"></app-loader>
 
@@ -150,12 +151,14 @@
 <section class="lwq-card" aria-label="Leads">
   <table class="lwq-table">
     <colgroup>
-      <col class="c-check" /><col class="c-lead" /><col class="c-contact" /><col class="c-camp" /><col class="c-owner" />
+      <col class="c-check" /><col class="c-lead" /><col class="c-contact" /><col class="c-camp" />
+      @if (!mine) { <col class="c-owner" /> }
       <col class="c-stage" /><col class="c-sig" /><col class="c-next" /><col class="c-act" />
     </colgroup>
     <thead><tr>
       <th class="c-check"><input type="checkbox" class="lwq-check" [checked]="allChecked()" (change)="toggleAll()" aria-label="Select page" /></th>
-      <th>Lead</th><th class="c-contact">Contact</th><th class="c-camp">Campaign</th><th class="c-owner">Owner</th>
+      <th>Lead</th><th class="c-contact">Contact</th><th class="c-camp">Campaign</th>
+      @if (!mine) { <th class="c-owner">Owner</th> }
       <th class="c-stage">Stage</th><th class="c-sig">Signals</th><th class="c-next">Next contact</th><th class="c-act">Action</th>
     </tr></thead>
     <tbody>
@@ -165,10 +168,12 @@
           <td><button type="button" class="lwq-name" (click)="openLead(r)">{{ r.name }}</button><span class="lwq-sub">{{ r.ref }}</span></td>
           <td class="c-contact"><span class="lwq-main">{{ r.phone }}</span><span class="lwq-sub">{{ r.email }}</span></td>
           <td class="c-camp"><span class="lwq-main">{{ r.campaign }}</span><span class="lwq-sub">{{ r.source }}</span></td>
-          <td class="c-owner">
-            @if (r.owner) { <span class="lwq-owner"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ r.owner }}</span> }
-            @else { <span class="lwq-owner is-none"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>Unassigned</span> }
-          </td>
+          @if (!mine) {
+            <td class="c-owner">
+              @if (r.owner) { <span class="lwq-owner"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ r.owner }}</span> }
+              @else { <span class="lwq-owner is-none"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>Unassigned</span> }
+            </td>
+          }
           <td class="c-stage"><span [class]="'lwq-stage st-' + r.stage.toLowerCase()"><i></i>{{ r.stage }}</span></td>
           <td class="c-sig">
             <span [class]="'lwq-temp t-' + r.temp.toLowerCase()">{{ r.temp }}</span>
@@ -180,20 +185,20 @@
           </td>
           <td class="c-act">
             <span class="lwq-actions">
-              <button type="button" class="a-view" data-tip="View lead" aria-label="View lead" (click)="act(r, 'view')">
+              <button type="button" class="action-btn action-eye" data-tip="View lead" aria-label="View lead" (click)="act(r, 'view')">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
               </button>
-              <button type="button" class="a-note" data-tip="Log a note" aria-label="Log a note" (click)="act(r, 'note')">
+              <button type="button" class="action-btn" data-tip="Log a note" aria-label="Log a note" (click)="act(r, 'note')">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('chat')" /></svg>
               </button>
-              <button type="button" class="a-assign" [attr.data-tip]="r.owner ? 'Reassign' : 'Assign'" [attr.aria-label]="r.owner ? 'Reassign' : 'Assign'" (click)="act(r, 'assign')">
+              <button type="button" class="action-btn" [attr.data-tip]="r.owner ? 'Reassign' : 'Assign'" [attr.aria-label]="r.owner ? 'Reassign' : 'Assign'" (click)="act(r, 'assign')">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('userPlus')" /></svg>
               </button>
             </span>
           </td>
         </tr>
       } @empty {
-        <tr><td colspan="9" class="lwq-empty">No leads match these filters. <button type="button" class="lwq-link" (click)="reset()">Reset</button></td></tr>
+        <tr><td [attr.colspan]="mine ? 8 : 9" class="lwq-empty">No leads match these filters. <button type="button" class="lwq-link" (click)="reset()">Reset</button></td></tr>
       }
     </tbody>
   </table>

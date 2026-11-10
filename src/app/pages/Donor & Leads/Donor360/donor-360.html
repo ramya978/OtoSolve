@@ -356,12 +356,12 @@
         <input type="search" placeholder="Search follow-ups…" aria-label="Search follow-ups"
                [value]="followQuery()" (input)="followQuery.set($any($event.target).value)" />
       </label>
-      <!-- phones: Owner, Priority and Status step aside (the Action column already says Mark done / Closed) -->
+      <!-- phones: Owner, Priority and Status step aside (the Action column still shows View / Execute) -->
       <table class="dx-table dx-follow-table">
         <colgroup><col class="w-due" /><col /><col class="w-owner c-hide-sm" /><col class="w-pri c-hide-sm" /><col class="w-st c-hide-sm" /><col class="w-act" /></colgroup>
         <thead><tr><th>Due</th><th>Follow-up</th><th class="c-hide-sm">Owner</th><th class="c-hide-sm">Priority</th><th class="c-hide-sm">Status</th><th class="num">Action</th></tr></thead>
         <tbody>
-          @for (f of followRows(); track f.due + f.title) {
+          @for (f of followRows(); track f.id || f.due + f.title) {
             <tr>
               <td><span class="dx-due"><b>{{ day(f.due) }}</b><span>{{ monthYear(f.due) }}<small>{{ weekday(f.due) }}</small></span></span></td>
               <td [attr.title]="f.title">{{ f.title }}</td>
@@ -369,11 +369,23 @@
               <td class="c-hide-sm"><span [class]="'dx-dotted ' + (f.priority === 'Urgent' ? 'tone-red' : f.priority === 'High' ? 'tone-amber' : 'tone-muted')"><i></i>{{ f.priority }}</span></td>
               <td class="c-hide-sm"><span [class]="'dx-dotted ' + (f.status === 'Completed' ? 'tone-green' : 'tone-blue')"><i></i>{{ f.status }}</span></td>
               <td class="num">
-                @if (f.status === 'Completed') {
-                  <span class="dx-closed"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Closed</span>
-                } @else {
-                  <button type="button" class="dx-link" (click)="flash('Follow-up marked done.')">Mark done</button>
-                }
+                <!-- BUG-175: View always; Execute only when the follow-up is open and the donor may be contacted -->
+                <span class="dx-row-acts">
+                  <button type="button" class="dx-link" (click)="viewFollowUp(f)" [attr.aria-label]="'View follow-up ' + f.title">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>View
+                  </button>
+                  @if (canExecute(f)) {
+                    <button type="button" class="dx-exec" (click)="executeFollowUp(f)" [attr.aria-label]="'Execute follow-up ' + f.title">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow')" /></svg>Execute
+                    </button>
+                  } @else if (f.status === 'Completed') {
+                    <span class="dx-closed"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>Closed</span>
+                  } @else {
+                    <span class="dx-closed is-blocked" [attr.title]="executeBlockedReason(f)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('shield')" /></svg>Blocked
+                    </span>
+                  }
+                </span>
               </td>
             </tr>
           } @empty {

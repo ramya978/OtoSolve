@@ -117,7 +117,7 @@
 
             <!-- action -->
             <td class="pr-col-action">
-              <button type="button" class="pr-view" data-tip="View" [attr.aria-label]="'View ' + r.ref"
+              <button type="button" class="action-btn action-eye" data-tip="View" [attr.aria-label]="'View ' + r.ref"
                       (click)="selected.set(r)">
                 <svg class="pr-eye" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
                      stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -236,6 +236,26 @@
       </div>
 
       <footer class="pr-dialog-foot">
+        @if (row.status === 'failed' && canPerform(row.permittedActions, 'Retry')) {
+          <button
+            type="button"
+            class="pr-btn pr-btn-primary"
+            (click)="retryPayment(row)"
+            [disabled]="busy()"
+            [attr.aria-label]="busy() ? 'Retrying payment' : 'Retry payment'"
+          >
+            {{ busy() ? 'Retrying…' : 'Retry payment' }}
+          </button>
+        } @else if (row.status === 'pending' && canPerform(row.permittedActions, 'ContinuePayment')) {
+          <button
+            type="button"
+            class="pr-btn pr-btn-primary"
+            (click)="continuePayment(row)"
+            [attr.aria-label]="'Continue payment ' + row.ref"
+          >
+            Continue payment
+          </button>
+        }
         <button type="button" class="pr-btn" (click)="close()">Close</button>
       </footer>
     </div>

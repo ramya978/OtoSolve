@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { IamSelect } from '../../../Shared/IAM/iam-select';
@@ -17,7 +17,6 @@ import { UserSearchFilter } from '../../../Shared/models/user-directory.model';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { Loader } from '../../../Shared/layout/Loader/loader';
-import { LoaderService } from '../../../Shared/services/loader.service';
 
 type View = 'cards' | 'list';
 
@@ -64,7 +63,7 @@ const ACT_DONE: Record<ActKind, string> = {
   revoke: 'The invitation was withdrawn.', extend: 'Access was extended.'
 };
 
-/** Users — Workspace Kit "People directory" pattern: summary strip, filters, cards ↔ compact list,
+/** Users â€” Workspace Kit "People directory" pattern: summary strip, filters, cards â†” compact list,
  *  record detail drawer and an invite / edit drawer. */
 @Component({
   selector: 'app-iam-users',
@@ -79,7 +78,6 @@ export class Users implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly geo = inject(GeoMasterService);
   private readonly security = inject(SecurityApiService);
-  private readonly loaderService = inject(LoaderService);
 
   readonly users = this.store.users;
   readonly loading = this.store.loading;
@@ -478,11 +476,11 @@ export class Users implements OnInit {
   }
 
   // ---- create / edit drawer ----
-  /** Invite → the full create-user page (the drawer is used for edits only). */
+  /** Invite â†’ the full create-user page (the drawer is used for edits only). */
   openCreate(): void {
     this.router.navigate([IAM_PATHS.createUser]);
   }
-  /** Full profile → the My profile page, carrying this person's record in the router state. */
+  /** Full profile â†’ the My profile page, carrying this person's record in the router state. */
   openFullProfile(u: IamUser): void {
     void this.router.navigate(['/app/auth/profile'], { state: { user: u } });
   }

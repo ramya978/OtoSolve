@@ -274,7 +274,7 @@
 }
 
 /* delete confirmation stays above the overlay too */
-:host .ml-dialog { z-index: 1002 !important; }
+:host .ml-dialog { z-index: 111111111  !important; }
 
 /* very small phones: facts back to one column */
 @media (max-width: 340px) {

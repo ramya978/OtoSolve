@@ -1006,6 +1006,107 @@
   margin: 0;
 }
 
+/* ---------- rich text (text editor output, rendered with [innerHTML]) ----------
+   Content set through [innerHTML] gets no component scoping, so these rules use ::ng-deep under
+   :host. Long words and runs of &nbsp; wrap instead of pushing the card wider. */
+.cd-rich {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cd-rich-none {
+  margin: 0;
+  color: var(--w-muted);
+}
+
+:host ::ng-deep .cd-rich > :first-child { margin-top: 0; }
+:host ::ng-deep .cd-rich > :last-child { margin-bottom: 0; }
+
+:host ::ng-deep .cd-rich p,
+:host ::ng-deep .cd-rich div {
+  margin: 0 0 8px;
+}
+
+:host ::ng-deep .cd-rich div:has(> ul),
+:host ::ng-deep .cd-rich div:has(> ol) {
+  margin: 0;
+}
+
+:host ::ng-deep .cd-rich ul,
+:host ::ng-deep .cd-rich ol {
+  margin: 4px 0 8px;
+  padding-left: 1.4em;
+}
+
+:host ::ng-deep .cd-rich ul { list-style: disc; }
+:host ::ng-deep .cd-rich ol { list-style: decimal; }
+:host ::ng-deep .cd-rich ul ul { list-style: circle; }
+
+:host ::ng-deep .cd-rich li {
+  display: list-item;
+  margin: 2px 0;
+  padding: 0;
+}
+
+:host ::ng-deep .cd-rich li::marker {
+  color: var(--w-muted);
+}
+
+:host ::ng-deep .cd-rich b,
+:host ::ng-deep .cd-rich strong {
+  color: var(--w-heading);
+  font-weight: 600;
+}
+
+:host ::ng-deep .cd-rich i,
+:host ::ng-deep .cd-rich em { font-style: italic; }
+:host ::ng-deep .cd-rich u { text-decoration: underline; }
+:host ::ng-deep .cd-rich s,
+:host ::ng-deep .cd-rich strike { text-decoration: line-through; }
+
+:host ::ng-deep .cd-rich a {
+  color: var(--w-primary-ink, var(--w-primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+:host ::ng-deep .cd-rich h1,
+:host ::ng-deep .cd-rich h2,
+:host ::ng-deep .cd-rich h3,
+:host ::ng-deep .cd-rich h4 {
+  margin: 10px 0 6px;
+  color: var(--w-heading);
+  font-size: 1.08em;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+:host ::ng-deep .cd-rich blockquote {
+  margin: 6px 0 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--w-line);
+  color: var(--w-muted);
+}
+
+:host ::ng-deep .cd-rich img {
+  max-width: 100%;
+  height: auto;
+}
+
+:host ::ng-deep .cd-rich table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+:host ::ng-deep .cd-rich td,
+:host ::ng-deep .cd-rich th {
+  padding: 4px 8px;
+  border: 1px solid var(--w-line);
+}
+
 .cd-desc-links {
   display: flex;
   flex-wrap: wrap;
@@ -1252,7 +1353,7 @@
 .cd-doc-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 11111111;
   background: color-mix(in srgb, var(--w-heading, #1f1d24) 28%, transparent);
   animation: cd-doc-fade .15s ease both;
 }
@@ -1261,7 +1362,7 @@
   position: fixed;
   top: 50%;
   left: 50%;
-  z-index: 1001;
+  z-index: 111111111;
   display: flex;
   flex-direction: column;
   width: min(calc(640px * var(--cd-k)), calc(100vw - calc(32px * var(--cd-k))));
@@ -1360,6 +1461,16 @@
 }
 
 .cd-doc-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* a little more air between paragraphs in the dialog */
+:host ::ng-deep .cd-doc-body .cd-rich p,
+:host ::ng-deep .cd-doc-body .cd-rich div {
+  margin-bottom: 12px;
+}
+
+:host ::ng-deep .cd-doc-body .cd-rich > :last-child {
   margin-bottom: 0;
 }
 

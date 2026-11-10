@@ -195,7 +195,7 @@
               </td>
               <td class="col-action">
                 <div class="ad-acts">
-                  <button type="button" class="ad-act act-view" data-tip="View" [attr.aria-label]="'View ' + d.name" (click)="open(d)">
+                  <button type="button" class="ad-act act-view" data-tip="View" [attr.aria-label]="'View timeline for ' + d.name" (click)="viewTimeline(d)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
                   </button>
                   <button type="button" class="ad-act act-note" data-tip="Log a note" [attr.aria-label]="'Log a note for ' + d.name" (click)="act(d, 'note')">
@@ -289,13 +289,11 @@
 
           <!-- footer: open profile · actions -->
           <div class="ad-tile-foot">
-            <button type="button" class="ad-open" (click)="open(d)">
-              Open profile <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('arrow-right')" /></svg>
-            </button>
-            <div class="ad-tile-acts">
-              <button type="button" class="ad-tact t-view" data-tip="View" [attr.aria-label]="'View ' + d.name" (click)="open(d)">
+             <button type="button" class="ad-tact t-view" data-tip="View" [attr.aria-label]="'View timeline for ' + d.name" (click)="viewTimeline(d)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
               </button>
+            <div class="ad-tile-acts">
+            
               <button type="button" class="ad-tact t-schedule" data-tip="Schedule follow-up" [attr.aria-label]="'Schedule follow-up for ' + d.name" (click)="act(d, 'schedule')">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('schedule')" /></svg>
               </button>

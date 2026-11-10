@@ -1,0 +1,319 @@
+/* ============================================================================
+   Action icon buttons — common across ALL pages
+   - Rest:  normal — white background, neutral grey icon
+   - Hover: each action TYPE has ONE fixed colour, the same on every page
+            + tinted background + tinted border + slightly thicker stroke
+
+   Colour per action (matched by class OR by the button's title / aria-label,
+   so pages without the action-* class still get the right colour):
+   - View / eye .................. blue
+   - Edit ........................ gold
+   - Copy / duplicate / clone .... purple
+   - Assign / permissions / map .. indigo
+   - Activate / power ............ orange-red
+   - Delete / remove ............. red
+   - Approve / ready ............. green
+   - Disable request ............. brown
+   - Launch ...................... orange
+   - Calendar / schedule ......... teal
+   - More ........................ slate
+   - Anything else (fallback) .... accent (maroon)
+
+   Icon animations on hover:
+   - delete: drops fall from the bin
+   - eye: blink + pupil look around
+   - edit: pencil writes
+   - power / launch: ring pulses
+   - calendar: ring pulses
+   ============================================================================ */
+
+.action-btn {
+  /* per-action colour tokens (overridden below) — used on hover only */
+  --act: var(--accent, #7c3348);        /* tint source for bg + border */
+  --act-ink: var(--accent, #7c3348);    /* bold icon colour */
+
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+width: 31px;
+    height: 31px;
+    padding: 0;
+    border: 1px solid #00000024 !important;
+    border-radius: 8px !important;
+  background: var(--white, #fff) !important;
+  color: var(--icon-color, #6a7083) !important;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+  font: inherit;
+}
+
+.action-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  overflow: visible !important;
+  display: block !important;
+  stroke-width: 1;
+  /* follow the button colour (beats .m-ico's own colour) */
+  color: inherit !important;
+  transition: color 0.18s ease, stroke 0.18s ease, fill 0.18s ease, stroke-width 0.18s ease !important;
+}
+
+/* ---------- Hover: the action's own colour ---------- */
+.action-btn:hover,
+.action-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--act) 40%, transparent) !important;
+  background: color-mix(in srgb, var(--act) 18%, var(--white, #fff)) !important;
+  color: var(--act-ink) !important;
+  transform: translateY(-1px);
+}
+
+.action-btn:hover svg,
+.action-btn:focus-visible svg {
+  color: var(--act-ink) !important;
+  stroke: var(--act-ink) !important;
+  stroke-width: 1.4;
+}
+
+.action-btn:active {
+  transform: translateY(0) scale(0.94) !important;
+}
+
+.action-btn:focus-visible {
+  outline: 2px solid var(--act) !important;
+  outline-offset: 2px !important;
+}
+
+/* ---------- Per-action colours (one colour per action type, app-wide) ---------- */
+
+/* View / Eye — blue */
+.action-btn:is(.action-view, .action-eye, [title^="View" i], [title^="Preview" i], [aria-label^="View" i], [aria-label^="Preview" i]) {
+  --act: var(--status-info, #3c62a3);
+  --act-ink: var(--status-info-ink, #2f5290);
+}
+
+/* Edit — gold */
+.action-btn:is(.action-edit, [title^="Edit" i], [aria-label^="Edit" i]) {
+  --act: var(--gold, #c9961a);
+  --act-ink: var(--gold-ink, #9a720f);
+}
+
+/* Copy / Duplicate / Clone — purple */
+.action-btn:is(.action-copy, [title^="Copy" i], [title^="Duplicate" i], [title^="Clone" i], [aria-label^="Copy" i], [aria-label^="Duplicate" i], [aria-label^="Clone" i]) {
+  --act: var(--purple, #7a5af5);
+  --act-ink: var(--purple-ink, #6342e0);
+}
+
+/* Assign / Permissions / Manage / Map / Select — indigo */
+.action-btn:is(.action-assign, [title^="Assign" i], [title*="Permission" i], [title^="Manage" i], [title^="Map" i], [title^="Select" i], [aria-label^="Assign" i], [aria-label*="Permission" i], [aria-label^="Manage" i], [aria-label^="Map" i], [aria-label^="Select" i]) {
+  --act: var(--indigo, #4451c9);
+  --act-ink: var(--indigo-ink, #3540a8);
+}
+
+/* Ready / Approve — green */
+.action-btn:is(.action-ready, .action-approve, [title^="Approve" i], [title^="Ready" i], [aria-label^="Approve" i], [aria-label^="Ready" i]) {
+  --act: var(--status-success, #3d7a68);
+  --act-ink: var(--status-success-ink, #35695a);
+}
+
+/* Approve disable — brown */
+.action-btn:is(.action-approveDisable, [title^="Approve disable" i], [aria-label^="Approve disable" i]) {
+  --act: var(--brown, #8a5a2b);
+  --act-ink: var(--brown-ink, #6f4720);
+}
+
+/* Power / Activate / Deactivate — orange-red */
+.action-btn:is(.action-power, .ml-power, [title^="Activate" i], [title^="Deactivate" i], [aria-label^="Activate" i], [aria-label^="Deactivate" i]) {
+  --act: var(--status-power, #d4572a);
+  --act-ink: var(--status-power-ink, #b8461d);
+}
+
+/* Delete / Remove / Request disable — red */
+.action-btn:is(.action-delete, .action-requestDisable, .is-danger, [title^="Delete" i], [title^="Remove" i], [aria-label^="Delete" i], [aria-label^="Remove" i]) {
+  --act: var(--status-danger, #b34455);
+  --act-ink: var(--status-danger-ink, #a23c4c);
+}
+
+/* Launch — orange */
+.action-btn:is(.action-launch, [title^="Launch" i], [aria-label^="Launch" i]) {
+  --act: var(--orange, #c78028);
+  --act-ink: var(--orange-ink, #a8691c);
+}
+
+/* Calendar / Schedule — teal */
+.action-btn:is(.action-calendar, [title^="Schedule" i], [title^="Calendar" i], [aria-label^="Schedule" i], [aria-label^="Calendar" i]) {
+  --act: var(--teal, #1f8a8a);
+  --act-ink: var(--teal-ink, #1a7272);
+}
+
+/* More — slate */
+.action-btn:is(.action-more, [title^="More" i], [aria-label^="More" i]) {
+  --act: var(--icon-color, #6a7083);
+  --act-ink: var(--icon-color-strong, #4b5163);
+}
+
+/* ---------- Icon animations on hover ---------- */
+
+/* Eye: blink + pupil looks around */
+.action-eye .eye-lid,
+.action-eye .eye-pupil {
+  transform-origin: center;
+}
+.action-eye:hover .eye-lid,
+.action-eye:focus-visible .eye-lid {
+  animation: act-blink 0.5s ease 0.05s !important;
+}
+.action-eye:hover .eye-pupil,
+.action-eye:focus-visible .eye-pupil {
+  animation: act-look 1.4s ease-in-out 0.5s infinite !important;
+}
+
+/* Delete: drops fall from the bin (trash-lid + bin-lid for campaign page) */
+.action-delete .trash-lid,
+.action-delete .bin-lid {
+  transform-origin: 5px 6px;
+  transition: transform 0.18s ease;
+}
+.action-delete:hover .trash-lid,
+.action-delete:focus-visible .trash-lid,
+.action-delete:hover .bin-lid,
+.action-delete:focus-visible .bin-lid {
+  animation: act-lid-lift 0.4s ease forwards !important;
+}
+.action-delete .drop {
+  opacity: 0;
+  transform: translateY(-9px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.action-delete:hover .drop,
+.action-delete:focus-visible .drop {
+  animation: act-drop-fall 0.8s ease infinite !important;
+}
+
+/* Edit: pencil writes a line under it */
+.action-edit .pen {
+  transform-origin: 20% 90%;
+}
+.action-edit .pen-line {
+  stroke-dasharray: 10;
+  stroke-dashoffset: 10;
+}
+.action-edit:hover .pen,
+.action-edit:focus-visible .pen {
+  animation: act-write 0.7s ease-in-out infinite !important;
+}
+.action-edit:hover .pen-line,
+.action-edit:focus-visible .pen-line {
+  animation: act-line 0.6s ease forwards !important;
+}
+
+/* Power / Launch: ring pulses (power-ring + launch-ring for campaign page) */
+.action-power .power-ring,
+.action-launch .launch-ring {
+  transform-origin: center;
+  transition: transform 0.18s ease;
+}
+.action-power:hover .power-ring,
+.action-power:focus-visible .power-ring,
+.action-launch:hover .launch-ring,
+.action-launch:focus-visible .launch-ring {
+  animation: act-pulse 1.2s ease-in-out infinite !important;
+}
+
+/* Calendar: ring pulses */
+.action-calendar .cal-ring {
+  transform-origin: center;
+}
+.action-calendar:hover .cal-ring,
+.action-calendar:focus-visible .cal-ring {
+  animation: act-pulse 1.2s ease-in-out infinite !important;
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes act-blink {
+  0%, 100% { transform: scaleY(1); }
+  45% { transform: scaleY(0.1); }
+}
+@keyframes act-look {
+  0%, 100% { transform: translateX(0); }
+  30% { transform: translateX(-2.2px); }
+  65% { transform: translateX(2.2px); }
+}
+@keyframes act-lid-lift {
+  0% { transform: rotate(0); }
+  100% { transform: rotate(-16deg); }
+}
+@keyframes act-drop-fall {
+  0% { opacity: 0; transform: translateY(-9px); }
+  20% { opacity: 1; }
+  70% { opacity: 1; transform: translateY(4px); }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+@keyframes act-write {
+  0%, 100% { transform: rotate(0) translateX(0); }
+  25% { transform: rotate(-8deg) translateX(1px); }
+  50% { transform: rotate(4deg) translateX(2.5px); }
+  75% { transform: rotate(-5deg) translateX(3.5px); }
+}
+@keyframes act-line {
+  from { stroke-dashoffset: 10; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes act-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+}
+
+/* Tooltip (optional, used with data-tip attribute) */
+.action-btn[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 3;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--inverse-bg, #24364a);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.4;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+
+.action-btn[data-tip]:hover::after,
+.action-btn[data-tip]:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition-delay: 0.3s;
+}
+
+/* Reduce motion: keep colour change, drop movement */
+@media (prefers-reduced-motion: reduce) {
+  .action-btn {
+    transition: background-color 0.001ms ease, color 0.001ms ease, border-color 0.001ms ease;
+  }
+  .action-btn:hover,
+  .action-btn:focus-visible {
+    transform: none;
+  }
+  .action-btn svg *,
+  .action-eye .eye-lid,
+  .action-eye .eye-pupil,
+  .action-delete .trash-lid,
+  .action-delete .bin-lid,
+  .action-delete .drop,
+  .action-edit .pen,
+  .action-edit .pen-line,
+  .action-power .power-ring,
+  .action-launch .launch-ring,
+  .action-calendar .cal-ring {
+    animation: none !important;
+    transition: none !important;
+  }
+}

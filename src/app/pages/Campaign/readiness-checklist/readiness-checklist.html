@@ -118,10 +118,10 @@
             <td class="c-req"><span class="rc-req-tag" [class.is-req]="chk.required">{{ chk.required ? 'Required' : 'Optional' }}</span></td>
             <td><span [class]="'w-pill ' + statusTone(chk.status)">{{ statusLabel(chk.status) }}</span></td>
             <td class="c-act"><span class="rc-actions">
-                <button type="button" class="w-icon-btn" [disabled]="chk.status !== 'pending'" [attr.aria-label]="'Edit ' + chk.name" title="Edit" (click)="$event.stopPropagation(); startEdit(chk)">
+                <button type="button" class="action-btn action-edit" [disabled]="chk.status !== 'pending'" [attr.aria-label]="'Edit ' + chk.name" title="Edit" (click)="$event.stopPropagation(); startEdit(chk)">
                   <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('edit')" /></svg>
                 </button>
-                <button type="button" class="w-icon-btn is-danger" [disabled]="chk.status !== 'pending'" [attr.aria-label]="'Delete ' + chk.name" title="Delete" (click)="$event.stopPropagation(); deleting.set(chk)">
+                <button type="button" class="action-btn action-delete" [disabled]="chk.status !== 'pending'" [attr.aria-label]="'Delete ' + chk.name" title="Delete" (click)="$event.stopPropagation(); deleting.set(chk)">
                   <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg>
                 </button>
               </span></td>
@@ -150,7 +150,7 @@
           <span class="rc-req" [class.is-req]="chk.required">{{ chk.required ? 'Required for launch' : 'Optional' }}</span>
         </div>
       </div>
-      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="openId.set(null)">
+      <button type="button" class="action-btn" aria-label="Close" (click)="openId.set(null)">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
       </button>
     </header>
@@ -211,7 +211,7 @@
         <span class="w-caption">Readiness check</span>
         <h2 id="rc-e-title">{{ editing() === 'new' ? 'Create readiness check' : 'Edit readiness check' }}</h2>
       </div>
-      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="editing.set(null)">
+      <button type="button" class="action-btn" aria-label="Close" (click)="editing.set(null)">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
       </button>
     </header>
@@ -314,7 +314,7 @@
         <span class="w-caption">High-risk decision</span>
         <h2 id="rc-rej-title">Reject launch</h2>
       </div>
-      <button type="button" class="w-icon-btn w-close" aria-label="Close" (click)="rejecting.set(false)">
+      <button type="button" class="action-btn" aria-label="Close" (click)="rejecting.set(false)">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg>
       </button>
     </header>

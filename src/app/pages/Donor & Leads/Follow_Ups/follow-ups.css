@@ -1557,6 +1557,41 @@
   min-width: 0;
 }
 
+/* long staff lists in the dropdown scroll instead of running off the screen */
+.fq-pl-menu {
+  max-height: min(50vh, calc(340px * var(--fus-k)));
+  overflow-y: auto;
+}
+
+/* "Busy staff only" switch: same box as the dropdowns beside it */
+.fq-pl-toggle {
+  display: flex;
+  align-items: center;
+  gap: calc(8px * var(--fus-k));
+  width: 100%;
+  min-width: 0;
+  color: var(--fu-ink);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fq-pl-toggle .fq-check {
+  flex: none;
+  pointer-events: none;
+}
+
+.fq-pl-toggle-lbl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fq-pl-toggle.is-on {
+  border-color: var(--fu-primary-line);
+  color: var(--fu-primary);
+}
+
 .fq-pl-stats {
   display: flex;
   flex-wrap: wrap;
@@ -1594,6 +1629,17 @@
   font-size: calc(11.5px * var(--fus-fs));
 }
 
+/* the grid scrolls inside its own box: a busy week or a big team never stretches the card
+   to thousands of pixels; the day headings stay pinned at the top while scrolling */
+.fq-pl-scroll {
+  max-height: min(72vh, calc(760px * var(--fus-k)));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fu-line) transparent;
+}
+
 .fq-pl-grid {
   display: grid;
 }
@@ -1629,9 +1675,9 @@
   display: grid;
   justify-items: center;
   gap: 4px;
-  padding: calc(12px * var(--fus-k)) 4px;
+  padding: calc(10px * var(--fus-k)) 4px;
   border: 0;
-  background: none;
+  background: var(--fu-card);
   cursor: pointer;
 }
 
@@ -1643,6 +1689,25 @@
 .fq-pl-day b {
   color: var(--fu-heading);
   font-size: calc(13.5px * var(--fus-fs));
+  font-weight: 500;
+}
+
+/* how many follow-ups fall on the day, across the visible staff */
+.fq-pl-day em {
+  min-width: calc(20px * var(--fus-k));
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--fu-primary-soft);
+  color: var(--fu-primary);
+  font-size: calc(10.5px * var(--fus-fs));
+  font-style: normal;
+  font-weight: 600;
+  text-align: center;
+}
+
+.fq-pl-day em.is-zero {
+  background: var(--fu-soft);
+  color: var(--fu-muted);
   font-weight: 500;
 }
 
@@ -1665,7 +1730,7 @@
   display: grid;
   align-content: start;
   gap: 3px;
-  padding: calc(14px * var(--fus-k)) calc(16px * var(--fus-k));
+  padding: calc(12px * var(--fus-k)) calc(14px * var(--fus-k));
 }
 
 .fq-pl-staff b {
@@ -1677,34 +1742,44 @@
 }
 
 .fq-pl-staff>span {
+  overflow: hidden;
   color: var(--fu-muted);
   font-size: calc(12px * var(--fus-fs));
+  text-overflow: ellipsis;
   text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .fq-pl-staff small {
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--fu-heading);
   font-size: calc(11.5px * var(--fus-fs));
   font-weight: 600;
 }
 
+/* a staff member with nothing this week: one short line, not a tall empty row */
+.fq-pl-row.is-idle .fq-pl-staff small {
+  color: var(--fu-muted);
+  font-weight: 500;
+}
+
 .fq-pl-cell {
   display: grid;
   align-content: start;
-  gap: 6px;
-  padding: calc(10px * var(--fus-k)) calc(8px * var(--fus-k));
+  gap: 5px;
+  min-height: calc(64px * var(--fus-k));
+  padding: calc(8px * var(--fus-k)) calc(6px * var(--fus-k));
+}
+
+.fq-pl-row.is-idle .fq-pl-cell {
+  min-height: 0;
 }
 
 .fq-pl-dl {
   display: none;
 }
 
-.fq-pl-none {
-  color: var(--fu-muted);
-  font-size: calc(11.5px * var(--fus-fs));
-}
-
+/* empty cell: a quiet "Add" that comes forward on hover, instead of repeated "No follow-ups" text */
 .fq-pl-add {
   display: inline-flex;
   justify-self: start;
@@ -1714,8 +1789,9 @@
   border: 0;
   border-radius: 4px;
   background: none;
-  color: var(--fu-primary);
-  font-size: calc(12px * var(--fus-fs));
+  color: var(--fu-muted);
+  font-size: calc(11.5px * var(--fus-fs));
+  opacity: 0.6;
   cursor: pointer;
 }
 
@@ -1724,19 +1800,27 @@
   height: calc(12px * var(--fus-k));
 }
 
+.fq-pl-cell:hover .fq-pl-add,
+.fq-pl-add:focus-visible {
+  color: var(--fu-primary);
+  opacity: 1;
+}
+
 .fq-pl-add:hover {
   background: var(--fu-primary-soft);
 }
 
+/* one follow-up: fixed, compact height so a full cell lines up with its neighbours */
 .fq-pl-ev {
   display: grid;
-  gap: 1px;
+  gap: 0;
   min-width: 0;
-  padding: 7px calc(9px * var(--fus-k));
+  padding: 5px calc(7px * var(--fus-k));
   border: 1px solid var(--fu-row);
   border-left: 2px solid var(--t);
-  border-radius: 6px;
+  border-radius: 4px;
   background: var(--fu-card);
+  line-height: 1.3;
   text-align: left;
   cursor: pointer;
 }
@@ -1747,30 +1831,69 @@
   background: var(--fu-soft);
 }
 
+.fq-pl-ev small,
+.fq-pl-ev b,
+.fq-pl-ev span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .fq-pl-ev small {
   color: var(--fu-heading);
   font-size: calc(10.5px * var(--fus-fs));
 }
 
 .fq-pl-ev b {
-  overflow: hidden;
   color: var(--fu-heading);
-  font-size: calc(12.5px * var(--fus-fs));
+  font-size: calc(12px * var(--fus-fs));
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .fq-pl-ev span {
-  overflow: hidden;
   color: var(--fu-muted);
-  font-size: calc(11px * var(--fus-fs));
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: calc(10.5px * var(--fus-fs));
 }
 
 .fq-pl-ev.tone-red span {
   color: var(--fu-red);
+}
+
+/* "+N more": the rest of the cell opens in the day popup for that staff member */
+.fq-pl-more {
+  width: 100%;
+  padding: 3px calc(7px * var(--fus-k));
+  border: 1px dashed var(--fu-primary-line);
+  border-radius: 4px;
+  background: none;
+  color: var(--fu-primary);
+  font-size: calc(11px * var(--fus-fs));
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fq-pl-more:hover {
+  border-style: solid;
+  background: var(--fu-primary-soft);
+}
+
+.fq-pl-blank {
+  display: grid;
+  gap: 4px;
+  padding: calc(32px * var(--fus-k)) calc(20px * var(--fus-k));
+  text-align: center;
+}
+
+.fq-pl-blank b {
+  color: var(--fu-heading);
+}
+
+.fq-pl-blank span {
+  color: var(--fu-muted);
+  font-size: calc(12px * var(--fus-fs));
 }
 
 .fq-pl-foot {
@@ -1780,6 +1903,7 @@
   justify-content: space-between;
   gap: calc(8px * var(--fus-k)) calc(20px * var(--fus-k));
   padding: calc(12px * var(--fus-k)) calc(20px * var(--fus-k)) calc(16px * var(--fus-k));
+  border-top: 1px solid var(--fu-row);
   color: var(--fu-muted);
   font-size: calc(12px * var(--fus-fs));
 }
@@ -1797,14 +1921,14 @@
 /* ================= details offcanvas ================= */
 .fq-scrim {
   position: fixed;
-  z-index: 900;
+  z-index: 11111111;
   inset: 0;
   background: color-mix(in srgb, var(--fu-heading) 28%, transparent);
 }
 
 .fq-drawer {
   position: fixed;
-  z-index: 901;
+  z-index: 111111111;
   top: 0;
   right: 0;
   bottom: 0;
@@ -1988,12 +2112,22 @@
   margin: 0;
 }
 
+/* day popup: a busy day scrolls inside the popup instead of pushing it off the screen */
 .fq-daylist {
   display: grid;
   gap: calc(8px * var(--fus-k));
+  max-height: min(60vh, calc(480px * var(--fus-k)));
   margin: 0;
-  padding: 0;
+  padding: 0 2px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   list-style: none;
+  scrollbar-width: thin;
+}
+
+.fq-daylist .fq-none {
+  color: var(--fu-muted);
+  font-size: calc(12px * var(--fus-fs));
 }
 
 .fq-daylist button {
@@ -2060,6 +2194,11 @@
   .fq-board {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* planner: a narrower staff column leaves more room for the seven days */
+  .fq-pl-row {
+    grid-template-columns: minmax(0, 140px) repeat(7, minmax(0, 1fr));
+  }
 }
 
 @container fu (max-width: 1180px) {
@@ -2106,6 +2245,11 @@
   }
 
   .fq-week-sum {
+    display: none;
+  }
+
+  /* planner: the status line inside each event steps aside, time + name stay */
+  .fq-pl-ev span {
     display: none;
   }
 }
@@ -2352,6 +2496,12 @@
 
 /* planner: stack per staff member when seven columns no longer fit */
 @container fu (max-width: 1000px) {
+  /* stacked list grows with the page (natural scroll), no inner scroll box */
+  .fq-pl-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
   .fq-pl-head {
     display: none;
   }
@@ -2376,10 +2526,16 @@
     margin-top: 0;
   }
 
+  .fq-pl-row.is-idle .fq-pl-staff {
+    padding-bottom: calc(12px * var(--fus-k));
+    background: var(--fu-soft);
+  }
+
   .fq-pl-cell {
     grid-template-columns: 92px minmax(0, 1fr);
     align-items: start;
     gap: 6px calc(12px * var(--fus-k));
+    min-height: 0;
     padding: calc(8px * var(--fus-k)) calc(16px * var(--fus-k));
   }
 
@@ -2399,8 +2555,13 @@
     font-weight: 600;
   }
 
-  .fq-pl-ev {
+  .fq-pl-ev,
+  .fq-pl-more {
     grid-column: 2;
+  }
+
+  .fq-pl-ev span {
+    display: block;
   }
 
   .fq-grid.is-wide .fq-side {
@@ -2444,7 +2605,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .fq-pl-ev {
+  .fq-pl-ev,
+  .fq-pl-more {
     grid-column: auto;
   }
 
