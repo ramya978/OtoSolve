@@ -87,18 +87,13 @@ const ICON_PATHS: Record<string, string> = {
   home: 'M3 11l9-7 9 7 M5 9.5V20h14V9.5 M10 20v-6h4v6'
 };
 
-/** Unsplash image for a campaign / owner photo, cropped square. */
-const unsplash = (id: string, size = 96): string =>
-  `https://images.unsplash.com/photo-${id}?w=${size}&h=${size}&fit=crop&crop=faces,center&auto=format&q=70`;
-
-/** Owner profile photos. Replace with your user photo URLs (e.g. from the users API / 'assets/people/ritu.jpg'). */
-const OWNER_PHOTOS: Record<string, string> = {
-  'Ritu Anil': 'https://randomuser.me/api/portraits/women/68.jpg',
-  'Priyanka Naveen': 'https://randomuser.me/api/portraits/women/44.jpg',
-  'Aditya Ganesh': 'https://randomuser.me/api/portraits/men/32.jpg',
-  'Arvind Murali': 'https://randomuser.me/api/portraits/men/75.jpg',
-  'Vikram Anand': 'https://randomuser.me/api/portraits/men/46.jpg'
-};
+/**
+ * Owner photos (NEW-19). This held stock portraits from randomuser.me filed under five real staff
+ * names, so the register showed strangers' faces as those people and called a third-party site
+ * on every visit. Owners now show their initials, as every other owner already did, until the
+ * users API serves profile photos.
+ */
+const OWNER_PHOTOS: Record<string, string> = {};
 
 /** Campaign code keyword → logo mark (first match wins; shown if the image fails to load). */
 const LOGO_MARKS: [RegExp, string][] = [

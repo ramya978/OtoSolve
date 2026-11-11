@@ -1,6 +1,6 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
+import { AttachmentUploadError, Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
@@ -67,7 +67,14 @@ export class LogCommunication {
   protected readonly summary = signal('');
   protected readonly note = signal('');
   protected readonly important = signal(false);
-  protected readonly file = signal<{ name: string; size: number } | null>(null);
+  /**
+   * THE FILE ITSELF (TS-217). Only `{ name, size }` used to be kept, so the file was dropped the
+   * moment it was chosen and only its name ever reached the server. `File` has the same `name` and
+   * `size` the template reads.
+   */
+  protected readonly file = signal<File | null>(null);
+  /** The entry is saved but its file did not upload: its id, so Save sends only the file again. */
+  private readonly savedId = signal<string | null>(null);
   protected readonly fileError = signal('');
 
   protected readonly menu = signal<LcMenu>(null);
@@ -223,14 +230,15 @@ export class LogCommunication {
     const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
     if (!FILE_TYPES.includes(ext)) { this.fileError.set('Use a PDF, DOCX, PNG or JPG file.'); return; }
     if (f.size > FILE_MAX_MB * 1024 * 1024) { this.fileError.set(`The file is larger than ${FILE_MAX_MB} MB.`); return; }
-    this.file.set({ name: f.name, size: f.size });
+    this.file.set(f);
   }
   removeFile(): void { this.file.set(null); }
   size(b: number): string { return b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`; }
 
   /* ---------- leave / save ---------- */
   cancel(): void {
-    if (this.dirty() && !this.saving()) { this.confirmLeave.set(true); return; }
+    // Once the entry is saved there is nothing to lose by leaving.
+    if (this.dirty() && !this.saving() && !this.savedId()) { this.confirmLeave.set(true); return; }
     this.leave();
   }
   leave(): void {
@@ -239,6 +247,8 @@ export class LogCommunication {
   }
 
   save(): void {
+    // Saved already, only the file failed: send the file again, never the entry a second time.
+    if (this.savedId()) { this.retryUpload(); return; }
     this.tried.set(true);
     if (Object.keys(this.errors()).length) { this.flash('Fill in the highlighted fields.'); return; }
     this.saving.set(true);
@@ -253,18 +263,41 @@ export class LogCommunication {
       summary: this.summary().trim(),
       note: this.note().trim(),
       by: this.lead().owner,
-      important: this.important(),
-      attachment: this.file()?.name ?? null
-    }).subscribe({
+      important: this.important()
+    }, this.file()).subscribe({
       next: () => { this.saving.set(false); this.leave(); },
-      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
+      error: (e: unknown) => {
+        this.saving.set(false);
+        // THE ENTRY STANDS; ONLY THE FILE FAILED (TS-217). Keep the page, so Save retries the file.
+        if (e instanceof AttachmentUploadError) {
+          this.savedId.set(e.entryId);
+          this.flash(`The communication was saved, but the file did not upload: ${apiErrorMessage(e.reason)} Save again to retry the file.`, 6000);
+          return;
+        }
+        this.flash(apiErrorMessage(e));
+      }
     });
   }
 
-  private flash(m: string): void {
+  /** Sends the file again for the entry that was already saved. */
+  private retryUpload(): void {
+    const id = this.savedId();
+    const file = this.file();
+    if (!id || !file || this.saving()) return;
+    this.saving.set(true);
+    this.store.attach(id, file).subscribe({
+      next: () => { this.saving.set(false); this.savedId.set(null); this.leave(); },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        this.flash(`The file did not upload: ${apiErrorMessage(e)} Save again to retry.`, 6000);
+      }
+    });
+  }
+
+  private flash(m: string, ms = 2400): void {
     this.toast.set(m);
     if (this.toastTimer) clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(() => this.toast.set(''), 2400);
+    this.toastTimer = setTimeout(() => this.toast.set(''), ms);
   }
 
   @HostListener('document:click')
