@@ -21,7 +21,7 @@ interface Toast {
 }
 
 /** The second-factor verification screen (app.routes.ts: 'auth/mfa'). */
-const MFA_ROUTE = '/app/dashboard';
+const MFA_ROUTE = '/auth/mfa';
 
 @Component({
   selector: 'app-login',
