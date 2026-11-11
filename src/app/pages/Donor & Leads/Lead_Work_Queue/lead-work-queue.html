@@ -9,7 +9,7 @@
      ===================================================================================================== -->
 <app-loader [fullPage]="true" [message]="'Loading leads…'" *ngIf="loading()"></app-loader>
 
-<app-page-header breadcrumb="Donor &amp; Leads" [breadcrumbRoute]="'/app/donor-leads/lead-work-queue'" heading="{{ heading }}" description="Manage leads assigned to you.">
+<app-page-header breadcrumb="Donor &amp; Leads" [breadcrumbRoute]="'/app/fundraising/relationships/lead-work-queue'" heading="{{ heading }}" description="Manage leads assigned to you.">
   <ng-container actions>
     <div class="lwq-hactions">
 
@@ -37,10 +37,12 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('download')" /></svg>
         <span class="lwq-btn-text">Export</span>
       </button>
-      <button type="button" class="lwq-btn is-primary" aria-label="Capture lead" title="Capture lead" (click)="goCapture()">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
-        <span class="lwq-btn-text">Capture lead</span>
-      </button>
+      @if (canCapture()) {
+        <button type="button" class="lwq-btn is-primary" aria-label="Capture lead" title="Capture lead" (click)="goCapture()">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('plus')" /></svg>
+          <span class="lwq-btn-text">Capture lead</span>
+        </button>
+      }
     </div>
   </ng-container>
 </app-page-header>

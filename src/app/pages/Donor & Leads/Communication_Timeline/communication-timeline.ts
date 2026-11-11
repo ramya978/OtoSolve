@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
-import { CommunicationStore, OUTCOME_GROUPS, OutcomeGroup, CommEntry, healthLabel, CommChannel, channelOf, isoDay, MONTHS, outcomeOf, COMM_ICONS, entryTitle, outcomeTone, pad2, Temperature, Level3, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
+import { CommunicationStore, OUTCOME_GROUPS, OutcomeGroup, CommEntry, CommFile, healthLabel, CommChannel, channelOf, isoDay, MONTHS, outcomeOf, COMM_ICONS, entryTitle, outcomeTone, pad2, Temperature, Level3, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 import { DonorApiService } from '../../../Service/donor-api.service';
 
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
@@ -61,7 +61,8 @@ export class CommunicationTimeline {
 
   protected readonly logPath = '/app/fundraising/relationships/communication-timeline/log';
   protected readonly backPath = '/app/fundraising/relationships/lead-work-queue';
-  protected readonly followUpPath = '/app/fundraising/relationships/follow-up-queue';
+  /** The planner itself: it resolves the lead or donor from `ref` (NEW-05). */
+  protected readonly followUpPath = '/app/fundraising/relationships/follow-up-queue/plan';
   protected readonly outcomeGroups = OUTCOME_GROUPS;
   protected readonly rowOptions = [10, 20, 50];
 
@@ -206,12 +207,19 @@ export class CommunicationTimeline {
       : OFFICE_EXT.includes(ext) ? 'office' : 'other';
   }
 
-  /** PDFs open in a new browser tab; every other file opens in the preview popup. */
-  openAttachment(e: CommEntry, ev?: Event): void {
+  /**
+   * PDFs open in a new browser tab; every other file opens in the preview popup.
+   *
+   * A STORED FILE IS OPENED BY ITS OWN ID (TS-217). An entry from before files were kept has only
+   * a name; opening it asks for the entry's newest file, and the server's ATTACHMENT_NOT_STORED
+   * answer shows as "only the name was recorded".
+   */
+  openAttachment(e: CommEntry, ev?: Event, file?: CommFile): void {
     ev?.stopPropagation();
-    if (!e.attachment) return;
-    if (this.fileExt(e.attachment) === 'pdf') { this.openPdfInTab(e); return; }
-    this.showPreview(e);
+    const name = file?.name ?? e.attachment;
+    if (!name) return;
+    if (this.fileExt(name) === 'pdf') { this.openPdfInTab(e, file); return; }
+    this.showPreview(e, file);
   }
 
   /**
@@ -219,14 +227,14 @@ export class CommunicationTimeline {
    * block it as a popup; the file is then fetched with the caller's token and shown in that tab.
    * If the browser blocks the tab, the PDF opens in the preview popup instead.
    */
-  private openPdfInTab(e: CommEntry): void {
+  private openPdfInTab(e: CommEntry, file?: CommFile): void {
     const tab = window.open('', '_blank');
-    if (!tab) { this.showPreview(e); return; }
+    if (!tab) { this.showPreview(e, file); return; }
 
-    const name = e.attachment!;
+    const name = file?.name ?? e.attachment!;
     this.writeTab(tab, name, '<p class="msg">Opening the file…</p>');
 
-    this.api.getCommunicationAttachment(e.id).subscribe({
+    this.api.getCommunicationAttachment(e.id, file?.id).subscribe({
       next: ({ blob, fileName }) => {
         if (tab.closed) return;
         const realName = fileName && fileName !== 'attachment' ? fileName : name;
@@ -259,16 +267,17 @@ export class CommunicationTimeline {
   }
 
   /** Fetches the entry's file from the server (with the caller's token) and opens the preview popup. */
-  private showPreview(e: CommEntry): void {
+  private showPreview(e: CommEntry, file?: CommFile): void {
     this.closePreview();
 
-    const ext = this.fileExt(e.attachment!);
+    const label = file?.name ?? e.attachment!;
+    const ext = this.fileExt(label);
     const kind = this.kindOf(ext);
-    this.previewing.set({ name: e.attachment!, ext, kind, status: 'loading', url: null, frame: null, message: '' });
+    this.previewing.set({ name: label, ext, kind, status: 'loading', url: null, frame: null, message: '' });
 
-    this.previewSub = this.api.getCommunicationAttachment(e.id).subscribe({
+    this.previewSub = this.api.getCommunicationAttachment(e.id, file?.id).subscribe({
       next: ({ blob, fileName }) => {
-        const name = fileName && fileName !== 'attachment' ? fileName : e.attachment!;
+        const name = fileName && fileName !== 'attachment' ? fileName : label;
         const realExt = this.fileExt(name) || ext;
         const realKind = this.kindOf(realExt);
         const typed = MIME[realExt] ? new Blob([blob], { type: MIME[realExt] }) : blob;
@@ -286,13 +295,21 @@ export class CommunicationTimeline {
     });
   }
 
-  /** The preview in its "missing" (404) or "error" state, with a message for the status code. */
+  /**
+   * The preview in its "missing" or "error" state, with a message for the answer.
+   *
+   * "MISSING" ONLY WHEN THE SERVER SAYS SO (TS-217). Every 404 used to read as "only the file name
+   * was recorded" - including the 404 of an upload route that did not exist, which hid that no
+   * file could ever have been stored. Now only ATTACHMENT_NOT_STORED means that.
+   */
   private failed(p: Preview, err: unknown): Preview {
     const status = err instanceof HttpErrorResponse ? err.status : 0;
+    const code = (err as { errorCode?: string | null } | null)?.errorCode ?? null;
     return {
       ...p,
-      status: status === 404 ? 'missing' : 'error',
+      status: code === 'ATTACHMENT_NOT_STORED' ? 'missing' : 'error',
       message: status === 403 ? 'You do not have access to this file.'
+        : status === 404 ? 'The file could not be found. It may have been removed.'
         : status === 0 ? 'The server could not be reached. Check the connection and try again.'
         : 'The file could not be opened. Try again in a moment.'
     };
@@ -367,7 +384,12 @@ export class CommunicationTimeline {
 
   logCommunication(): void { this.router.navigate([this.logPath], { queryParams: { ref: this.lead().code } }); }
   back(): void { this.router.navigate([this.backPath]); }
-  scheduleFollowUp(): void { this.router.navigate([this.followUpPath], { queryParams: { ref: this.lead().code, new: 1 } }); }
+  /**
+   * Opens the follow-up planner for this record (NEW-05). It went to the queue with `?ref=&new=1`,
+   * which the queue never read, so the person landed on the whole queue instead of a plan for the
+   * lead they were looking at.
+   */
+  scheduleFollowUp(): void { this.router.navigate([this.followUpPath], { queryParams: { ref: this.lead().code } }); }
 
   copyLink(): void {
     navigator.clipboard?.writeText(this.lead().donationLink).then(() => this.flash('Donation link copied.'), () => this.flash('Could not copy the link.'));

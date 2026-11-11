@@ -114,6 +114,8 @@
               <b>Channel <em>*</em></b>
               @if (!consentReady()) {
                 <span>Checking consent…</span>
+              } @else if (consentCheckFailed()) {
+                <span class="fp-caution">Consent could not be checked. Confirm permission for the channel you choose.</span>
               } @else if (channelConsent() === 'blocked') {
                 <span class="fp-warn">Consent for {{ chLabel(channel()) }} was withdrawn. Pick another channel.</span>
               } @else if (channelConsent() === 'caution') {

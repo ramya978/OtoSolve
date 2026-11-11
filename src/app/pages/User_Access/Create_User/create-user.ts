@@ -157,13 +157,20 @@ export class CreateUser implements OnInit {
       error: () => undefined
     });
 
-    // When store.loading goes false, data has arrived (or errored)
-    effect(() => {
-      if (!this.store.loading()) {
-        this.loaderService.dataReceived();
-      }
-    });
   }
+
+  /**
+   * When store.loading goes false, data has arrived (or errored).
+   *
+   * A FIELD, NOT A CALL IN ngOnInit (NEW-11). effect() needs an injection context; created in
+   * ngOnInit it threw NG0203 on every visit and never ran, so the loader's count was never
+   * released.
+   */
+  private readonly releaseLoader = effect(() => {
+    if (!this.store.loading()) {
+      this.loaderService.dataReceived();
+    }
+  });
 
   readonly form = signal<UserForm>({ ...EMPTY });
   /** fields the person has left at least once (errors show after touch or after a submit attempt) */

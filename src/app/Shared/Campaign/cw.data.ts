@@ -166,14 +166,50 @@ export const fmtTime = (value: string | Date | null | undefined): string => {
 };
 
 /** ₹ with Indian digit grouping: 300000 -> "₹3,00,000" */
-export const inr = (n: number): string => '₹' + Math.round(n).toLocaleString('en-IN');
+/**
+ * The session's Organisation as AuthTokenService keeps it (sessionStorage 'ydot.tenant'). Read here
+ * because these helpers are plain functions the templates call without injection.
+ */
+const tenantDefaults = (): { timeZone?: string | null; defaultCurrency?: string | null } => {
+  try {
+    return (JSON.parse(sessionStorage.getItem('ydot.tenant') ?? 'null') as { timeZone?: string | null; defaultCurrency?: string | null } | null) ?? {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Money in the Organisation's own currency (NEW-10). This always printed ₹, whatever currency the
+ * Organisation works in. Indian digit grouping is kept; the symbol follows the currency.
+ */
+export const inr = (n: number): string => {
+  const currency = (tenantDefaults().defaultCurrency ?? '').trim().toUpperCase() || 'INR';
+  try {
+    return new Intl.NumberFormat('en-IN', { style: 'currency', currency, maximumFractionDigits: 0 }).format(Math.round(n));
+  } catch {
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+};
 
 /** Whole days between two ISO dates (to - from). */
 export const daysBetween = (from: string, to: string): number =>
   Math.round((Date.parse(to.slice(0, 10)) - Date.parse(from.slice(0, 10))) / 86400000);
 
 /** Today in the workspace (Asia/Calcutta) as yyyy-mm-dd. */
-export const todayIso = (): string => new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+/**
+ * Today as yyyy-mm-dd in the Organisation's time zone (NEW-10). This added a fixed 330 minutes,
+ * which is India's offset and wrong for any Organisation elsewhere. Falls back to the browser's
+ * own day when the Organisation's zone is not known.
+ */
+export const todayIso = (): string => {
+  const parts: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+  const zone = tenantDefaults().timeZone?.trim() || undefined;
+  try {
+    return new Intl.DateTimeFormat('en-CA', { ...parts, timeZone: zone }).format(new Date());
+  } catch {
+    return new Intl.DateTimeFormat('en-CA', parts).format(new Date());
+  }
+};
 
 /** Two-letter initials ("Priyanka Naveen" -> "PN"). */
 export const initials = (name: string): string =>

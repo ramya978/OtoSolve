@@ -91,11 +91,15 @@ const PLOT_SPAN = 78;
   styleUrls: ['./dashboard.css']
 })
 export class Dashboard {
-  /** Where the dashboard links go - adjust to your routes. */
+  /**
+   * Where the dashboard links go: the routes the Platform Admin's menu names (NEW-18). Three of
+   * them pointed at paths no route answers (/app/platform/organisations, .../new, /approvals),
+   * so every link but the audit fell through to this same dashboard.
+   */
   protected readonly routes = {
-    create: '/app/platform/organisations/new',
-    directory: '/app/platform/organisations',
-    approvals: '/app/platform/approvals',
+    create: '/app/administration/organisation/setup-wizard',
+    directory: '/app/administration/organisation/directory',
+    approvals: '/app/administration/organisation/registration-verification',
     audit: '/app/platform/audit'
   };
 

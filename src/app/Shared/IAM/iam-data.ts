@@ -166,87 +166,8 @@ export interface MenuGroup { code: string; name: string; icon: string; permissio
 const mi = (name: string, route: string, permission: string, inUse = true): MenuItem =>
   ({ code: slugCode(name), name, route, permission, inUse });
 
-export const MENUS: MenuGroup[] = [
-  { code: 'DASHBOARD', name: 'Dashboard', icon: 'grid', permission: '', inUse: true, module: 'Platform', items: [] },
-  {
-    code: 'DONORS_LEADS', name: 'Donors & Leads', icon: 'heart', permission: 'DON.View', inUse: true, module: 'Donors & Leads', items: [
-      mi('Lead Work Queue', '/app/fundraising/relationships/lead-work-queue', 'don.lead-work-queue.view'),
-      mi('My Leads', '/app/fundraising/relationships/my-leads', 'don.lead-work-queue.view'),
-      mi('All Donors', '/app/fundraising/relationships/donor-list', 'don.donors.view'),
-      mi('My Donors', '/app/fundraising/relationships/my-donor-list', 'don.donors.view'),
-      mi('Follow-ups', '/app/fundraising/relationships/follow-up-queue', 'don.follow-up-planner.view')
-    ]
-  },
-  {
-    code: 'CAMPAIGNS', name: 'Campaigns', icon: 'flag', permission: 'CMP.View', inUse: true, module: 'Campaigns', items: [
-      mi('All campaigns', '/app/fundraising/campaigns/register', 'cmp.campaigns.view'),
-      mi('Campaign lifecycle', '/app/fundraising/campaigns/lifecycle', 'cmp.campaigns.view')
-    ]
-  },
-  {
-    code: 'DONATIONS', name: 'Donations', icon: 'coin', permission: 'DNT.View', inUse: true, module: 'Donations', items: [
-      mi('Payments & receipts', '/app/fundraising/donations/payments', 'dnt.donations.view'),
-      mi('Chargebacks', '/app/fundraising/donations/chargebacks', 'dnt.chargebacks.view')
-    ]
-  },
-  {
-    code: 'COMMUNICATIONS', name: 'Communications', icon: 'chat', permission: 'COM.View', inUse: true, module: 'Communications', items: [
-      mi('Communication timeline', '/app/communications/timeline', 'com.timeline.view'),
-      mi('Log communication', '/app/communications/log', 'com.log.create'),
-      mi('Templates', '/app/communications/templates', 'com.templates.view', false),
-      mi('Bulk messages', '/app/communications/bulk', 'com.bulk.send', false),
-      mi('Delivery reports', '/app/communications/reports', 'com.reports.view', false)
-    ]
-  },
-  {
-    code: 'ORGANISATION', name: 'Organisation', icon: 'home', permission: 'ORG.View', inUse: true, module: 'Platform', items: [
-      mi('Organisation profile', '/app/organisation/profile', 'plt.organisations.view'),
-      mi('Business units', '/app/organisation/units', 'plt.business-units.view'),
-      mi('Departments', '/app/organisation/departments', 'plt.business-units.view'),
-      mi('Designations', '/app/organisation/designations', 'plt.business-units.view')
-    ]
-  },
-  {
-    code: 'USERS_ACCESS', name: 'Users & Access', icon: 'people', permission: 'IAM.View', inUse: true, module: 'Identity and Access', items: [
-      mi('Users', '/app/iam/users', 'iam.users.view'),
-      mi('Roles & Permissions', '/app/iam/roles', 'iam.roles.view'),
-      mi('Menu configuration', '/app/iam/menus', 'plt.menu-catalogue.view'),
-      mi('Access requests', '/app/iam/access-requests', 'iam.access-requests.view'),
-      mi('Audit trail', '/app/iam/audit', 'plt.audit.view')
-    ]
-  },
-  {
-    code: 'MASTER_DATA', name: 'Master Data', icon: 'database', permission: 'MDM.View', inUse: true, module: 'Platform', items: [
-      mi('Funds', '/app/master/funds', 'mdm.funds.view'),
-      mi('Payment methods', '/app/master/payment-methods', 'mdm.payment-methods.view'),
-      mi('Locations', '/app/master/locations', 'mdm.locations.view'),
-      mi('Lead sources', '/app/master/lead-sources', 'mdm.lead-sources.view'),
-      mi('Tags', '/app/master/tags', 'mdm.tags.view')
-    ]
-  },
-  {
-    code: 'WORKSPACE', name: 'Workspace', icon: 'layout', permission: 'WSP.View', inUse: true, module: 'Platform', items: [
-      mi('Template collection', '/app/workspace/templates', 'wsp.templates.view', false),
-      mi('Grid & table studio', '/app/workspace/grid-studio', 'wsp.grid.view', false),
-      mi('Calendar studio', '/app/workspace/calendar', 'wsp.calendar.view', false),
-      mi('Dashboard gallery', '/app/workspace/dashboards', 'wsp.dashboards.view', false)
-    ]
-  },
-  {
-    code: 'FINANCE', name: 'Finance', icon: 'wallet', permission: 'FIN.View', inUse: false, module: 'Finance', items: [
-      mi('Ledger', '/app/finance/ledger', 'fin.ledger.view', false),
-      mi('Fund allocation', '/app/finance/allocation', 'fin.allocation.view', false),
-      mi('Reports', '/app/finance/reports', 'fin.reports.view', false)
-    ]
-  },
-  {
-    code: 'SUPPLY', name: 'Supply', icon: 'box', permission: 'SUP.View', inUse: false, module: 'Supply', items: [
-      mi('Stock', '/app/supply/stock', 'sup.stock.view', false),
-      mi('Purchase orders', '/app/supply/purchase-orders', 'sup.orders.view', false),
-      mi('Vendors', '/app/supply/vendors', 'sup.vendors.view', false)
-    ]
-  }
-];
+// MENUS sample data removed (NEW-12): Menu Configuration reads the menu from the API.
+
 
 export const MENU_MODULES = ['Platform', 'Donors & Leads', 'Campaigns', 'Donations', 'Communications', 'Identity and Access', 'Finance', 'Supply'];
 

@@ -252,7 +252,8 @@ export class Donor360 implements OnInit {
   protected readonly money = (n: number): string => formatMoney(n, this.d().currency, { style: 'whole' });
   /** A bare number in the currency being given in (no mark), for the amount chips and the typed amount. */
   protected readonly intentNum = (n: number): string => formatMoney(n, this.iCurrency(), { style: 'whole', marker: false });
-  protected readonly listPath = '/app/fundraising/relationships/all-donors';
+  /** The donor list's menu route (NEW-18: '/relationships/all-donors' matched no route). */
+  protected readonly listPath = '/app/fundraising/relationships/donor-list';
   protected readonly editPath = '/app/fundraising/relationships/donor-360/edit';
   /** BUG-173: the header's Timeline button opens the Communication Timeline for this donor. */
   protected readonly timelinePath = '/app/fundraising/relationships/communication-timeline';

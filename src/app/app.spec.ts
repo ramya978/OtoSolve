@@ -31,12 +31,16 @@ describe('App', () => {
 });
 
 describe('Follow-up routes', () => {
-  const comp = (path: string) => routes.find((r) => r.path === path)?.component;
+  // Routes are lazy (NEW-08): resolve the loader to the component it loads.
+  const comp = async (path: string) => {
+    const route = routes.find((r) => r.path === path);
+    return route?.loadComponent ? await route.loadComponent() : route?.component;
+  };
 
-  it('routes the follow-up queue, new follow-up, planner and assignment board', () => {
-    expect(comp('app/fundraising/relationships/follow-up-queue')).toBe(FollowUps);
-    expect(comp('app/fundraising/relationships/follow-up-queue/new')).toBe(NewFollowUp);
-    expect(comp('app/fundraising/relationships/follow-up-queue/plan')).toBe(FollowUpPlanner);
-    expect(comp('app/fundraising/relationships/assignment-board')).toBe(AssignmentBoard);
+  it('routes the follow-up queue, new follow-up, planner and assignment board', async () => {
+    expect(await comp('app/fundraising/relationships/follow-up-queue')).toBe(FollowUps);
+    expect(await comp('app/fundraising/relationships/follow-up-queue/new')).toBe(NewFollowUp);
+    expect(await comp('app/fundraising/relationships/follow-up-queue/plan')).toBe(FollowUpPlanner);
+    expect(await comp('app/fundraising/relationships/assignment-board')).toBe(AssignmentBoard);
   });
 });

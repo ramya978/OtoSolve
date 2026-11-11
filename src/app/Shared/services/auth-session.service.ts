@@ -5,6 +5,9 @@ import { AuthApiService } from '../../Service/auth-api.service';
 import { AuthTokenService } from './auth-token.service';
 import { ToastService } from './toast.service';
 import { SignInResponse } from '../models/auth.model';
+import {
+  SessionScopeChangedError, broadcastSession, listenForSession, reloadWithNotice, renewAccessToken,
+} from './session-sync';
 
 /**
  * Owns the *lifetime* of a signed-in session in the browser.
@@ -69,6 +72,35 @@ export class AuthSessionService {
       this.startIdleTimer();
       this.loadIdleWindow();
     }
+
+    // THE OTHER TABS (TS-220). Every tab shares the one refresh cookie, so a switch or a sign-out
+    // in any tab of this origin decides what this tab's next token will be. Reconcile now rather
+    // than at the next renewal, when this tab would show the new Organisation's records under its
+    // old header.
+    listenForSession((message) => {
+      if (!this.tokens.user()) return;
+
+      if (message.type === 'signed-out') {
+        this.clearLocal();
+        reloadWithNotice('/login', 'You were signed out in another tab.');
+        return;
+      }
+
+      const mine = this.tokens.tenant()?.tenantId ?? null;
+      if (message.tenantId === mine) return;
+
+      // Ask the server what the session is now; the renewal stores the answer and reports the move.
+      renewAccessToken(this.tokens).subscribe({
+        error: (error: unknown) => {
+          if (error instanceof SessionScopeChangedError) {
+            reloadWithNotice('/', error.message);
+          } else {
+            this.clearLocal();
+            reloadWithNotice('/login', 'Your session ended in another tab. Sign in again.');
+          }
+        },
+      });
+    });
   }
 
   // =========================================================================================
@@ -107,12 +139,12 @@ export class AuthSessionService {
    */
   endSession(signOutEverywhere = false): void {
     const finish = () => {
-      this.tokens.clear();
-      this.removeStored(AuthSessionService.LAST_ACTIVITY_KEY);
-      this.removeStored(AuthSessionService.IDLE_MINUTES_KEY);
-      this.reauthRequiredState.set(false);
-      this.stopIdleTimer();
-      void this.router.navigate(['/login']);
+      // The other tabs share the cookie the server has just cleared: tell them now (TS-220).
+      broadcastSession({ type: 'signed-out', sessionId: this.tokens.getSessionId() });
+      this.clearLocal();
+      // A FULL LOAD, not a router navigation: every root store starts empty, so nothing the
+      // signed-out account could see is left in memory for the next person at this screen.
+      reloadWithNotice('/login');
     };
 
     if (this.tokens.getAccessToken()) {
@@ -121,6 +153,15 @@ export class AuthSessionService {
     }
 
     finish();
+  }
+
+  /** Forgets the identity and the idle clock in this tab. */
+  private clearLocal(): void {
+    this.tokens.clear();
+    this.removeStored(AuthSessionService.LAST_ACTIVITY_KEY);
+    this.removeStored(AuthSessionService.IDLE_MINUTES_KEY);
+    this.reauthRequiredState.set(false);
+    this.stopIdleTimer();
   }
 
   // =========================================================================================

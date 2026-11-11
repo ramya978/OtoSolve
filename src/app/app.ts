@@ -15,6 +15,7 @@ import { NavigationService } from './Shared/services/navigation.service';
 import { ToastService } from './Shared/services/toast.service';
 import { apiErrorMessage } from './Shared/models/api-response.model';
 import { LoaderService } from './Shared/services/loader.service';
+import { reloadWithNotice, takeNotice } from './Shared/services/session-sync';
 
 export interface Organisation {
   id: string;
@@ -277,6 +278,10 @@ export class App {
       el.hidden = false;
     });
 
+    // A message left by a full reload (organisation switch, sign-out, another tab's change).
+    const notice = takeNotice();
+    if (notice) queueMicrotask(() => this.toast.show('Session updated', notice, 'info', 6000));
+
     // If the session stops being a super admin (sign-out, a different user), make sure the
     // switcher popup is not left open with nothing to anchor it.
     effect(() => {
@@ -451,8 +456,11 @@ export class App {
     this.closeOrgList();
     if (!this.canSwitchOrg() || org.id === this.selectedOrg()?.id) return;
 
+    // A FULL LOAD into the new Organisation, not a router navigation (TS-220): every root store
+    // (people, communications, follow-ups, campaigns) starts empty, so nothing the previous
+    // Organisation showed can appear under the new one's header.
     this.orgContext.select(org.id).subscribe({
-      next: () => void this.router.navigateByUrl(this.navigation.landingRoute()),
+      next: () => reloadWithNotice(this.navigation.landingRoute(), `You are now working inside ${org.name}.`),
       error: (error: unknown) =>
         this.toast.show('Organisation not opened', apiErrorMessage(error, 'That organisation could not be opened.'), 'error')
     });
@@ -472,8 +480,8 @@ export class App {
       next: () => {
         this.leavingOrg.set(false);
         this.closeOrgList();
-        this.toast.show('Organisation left', `You are no longer working inside ${org.name}.`, 'success');
-        void this.router.navigateByUrl(this.navigation.landingRoute());
+        // A full load for the same reason as chooseOrg (TS-220).
+        reloadWithNotice(this.navigation.landingRoute(), `You are no longer working inside ${org.name}.`);
       },
       error: (error: unknown) => {
         this.leavingOrg.set(false);

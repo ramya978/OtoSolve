@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { OrganisationApiService } from '../../../Service/organisation-api.service';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { Loader } from '../../../Shared/layout/Loader/loader';
@@ -10,6 +10,7 @@ import { AuthTokenService } from '../../../Shared/services/auth-token.service';
 import { NavigationService } from '../../../Shared/services/navigation.service';
 import { OrganisationContextService } from '../../../Shared/services/organisation-context.service';
 import { fetchPages } from '../../../Shared/services/paging';
+import { reloadWithNotice } from '../../../Shared/services/session-sync';
 
 /** change these to your real routes */
 const ORGS_PATH = '/app/administration/organisation/details';
@@ -106,7 +107,11 @@ export class Organisations {
   readonly stats = signal<OrganisationStatisticsResponse | null>(null);
   readonly loading = signal(false);
   readonly query = signal('');
-  readonly status = signal<Status | ''>('');
+  /**
+   * The Approval Queue menu entry opens this list already filtered to "Awaiting review" (NEW-17):
+   * it had no screen of its own and showed "not built yet" to the Platform Admin.
+   */
+  readonly status = signal<Status | ''>((inject(ActivatedRoute).snapshot.data['status'] as Status | undefined) ?? '');
   readonly view = signal<View>('cards');
   readonly page = signal(1);
   readonly selected = signal<ReadonlySet<string>>(new Set());
@@ -317,7 +322,9 @@ setPageSize(value: string): void {
       });
     } else if (o.status === 'active') {
       this.context.select(o.id).subscribe({
-        next: () => { this.flash(`You are now working inside ${o.name}.`); void this.router.navigateByUrl(this.navigation.landingRoute()); },
+        // A full load into the Organisation, as on the header's switcher (TS-220): no store may
+        // carry another Organisation's records into this one.
+        next: () => reloadWithNotice(this.navigation.landingRoute(), `You are now working inside ${o.name}.`),
         error: (e: unknown) => this.flash(apiErrorMessage(e, 'Could not switch organisation.'))
       });
     } else if (o.status === 'review') {

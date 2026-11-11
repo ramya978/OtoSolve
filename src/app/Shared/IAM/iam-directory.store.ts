@@ -5,6 +5,7 @@ import { fetchPages } from '../services/paging';
 import { apiErrorMessage } from '../models/api-response.model';
 import { LookupItem, ReferenceDataResponse, UserDetailResponse, UserListItemResponse } from '../models/iam-contract.model';
 import { IamUser, UserStatus } from './iam-data';
+import { AuthTokenService } from '../services/auth-token.service';
 
 /** Maps the API's list row onto the shape the (unchanged) Users screens bind to. */
 export function toIamUser(r: UserListItemResponse): IamUser {
@@ -46,6 +47,14 @@ export function mergeDetail(u: IamUser, d: UserDetailResponse): IamUser {
 @Injectable({ providedIn: 'root' })
 export class IamDirectoryStore {
   private readonly api = inject(UserDirectoryApiService);
+  private readonly tokens = inject(AuthTokenService);
+
+  /**
+   * The Organisation the list was loaded for (TS-220). A root store outlives a screen, so a list
+   * kept "while it is not empty" survived an Organisation switch and offered the previous
+   * Organisation's people on Bulk users and Access requests. `undefined` = never loaded.
+   */
+  private loadedFor: string | null | undefined = undefined;
 
   readonly users = signal<IamUser[]>([]);
   readonly reference = signal<ReferenceDataResponse | null>(null);
@@ -56,7 +65,21 @@ export class IamDirectoryStore {
   readonly units = computed<LookupItem[]>(() => this.reference()?.organisationUnits ?? []);
   readonly departments = computed<LookupItem[]>(() => this.reference()?.departments ?? []);
 
+  /** Loads the directory unless it already holds the current Organisation's people. */
+  ensureLoaded(): void {
+    const current = this.tokens.tenant()?.tenantId ?? null;
+    if (this.loadedFor === current && this.users().length) return;
+    this.load();
+  }
+
   load(): void {
+    const current = this.tokens.tenant()?.tenantId ?? null;
+    // Never show the previous Organisation's people while the new list is on its way.
+    if (this.loadedFor !== undefined && this.loadedFor !== current) {
+      this.users.set([]);
+      this.reference.set(null);
+    }
+    this.loadedFor = current;
     this.loading.set(true);
     this.error.set('');
     forkJoin({

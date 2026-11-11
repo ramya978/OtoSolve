@@ -302,7 +302,7 @@
             </label>
           </div>
           <h3>Supporting files</h3>
-          <p>PDF, DOCX, PNG or JPG, up to 10 MB. The file's name is recorded with the conversation.</p>
+          <p>PDF, DOCX, PNG or JPG, up to 10 MB each. The files are kept with this conversation on the timeline.</p>
           @if (files().length) {
             <ul class="fe-files">
               @for (x of files(); track $index) {
@@ -315,6 +315,17 @@
             </ul>
           }
           @if (fileError()) { <p class="fu-err">{{ fileError() }}</p> }
+          <!-- Completed, but not every file uploaded (NEW-01): the follow-up stands; send the rest. -->
+          @if (pendingUpload(); as up) {
+            <div class="fe-upload-failed" role="alert">
+              <b>The follow-up was completed, but {{ files().length - up.from }} file{{ files().length - up.from === 1 ? '' : 's' }} did not upload.</b>
+              <span>{{ up.message }}</span>
+              <div>
+                <button type="button" class="fu-btn is-primary" [disabled]="saving()" (click)="retryUpload()">Retry upload</button>
+                <button type="button" class="fu-btn" [disabled]="saving()" (click)="skipUpload()">Continue without them</button>
+              </div>
+            </div>
+          }
         </section>
 
         <!-- earlier conversations -->

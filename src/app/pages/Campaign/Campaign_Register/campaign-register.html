@@ -241,6 +241,9 @@
                 <!-- status: label + lifecycle stage track (draft → closed) -->
                 <div [class]="'cr-stage tone-' + statusTone(r.status)">
                   <span class="cr-stage-label"><i class="cr-dot" aria-hidden="true"></i>{{ statusLabel(r.status) }}</span>
+                  @if (r.notOpen) {
+                    <span class="cr-notopen" [attr.title]="r.notOpen">Not on donation form</span>
+                  }
                   <span class="cr-stage-track" aria-hidden="true">
                     @for (s of statusOrder; track s; let i = $index) {
                       <i [class.is-on]="i <= stageIndex(r.status)" [class.is-now]="i === stageIndex(r.status)"></i>
@@ -550,6 +553,10 @@
           <dl class="cr-fields">
             <div class="cr-field"><dt>Status</dt>
               <dd><span [class]="'cr-status tone-' + statusTone(row.status)"><i class="cr-dot"></i>{{ statusLabel(row.status) }}</span></dd></div>
+            @if (row.status === 'active') {
+              <div class="cr-field"><dt>Public donations</dt>
+                <dd>@if (row.notOpen) { <span class="cr-notopen">Not on the donation form</span> {{ row.notOpen }} } @else { Open on the donation form }</dd></div>
+            }
             <div class="cr-field"><dt>Owner</dt><dd>{{ row.owner }}</dd></div>
             <div class="cr-field"><dt>Launch</dt><dd>{{ row.launch }}</dd></div>
             <div class="cr-field"><dt>Ends</dt><dd>{{ row.ends }}</dd></div>

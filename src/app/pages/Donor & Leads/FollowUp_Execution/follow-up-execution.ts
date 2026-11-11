@@ -7,6 +7,7 @@ import {
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { CommunicationTimelineResponse, DonLookupItem, FollowUpPlannerResponse } from '../../../Shared/models/donor-contract.model';
+import { AttachmentUploadError } from '../../../Shared/layout/Donors_Leads/Store';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 
 
@@ -113,7 +114,10 @@ export class FollowUpExecution {
   protected readonly temperature = signal<FeTemp>('warm');
   protected readonly disposition = signal<string | null>(null);
   protected readonly nextContact = signal(false);
-  protected readonly files = signal<{ name: string; size: string }[]>([]);
+  /** The files themselves, not just their names (NEW-01). */
+  protected readonly files = signal<{ name: string; size: string; file: File }[]>([]);
+  /** Completed, but not every file uploaded: where to send the rest. */
+  protected readonly pendingUpload = signal<{ entryId: string; from: number; message: string } | null>(null);
   protected readonly fileError = signal('');
   protected readonly openConv = signal<string | null>(null);
 
@@ -284,7 +288,7 @@ export class FollowUpExecution {
       if (!FILE_TYPES.includes(ext)) { this.fileError.set(`${f.name} is not a PDF, DOCX, PNG or JPG.`); continue; }
       if (f.size > FILE_MAX) { this.fileError.set(`${f.name} is larger than 10 MB.`); continue; }
       const size = f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(f.size / 1024)) + ' KB';
-      this.files.update((l) => [...l, { name: f.name, size }]);
+      this.files.update((l) => [...l, { name: f.name, size, file: f }]);
     }
     input.value = '';
   }
@@ -308,17 +312,45 @@ export class FollowUpExecution {
       temperature: this.temperature(),
       stage: this.stage(),
       disposition: this.disposition()!,
-      files: this.files().map((x) => x.name)
+      files: this.files().map((x) => x.file)
     }, this.lists()).subscribe({
-      next: () => {
-        this.toast.set(this.nextContact() ? 'Follow-up completed - plan the next contact' : 'Follow-up completed');
-        setTimeout(() => {
-          if (this.nextContact()) this.router.navigate([this.planPath], { queryParams: { ref: f.recordCode } });
-          else this.router.navigate([this.queuePath]);
-        }, 700);
-      },
-      error: (e: unknown) => { this.saving.set(false); this.toast.set(apiErrorMessage(e)); }
+      next: () => this.finish(),
+      error: (e: unknown) => {
+        this.saving.set(false);
+        if (e instanceof AttachmentUploadError && e.entryId) {
+          this.pendingUpload.set({ entryId: e.entryId, from: e.uploaded, message: apiErrorMessage(e.reason) });
+          return;
+        }
+        this.toast.set(apiErrorMessage(e instanceof AttachmentUploadError ? e.reason : e));
+      }
     });
+  }
+
+  /** Sends the files that did not upload, after the follow-up itself was completed (NEW-01). */
+  retryUpload(): void {
+    const p = this.pendingUpload();
+    if (!p || this.saving()) return;
+    this.saving.set(true);
+    this.store.uploadFiles(p.entryId, this.files().map((x) => x.file), p.from).subscribe({
+      next: () => { this.pendingUpload.set(null); this.finish(); },
+      error: (e: unknown) => {
+        this.saving.set(false);
+        const failed = e instanceof AttachmentUploadError ? e : null;
+        this.pendingUpload.set({ entryId: p.entryId, from: failed?.uploaded ?? p.from, message: apiErrorMessage(failed?.reason ?? e) });
+      }
+    });
+  }
+
+  /** Leaves with the follow-up completed and without the files that did not upload. */
+  skipUpload(): void { this.pendingUpload.set(null); this.finish(); }
+
+  private finish(): void {
+    const f = this.fu();
+    this.toast.set(this.nextContact() ? 'Follow-up completed - plan the next contact' : 'Follow-up completed');
+    setTimeout(() => {
+      if (this.nextContact() && f) this.router.navigate([this.planPath], { queryParams: { ref: f.recordCode } });
+      else this.router.navigate([this.queuePath]);
+    }, 700);
   }
 
   startQualification(): void {

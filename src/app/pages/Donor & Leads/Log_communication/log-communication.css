@@ -537,3 +537,10 @@ textarea.lc-input { display: block; resize: vertical; line-height: 1.55; }
   .lc-actions > span { flex-basis: 100%; }
   .lc-actions .lc-btn { flex: 1; }
 }
+
+/* Upload progress and the "saved, file did not upload" notice (TS-217). */
+.lc-progress { display: block; height: 4px; margin-top: 6px; border-radius: 4px; background: #e5e7eb; overflow: hidden; }
+.lc-progress > span { display: block; height: 100%; background: var(--accent, #7c3348); transition: width .2s ease; }
+.lc-upload-failed { display: flex; flex-direction: column; gap: 8px; border-left: 3px solid var(--lc-red, #b42318); }
+.lc-upload-failed > span { color: var(--lc-red, #b42318); font-size: 13px; }
+.lc-upload-failed > div { display: flex; gap: 8px; flex-wrap: wrap; }

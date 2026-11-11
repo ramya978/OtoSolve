@@ -9,6 +9,7 @@ import {
 import { AuthTokenService } from './auth-token.service';
 import { NavigationService } from './navigation.service';
 import { OrganisationScopeService } from './organisation-scope.service';
+import { broadcastSession } from './session-sync';
 
 /**
  * Which Organisation the session is working inside, and how to change it.
@@ -141,6 +142,14 @@ export class OrganisationContextService {
   private withNavigation(
     switching: Observable<SelectTenantResponse>): Observable<SelectTenantResponse> {
     return switching.pipe(
+      // The new token and Organisation are stored by now. Tell the session's other tabs, which
+      // would otherwise show this Organisation's records under their old header (TS-220).
+      tap(() => broadcastSession({
+        type: 'scope-changed',
+        sessionId: this.tokens.getSessionId(),
+        tenantId: this.tokens.tenant()?.tenantId ?? null,
+        tenantName: this.tokens.tenant()?.tenantName ?? null,
+      })),
       switchMap((result) =>
         this.navigation.load().pipe(
           catchError(() => of(null)),

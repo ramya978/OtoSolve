@@ -110,7 +110,9 @@ export class AccessRequests implements OnInit {
       error: () => undefined,
     });
     // E-mail addresses come from the full user list, which only an organisation admin may read.
-    if (this.me.isOrganisationAdmin() && !this.usersStore.users().length) this.usersStore.load();
+    // ensureLoaded, not "when empty": the store outlives this screen and must hold THIS
+    // Organisation's people, not the last one's (TS-220).
+    if (this.me.isOrganisationAdmin()) this.usersStore.ensureLoaded();
     this.api.requestableRoles().subscribe({
       next: (l) => this.requestable.set(l.filter((r) => r.id).map((r) => ({
         id: r.id ?? '', name: r.name ?? r.code ?? '', code: r.code ?? '', privileged: !!r.isPrivileged }))),

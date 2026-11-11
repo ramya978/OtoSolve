@@ -1,10 +1,11 @@
 import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, Observable, catchError, filter, switchMap, take, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
 import { AuthTokenService } from '../services/auth-token.service';
+import { SessionScopeChangedError, reloadWithNotice, renewAccessToken } from '../services/session-sync';
 
 /**
  * The single place every HTTP call to the IAM API passes through.
@@ -152,8 +153,8 @@ function handleUnauthorised(
   refreshedToken$.next(null);
 
   // The API service is not injected here on purpose: doing so would route the refresh call back
-  // through this same interceptor and risk a loop. A bare fetch keeps the path unambiguous.
-  return refreshAccessToken(tokens).pipe(
+  // through this same interceptor and risk a loop. `renewAccessToken` uses a bare fetch.
+  return renewAccessToken(tokens).pipe(
     switchMap((accessToken) => {
       refreshInFlight = false;
       refreshedToken$.next(accessToken);
@@ -162,74 +163,26 @@ function handleUnauthorised(
     catchError((refreshError) => {
       refreshInFlight = false;
       refreshedToken$.next(null);
+
+      // THE SESSION MOVED TO ANOTHER ORGANISATION (TS-220). Another tab switched it, and the
+      // renewed token belongs to the new Organisation. Replaying this request would put that
+      // Organisation's records under this tab's old header, so the tab reloads instead, into
+      // the Organisation the session is now in. The new token is already stored. The request
+      // never completes: the page is going away.
+      if (refreshError instanceof SessionScopeChangedError) {
+        reloadWithNotice('/', refreshError.message);
+        return NEVER;
+      }
+
       tokens.clear();
 
+      // A full load, not a router navigation, so no store keeps the signed-out account's data.
       const returnUrl = router.url && !(router.url.startsWith('/auth') || router.url.startsWith('/login')) ? router.url : undefined;
-      void router.navigate(['/login'], returnUrl ? { queryParams: { returnUrl } } : undefined);
+      reloadWithNotice(returnUrl ? `/login?returnUrl=${encodeURIComponent(returnUrl)}` : '/login');
 
       return throwError(() => describe(refreshError));
     }),
   );
-}
-
-/**
- * The name of the browser-wide lock every tab takes around a refresh. See refreshAccessToken.
- */
-const REFRESH_LOCK = 'ydot.token-refresh';
-
-/**
- * Calls the refresh endpoint with `credentials: 'include'`, so the browser sends the HttpOnly
- * cookie, and stores the new access token. Returns the token so the caller can replay with it.
- *
- * ONE TAB AT A TIME, ACROSS THE WHOLE BROWSER. `refreshInFlight` stops this tab's parallel calls
- * from refreshing twice, but every tab has its own copy of it and they all share ONE refresh
- * cookie. Two tabs renewing in the same moment presented the same cookie twice, the server read
- * that as a stolen token, ended the session, and both tabs were sent to the sign-in page in the
- * middle of work. The Web Locks API queues the second tab until the first has finished; by then
- * the browser holds the rotated cookie, so the second renewal presents that and succeeds.
- * Browsers without the API keep the old behaviour.
- */
-function refreshAccessToken(tokens: AuthTokenService): Observable<string> {
-  return new Observable<string>((subscriber) => {
-    const renew = () =>
-      fetch(`${environment.apiBaseUrl}/users/tokens/refresh`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-        .then(async (response) => {
-          const body = (await response.json()) as ApiResponse<{
-            accessToken: string;
-            accessTokenExpiresAtUtc: string;
-            sessionId: string;
-            refreshToken: string;
-            tokenType: string;
-            expiresInSeconds: number;
-            refreshTokenExpiresAtUtc: string;
-          }>;
-
-          if (!response.ok || !body.success || !body.data) {
-            subscriber.error(new Error(body.message ?? 'The session could not be renewed.'));
-            return;
-          }
-
-          tokens.storeAccessToken(
-            body.data.accessToken, body.data.accessTokenExpiresAtUtc, body.data.sessionId);
-          subscriber.next(body.data.accessToken);
-          subscriber.complete();
-        })
-        .catch((error) => subscriber.error(error));
-
-    const locks = typeof navigator !== 'undefined' && 'locks' in navigator ? navigator.locks : null;
-
-    if (locks) {
-      // The lock is held until `renew` settles, which is what makes the next tab wait.
-      locks.request(REFRESH_LOCK, renew).catch((error) => subscriber.error(error));
-    } else {
-      void renew();
-    }
-  });
 }
 
 /**

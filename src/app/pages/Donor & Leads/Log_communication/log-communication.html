@@ -231,14 +231,19 @@
             <b>Attachment</b>
             @if (fileError()) { <small class="lc-err">{{ fileError() }}</small> }
             @else if (file(); as f) { <small>{{ f.name }} · {{ size(f.size) }}</small> }
-            @else { <small>PDF, DOCX, PNG or JPG · up to 10 MB</small> }
+            @else { <small>{{ fileHint() }}</small> }
+            @if (progress() !== null) {
+              <span class="lc-progress" role="progressbar" aria-label="Uploading the file" [attr.aria-valuenow]="progress()" aria-valuemin="0" aria-valuemax="100">
+                <span [style.width.%]="progress()"></span>
+              </span>
+            }
           </div>
           <div class="lc-row-ctl">
             @if (file()) {
-              <button type="button" class="lc-btn sm" (click)="removeFile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg> Remove</button>
+              <button type="button" class="lc-btn sm" [disabled]="saving() || !!savedId()" (click)="removeFile()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('trash')" /></svg> Remove</button>
             } @else {
               <label class="lc-btn sm lc-attach">
-                <input type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" (change)="onFile($event)" />
+                <input type="file" [attr.accept]="accept()" (change)="onFile($event)" />
                 Attach a file <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('right')" /></svg>
               </label>
             }
@@ -290,6 +295,18 @@
         </ul>
       </section>
 
+      <!-- ===== the entry is saved but its file did not upload (TS-217) ===== -->
+      @if (savedId()) {
+        <div class="lc-card lc-upload-failed" role="alert">
+          <b>The communication was saved, but the file did not upload.</b>
+          <span>{{ uploadError() }}</span>
+          <div>
+            <button type="button" class="lc-btn is-primary" [disabled]="saving()" (click)="retryUpload()">Retry upload</button>
+            <button type="button" class="lc-btn" [disabled]="saving()" (click)="continueWithoutFile()">Continue without the file</button>
+          </div>
+        </div>
+      }
+
       <!-- ===== actions ===== -->
       <footer class="lc-card lc-actions">
         <span>
@@ -298,7 +315,8 @@
         </span>
         <button type="button" class="lc-btn" (click)="cancel()"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('x')" /></svg> Cancel</button>
         <button type="button" class="lc-btn is-primary" [class.is-off]="doneCount() < 4" [disabled]="saving()" (click)="save()">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg> Save entry
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('check')" /></svg>
+          {{ saving() ? (progress() !== null ? 'Uploading ' + progress() + '%' : 'Saving…') : savedId() ? 'Retry upload' : 'Save entry' }}
         </button>
       </footer>
     </aside>

@@ -1332,6 +1332,8 @@ export interface FollowUp {
   queueStatus: string;
   /** The queue views this row belongs to - mine, today, overdue, upcoming and so on. */
   queueViews: string[] | null;
+  /** The timeline entry the completion wrote; the execution form's files are stored there (NEW-01). */
+  completionInteractionId?: string | null;
   /** dueToday / upcoming / overdue / completed, or null when it sits on no board column. */
   boardColumn: string | null;
 }
@@ -1818,6 +1820,25 @@ export interface CommunicationTimelineEntry {
   outcomeLabel: string;
   /** reached / warm / awaiting / closed - an outcomeGroupOptions value - or null. */
   outcomeGroup: string | null;
+  /** The files stored with this entry, oldest first (TS-217). Empty when only a name was kept. */
+  attachments?: CommunicationAttachment[] | null;
+}
+
+/** A file stored with a timeline entry (TS-217, NEW-01). */
+export interface CommunicationAttachment {
+  id: string;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+  uploadedAtUtc: string;
+  uploadedByName: string | null;
+}
+
+/** The upload rule the server applies, so the screen states the same limit (NEW-09). */
+export interface CommunicationAttachmentPolicy {
+  maximumFileSizeMegabytes: number;
+  maximumFilesPerEntry: number;
+  allowedExtensions: string[];
 }
 
 /**

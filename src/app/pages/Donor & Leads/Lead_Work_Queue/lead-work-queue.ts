@@ -1,4 +1,5 @@
 import { Component, HostListener, OnInit, computed, inject, signal } from '@angular/core';
+import { AuthTokenService } from '../../../Shared/services/auth-token.service';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DonorApiService } from '../../../Service/donor-api.service';
@@ -130,6 +131,13 @@ export class LeadWorkQueue implements OnInit {
    * Stays false until the answer arrives, so the Assign icon never flashes up for a role without the right.
    */
   protected readonly canAssign = signal(false);
+  private readonly tokens = inject(AuthTokenService);
+  /**
+   * "Capture lead" only for a role that may capture one (don.lead-capture.view). The button was on
+   * every role's queue, and the Fundraising Manager, who holds no lead-capture permission, landed
+   * on a page whose every call the server refused.
+   */
+  protected readonly canCapture = computed(() => this.tokens.hasPermission('don.lead-capture.view'));
   /** The rows the current tab works over. */
   private readonly current = computed(() => (this.tab() === 'converted' ? this.convertedRows() : this.rows()));
   protected get all(): LeadRow[] { return this.rows(); }
@@ -313,6 +321,13 @@ export class LeadWorkQueue implements OnInit {
    * a 401 / 403 (e.g. Donor care) or any error means no - the Assign icon and "Assign selected" stay hidden.
    */
   private loadAssignAccess(): void {
+    // ASK THE TOKEN FIRST. A role without the board permission (Donor care) used to make this call
+    // only to be refused, and every visit to My Leads logged a 403. The probe still runs for a role
+    // that holds it, because the server's permittedActions decide what that role may do.
+    if (!this.tokens.hasAnyPermission('don.assignment-board.assign', 'don.assignment-board.reassign')) {
+      this.canAssign.set(false);
+      return;
+    }
     this.api.getAssignmentBoard({ page: 1, pageSize: 1, recordType: 'Lead' }).subscribe({
       next: (r) => this.canAssign.set((r.permittedActions ?? []).some((a) => {
         const n = (a ?? '').toLowerCase().replace(/[^a-z]/g, '');

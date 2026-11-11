@@ -153,6 +153,15 @@ export class MfaChallenge implements OnInit, OnDestroy {
   protected readonly hasExpiry = signal(false);
   private countdown: ReturnType<typeof setInterval> | null = null;
 
+  // ---- Resend cooldown (TS-227) ----
+  /** Seconds before "Send the code again" can be used. A code that was just sent needs a moment to arrive. */
+  protected readonly resendIn = signal(0);
+  private resendTimer: ReturnType<typeof setInterval> | null = null;
+  protected readonly resendLabel = computed(() => {
+    const s = this.resendIn();
+    return s > 0 ? `Send the code again in ${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}` : 'Send the code again';
+  });
+
   /**
    * Step-up mode: the server already signed the person in without a challenge, but MFA is
    * enabled. The code is checked with the reauthentication endpoint, then this sign-in starts.
@@ -233,11 +242,28 @@ export class MfaChallenge implements OnInit, OnDestroy {
     this.rememberDevice.set(!!handoff.rememberDevice);
     this.infoMessage.set(challenge?.instruction ?? '');
     this.startCountdown(challenge?.expiresAtUtc);
+    if (challenge?.codeWasSent) this.startResendCooldown();
     this.focusBox(0);
   }
 
   ngOnDestroy(): void {
     this.stopCountdown();
+    this.stopResendCooldown();
+  }
+
+  private startResendCooldown(seconds = 30): void {
+    this.stopResendCooldown();
+    this.resendIn.set(seconds);
+    this.resendTimer = setInterval(() => {
+      const next = this.resendIn() - 1;
+      this.resendIn.set(Math.max(0, next));
+      if (next <= 0) this.stopResendCooldown();
+    }, 1000);
+  }
+
+  private stopResendCooldown(): void {
+    if (this.resendTimer) clearInterval(this.resendTimer);
+    this.resendTimer = null;
   }
 
   // =========================================================================================
@@ -392,13 +418,14 @@ export class MfaChallenge implements OnInit, OnDestroy {
 
   protected resend(): void {
     const challenge = this.challenge();
-    if (!challenge || !this.canResend()) return;
+    if (!challenge || !this.canResend() || this.resendIn() > 0) return;
     this.resending.set(true);
     this.errorMessage.set('');
     this.authApi.resendMfaChallenge(challenge.challengeToken ?? '').subscribe({
       next: (updated) => {
         this.resending.set(false);
         this.apply(updated);
+        this.startResendCooldown();
         this.digits.set([...EMPTY_DIGITS]);
         this.focusBox(0);
       },

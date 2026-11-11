@@ -64,7 +64,8 @@ export class BulkUsers implements OnInit {
   readonly submitting = signal(false);
 
   ngOnInit(): void {
-    if (!this.store.users().length) this.store.load();
+    // ensureLoaded, not "when empty": after an Organisation switch the old list must not be offered (TS-220).
+    this.store.ensureLoaded();
     this.loadHistory();
   }
 

@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, map, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, last, map, of, switchMap, tap, throwError } from 'rxjs';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { CommunicationTimelineEntry, CommunicationTimelineResponse } from '../../models/donor-contract.model';
 
@@ -54,7 +54,30 @@ export interface CommEntry {
   note: string;
   by: string;
   important: boolean;
+  /** The attachment name as recorded; for older entries the only trace of a file. */
   attachment: string | null;
+  /** The files actually stored with the entry (TS-217). */
+  files: CommFile[];
+}
+
+/** A file stored with a timeline entry (TS-217, NEW-01). */
+export interface CommFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+}
+
+/**
+ * The entry was saved but its file did not upload (TS-217). Carries the entry's id, so the page
+ * can send just the file again instead of logging the communication twice.
+ */
+export class AttachmentUploadError extends Error {
+  /** `uploaded`: how many of several files were stored before this one failed. */
+  constructor(readonly entryId: string, readonly reason: unknown, readonly uploaded = 0) {
+    super('The communication was saved, but the file did not upload.');
+    this.name = 'AttachmentUploadError';
+  }
 }
 
 export const COMM_CHANNELS: { key: CommChannel; label: string; noun: string; icon: string }[] = [
@@ -176,8 +199,16 @@ export class CommunicationStore {
   private readonly ids = new Map<string, { leadId: string | null; donorId: string | null; version?: number }>();
   private readonly versions = new Map<string, number>();
 
+  /** The record the last load resolved - what a page opened without a `ref` is showing. */
+  private readonly current = signal<string | null>(null);
+
+  /**
+   * The lead (or donor) for a reference. Without one, the record this store last loaded - never
+   * simply the first in the list, which could be a record left from another screen (TS-220).
+   */
   lead(code: string | null): CommLead {
-    return this.leads().find((l) => l.code === code) ?? (code ? EMPTY_LEAD : this.leads()[0] ?? EMPTY_LEAD);
+    const wanted = code ?? this.current();
+    return (wanted ? this.leads().find((l) => l.code === wanted) : undefined) ?? EMPTY_LEAD;
   }
 
   entriesFor(code: string): CommEntry[] {
@@ -217,6 +248,7 @@ export class CommunicationStore {
   private apply(t: CommunicationTimelineResponse): void {
     this.options.set(t);
     const code = t.leadReference ?? t.donorReference ?? '';
+    this.current.set(code);
     this.ids.set(code, { leadId: t.leadId, donorId: t.donorId });
     const lead: CommLead = {
       code, name: t.displayName, stage: t.status, phone: t.mobileNumber ?? '', email: t.emailAddress ?? '',
@@ -242,7 +274,8 @@ export class CommunicationStore {
       id: e.id, lead: code, at: localIso(e.occurredAtUtc),
       channel: channelOfType(e.interactionType), direction: norm(e.direction).startsWith('in') ? 'in' : 'out',
       outcome: outcomeKey(e.outcome, e.outcomeLabel), engagement: level(e.engagementLevel), quality: quality(e.quality),
-      summary: e.summary, note: e.notes ?? '', by: e.performedByName ?? '', important: e.isImportant, attachment: e.attachmentName
+      summary: e.summary, note: e.notes ?? '', by: e.performedByName ?? '', important: e.isImportant, attachment: e.attachmentName,
+      files: (e.attachments ?? []).map((a) => ({ id: a.id, name: a.fileName, size: a.sizeBytes, type: a.contentType }))
     };
   }
 
@@ -251,8 +284,16 @@ export class CommunicationStore {
     return (list ?? []).find((o) => norm(o.value) === n || norm(o.label) === n)?.value ?? word;
   }
 
-  /** Logs a communication; the timeline is reloaded so the new entry arrives as the server holds it. */
-  add(entry: Omit<CommEntry, 'id'>): Observable<unknown> {
+  /**
+   * Logs a communication, then uploads its file against the new entry (TS-217); the timeline is
+   * reloaded so the entry arrives as the server holds it. Emits the entry's id.
+   *
+   * THE FILE GOES SEPARATELY, AFTER THE ENTRY. The entry is JSON; the file is multipart. If the
+   * upload fails the entry still stands, and the error is an AttachmentUploadError carrying its id
+   * so only the file is sent again.
+   */
+  add(entry: Omit<CommEntry, 'id' | 'files' | 'attachment'>, file: File | null = null,
+      onProgress?: (percent: number) => void): Observable<string> {
     const o = this.options();
     const target = this.ids.get(entry.lead);
     const typeWord = { call: 'Call', email: 'Email', sms: 'SMS', whatsapp: 'WhatsApp', meeting: 'Meeting', visit: 'Visit', note: 'Note' }[entry.channel];
@@ -270,8 +311,23 @@ export class CommunicationStore {
       engagementLevel: cap(entry.engagement),
       quality: cap(entry.quality),
       isImportant: entry.important,
-      attachmentName: entry.attachment
-    }).pipe(tap(() => this.load(entry.lead)));
+      // Set by the server when the file is stored, so a failed upload never leaves a name with no file.
+      attachmentName: null
+    }).pipe(
+      switchMap((id) => (file
+        ? this.attach(id, file, onProgress).pipe(
+          map(() => id),
+          catchError((reason: unknown) => throwError(() => new AttachmentUploadError(id, reason))))
+        : of(id))),
+      tap(() => this.load(entry.lead)));
+  }
+
+  /** Uploads one file to an existing entry; completes once the server has stored it. */
+  attach(entryId: string, file: File, onProgress?: (percent: number) => void): Observable<void> {
+    return this.api.uploadCommunicationAttachment(entryId, file).pipe(
+      tap((event) => onProgress?.(event.progress)),
+      last(),
+      map(() => undefined));
   }
 
   toggleImportant(id: string): Observable<unknown> {

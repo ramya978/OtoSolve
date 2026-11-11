@@ -32,8 +32,28 @@ const initialsOf = (name: string): string =>
     .map((part) => part[0]!.toUpperCase())
     .join('') || 'U';
 
-/** SUPER_ADMIN -> "Super admin": a role code is an identifier, not something to read. */
+/**
+ * The built-in roles by the names the rest of the product uses (NEW-15). The header printed the
+ * tidied role CODE, so an Organisation Admin read "Tenant admin" and the Platform Admin "Super
+ * admin", names no screen, menu or guide uses. These are the names IAM gives the system roles
+ * (RoleCodes.cs, TenantRoleDefinitions.cs); a role an Organisation creates for itself falls back
+ * to its tidied code.
+ */
+const SYSTEM_ROLE_NAMES: Record<string, string> = {
+  SUPER_ADMIN: 'Platform Admin',
+  TENANT_ADMIN: 'Organisation Admin',
+  CAMPAIGN_MANAGER: 'Campaign Manager',
+  FUNDRAISING_MANAGER: 'Fundraising Manager',
+  CAMPAIGN_EXECUTIVE: 'Campaign Executive',
+  FUNDRAISER_EXECUTIVE: 'Fundraiser Executive',
+  DONOR_CARE: 'DonorCare',
+  DONOR: 'Donor'
+};
+
+/** SUPER_ADMIN -> "Platform Admin"; an unknown code -> its words ("GRANTS_LEAD" -> "Grants lead"). */
 const roleLabel = (code: string): string => {
+  const known = SYSTEM_ROLE_NAMES[code.trim().toUpperCase()];
+  if (known) return known;
   const text = code.replace(/[_-]+/g, ' ').trim().toLowerCase();
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : 'Member';
 };

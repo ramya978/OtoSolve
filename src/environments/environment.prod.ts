@@ -33,6 +33,15 @@ export const environment = {
 
   applicationName: 'YDot',
 
+  /**
+   * Modules that are not ready to ship. A flag that is off removes the module's routes, so its
+   * pages cannot be opened by URL and its code is not downloaded.
+   */
+  features: {
+    /** Attendance and shifts. Off in production: the module keeps sample data in the browser and has no API yet (NEW-04). */
+    attendance: false,
+  },
+
   sessionIdleMinutes: 30,
 
   tokenRefreshLeadSeconds: 120,

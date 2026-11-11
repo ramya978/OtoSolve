@@ -65,6 +65,15 @@ export const environment = {
   applicationName: 'YDot',
 
   /**
+   * Modules that are not ready to ship. A flag that is off removes the module's routes, so its
+   * pages cannot be opened by URL and its code is not downloaded.
+   */
+  features: {
+    /** Attendance and shifts. On in development: the module is being built against browser sample data. */
+    attendance: true,
+  },
+
+  /**
    * How long the browser may sit idle before the app asks the person to confirm it is still
    * them. Keep this at or below the API's `SecuritySettings.SessionIdleTimeoutMinutes`.
    */

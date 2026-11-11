@@ -74,11 +74,16 @@ export class FollowUpPlanner {
   private readonly consentMap = signal<Partial<Record<FuChannel, ConsentState>>>({});
   /** False until the consent check for this person has answered - scheduling waits for it. */
   protected readonly consentReady = signal(false);
+  /** The consent check failed: every channel then needs the confirmation, and the screen says why (NEW-02). */
+  protected readonly consentCheckFailed = signal(false);
 
   constructor() {
     const q = this.route.snapshot.queryParamMap;
     const leadId = q.get('leadId');
     const donorId = q.get('donorId');
+    // "Add a follow-up for <owner>" on the queue passes the owner along (NEW-05).
+    const presetOwner = q.get('owner');
+    if (presetOwner) this.owner.set(presetOwner);
     const found = (p: FuPerson | null) => {
       this.personLoading.set(false);
       if (!p) { this.toast.set('That lead or donor could not be found. Choose who the follow-up is for.'); this.router.navigate([this.newPath]); return; }
@@ -105,6 +110,7 @@ export class FollowUpPlanner {
       const p = this.person();
       this.consentMap.set({});
       this.consentReady.set(false);
+      this.consentCheckFailed.set(false);
       this.consentAck.set(false);
       if (!p?.id) return;
       this.store.consentFor(p).subscribe({
@@ -113,6 +119,7 @@ export class FollowUpPlanner {
           const all: Partial<Record<FuChannel, ConsentState>> = {};
           this.channels.forEach((c) => (all[c.key] = 'caution'));
           this.consentMap.set(all);
+          this.consentCheckFailed.set(true);
           this.consentReady.set(true);
         }
       });
@@ -126,7 +133,7 @@ export class FollowUpPlanner {
   /** Consent state of the chosen channel (null when no channel is chosen). */
   protected readonly channelConsent = computed<ConsentState | null>(() => {
     const c = this.channel();
-    return c ? this.consentMap()[c] ?? 'ok' : null;
+    return c ? this.consentMap()[c] ?? 'caution' : null;
   });
   protected readonly consentOk = computed(() => this.channelConsent() !== 'blocked');
   /** The chosen channel has no consent on record: the user must tick the confirmation. */
@@ -139,7 +146,7 @@ export class FollowUpPlanner {
 
   protected readonly consentCount = computed(() => {
     const p = this.person();
-    return p ? this.channels.filter((c) => (this.consentMap()[c.key] ?? 'ok') === 'ok').length : 0;
+    return p ? this.channels.filter((c) => this.consentMap()[c.key] === 'ok').length : 0;
   });
 
   /** Side-card checklist: what is filled in so far. */
@@ -199,7 +206,7 @@ export class FollowUpPlanner {
   ini(n: string): string { return initials(n); }
   load(name: string): number { return this.store.load().get(name) ?? 0; }
   timeLabel(t: string | null): string { return t ? fmtTime(`2000-01-01T${t}`) : 'Select a time'; }
-  consentOf(k: FuChannel): ConsentState { return this.consentMap()[k] ?? 'ok'; }
+  consentOf(k: FuChannel): ConsentState { return this.consentMap()[k] ?? 'caution'; }
   hasConsent(k: FuChannel): boolean { return this.consentOf(k) === 'ok'; }
   consentTitle(k: FuChannel): string {
     const s = this.consentOf(k);

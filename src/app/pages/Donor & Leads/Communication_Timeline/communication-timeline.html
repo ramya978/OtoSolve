@@ -204,11 +204,18 @@
                   <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clock')" /></svg><i class="ct-m-date">{{ date(e.at) }}, {{ time(e.at) }} · </i>{{ ago(e.at) }}</span>
                   @if (e.channel !== 'note') { <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon(e.direction)" /></svg>{{ e.direction === 'out' ? 'Outgoing' : 'Incoming' }}</span> }
                   <span><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('user')" /></svg>{{ e.by }}</span>
-                  @if (e.attachment) {
-                    <button type="button" class="ct-file" (click)="openAttachment(e, $event)"
-                            [attr.title]="'Open ' + e.attachment" [attr.aria-label]="'Open attachment ' + e.attachment">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg><span>{{ e.attachment }}</span>
+                  @for (f of e.files; track f.id) {
+                    <button type="button" class="ct-file" (click)="openAttachment(e, $event, f)"
+                            [attr.title]="'Open ' + f.name" [attr.aria-label]="'Open attachment ' + f.name">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg><span>{{ f.name }}</span>
                     </button>
+                  } @empty {
+                    @if (e.attachment) {
+                      <button type="button" class="ct-file" (click)="openAttachment(e, $event)"
+                              [attr.title]="'Open ' + e.attachment" [attr.aria-label]="'Open attachment ' + e.attachment">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg><span>{{ e.attachment }}</span>
+                      </button>
+                    }
                   }
                 </p>
               </div>
@@ -320,13 +327,21 @@
             <div>
               <dt>Attachment</dt>
               <dd>
-                @if (v.attachment) {
-                  <button type="button" class="ct-attach" (click)="openAttachment(v, $event)" [attr.title]="'Open ' + v.attachment">
-                    <span class="ct-attach-ext">{{ fileExt(v.attachment) || 'file' }}</span>
-                    <span class="ct-attach-name">{{ v.attachment }}</span>
+                @for (f of v.files; track f.id) {
+                  <button type="button" class="ct-attach" (click)="openAttachment(v, $event, f)" [attr.title]="'Open ' + f.name">
+                    <span class="ct-attach-ext">{{ fileExt(f.name) || 'file' }}</span>
+                    <span class="ct-attach-name">{{ f.name }}</span>
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
                   </button>
-                } @else { — }
+                } @empty {
+                  @if (v.attachment) {
+                    <button type="button" class="ct-attach" (click)="openAttachment(v, $event)" [attr.title]="'Open ' + v.attachment">
+                      <span class="ct-attach-ext">{{ fileExt(v.attachment) || 'file' }}</span>
+                      <span class="ct-attach-name">{{ v.attachment }}</span>
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('eye')" /></svg>
+                    </button>
+                  } @else { — }
+                }
               </dd>
             </div>
           </dl>
@@ -378,8 +393,8 @@
             @case ('missing') {
               <div class="ct-empty">
                 <span class="ct-empty-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('clip')" /></svg></span>
-                <b>File not saved</b>
-                <span>Only the file name was recorded for this entry. The file itself was not uploaded, so there is nothing to open.</span>
+                <b>File not stored</b>
+                <span>This entry was logged before files were kept, so only the file's name was recorded and there is nothing to open.</span>
               </div>
             }
             @default {

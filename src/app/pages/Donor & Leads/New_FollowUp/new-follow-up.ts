@@ -1,5 +1,5 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import {
   FU_ICONS, FollowUp, FollowUpStore, FuPerson, FuRecordType, MONTHS, WEEKDAYS, channelOf, fmtTime, initials, isOpen,
   priorityOf, toDate
@@ -23,6 +23,8 @@ import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 export class NewFollowUp {
   private readonly router = inject(Router);
   protected readonly store = inject(FollowUpStore);
+  /** Set when the queue's "add for <owner>" opened this page; handed on to the planner (NEW-05). */
+  private readonly owner = inject(ActivatedRoute).snapshot.queryParamMap.get('owner');
 
   protected readonly queuePath = '/app/fundraising/relationships/follow-up-queue';
   protected readonly planPath = '/app/fundraising/relationships/follow-up-queue/plan';
@@ -131,7 +133,9 @@ export class NewFollowUp {
   setPerPage(n: number): void { this.perPage.set(n); this.page.set(1); this.rowsOpen.set(false); }
 
   plan(p: FuPerson): void {
-    this.router.navigate([this.planPath], { queryParams: { ref: p.code, [p.type === 'lead' ? 'leadId' : 'donorId']: p.id } });
+    this.router.navigate([this.planPath], {
+      queryParams: { ref: p.code, [p.type === 'lead' ? 'leadId' : 'donorId']: p.id, ...(this.owner ? { owner: this.owner } : {}) }
+    });
   }
   back(): void { this.router.navigate([this.queuePath]); }
 

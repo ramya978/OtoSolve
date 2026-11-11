@@ -15,7 +15,9 @@ describe('Organisation office navigation', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [OrgBranches, OrgAddOffice],
-      providers: [provideRouter(routes)],
+      // The routes WITHOUT their guards: these tests are about where the buttons go, not about who
+      // may go there. With the guards, an unsigned-in test browser was sent to /login every time.
+      providers: [provideRouter(routes.map((route) => (route.canActivate ? { ...route, canActivate: [] } : route)))],
     }).compileComponents();
 
     router = TestBed.inject(Router);

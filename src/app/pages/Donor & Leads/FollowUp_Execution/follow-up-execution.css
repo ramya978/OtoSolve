@@ -1007,3 +1007,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Completed, but not every file uploaded (NEW-01). */
+.fe-upload-failed { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; padding: 10px 12px; border-left: 3px solid #b42318; background: #fdf2f1; border-radius: 6px; }
+.fe-upload-failed > span { color: #b42318; font-size: 13px; }
+.fe-upload-failed > div { display: flex; gap: 8px; flex-wrap: wrap; }

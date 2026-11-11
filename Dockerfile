@@ -15,6 +15,8 @@ RUN mkdir -p /out \
 # ---------- Stage 2 : serve ----------
 FROM nginx:1.29-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Security headers included by every location in nginx.conf (NEW-06).
+COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /out /usr/share/nginx/html
 
 EXPOSE 80

@@ -1,9 +1,10 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { Observable, catchError, forkJoin, last, map, of, switchMap, tap, throwError } from 'rxjs';
+import { AttachmentUploadError } from './Store';
 import { DonorApiService } from '../../../Service/donor-api.service';
 import { AuthService } from '../../Auth/auth.service';
 import { CurrentUserService } from '../../services/current-user.service';
-import { DonLookupItem, FollowUp as ApiFollowUp, FollowUpQueueResponse } from '../../models/donor-contract.model';
+import { ConsentWarning, DonLookupItem, FollowUp as ApiFollowUp, FollowUpQueueResponse } from '../../models/donor-contract.model';
 import { fetchPages } from '../../services/paging';
 
 /* =====================================================================================================
@@ -90,7 +91,8 @@ export interface FuExecution {
   temperature: 'cold' | 'warm' | 'hot';
   stage: string;
   disposition: string;
-  files: string[];
+  /** The files themselves (NEW-01): stored with the timeline entry the completion writes. */
+  files: File[];
 }
 
 export interface FuOwner { name: string; team: string; managers?: boolean; }
@@ -557,7 +559,7 @@ export class FollowUpStore {
     const qualityWord = r.quality.charAt(0).toUpperCase() + r.quality.slice(1);
     const engagementWord = r.engagement.charAt(0).toUpperCase() + r.engagement.slice(1);
     return this.api.completeFollowUp(f.uid!, {
-      completionOutcome: (r.notes + (r.files.length ? '\nAttachments: ' + r.files.join(', ') : '')).slice(0, 2000),
+      completionOutcome: r.notes.slice(0, 2000),
       completedAtUtc: new Date(r.executedAt).toISOString(),
       expectedVersion: f.version,
       outcome: this.pick(lists.outcome, r.outcome),
@@ -566,11 +568,34 @@ export class FollowUpStore {
       notes: r.internalNotes.trim() || null,
       engagementLevel: this.pick(lists.engagement, engagementWord),
       quality: this.pick(lists.quality, qualityWord),
-      attachmentName: r.files.length ? r.files.join(', ').slice(0, 260) : null,
+      // Set by the server as each file is stored, so a failed upload never leaves a name with no file.
+      attachmentName: null,
       executionStatus: this.pick(lists.executionStatus ?? o?.executionStatusOptions, statusWord),
       completionReason: this.pick(lists.completionReason ?? o?.completionReasonOptions, r.reason),
       disposition: this.pick(lists.disposition ?? o?.dispositionOptions, r.disposition)
-    }).pipe(tap((u) => this.replace(u)));
+    }).pipe(
+      tap((u) => this.replace(u)),
+      // THE FILES, NOT THEIR NAMES (NEW-01): uploaded to the timeline entry the completion wrote.
+      switchMap((u) => {
+        if (!r.files.length) return of(u);
+        const entryId = u.completionInteractionId;
+        if (!entryId) {
+          return throwError(() => new AttachmentUploadError('', new Error('The follow-up was completed, but the server did not say where to keep its files.')));
+        }
+        return this.uploadFiles(entryId, r.files).pipe(map(() => u));
+      }));
+  }
+
+  /**
+   * Uploads files one after another to a timeline entry. On a failure the error is an
+   * AttachmentUploadError whose `uploaded` says how many went through, so a retry sends only the rest.
+   */
+  uploadFiles(entryId: string, files: File[], from = 0): Observable<void> {
+    if (from >= files.length) return of(undefined);
+    return this.api.uploadCommunicationAttachment(entryId, files[from]).pipe(
+      last(),
+      catchError((reason: unknown) => throwError(() => new AttachmentUploadError(entryId, reason, from))),
+      switchMap(() => this.uploadFiles(entryId, files, from + 1)));
   }
 
   /** Assigns leads / donors to an owner (the Assignment board's own endpoint does the audited write). */
@@ -613,15 +638,44 @@ export class FollowUpStore {
     }));
   }
 
-  /** Whether each channel is permitted for a person: ok, caution (acknowledge) or blocked. */
-  consentFor(p: FuPerson): Observable<Record<FuChannel, 'ok' | 'caution' | 'blocked'>> {
-    const keys: FuChannel[] = ['call', 'email', 'sms', 'whatsapp', 'post'];
-    return forkJoin(keys.map((k) => this.api.getConsentWarning(
-      p.type === 'donor' ? p.id : undefined, p.type === 'lead' ? p.id : undefined, this.channelValue(k)
-    ).pipe(
-      map((w) => (!w?.hasWarning ? 'ok'
-        : w.level === 'Blocking' || (w.prohibitedChannels ?? []).some((c) => channelKey(c) === k) ? 'blocked' : 'caution') as 'ok' | 'caution' | 'blocked'),
-      catchError(() => of('ok' as const))
-    ))).pipe(map((res) => Object.fromEntries(keys.map((k, i) => [k, res[i]])) as Record<FuChannel, 'ok' | 'caution' | 'blocked'>));
+  /**
+   * Whether each channel is permitted for a person: ok, caution (confirm first) or blocked.
+   *
+   * PER CHANNEL, FROM THE LISTS (TS-248). This read `hasWarning` alone, and the server answers
+   * `hasWarning: false` for any record with at least one granted channel and none withdrawn - so a
+   * lead who agreed to phone calls only showed "Consent on record" for WhatsApp, e-mail, SMS and
+   * post, and no confirmation was asked. A channel is now `ok` only when the server names it in
+   * `permittedChannels`.
+   *
+   * ONE CALL, AND ERRORS ARE NOT SWALLOWED (NEW-02). The lists describe the whole record, so the
+   * five per-channel calls were the same call five times. And each call used to fall back to
+   * `ok` on an error, which turned a consent outage into permission on every channel; the error
+   * now reaches the planner, which asks for confirmation on every channel instead.
+   */
+  consentFor(p: FuPerson): Observable<Record<FuChannel, ConsentState>> {
+    return this.api.getConsentWarning(p.type === 'donor' ? p.id : undefined, p.type === 'lead' ? p.id : undefined)
+      .pipe(map((w) => consentByChannel(w)));
   }
+
+}
+
+/** A channel's consent as the planner treats it. */
+export type ConsentState = 'ok' | 'caution' | 'blocked';
+
+/**
+ * Turns the server's consent warning into a state per channel (TS-248).
+ * blocked - the record is "do not contact", or this channel was withdrawn;
+ * ok      - the server lists this channel as permitted (consent granted and active);
+ * caution - anything else, including no answer at all: confirm permission before contact.
+ */
+export function consentByChannel(w: ConsentWarning | null | undefined): Record<FuChannel, ConsentState> {
+  const keys: FuChannel[] = ['call', 'email', 'sms', 'whatsapp', 'post'];
+  const permitted = (w?.permittedChannels ?? []).map((c) => channelKey(c));
+  const prohibited = (w?.prohibitedChannels ?? []).map((c) => channelKey(c));
+  const blockedAll = w?.level === 'Blocking';
+  return Object.fromEntries(keys.map((k) => [k,
+    !w ? 'caution'
+      : blockedAll || prohibited.includes(k) ? 'blocked'
+        : permitted.includes(k) ? 'ok'
+          : 'caution'])) as Record<FuChannel, ConsentState>;
 }
