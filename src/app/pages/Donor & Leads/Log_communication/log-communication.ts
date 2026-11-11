@@ -1,9 +1,8 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AttachmentUploadError, Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
+import { Level3, Quality, CommunicationStore, COMM_CHANNELS, OUTCOME_GROUPS, pad2, isoDay, CommChannel, CommDirection, CommOutcome, healthLabel, MONTHS, entryTitle, COMM_ICONS, channelOf, outcomeOf, outcomeTone, OUTCOMES, daysBetween } from '../../../Shared/layout/Donors_Leads/Store';
 import { apiErrorMessage } from '../../../Shared/models/api-response.model';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
-import { DonorApiService } from '../../../Service/donor-api.service';
 
 
 type LcMenu = 'hh' | 'mm' | 'cal' | null;
@@ -36,7 +35,6 @@ export class LogCommunication {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly store = inject(CommunicationStore);
-  private readonly api = inject(DonorApiService);
 
   protected readonly timelinePath = '/app/fundraising/relationships/communication-timeline';
   protected readonly channels = COMM_CHANNELS;
@@ -69,30 +67,8 @@ export class LogCommunication {
   protected readonly summary = signal('');
   protected readonly note = signal('');
   protected readonly important = signal(false);
-  /**
-   * THE FILE ITSELF (TS-217). Only `{ name, size }` used to be kept, so the file was dropped the
-   * moment it was chosen and only its name ever reached the server.
-   */
-  protected readonly file = signal<File | null>(null);
+  protected readonly file = signal<{ name: string; size: number } | null>(null);
   protected readonly fileError = signal('');
-  /** The server's limits; the defaults stand until the policy answers (NEW-09). */
-  protected readonly maxMb = signal(FILE_MAX_MB);
-  protected readonly fileTypes = signal<string[]>(FILE_TYPES);
-  protected readonly fileHint = computed(() =>
-    `${this.fileTypes().filter((t) => t !== 'jpeg').map((t) => t.toUpperCase()).join(', ')} · up to ${this.maxMb()} MB`);
-  protected readonly accept = computed(() => this.fileTypes().map((t) => '.' + t).join(','));
-  /** Upload progress 0-100 while the file is on its way; null when nothing is uploading. */
-  protected readonly progress = signal<number | null>(null);
-  /** The entry is saved but its file did not upload: its id, so only the file is sent again. */
-  protected readonly savedId = signal<string | null>(null);
-  protected readonly uploadError = signal('');
-  private readonly policy = this.api.getCommunicationAttachmentPolicy().subscribe({
-    next: (p) => {
-      if (p.maximumFileSizeMegabytes > 0) this.maxMb.set(p.maximumFileSizeMegabytes);
-      if (p.allowedExtensions?.length) this.fileTypes.set(p.allowedExtensions.map((x) => x.toLowerCase()));
-    },
-    error: () => undefined
-  });
 
   protected readonly menu = signal<LcMenu>(null);
   protected readonly calMonth = signal(new Date(this.today.getFullYear(), this.today.getMonth(), 1));
@@ -245,17 +221,16 @@ export class LogCommunication {
     this.fileError.set('');
     if (!f) return;
     const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
-    if (!this.fileTypes().includes(ext)) { this.fileError.set('Use a PDF, DOCX, PNG or JPG file.'); return; }
-    if (f.size > this.maxMb() * 1024 * 1024) { this.fileError.set(`The file is larger than ${this.maxMb()} MB.`); return; }
-    if (f.size === 0) { this.fileError.set('The file is empty.'); return; }
-    this.file.set(f);
+    if (!FILE_TYPES.includes(ext)) { this.fileError.set('Use a PDF, DOCX, PNG or JPG file.'); return; }
+    if (f.size > FILE_MAX_MB * 1024 * 1024) { this.fileError.set(`The file is larger than ${FILE_MAX_MB} MB.`); return; }
+    this.file.set({ name: f.name, size: f.size });
   }
   removeFile(): void { this.file.set(null); }
   size(b: number): string { return b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toFixed(1)} MB`; }
 
   /* ---------- leave / save ---------- */
   cancel(): void {
-    if (this.dirty() && !this.saving() && !this.savedId()) { this.confirmLeave.set(true); return; }
+    if (this.dirty() && !this.saving()) { this.confirmLeave.set(true); return; }
     this.leave();
   }
   leave(): void {
@@ -264,14 +239,9 @@ export class LogCommunication {
   }
 
   save(): void {
-    // Saved already, only the file failed: send the file, never the entry a second time.
-    if (this.savedId()) { this.retryUpload(); return; }
     this.tried.set(true);
     if (Object.keys(this.errors()).length) { this.flash('Fill in the highlighted fields.'); return; }
-    const file = this.file();
     this.saving.set(true);
-    this.uploadError.set('');
-    this.progress.set(file ? 0 : null);
     this.store.add({
       lead: this.lead().code,
       at: this.atIso(),
@@ -283,41 +253,12 @@ export class LogCommunication {
       summary: this.summary().trim(),
       note: this.note().trim(),
       by: this.lead().owner,
-      important: this.important()
-    }, file, (p) => this.progress.set(p)).subscribe({
-      next: () => { this.saving.set(false); this.progress.set(null); this.leave(); },
-      error: (e: unknown) => {
-        this.saving.set(false);
-        this.progress.set(null);
-        if (e instanceof AttachmentUploadError) {
-          this.savedId.set(e.entryId);
-          this.uploadError.set(apiErrorMessage(e.reason));
-          return;
-        }
-        this.flash(apiErrorMessage(e));
-      }
+      important: this.important(),
+      attachment: this.file()?.name ?? null
+    }).subscribe({
+      next: () => { this.saving.set(false); this.leave(); },
+      error: (e: unknown) => { this.saving.set(false); this.flash(apiErrorMessage(e)); }
     });
-  }
-
-  /** Sends the file again for the entry that was already saved. */
-  retryUpload(): void {
-    const id = this.savedId();
-    const file = this.file();
-    if (!id || !file || this.saving()) return;
-    this.saving.set(true);
-    this.uploadError.set('');
-    this.progress.set(0);
-    this.store.attach(id, file, (p) => this.progress.set(p)).subscribe({
-      next: () => { this.saving.set(false); this.progress.set(null); this.savedId.set(null); this.leave(); },
-      error: (e: unknown) => { this.saving.set(false); this.progress.set(null); this.uploadError.set(apiErrorMessage(e)); }
-    });
-  }
-
-  /** Keeps the saved entry without its file. */
-  continueWithoutFile(): void {
-    this.savedId.set(null);
-    this.uploadError.set('');
-    this.leave();
   }
 
   private flash(m: string): void {
