@@ -71,6 +71,8 @@ export const environment = {
   features: {
     /** Attendance and shifts. On in development: the module is being built against browser sample data. */
     attendance: true,
+    /** Tickets. On in development: it runs on demo data in the browser until the ticket API exists (pages/Tickets/tickets.config.ts). */
+    tickets: true,
   },
 
   /**

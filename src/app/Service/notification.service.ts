@@ -216,6 +216,15 @@ export class NotificationService {
     });
   }
 
+  /**
+   * A notification for the signed-in person raised by another module (Tickets: assigned, status
+   * changed, SLA warning, resolved, new comment), so every module shares the one header bell.
+   */
+  notifyCurrentUser(title: string, body: string): void {
+    const ref = this.user.reference();
+    this.push(ref ? { kind: 'system', title, body, toRef: ref } : { kind: 'system', title, body, toRole: this.user.role() });
+  }
+
   markRead(id: string): void {
     this.items.update((cur) => cur.map((n) => (n.id === id ? { ...n, read: true } : n)));
   }

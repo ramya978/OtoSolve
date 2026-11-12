@@ -111,6 +111,7 @@ const L = {
   TimeZoneForm: () => import('./pages/Masters/Time_Zones/time-zone-form').then((m) => m.TimeZoneForm),
 } satisfies Record<string, Loader>;
 
+
 /** Attendance: registered only while `environment.features.attendance` is on (NEW-04). */
 const ATTENDANCE: Record<string, Loader> = {
   'app/attendance': () => import('./pages/Attendance/Attendance/attendance').then((m) => m.Attendance),
@@ -141,6 +142,9 @@ const ATTENDANCE: Record<string, Loader> = {
   'app/attendance/my-permission': () => import('./pages/Attendance/my-permission/my-permission').then((m) => m.MyPermission),
 };
 const ATTENDANCE_ON = environment.features.attendance;
+/** Tickets: one lazy entry (pages/Tickets/tickets.routes.ts), registered while the feature is on (NEW-04). */
+const TICKETS_ON = environment.features.tickets;
+const isTickets = (path: string) => path === 'app/tickets' || path.startsWith('app/tickets/');
 const isAttendance = (path: string) => Object.prototype.hasOwnProperty.call(ATTENDANCE, path);
 
 /** Pages the server menu names, by route. Anything else in the menu shows MenuPage. */
@@ -205,7 +209,9 @@ const ALWAYS = new Set([
 function grantsFor(rawPath: string): Grants {
   const path = rawPath.replace(/\/:[^/]+/g, '');
   const own = '/' + path;
-  if (ALWAYS.has(path) || isAttendance(path)) return 'any';
+  // Tickets runs on demo data and the server menu does not list it yet; inside the module,
+  // TicketAccessService decides what each role sees, and the API will re-check every request.
+  if (ALWAYS.has(path) || isAttendance(path) || isTickets(path)) return 'any';
   if (/^app\/fundraising\/(relationships|donors|Lead)\//.test(path)) {
     return DONORS_AND_LEADS.includes(own) ? [own] : DONORS_AND_LEADS;
   }
@@ -231,6 +237,8 @@ const menuRoutes: Routes = flatten(MENU_DATA)
   .map((item) => item.route!.replace(/^\//, ''))
   // Attendance's menu entries disappear with its routes when the module is switched off.
   .filter((path) => ATTENDANCE_ON || !isAttendance(path))
+  // The Tickets module routes its own pages.
+  .filter((path) => !isTickets(path))
   .map((path) => {
     const item = flatten(MENU_DATA).find((i) => i.route?.replace(/^\//, '') === path)!;
     const screen: Loader | undefined = REAL_SCREENS[path];
@@ -251,6 +259,10 @@ const APP_ROUTES: Routes = [
   // Attendance (static route)
   ...(ATTENDANCE_ON
     ? [{ path: 'app/attendance', loadComponent: ATTENDANCE['app/attendance'], title: 'Attendance', data: { name: 'Attendance', route: '/app/attendance' } }]
+    : []),
+  // Tickets: the module's own router handles every /app/tickets/... page.
+  ...(TICKETS_ON
+    ? [{ path: 'app/tickets', loadChildren: () => import('./pages/Tickets/tickets.routes').then((m) => m.TICKETS_ROUTES), data: { name: 'Tickets', route: '/app/tickets' } }]
     : []),
   // Campaign Routes
   {

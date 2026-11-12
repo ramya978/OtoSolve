@@ -1,0 +1,215 @@
+@if (loadError()) {
+  <div class="tk-card">
+    <app-empty-state icon="search" tone="danger" heading="Ticket not found" [message]="loadError()!" retryLabel="Try again" (retry)="bundle.reload()">
+      <a class="tk-btn is-sm" routerLink="/app/tickets/list">Back to tickets</a>
+    </app-empty-state>
+  </div>
+} @else if (!t()) {
+  <div class="tk-split">
+    <div class="tk-card"><app-skeleton variant="detail" [rows]="8" /></div>
+    <div class="tk-card"><app-skeleton variant="detail" [rows]="5" /></div>
+  </div>
+} @else {
+  @let tk = t()!;
+  <div class="tk-page">
+    <!-- the shared page header: breadcrumb, title, description and the ticket's actions -->
+    <app-page-header [breadcrumb]="'Tickets / ' + tk.number" breadcrumbRoute="/app/tickets/list" [heading]="tk.subject"
+                     [description]="'Opened ' + ago(tk.createdAt) + ' via ' + tk.channel + ' · updated ' + ago(tk.updatedAt)">
+      <ng-container actions>
+        <div class="tk-head-acts">
+          @if (access.isStaff()) {
+            <app-assignee-picker [agents]="tickets.agents()" [value]="tk.assigneeId" [meId]="access.agentId()" [loads]="loads()"
+                                 [canAssignOthers]="access.can('assign')" [disabled]="!canEdit()" buttonClass="tk-btn" (pick)="assign($event)" />
+          }
+          @for (s of primaryActions(); track s) {
+            <button type="button" class="tk-btn" [class.btn-primary]="$first" [class.btn-secondary]="!$first" [disabled]="busy()" (click)="startTransition(s)">{{ label(s) }}</button>
+          }
+          <div class="tk-popover">
+            <button type="button" class="tk-btn is-icon" (click)="moreOpen.set(!moreOpen())" [attr.aria-expanded]="moreOpen()" aria-label="More actions"><tk-icon name="more" /></button>
+            @if (moreOpen()) {
+              <div class="tk-menu" role="menu">
+                @if (otherActions().length) {
+                  <div class="tk-menu-label">Move to</div>
+                  @for (s of otherActions(); track s) { <button type="button" role="menuitem" (click)="startTransition(s)">{{ label(s) }}<small>{{ s }}</small></button> }
+                  <hr />
+                }
+                @if (canEdit()) { <a role="menuitem" [routerLink]="['/app/tickets', tk.id, 'edit']"><tk-icon name="edit" />Edit<small>E</small></a> }
+                @if (access.isStaff()) { <button type="button" role="menuitem" (click)="toggleWatch(); moreOpen.set(false)"><tk-icon [name]="watching() ? 'eye-off' : 'eye'" />{{ watching() ? 'Stop watching' : 'Watch' }}</button> }
+                @if (access.can('merge')) { <button type="button" role="menuitem" (click)="askMerge(null)"><tk-icon name="merge" />Merge into another ticket</button> }
+                <button type="button" role="menuitem" (click)="copyLink()"><tk-icon name="link" />Copy link</button>
+                @if (access.can('export')) { <button type="button" role="menuitem" (click)="exportTicket()"><tk-icon name="download" />Export conversation</button> }
+                @if (access.can('delete')) { <hr /><button type="button" role="menuitem" style="color:var(--danger-color)" (click)="confirmDelete.set(true); moreOpen.set(false)"><tk-icon name="trash" />Delete ticket</button> }
+              </div>
+            }
+          </div>
+        </div>
+      </ng-container>
+    </app-page-header>
+
+    <!-- at-a-glance summary -->
+    <section class="tk-card tk-summary" aria-label="Ticket summary">
+      <span class="tk-mono" style="font-weight:600;color:var(--primary-color)">{{ tk.number }}</span>
+      <app-status-badge [status]="tk.status" />
+      <app-priority-badge [priority]="tk.priority" />
+      <span class="tk-tag">{{ tk.category }}</span>
+      <span class="tk-tag">{{ tk.type }}</span>
+      @if (tk.escalationLevel) { <span class="tk-badge is-sm" data-tone="danger">Escalation L{{ tk.escalationLevel + 1 }}</span> }
+      @if (tk.reopenCount) { <span class="tk-badge is-sm" data-tone="warning">Reopened {{ tk.reopenCount }}×</span> }
+      <span class="tk-spacer"></span>
+      <app-sla-indicator [ticket]="tk" />
+    </section>
+
+    @if (tk.mergedInto) {
+      <div class="tk-alert" data-tone="violet"><tk-icon name="merge" /><div class="body">This ticket was merged into <strong style="display:inline">{{ tk.mergedInto }}</strong>. Its messages now live there.</div></div>
+    } @else if (isBreached()) {
+      <div class="tk-alert" data-tone="danger" role="alert"><tk-icon name="alert" /><div class="body"><strong>SLA breached</strong>This ticket is past its target. Reply, escalate or resolve it next.</div></div>
+    } @else if (reopenDaysLeft() !== null) {
+      <div class="tk-alert" data-tone="neutral"><tk-icon name="archive" /><div class="body">Closed {{ ago(tk.closedAt) }}. @if (reopenDaysLeft()! > 0) { It can be reopened for {{ reopenDaysLeft() }} more day{{ reopenDaysLeft() === 1 ? '' : 's' }}. } @else { The reopen window has passed; create a new ticket instead. }</div></div>
+    }
+
+    <div class="tk-split">
+      <!-- main column -->
+      <div class="tk-stack">
+        <section class="tk-card">
+          <header class="tk-card-head"><h2 class="tk-card-title">Information</h2></header>
+          <div class="tk-card-body tk-grid" style="gap:20px">
+            <div class="span-7">
+              <h3 class="tk-section-title" style="margin-bottom:6px">Description</h3>
+              <p style="white-space:pre-wrap;line-height:1.65">{{ tk.description }}</p>
+              @if (tk.tags.length) { <div class="tk-row" style="margin-top:12px">@for (g of tk.tags; track g) { <span class="tk-tag">#{{ g }}</span> }</div> }
+            </div>
+            <dl class="tk-kv span-5">
+              <dt>Customer</dt>
+              <dd>@if (customer(); as c) { <div class="tk-person"><span class="tk-avatar is-sm" data-tone="info">{{ c.initials }}</span><div class="who"><strong>{{ c.name }}</strong><small>{{ c.organisation }}</small></div></div> }</dd>
+              <dt>Assigned to</dt>
+              <dd>@if (assignee(); as a) { <div class="tk-person"><span class="tk-avatar is-sm" data-tone="primary">{{ a.initials }}</span><div class="who"><strong>{{ a.name }}</strong><small>{{ a.email }}</small></div></div> } @else { <span class="tk-faint">Unassigned</span> }</dd>
+              <dt>Team</dt><dd>{{ team()?.name ?? '—' }}</dd>
+              <dt>SLA</dt><dd><app-sla-indicator [ticket]="tk" /></dd>
+              <dt>Created</dt><dd>{{ when(tk.createdAt) }}</dd>
+              <dt>First reply</dt><dd>{{ tk.firstResponseAt ? when(tk.firstResponseAt) : 'Not yet' }}</dd>
+              @if (tk.resolvedAt) { <dt>Resolved</dt><dd>{{ when(tk.resolvedAt) }}</dd> }
+              @if (tk.watcherIds.length) {
+                <dt>Watchers</dt>
+                <dd><span class="tk-avatars">@for (w of tk.watcherIds; track w) { <span class="tk-avatar is-sm" data-tone="violet" [title]="tickets.agent(w)?.name ?? w">{{ tickets.agent(w)?.initials ?? '?' }}</span> }</span></dd>
+              }
+              @if (tk.csat) { <dt>Rating</dt><dd>{{ tk.csat }} / 5</dd> }
+            </dl>
+          </div>
+        </section>
+
+        <section class="tk-card is-clip" aria-label="Activity">
+          <div class="tk-tabs" role="tablist" aria-label="Ticket activity">
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'conversation'" (click)="tab.set('conversation')">Comments <span class="tk-count">{{ publicCount() }}</span></button>
+            @if (access.isStaff()) {
+              <button type="button" role="tab" [attr.aria-selected]="tab() === 'internal'" (click)="tab.set('internal')">Internal discussion <span class="tk-count" data-tone="warning">{{ internalCount() }}</span></button>
+            }
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'attachments'" (click)="tab.set('attachments')">Attachments <span class="tk-count">{{ b()!.attachments.length }}</span></button>
+            <button type="button" role="tab" [attr.aria-selected]="tab() === 'timeline'" (click)="tab.set('timeline')">Timeline</button>
+            @if (access.isStaff()) { <button type="button" role="tab" [attr.aria-selected]="tab() === 'audit'" (click)="tab.set('audit')">Audit log</button> }
+          </div>
+          <div class="tk-card-body">
+            @switch (tab()) {
+              @case ('conversation') {
+                <app-ticket-comments [ticket]="tk" [comments]="b()!.comments" [agents]="tickets.agents()" [filter]="access.isStaff() ? 'all' : 'public'"
+                                     [canComment]="access.can('comment') && !tk.mergedInto" [canInternal]="access.can('note.internal')"
+                                     [aiAvailable]="access.can('ai')" [aiBusy]="aiBusy()" [(draft)]="draft" (aiDraft)="aiDraft()" />
+              }
+              @case ('internal') {
+                <app-ticket-comments [ticket]="tk" [comments]="b()!.comments" [agents]="tickets.agents()" filter="internal" startAs="internal"
+                                     [canComment]="access.can('note.internal')" [canInternal]="true" />
+              }
+              @case ('attachments') {
+                <app-attachments [ticketId]="tk.id" [files]="b()!.attachments" [canUpload]="access.can('comment') && !tk.mergedInto" />
+              }
+              @case ('timeline') { <app-ticket-timeline [items]="activity()" /> }
+              @case ('audit') { <app-ticket-history [entries]="b()!.history" /> }
+            }
+          </div>
+        </section>
+      </div>
+
+      <!-- side column -->
+      <aside class="tk-stack" aria-label="Ticket context">
+        <section class="tk-card is-pad">
+          <h2 class="tk-card-title" style="margin-bottom:12px">Service level</h2>
+          <app-sla-indicator [ticket]="tk" mode="full" />
+        </section>
+
+        @if (access.can('ai') && tickets.lookups()) {
+          <app-ai-insights [bundle]="b()!" [lookups]="tickets.lookups()!" [agentName]="tickets.agent(access.agentId())?.name ?? access.displayName()"
+                           [canEdit]="canEdit()" [canAssign]="access.can('assign') || access.can('assign.self')" [canMerge]="access.can('merge')"
+                           (applyPriority)="setPriority($event)" (applyCategory)="setCategory($event)" (assign)="assign($event)"
+                           (merge)="askMerge($event)" (insertReply)="useReply($event)" />
+        }
+
+        @if (customer(); as c) {
+          <section class="tk-card is-clip">
+            <header class="tk-card-head">
+              <div class="tk-person" style="flex:1"><span class="tk-avatar is-lg" data-tone="info">{{ c.initials }}</span>
+                <div class="who"><strong style="font-size:15px">{{ c.name }}</strong><small>{{ c.organisation }} · customer since {{ c.since.slice(0, 4) }}</small></div></div>
+              <span class="tk-badge" [attr.data-tone]="c.tier === 'VIP' ? 'violet' : c.tier === 'Premium' ? 'primary' : 'neutral'">{{ c.tier }}</span>
+            </header>
+            <div class="tk-card-body" style="display:grid;gap:16px">
+              @if (access.isStaff()) {
+                <dl class="tk-kv"><dt>Email</dt><dd class="tk-small">{{ c.email }}</dd><dt>Phone</dt><dd class="tk-small">{{ c.phone }}</dd></dl>
+              }
+              <div>
+                <h3 class="tk-section-title" style="margin-bottom:8px">Related open tickets</h3>
+                @for (r of related(); track r.id) {
+                  <a [routerLink]="['/app/tickets', r.id]" class="tk-row" style="padding:5px 0;flex-wrap:nowrap;color:inherit"><span class="tk-mono" style="color:var(--primary-color)">{{ r.number }}</span><span class="tk-truncate" style="flex:1">{{ r.subject }}</span><app-status-badge [status]="r.status" size="sm" /></a>
+                } @empty { <p class="tk-faint tk-small">No other open tickets.</p> }
+              </div>
+              <div>
+                <h3 class="tk-section-title" style="margin-bottom:8px">Previous issues</h3>
+                @for (r of previous(); track r.id) {
+                  <a [routerLink]="['/app/tickets', r.id]" class="tk-row" style="padding:5px 0;flex-wrap:nowrap;color:inherit"><span class="tk-mono" style="color:var(--primary-color)">{{ r.number }}</span><span class="tk-truncate" style="flex:1">{{ r.subject }}</span><span class="tk-faint tk-small">{{ ago(r.resolvedAt ?? r.closedAt) }}</span></a>
+                } @empty { <p class="tk-faint tk-small">This is their first resolved-or-open issue.</p> }
+              </div>
+              <div>
+                <h3 class="tk-section-title" style="margin-bottom:10px">Customer timeline</h3>
+                <app-ticket-timeline [items]="customerTimeline()" emptyText="No history yet" />
+              </div>
+            </div>
+          </section>
+        }
+
+        @if (articles().length) {
+          <section class="tk-card is-pad">
+            <h2 class="tk-card-title" style="margin-bottom:10px"><tk-icon name="book" /> Suggested articles</h2>
+            @for (a of articles(); track a.id) {
+              <div style="padding:8px 0;border-top:1px solid var(--border-color)">
+                <strong class="tk-small" style="display:block">{{ a.title }}</strong>
+                <span class="tk-muted tk-small">{{ a.summary }}</span>
+                <div class="tk-row" style="margin-top:4px"><span class="tk-faint tk-small">{{ a.views }} views</span>
+                  @if (access.can('comment')) { <button type="button" class="tk-link-btn" (click)="useReply('This guide should help: “' + a.title + '”. ' + a.summary)">Send to customer</button> }</div>
+              </div>
+            }
+          </section>
+        }
+      </aside>
+    </div>
+  </div>
+
+  @if (transitionTo(); as to) {
+    <app-transition-dialog [ticket]="tk" [to]="to" [agents]="tickets.agents()" [busy]="busy()" (confirm)="doTransition($event)" (cancel)="transitionTo.set(null)" />
+  }
+  @if (confirmDelete()) {
+    <app-confirm-dialog [heading]="'Delete ' + tk.number + '?'" message="It disappears from lists, the board and reports. The deletion and your reason are recorded in the audit log."
+                        confirmLabel="Delete ticket" reasonLabel="Reason" [busy]="busy()" (confirm)="remove($event)" (cancel)="confirmDelete.set(false)" />
+  }
+  @if (mergeAsk()) {
+    <app-tk-dialog [heading]="'Merge ' + tk.number" sub="Its messages, files and watchers move to the ticket you name; this one is closed as merged." (close)="mergeAsk.set(false)">
+      <label class="tk-field"><span class="tk-label">Merge into ticket number</span>
+        <input class="tk-input" [(ngModel)]="mergeNumber" name="mergeNumber" placeholder="TK-1042" (keydown.enter)="resolveMergeNumber()" /></label>
+      <ng-container dialog-actions>
+        <button type="button" class="tk-btn is-ghost" (click)="mergeAsk.set(false)">Cancel</button>
+        <button type="button" class="tk-btn btn-primary" (click)="resolveMergeNumber()">Continue</button>
+      </ng-container>
+    </app-tk-dialog>
+  }
+  @if (mergeTarget(); as target) {
+    <app-confirm-dialog [heading]="'Merge ' + tk.number + ' into ' + (target.startsWith('TK-') ? target : 'the similar ticket') + '?'"
+                        message="Messages, attachments and watchers move to the other ticket and this one closes as merged. This can't be undone from the screen."
+                        confirmLabel="Merge tickets" [danger]="false" [busy]="busy()" (confirm)="merge()" (cancel)="mergeTarget.set(null)" />
+  }
+}

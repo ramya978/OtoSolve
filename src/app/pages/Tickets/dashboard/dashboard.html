@@ -1,0 +1,145 @@
+<div class="tk-page tk-dash">
+  <app-page-header breadcrumb="Workspace / Tickets" breadcrumbRoute="/app/tickets" heading="Ticket dashboard"
+    description="Workload, service levels and trends for the tickets you can see. Select a tile or chart to open the matching tickets.">
+    <ng-container actions>
+      <div class="tk-head-acts">
+        <div class="tk-seg" role="group" aria-label="Period">
+          @for (p of periods; track p.key) { <button type="button" [attr.aria-pressed]="period() === p.key" (click)="setPeriod(p.key)">{{ p.label }}</button> }
+        </div>
+        <button type="button" class="tk-btn is-icon" (click)="refresh()" [disabled]="stats.isLoading()" aria-label="Refresh"><tk-icon name="refresh" /></button>
+        <a class="tk-btn btn-secondary" routerLink="/app/tickets/board"><tk-icon name="columns" />Board</a>
+        @if (access.can('create')) { <a class="tk-btn btn-primary" routerLink="/app/tickets/new"><tk-icon name="plus" />New ticket</a> }
+      </div>
+    </ng-container>
+  </app-page-header>
+
+  <!-- 1 · KPI cards: the primary focus -->
+  @if (statsError()) {
+    <div class="tk-card"><app-empty-state icon="wifi-off" tone="danger" heading="The dashboard couldn't load" [message]="statsError()!" retryLabel="Try again" (retry)="stats.reload()" /></div>
+  } @else if (!s()) {
+    <app-skeleton variant="kpis" [rows]="7" />
+  } @else {
+    <section class="tk-kpis tk-stagger" aria-label="Key figures">
+      @for (k of kpis(); track k.key) { <app-stat-card [kpi]="k" /> }
+    </section>
+  }
+
+  <!-- 2 · trend (70%) | status (30%) -->
+  <div class="tk-dash-row is-main">
+    <app-widget heading="Monthly ticket trend" sub="Created and resolved per month" [loading]="!s()" [error]="statsError()" (retry)="stats.reload()">
+      @if (s(); as st) { <app-line-chart [data]="st.monthlyTrend" [maxHeight]="280" [minHeight]="190" /> }
+    </app-widget>
+
+    <app-widget heading="Status distribution" [sub]="'Created in the last ' + days() + ' days'" [loading]="!s()" [error]="statsError()"
+                [empty]="!s()?.byStatus?.length" (retry)="stats.reload()">
+      @if (s(); as st) { <app-donut-chart [data]="st.byStatus" label="Tickets" [size]="148" [maxItems]="6" (pick)="openStatus($event)" /> }
+    </app-widget>
+  </div>
+
+  <!-- 3 · team | SLA | AI -->
+  <div class="tk-dash-row is-three">
+    <app-widget heading="Team performance" sub="Open load against capacity · resolved this period" skeleton="cards" [loading]="!s()" [error]="statsError()"
+                [empty]="!s()?.agents?.length" emptyText="No assigned tickets yet" (retry)="stats.reload()">
+      @if (access.can('analytics')) { <a widget-actions class="tk-link-btn" routerLink="/app/tickets/analytics">View all</a> }
+      @if (s(); as st) { <div class="tk-scroll"><app-workload-chart [agents]="st.agents" [limit]="5" /></div> }
+    </app-widget>
+
+    <app-widget heading="SLA metrics" sub="Tickets created this period whose clock has stopped" [loading]="!s()" [error]="statsError()" (retry)="stats.reload()">
+      @if (access.can('sla.view')) { <a widget-actions class="tk-link-btn" routerLink="/app/tickets/sla">SLA monitor</a> }
+      @if (s(); as st) {
+        <div style="display:grid;gap:12px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="tk-mini-stat">
+              <div class="top"><span class="tk-label">First response</span><strong>{{ round(st.sla.responseCompliance) }}%</strong></div>
+              <div class="tk-progress" [attr.data-tone]="tone(st.sla.responseCompliance)" [style.--pct]="st.sla.responseCompliance + '%'"><i></i></div>
+            </div>
+            <div class="tk-mini-stat">
+              <div class="top"><span class="tk-label">Resolution</span><strong>{{ round(st.sla.resolutionCompliance) }}%</strong></div>
+              <div class="tk-progress" [attr.data-tone]="tone(st.sla.resolutionCompliance)" [style.--pct]="st.sla.resolutionCompliance + '%'"><i></i></div>
+            </div>
+          </div>
+          <div class="tk-row tk-small" style="gap:4px 14px">
+            <span class="tk-sla" data-light="green"><span class="dot"></span>{{ st.sla.onTrack }} on track</span>
+            <span class="tk-sla" data-light="amber"><span class="dot"></span>{{ st.sla.atRisk }} at risk</span>
+            <span class="tk-sla" data-light="red"><span class="dot"></span>{{ st.sla.breached }} breached</span>
+          </div>
+          <ul class="tk-list" aria-label="Resolution SLA by priority">
+            @for (p of st.sla.byPriority; track p.priority) {
+              <li style="display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 0">
+                <app-priority-badge [priority]="p.priority" />
+                <span class="tk-split-bar" [attr.title]="p.met + ' met · ' + p.missed + ' missed · ' + p.breachedOpen + ' breached and open'">
+                  <i class="met" [style.flex]="p.met"></i><i class="missed" [style.flex]="p.missed"></i><i class="open" [style.flex]="p.breachedOpen"></i>
+                </span>
+                <span class="tk-small tk-num tk-muted">{{ p.met }}/{{ p.met + p.missed }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </app-widget>
+
+    <app-widget heading="AI insights" sub="What stands out this period" [loading]="!s()" [error]="statsError()" skeleton="cards"
+                [empty]="!insights().length" emptyText="Nothing unusual this period" (retry)="stats.reload()">
+      <span widget-actions class="tk-badge is-sm is-ai"><tk-icon name="sparkles" />Rules preview</span>
+      <div class="tk-scroll">
+        @for (i of insights(); track i.title) {
+          @if (i.link) {
+            <a class="tk-insight" [routerLink]="i.link.path" [queryParams]="i.link.query ?? {}" [attr.data-tone]="i.tone">
+              <span class="ico"><tk-icon [name]="i.icon" /></span><strong>{{ i.title }}</strong><span>{{ i.text }}</span>
+            </a>
+          } @else {
+            <div class="tk-insight" [attr.data-tone]="i.tone"><span class="ico"><tk-icon [name]="i.icon" /></span><strong>{{ i.title }}</strong><span>{{ i.text }}</span></div>
+          }
+        }
+      </div>
+    </app-widget>
+  </div>
+
+  <!-- 4 · attention | priority & resolution | activity -->
+  <div class="tk-dash-row is-three">
+    <section class="tk-card is-clip tk-widget">
+      <header class="tk-card-head is-plain">
+        <div style="flex:1;min-width:0"><h2 class="tk-card-title">Needs attention</h2><p class="tk-card-sub">Breached or close to it, most urgent first</p></div>
+      </header>
+      <div class="tk-card-body" style="justify-content:flex-start">
+        @if (attention.isLoading() && !attention.value()) {
+          <app-skeleton variant="cards" [rows]="3" />
+        } @else if (attention.value()?.items?.length) {
+          <ul class="tk-list tk-scroll">
+            @for (t of attention.value()!.items; track t.id) {
+              <li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;align-items:center">
+                <a [routerLink]="['/app/tickets', t.id]" class="tk-truncate" style="font-weight:600;color:var(--text-heading)">
+                  <span class="tk-mono" style="color:var(--primary-color)">{{ t.number }}</span> {{ t.subject }}
+                </a>
+                <app-sla-indicator [ticket]="t" />
+                <span class="tk-row tk-small tk-muted"><app-priority-badge [priority]="t.priority" /> {{ tickets.agent(t.assigneeId)?.name ?? 'Unassigned' }}</span>
+              </li>
+            }
+          </ul>
+        } @else {
+          <app-empty-state icon="check-circle" tone="success" [compact]="true" heading="Every SLA is on track" message="Nothing is breached or close to breaching." />
+        }
+      </div>
+    </section>
+
+    <app-widget [heading]="mixView() === 'priority' ? 'Priority mix' : 'Time to resolve'" [sub]="mixView() === 'priority' ? 'Tickets created this period' : 'Resolved this period, excluding waiting time'"
+                [loading]="!s()" [error]="statsError()" (retry)="stats.reload()">
+      <div widget-actions class="tk-seg" role="group" aria-label="Show">
+        <button type="button" [attr.aria-pressed]="mixView() === 'priority'" (click)="mixView.set('priority')">Priority</button>
+        <button type="button" [attr.aria-pressed]="mixView() === 'resolution'" (click)="mixView.set('resolution')">Resolution</button>
+      </div>
+      @if (s(); as st) {
+        @if (mixView() === 'priority') { <app-bar-chart [items]="st.byPriority" [horizontal]="true" (pick)="openPriority($event)" /> }
+        @else { <app-bar-chart [items]="st.resolutionBuckets" [horizontal]="true" /> }
+      }
+    </app-widget>
+
+    <section class="tk-card is-clip tk-widget">
+      <header class="tk-card-head is-plain"><div style="flex:1"><h2 class="tk-card-title">Recent activity</h2><p class="tk-card-sub">Latest changes across your tickets</p></div></header>
+      <div class="tk-card-body" style="justify-content:flex-start">
+        @if (activity.isLoading() && !activity.value()) { <app-skeleton variant="detail" [rows]="4" /> }
+        @else { <div class="tk-scroll"><app-ticket-timeline [items]="activityItems()" emptyText="No activity yet" /></div> }
+      </div>
+    </section>
+  </div>
+</div>

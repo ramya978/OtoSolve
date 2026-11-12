@@ -1,0 +1,84 @@
+<div class="tk-page">
+  <app-page-header breadcrumb="Workspace / Tickets" breadcrumbRoute="/app/tickets" heading="Ticket board"
+  description="Drag a card to change its status; the board checks the workflow and asks for a reason when one is needed. With the keyboard, focus a card and press M.">
+  <ng-container actions>
+    <div class="tk-head-acts">
+      <a class="tk-btn btn-secondary" href="/app/tickets/list" (click)="$event.preventDefault(); goList()"><tk-icon name="list" />List</a>
+      @if (access.can('create')) { <a class="tk-btn btn-primary" href="/app/tickets/new" (click)="$event.preventDefault(); goNew()"><tk-icon name="plus" />New ticket</a> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+  <section class="tk-card" style="padding:14px 16px">
+    <div class="tk-row" style="gap:10px">
+      <label class="tk-search" style="flex:1 1 240px">
+        <tk-icon name="search" /><span class="tk-sr-only">Search the board</span>
+        <input class="tk-input" type="search" placeholder="Search ID, subject or customer" [value]="search()" (input)="search.set($any($event.target).value)" />
+      </label>
+      <div class="tk-seg" role="group" aria-label="Owner">
+        <button type="button" [attr.aria-pressed]="owner() === 'all'" (click)="owner.set('all')">Everyone</button>
+        @if (access.agentId()) { <button type="button" [attr.aria-pressed]="owner() === 'mine'" (click)="owner.set('mine')">Mine</button> }
+        <button type="button" [attr.aria-pressed]="owner() === 'unassigned'" (click)="owner.set('unassigned')">Unassigned</button>
+      </div>
+      <label class="tk-sr-only" for="board-priority">Priority</label>
+      <select id="board-priority" class="tk-select" style="width:auto" [value]="priority()" (change)="priority.set($any($event.target).value)">
+        <option value="all">All priorities</option>
+        @for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }
+      </select>
+      <label class="tk-switch"><input type="checkbox" [checked]="showOldClosed()" (change)="showOldClosed.set(!showOldClosed())" /><span class="track"></span>Older closed</label>
+    </div>
+    <div class="tk-chips" style="margin-top:10px" aria-label="Jump to column">
+      @for (c of columns(); track c.col.id) {
+        <button type="button" class="tk-chip" (click)="jumpTo(c.col.id)">{{ c.col.title }} <span class="tk-count" [attr.data-tone]="c.over ? 'warning' : null">{{ c.cards.length }}</span></button>
+      }
+    </div>
+  </section>
+
+  @if (loadError()) {
+    <div class="tk-card"><app-empty-state icon="wifi-off" tone="danger" heading="The board couldn't load" [message]="loadError()!" retryLabel="Try again" (retry)="data.reload()" /></div>
+  } @else if (!data.value()) {
+    <div class="tk-board">
+      @for (i of [1, 2, 3, 4]; track i) { <div class="tk-col" style="padding:12px"><app-skeleton variant="cards" [rows]="3" /></div> }
+    </div>
+  } @else {
+    <div class="tk-board" cdkDropListGroup>
+      @for (c of columns(); track c.col.id) {
+        <section class="tk-col" [class.is-over-limit]="c.over" [class.is-collapsed]="collapsed().has(c.col.id)" [attr.aria-label]="c.col.title + ', ' + c.cards.length + ' tickets'">
+          <header class="tk-col-head" [attr.data-tone]="c.tone">
+            <span class="bar" aria-hidden="true"></span>
+            <h3>{{ c.col.title }}</h3>
+            <span class="tk-count" [attr.data-tone]="c.over ? 'warning' : null" [attr.title]="c.limit ? 'Limit ' + c.limit : null">{{ c.cards.length }}@if (c.limit) {/{{ c.limit }}}</span>
+            <span class="tk-spacer"></span>
+            <button type="button" class="tk-btn is-ghost is-icon is-sm" (click)="toggleCollapse(c.col.id)" [attr.aria-expanded]="!collapsed().has(c.col.id)" [attr.aria-label]="(collapsed().has(c.col.id) ? 'Expand ' : 'Collapse ') + c.col.title">
+              <tk-icon [name]="collapsed().has(c.col.id) ? 'chevron-right' : 'chevron-down'" />
+            </button>
+          </header>
+          <div class="tk-col-body" cdkDropList [id]="'col-' + c.col.id" [cdkDropListData]="c.col" [cdkDropListEnterPredicate]="canEnter"
+               [cdkDropListSortingDisabled]="true" (cdkDropListDropped)="dropped($event)" [hidden]="collapsed().has(c.col.id)">
+            @for (t of c.cards; track t.id) {
+              <app-ticket-card cdkDrag [cdkDragData]="t" [cdkDragDisabled]="busyId() === t.id || !access.canEdit(t)" cdkDragPreviewContainer="parent"
+                               [ticket]="t" [customerName]="customerName(t)" [agents]="tickets.agents()" [meId]="access.agentId()" [loads]="loads()"
+                               [canEdit]="access.canEdit(t)" [canAssignOthers]="access.can('assign')" [busy]="busyId() === t.id"
+                               (open)="open(t)" (assign)="assign(t, $event)" (priority)="setPriority(t, $event)" (keydown.m)="moving.set(t)" />
+            } @empty {
+              <div class="tk-col-empty">Drop a ticket here</div>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  }
+</div>
+
+@if (pending(); as p) {
+  <app-transition-dialog [ticket]="p.ticket" [to]="p.to" [agents]="tickets.agents()" [busy]="busyId() === p.ticket.id" (confirm)="apply(p.ticket, $event)" (cancel)="pending.set(null)" />
+}
+
+@if (moving(); as t) {
+  <app-tk-dialog [heading]="'Move ' + t.number" [sub]="t.subject + ' · now ' + t.status" (close)="moving.set(null)">
+    @for (o of moveOptions(t); track o.col.id) {
+      <button type="button" class="tk-btn is-block" style="justify-content:space-between" (click)="chooseMove(t, o.col)">{{ o.col.title }}<span class="tk-faint">{{ label(o.to) }}</span></button>
+    } @empty { <p class="tk-muted">{{ t.number }} can't move from {{ t.status }} with your role.</p> }
+    <ng-container dialog-actions><button type="button" class="tk-btn is-ghost" (click)="moving.set(null)">Cancel</button></ng-container>
+  </app-tk-dialog>
+}

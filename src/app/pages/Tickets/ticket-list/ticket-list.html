@@ -1,0 +1,145 @@
+<div class="tk-page">
+  <app-page-header breadcrumb="Workspace / Tickets" breadcrumbRoute="/app/tickets" [heading]="heading()"
+  description="Search, filter and act on tickets. Shift-click a column heading to sort by more than one column.">
+  <ng-container actions>
+    <div class="tk-head-acts">
+      @if (access.can('export')) {
+        <button type="button" class="tk-btn btn-secondary" [class.is-loading]="exporting()" (click)="export('csv')"><tk-icon name="download" />CSV</button>
+        <button type="button" class="tk-btn btn-secondary" [class.is-loading]="exporting()" (click)="export('xlsx')"><tk-icon name="download" />Excel</button>
+      }
+      @if (access.isStaff()) { <a class="tk-btn btn-secondary" href="/app/tickets/board" (click)="$event.preventDefault(); goBoard()"><tk-icon name="columns" />Board</a> }
+      @if (access.can('create')) { <a class="tk-btn btn-primary" href="/app/tickets/new" (click)="$event.preventDefault(); goNew()"><tk-icon name="plus" />New ticket</a> }
+    </div>
+  </ng-container>
+</app-page-header>
+
+  <section class="tk-card" style="padding:16px">
+    <app-ticket-filter [query]="query()" [agents]="tickets.agents()" [saved]="tickets.savedFilters()" [staff]="access.isStaff()"
+                       (changed)="patch($event)" (saveView)="saveView($event)" (applySaved)="applySaved($event)" (deleteSaved)="tickets.deleteFilter($event)">
+      <div class="tk-popover">
+        <button type="button" class="tk-btn" (click)="columnsOpen.set(!columnsOpen())" [attr.aria-expanded]="columnsOpen()"><tk-icon name="columns" />Columns</button>
+        @if (columnsOpen()) {
+          <div class="tk-menu" role="menu" style="width:240px">
+            <div class="tk-menu-label">Show columns</div>
+            @for (c of allColumns; track c.key) {
+              <label class="tk-check" style="padding:4px 10px;display:flex"><input type="checkbox" [checked]="columns().includes(c.key)" [disabled]="c.key === 'subject'" (change)="toggleColumn(c.key)" />{{ c.label }}</label>
+            }
+            <hr />
+            <button type="button" (click)="resetColumns()">Reset to default</button>
+          </div>
+        }
+      </div>
+    </app-ticket-filter>
+  </section>
+
+  <section class="tk-card is-clip" aria-live="polite">
+    <header class="tk-card-head">
+      <div style="flex:1;min-width:0">
+        <h2 class="tk-card-title">{{ total() }} ticket{{ total() === 1 ? '' : 's' }}</h2>
+        <p class="tk-card-sub">@if (result.isLoading() && result.value()) { Updating… } @else { Showing {{ range() }} }</p>
+      </div>
+      <div class="tk-seg" role="group" aria-label="Loading mode">
+        <button type="button" [attr.aria-pressed]="mode() === 'paged'" (click)="setMode('paged')">Pages</button>
+        <button type="button" [attr.aria-pressed]="mode() === 'infinite'" (click)="setMode('infinite')">Infinite scroll</button>
+      </div>
+    </header>
+
+    @if (loadError()) {
+      <app-empty-state icon="wifi-off" tone="danger" heading="Tickets couldn't load" [message]="loadError()!" retryLabel="Try again" (retry)="result.reload()" />
+    } @else if (firstLoad()) {
+      <app-skeleton variant="table" [rows]="8" />
+    } @else if (!rows().length) {
+      @if (hasFilters()) {
+        <app-empty-state icon="search" tone="neutral" heading="No tickets match" message="Nothing matches this search and these filters. Remove a filter or search for something else.">
+          <button type="button" class="tk-btn is-sm" (click)="clearFilters()">Clear filters</button>
+        </app-empty-state>
+      } @else {
+        <app-empty-state icon="inbox" heading="No tickets yet" message="When customers get in touch, or you log a request for them, tickets appear here.">
+          @if (access.can('create')) { <a class="tk-btn btn-primary is-sm" href="/app/tickets/new" (click)="$event.preventDefault(); goNew()"><tk-icon name="plus" />Create a ticket</a> }
+        </app-empty-state>
+      }
+    } @else {
+      <app-ticket-table [rows]="rows()" [total]="total()" [columns]="columns()" [sort]="query().sort" [selected]="selected()"
+                        [selectable]="access.isStaff()" [virtual]="mode() === 'infinite'" [viewportHeight]="640" [label]="heading()"
+                        (sortChange)="setSort($event)" (toggle)="toggle($event)" (toggleAll)="toggleAll()" (open)="open($event)" (nearEnd)="loadMore()" />
+
+      @if (mode() === 'paged') {
+        <footer class="tk-card-foot tk-pager">
+          <span class="tk-pager-info">{{ range() }} of {{ total() }}</span>
+          <label class="tk-row" style="gap:6px">Rows
+            <select class="tk-select is-sm" style="width:auto" [ngModel]="query().pageSize" (ngModelChange)="setPageSize(+$event)">
+              @for (s of pageSizes; track s) { <option [ngValue]="s">{{ s }}</option> }
+            </select>
+          </label>
+          <span class="tk-spacer"></span>
+          <nav class="tk-pages" aria-label="Pages">
+            <button type="button" (click)="goTo(query().page - 1)" [disabled]="query().page <= 1" aria-label="Previous page"><tk-icon name="chevron-left" /></button>
+            @for (p of pages(); track $index) {
+              @if (p === null) { <span class="tk-faint" style="padding:6px 4px">…</span> }
+              @else { <button type="button" (click)="goTo(p)" [attr.aria-current]="p === query().page ? 'page' : null">{{ p }}</button> }
+            }
+            <button type="button" (click)="goTo(query().page + 1)" [disabled]="query().page >= pageCount()" aria-label="Next page"><tk-icon name="chevron-right" /></button>
+          </nav>
+        </footer>
+      } @else {
+        <footer class="tk-card-foot">
+          @if (result.isLoading()) { <span>Loading more…</span> }
+          @else if (rows().length >= total()) { <span>All {{ total() }} tickets loaded</span> }
+          @else { <button type="button" class="tk-btn is-sm" (click)="loadMore()">Load more</button> }
+        </footer>
+      }
+    }
+  </section>
+
+  @if (selectedCount()) {
+    <div class="tk-bulkbar" role="region" aria-label="Bulk actions">
+      <strong>{{ selectedCount() }} selected</strong>
+      @if (access.can('bulk')) {
+        <label class="tk-sr-only" for="bulk-assign">Assign selected</label>
+        <select id="bulk-assign" class="tk-select is-sm" [disabled]="bulkBusy()" (change)="bulkAssign($any($event.target).value); $any($event.target).value = ''">
+          <option value="">Assign to…</option>
+          <option value="me">Me</option>
+          <option value="none">Unassign</option>
+          @for (a of tickets.agents(); track a.id) { <option [value]="a.id" [disabled]="!a.available">{{ a.name }}</option> }
+        </select>
+        <label class="tk-sr-only" for="bulk-status">Change status</label>
+        <select id="bulk-status" class="tk-select is-sm" [disabled]="bulkBusy()" (change)="chooseBulkStatus($any($event.target).value); $any($event.target).value = ''">
+          <option value="">Set status…</option>
+          @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+        </select>
+        <label class="tk-sr-only" for="bulk-priority">Change priority</label>
+        <select id="bulk-priority" class="tk-select is-sm" [disabled]="bulkBusy()" (change)="bulkPriority($any($event.target).value); $any($event.target).value = ''">
+          <option value="">Set priority…</option>
+          @for (p of priorities; track p) { <option [value]="p">{{ p }}</option> }
+        </select>
+      }
+      @if (access.can('export')) {
+        <button type="button" class="tk-btn is-sm" (click)="export('xlsx', true)"><tk-icon name="download" />Export selected</button>
+      }
+      @if (access.can('delete')) {
+        <button type="button" class="tk-btn is-danger is-sm" (click)="confirmDelete.set(true)"><tk-icon name="trash" />Delete</button>
+      }
+      <span class="tk-spacer"></span>
+      @if (bulkBusy()) { <span class="tk-small">Updating…</span> }
+      <button type="button" class="tk-btn is-ghost is-sm" style="color:inherit" (click)="clearSelection()">Clear</button>
+    </div>
+  }
+</div>
+
+@if (bulkStatus(); as to) {
+  <app-tk-dialog [heading]="'Move ' + selectedCount() + ' tickets to ' + to" sub="Each ticket is checked against the workflow; tickets that can't move are skipped and stay selected." (close)="bulkStatus.set(null)">
+    <label class="tk-field">
+      <span class="tk-label">{{ bulkNeeds().includes('resolution') ? 'Resolution' : 'Reason' }} <span class="req">*</span></span>
+      <textarea class="tk-textarea" rows="4" [(ngModel)]="bulkReason" name="bulkReason"></textarea>
+    </label>
+    <ng-container dialog-actions>
+      <button type="button" class="tk-btn is-ghost" (click)="bulkStatus.set(null)">Cancel</button>
+      <button type="button" class="tk-btn btn-primary" [class.is-loading]="bulkBusy()" (click)="confirmBulkStatus()">Update {{ selectedCount() }} tickets</button>
+    </ng-container>
+  </app-tk-dialog>
+}
+
+@if (confirmDelete()) {
+  <app-confirm-dialog [heading]="'Delete ' + selectedCount() + ' tickets?'" message="Deleted tickets disappear from lists, the board and reports. Each deletion is recorded in the ticket's audit log."
+                      confirmLabel="Delete tickets" [busy]="bulkBusy()" (confirm)="runBulk({ kind: 'delete' }, 'Delete')" (cancel)="confirmDelete.set(false)" />
+}

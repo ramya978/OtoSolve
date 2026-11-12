@@ -1,0 +1,93 @@
+// =====================================================================================================
+// TICKETS CONTENT TOKENS
+//
+// Built ONLY from the application's own theme variables (styles.css, Shared/styles/theme.css,
+// common-buttons.css), the same way the All Donors and Platform Dashboard pages derive theirs.
+// So the Tickets pages follow the workspace accent, fonts, radius, font scale and Light / Dark /
+// System mode automatically: html[data-mode="dark"] redefines --white, --panel, --ink, --line and
+// the --status-* family, and everything here is mixed from those.
+// =====================================================================================================
+
+$bp-sm: 576px;
+$bp-md: 768px;
+$bp-lg: 992px;
+$bp-xl: 1200px;
+
+@mixin below($bp) {
+  @media (max-width: ($bp - 0.02px)) { @content; }
+}
+
+@mixin above($bp) {
+  @media (min-width: $bp) { @content; }
+}
+
+@mixin tokens {
+  // density: same steps as the other OtoSolve pages (1 on large screens, smaller on laptops)
+  --tk-k: 1;
+  --tk-fs: calc(var(--font-scale, 1) * var(--tk-k));
+
+  // colour - all from the app theme
+  --primary-color: var(--primary, var(--accent, #7c3348));
+  --primary-soft: color-mix(in srgb, var(--primary-color) 9%, var(--white, #fff));
+  --primary-line: color-mix(in srgb, var(--primary-color) 24%, var(--white, #fff));
+  --secondary-color: var(--secondary, var(--teal, #138879));
+  --success-color: var(--status-success, #3d7a68);
+  --warning-color: var(--status-warning, #976821);
+  --danger-color: var(--status-danger, #b34455);
+  --info-color: var(--status-info, #3c62a3);
+  --neutral-color: var(--status-neutral, #5a637a);
+  --violet-color: var(--purple, #8763bd);
+
+  --background-color: var(--bg, #f6f7fa);
+  --surface-color: var(--panel, var(--white, #fff));
+  --surface-2: color-mix(in srgb, var(--line, #e8e9ee) 22%, var(--white, #fff));
+  --surface-3: var(--chip, #f0f2f6);
+  --text-primary: var(--ink, #202333);
+  --text-heading: var(--heading-color, var(--ink, #202333));
+  --text-secondary: var(--muted, #707788);
+  --text-muted: var(--muted, #707788);
+  --border-color: var(--line, #e8e9ee);
+  --border-strong: color-mix(in srgb, var(--line, #e8e9ee) 70%, var(--ink, #202333) 12%);
+  --row-line: color-mix(in srgb, var(--line, #e8e9ee) 60%, var(--white, #fff));
+
+  // the same soft card shadow the Platform Dashboard uses
+  --card-shadow: 0 2px 12px rgb(38 43 67 / 6%);
+  --card-shadow-hover: 0 6px 18px rgb(20 20 35 / 8%);
+  --overlay-shadow: 0 24px 60px -20px rgb(20 22 35 / 35%);
+  --backdrop: rgb(15 18 24 / 40%);
+
+  // tone mixing: --mix-ink is #000 in light and #fff in dark (theme.css)
+  --tone-ink-mix: var(--mix-ink, #000);
+  --tone-bg-pct: 10%;
+
+  // shape and type - from the app settings
+  --radius-xs: 6px;
+  --radius-sm: var(--btn-radius, 8px);
+  --radius-md: var(--btn-radius, 8px);
+  --radius-lg: var(--radius, 12px);
+  --radius-pill: 999px;
+  --font-display: var(--font-heading, Inter, 'Segoe UI', Arial, sans-serif);
+  --font-text: var(--font-body, Inter, 'Segoe UI', Arial, sans-serif);
+  --font-num: var(--font-number, var(--font-text));
+  --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --space-1: calc(4px * var(--tk-k));
+  --space-2: calc(8px * var(--tk-k));
+  --space-3: calc(12px * var(--tk-k));
+  --space-4: calc(16px * var(--tk-k));
+  --space-5: calc(20px * var(--tk-k));
+  --space-6: calc(24px * var(--tk-k));
+  --space-8: calc(32px * var(--tk-k));
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 300ms;
+}
+
+@mixin density {
+  @media (max-width: 1800px) { --tk-k: 0.95; }
+  @media (max-width: 1600px) { --tk-k: 0.9; }
+  @media (max-width: 1440px) { --tk-k: 0.86; }
+  @media (max-width: 1280px) { --tk-k: 0.84; }
+}
