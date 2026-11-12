@@ -2172,3 +2172,18 @@ export const MENU_DATA: MenuItem[] = [
     "hasChildren": true
   }
 ];
+
+/**
+ * The Attendance module's five sidebar groups: Attendance, Leave & Holidays, Shifts & Rules,
+ * Attendance Reports and My Workspace (every top-level menu of module HR above).
+ *
+ * THE SERVER DOES NOT HOLD THEM. IAM's menu catalogue (iam_menu_definitions) has no Attendance
+ * entry - the module keeps its data in the browser and has no API yet - so GET /navigation never
+ * returns them, and a sidebar drawn only from that tree has no Attendance at all. The sidebar adds
+ * these groups to the server's tree while `environment.features.attendance` is on; app.routes.ts
+ * registers their pages under the same flag and opens them to everybody signed in, so the links
+ * and the pages they lead to always come and go together.
+ */
+export const ATTENDANCE_MENU_MODULE = 'HR';
+
+export const ATTENDANCE_MENUS: readonly MenuItem[] = MENU_DATA.filter((item) => item.moduleCode === ATTENDANCE_MENU_MODULE);

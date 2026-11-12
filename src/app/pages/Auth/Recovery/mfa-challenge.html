@@ -53,9 +53,7 @@
     <!-- ===== Code entry ===== -->
     @if (mode() === 'code') {
       <form (submit)="verify($event)" novalidate>
-        <!-- One group with one name, so a screen reader announces the six boxes as one code (TS-227). -->
-        <fieldset class="otp-group">
-        <legend class="mfa-label">Verification code</legend>
+        <label class="mfa-label" for="mfa-digit-0">Verification code</label>
 
         <!-- Six boxes: shows the expected length at a glance; paste and backspace behave as expected. -->
         <div class="otp-row" (paste)="onPaste($event)">
@@ -76,7 +74,6 @@
               (focus)="selectBox($event)">
           }
         </div>
-        </fieldset>
 
         <!-- The countdown means different things for the two methods, so it says so. -->
         @if (hasExpiry() && !expired()) {
@@ -89,14 +86,6 @@
           </p>
         } @else if (!hasExpiry() && isAuthenticatorApp()) {
           <p class="mfa-note">Your app shows a new code every 30 seconds.</p>
-        }
-
-        <!-- Resend only exists when something was actually sent. It sits with the code it replaces,
-             and waits a moment after each send so a code still on its way is not superseded (TS-227). -->
-        @if (canResend() && !expired()) {
-          <button type="button" class="mfa-link is-resend" [disabled]="resending() || resendIn() > 0" (click)="resend()">
-            {{ resending() ? 'Sending…' : resendLabel() }}
-          </button>
         }
 
         @if (!stepUp()) {
@@ -114,6 +103,12 @@
           </button>
         }
 
+        <!-- Resend only exists when something was actually sent. -->
+        @if (canResend() && !expired()) {
+          <button type="button" class="mfa-link" [disabled]="resending()" (click)="resend()">
+            {{ resending() ? 'Sending…' : 'Send the code again' }}
+          </button>
+        }
       </form>
     }
 

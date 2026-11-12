@@ -1,9 +1,10 @@
 import { AfterViewInit, Component, DestroyRef, ElementRef, HostListener, computed, effect, inject, input, output, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { filter, map } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 import { MENU_ICONS, MENU_ICON_FALLBACK } from '../menu-icons';
-import { MENU_DATA, MenuItem } from '../menu.data';
+import { ATTENDANCE_MENUS, MENU_DATA, MenuItem } from '../menu.data';
 import { NavigationService } from '../../services/navigation.service';
 import { ThemeSettingsService } from '../../../pages/Auth/Profile/theme-settings';
 
@@ -26,6 +27,12 @@ const TONE_CYCLE = ['teal', 'green', 'blue', 'amber', 'olive', 'sea', 'slate'];
 
 const MENU_SECTIONS: Record<string, string> = {
   DASHBOARD: 'Workspace',
+  // Attendance's groups, which withAttendance() places straight after the Dashboard
+  ATTENDANCE: 'Workspace',
+  ATT_LEAVE: 'Workspace',
+  ATT_SHIFTS: 'Workspace',
+  ATT_REPORTS: 'Workspace',
+  ATT_SELF: 'Workspace',
   SALES_RELATIONSHIPS: 'Sales & Relationships',
   PLATFORM: 'Platform',
   FR_DONORS: 'Fundraising',
@@ -43,10 +50,51 @@ export interface MenuSection {
   items: MenuItem[];
 }
 
+/** Attendance is in this build: its pages are registered (app.routes.ts) and its menus are shown. */
+const ATTENDANCE_ON = environment.features.attendance;
+
+/**
+ * The built-in catalogue, shown only when the server's menu cannot be fetched - without the
+ * Attendance groups when the module is not in this build, because their links would lead nowhere.
+ */
+const BUILT_IN_MENU: MenuItem[] = ATTENDANCE_ON ? MENU_DATA : MENU_DATA.filter((item) => !ATTENDANCE_MENUS.includes(item));
+
+/**
+ * The server's tree with Attendance's groups added straight after the Dashboard.
+ *
+ * WHY THE SIDEBAR ADDS THEM. The server's menu catalogue has no Attendance entry (see
+ * ATTENDANCE_MENUS), so a sidebar drawn only from /navigation showed no Attendance at all, and one
+ * drawn only from MENU_DATA showed every menu to everybody whatever the server decided. These five
+ * groups are the one part of the menu the browser owns; app.routes.ts opens their pages to every
+ * signed-in person under the same flag. A group the server does send (same code) is not doubled.
+ *
+ * PLACED BY ORDER, NOT BY POSITION, because the sidebar sorts by displayOrder: each group takes an
+ * order between the Dashboard's and the next whole number (server orders are whole numbers), which
+ * keeps the five together, in their own order, under the Dashboard's heading.
+ */
+function withAttendance(server: MenuItem[]): MenuItem[] {
+  if (!ATTENDANCE_ON) return server;
+
+  const present = new Set(server.map((item) => item.code));
+  const groups = ATTENDANCE_MENUS.filter((item) => !present.has(item.code)).sort((a, b) => a.displayOrder - b.displayOrder);
+  if (groups.length === 0) return server;
+
+  const dashboard = server.find((item) => item.code === 'DASHBOARD');
+  const base = dashboard ? (dashboard.displayOrder ?? 0) : Math.min(0, ...server.map((item) => item.displayOrder ?? 0)) - 1;
+  const step = 1 / (groups.length + 1);
+
+  return [...server, ...groups.map((item, i) => ({ ...item, displayOrder: base + step * (i + 1) }))];
+}
+
+/** Whether a menu route is the URL itself or one of its parents (query string and fragment aside). */
+function covers(route: string, url: string): boolean {
+  return url === route || url.startsWith(route + '/') || url.startsWith(route + '?') || url.startsWith(route + '#');
+}
+
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink],
   templateUrl: './sidebar.html',
   styleUrl: './sidebar.css',
   // the icon rail only exists in the vertical layout; the horizontal menu is always full
@@ -60,14 +108,17 @@ export class Sidebar implements AfterViewInit {
 
   /**
    * The menu as the server decides it for THIS person (product x Organisation x role x
-   * permissions). While it loads the sidebar is empty; if it could not be fetched the built-in
-   * catalogue is shown so the app stays navigable (the API still checks every call).
+   * permissions), plus Attendance's groups, which the server does not hold (withAttendance).
+   * While it loads the sidebar is empty; if it could not be fetched the built-in catalogue is
+   * shown so the app stays navigable (the API still checks every call).
    */
   readonly menu = computed<MenuItem[]>(() => {
     const explicit = this.menuOverride();
     if (explicit) return explicit;
-    if (this.navigation.failed()) return MENU_DATA;
-    return this.navigation.menu() as unknown as MenuItem[];
+    if (this.navigation.failed()) return BUILT_IN_MENU;
+    const server = this.navigation.menu() as unknown as MenuItem[];
+    // Not loaded yet: stay empty rather than draw Attendance alone and the rest a moment later.
+    return this.navigation.navigation() ? withAttendance(server) : server;
   });
 
   readonly collapsed = input(false);
@@ -117,7 +168,7 @@ export class Sidebar implements AfterViewInit {
 
   constructor() {
     effect(() => {
-      const parents = this.parentsOf(this.url());
+      const parents = this.parentsOf();
       if (parents.length) {
         // accordion: only the opened page's own branch stays open
         this.expanded.update(() => new Set(parents));
@@ -270,10 +321,14 @@ export class Sidebar implements AfterViewInit {
   }
 
   protected hasActiveChild(item: MenuItem): boolean {
-    const url = this.url();
     const walk = (kids: readonly MenuItem[]): boolean =>
-      kids.some((child) => this.matches(child, url) || walk(child.children));
+      kids.some((child) => this.isCurrent(child) || walk(child.children));
     return walk(item.children);
+  }
+
+  /** The entry for the page on screen: highlighted, and the branch the accordion keeps open. */
+  protected isCurrent(item: MenuItem): boolean {
+    return !!item.route && item.route === this.currentRoute();
   }
 
   protected openOrGo(item: MenuItem, event: Event): void {
@@ -303,10 +358,29 @@ export class Sidebar implements AfterViewInit {
     return [...items].sort((a, b) => a.displayOrder - b.displayOrder);
   }
 
-  private matches(item: MenuItem, url: string): boolean {
-    const route = item.route;
-    return !!route && (url === route || url.startsWith(route + '/') || url.startsWith(route + '?'));
-  }
+  /**
+   * The route of the menu entry for the page on screen: the LONGEST menu route that is the URL
+   * itself or one of its parents.
+   *
+   * MOST SPECIFIC WINS. Attendance Register lives at /app/attendance and most other Attendance
+   * pages live beneath it (/app/attendance/overview, /app/attendance/reports ...). Matched by prefix
+   * alone, Attendance Register was "current" on every one of them, so it stayed highlighted and kept
+   * the Attendance group open beside the group of the page actually on screen. A page no entry names
+   * exactly (a detail, an edit form) still lights the entry it sits under.
+   */
+  private readonly currentRoute = computed<string | null>(() => {
+    const url = this.url();
+    let best: string | null = null;
+    const walk = (items: readonly MenuItem[]): void => {
+      for (const item of items) {
+        const route = item.route;
+        if (route && covers(route, url) && (best === null || route.length > best.length)) best = route;
+        walk(item.children);
+      }
+    };
+    walk(this.menu());
+    return best;
+  });
 
   /** Parent id for every sub-menu, built from the menu tree (drives the accordion behaviour). */
   private readonly parentIdOf = computed(() => {
@@ -333,14 +407,15 @@ export class Sidebar implements AfterViewInit {
     return branch;
   }
 
-  private parentsOf(url: string): string[] {
+  /** The menus above the page on screen (see currentRoute), innermost first. */
+  private parentsOf(): string[] {
     const found: string[] = [];
     const walk = (items: readonly MenuItem[]): boolean => {
       let hit = false;
       for (const item of items) {
         const childHit = walk(item.children);
         if (childHit) found.push(item.id);
-        if (childHit || this.matches(item, url)) hit = true;
+        if (childHit || this.isCurrent(item)) hit = true;
       }
       return hit;
     };

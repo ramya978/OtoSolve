@@ -9,7 +9,7 @@ import { Router } from '@angular/router';
 import { CampaignWorkspaceStore } from '../../../Shared/Campaign/cw.store';
 import { PageHeader } from '../../../Shared/layout/page-header/page-header';
 import { CW_PATHS } from '../../../Shared/Campaign/cw-paths';
-import { CampaignInfo, PEOPLE, todayIso } from '../../../Shared/Campaign/cw.data';
+import { CampaignInfo, PEOPLE } from '../../../Shared/Campaign/cw.data';
 import { formatMoney } from '../../../Shared/services/money-format';
 
 export type CampaignStatus = 'draft' | 'submitted' | 'scheduled' | 'active' | 'paused' | 'closing' | 'closed';
@@ -19,8 +19,6 @@ export interface CampaignRow {
   name: string;
   code: string;
   status: CampaignStatus;
-  /** Why an Active campaign is not on the public donation form, or null when donors can pick it (TS-250). */
-  notOpen: string | null;
   progress: number;
   owner: string;
   /** Every owner of the campaign, main owner first (the "owner" field above is "Name +n"). */
@@ -243,46 +241,13 @@ export class CampaignRegister {
   /** Header "Create" button is hidden for a Campaign Manager. */
   readonly canCreate = computed<boolean>(() => !this.isCampaignManager());
 
-  /**
-   * WHY AN ACTIVE CAMPAIGN IS MISSING FROM THE DONATION FORM (TS-250).
-   *
-   * The public donation form lists a campaign only when it is Active, inside its dates, and none
-   * of its tracking codes is disabled or past its window - the payments service's rule
-   * (PAY CampaignDirectory.GetDonatableCampaignsAsync), kept from 2026-10-20 on purpose: once any
-   * code of a campaign is taken down, the campaign leaves the dropdown. Nothing here said so, so a
-   * register showing four Active campaigns beside a dropdown of three read as a bug. The same rule
-   * is applied to the same data here, and each held-back campaign says why.
-   *
-   * KEEP IN STEP WITH PAY: a change to that rule changes this one.
-   */
-  private readonly notOpenReasons = computed(() => {
-    const today = todayIso();
-    const now = Date.now();
-    const reasons = new Map<string, string>();
-    for (const c of this.store.campaigns()) {
-      if (c.lifecycle !== 'active') continue;
-      if (c.start && c.start > today) { reasons.set(c.code, `Opens for donations on ${fmtDate(new Date(c.start + 'T00:00:00'))}.`); continue; }
-      if (c.end && c.end < today) { reasons.set(c.code, 'Its end date has passed.'); continue; }
-      const retired = this.store.assets().filter((a) => a.campaign === c.code
-        && (a.status === 'disabled' || (a.status === 'active' && !!a.to && Date.parse(a.to) < now)));
-      if (retired.length) {
-        const disabled = retired.filter((a) => a.status === 'disabled').length;
-        const expired = retired.length - disabled;
-        const what = [disabled ? `${disabled} tracking code${disabled === 1 ? '' : 's'} disabled` : '',
-          expired ? `${expired} tracking code${expired === 1 ? '' : 's'} expired` : ''].filter(Boolean).join(' and ');
-        reasons.set(c.code, `${what}. A campaign leaves the donation form while any of its codes is disabled or expired.`);
-      }
-    }
-    return reasons;
-  });
-
   private readonly rows = computed<CampaignRow[]>(() =>
     this.store.campaigns().map((c) => {
       const owners = c.owners;
       const startDate = c.start ? new Date(c.start + 'T00:00:00Z') : null;
       const endDate = c.end ? new Date(c.end + 'T00:00:00Z') : null;
       return {
-        id: c.id ?? c.code, name: c.name, code: c.code, status: c.lifecycle, notOpen: this.notOpenReasons().get(c.code) ?? null,
+        id: c.id ?? c.code, name: c.name, code: c.code, status: c.lifecycle,
         progress: c.target ? Math.min(100, Math.round((c.raised / c.target) * 100)) : 0,
         owner: owners.length > 1 ? `${owners[0]} +${owners.length - 1}` : (owners[0] ?? '—'),
         owners: owners.filter(Boolean),
@@ -400,10 +365,7 @@ export class CampaignRegister {
       },
       {
         key: 'active', side: { value: avgProgress + '%', label: 'Avg progress' }, label: 'Active', value: String(activeCount), icon: 'flag',
-        // The number donors actually see (TS-250): the same count as the donation form's dropdown.
-        note: activeCount
-          ? `${activeCount - this.notOpenReasons().size} of ${activeCount} open for public donations`
-          : 'No campaign is running'
+        note: lead ? `Furthest along: ${lead.name} (${lead.progress}%)` : 'No campaign is running'
       },
       {
         key: 'paused', side: { value: money(pausedReceived), label: 'On hold' }, label: 'Paused', value: String(pausedCount), icon: 'pause',

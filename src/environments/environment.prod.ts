@@ -40,8 +40,6 @@ export const environment = {
   features: {
     /** Attendance and shifts. Off in production: the module keeps sample data in the browser and has no API yet (NEW-04). */
     attendance: false,
-    /** Tickets. Off in production until the ticket API exists: the module runs on browser demo data (NEW-04). */
-    tickets: false,
   },
 
   sessionIdleMinutes: 30,

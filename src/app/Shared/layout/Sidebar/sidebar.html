@@ -16,6 +16,7 @@
          hasChildren(item)     row has sub-items                  childrenOf(item)  its sub-items, in order
          toggle(item)          show / hide the sub-items          isExpanded(item)  sub-items are shown
          hasActiveChild(item)  a sub-item is the page on screen   openOrGo(item)    open first, then follow
+         isCurrent(item)       this row IS the page on screen (the most specific menu route wins)
          targetOf(item)        "_blank" when opensInNewTab        closeMobileMenu() closes the phone overlay -->
   <!-- horizontal layout: the menus stay on one line and slide left / right (arrows, wheel, swipe);
        the arrows are sticky inside the row so they always sit on its edges -->
@@ -35,7 +36,7 @@
         <div class="nav-entry" [class.is-open]="isExpanded(item)" [class.has-current]="hasActiveChild(item)">
           <!-- top row: icon + name (+ dot when it holds the current page, + chevron when it has pages) -->
           @if (item.route && !hasChildren(item)) {
-            <a class="nav-link" [routerLink]="item.route" routerLinkActive="active" ariaCurrentWhenActive="page"
+            <a class="nav-link" [routerLink]="item.route" [class.active]="isCurrent(item)" [attr.aria-current]="isCurrent(item) ? 'page' : null"
                [attr.target]="targetOf(item)" [attr.title]="collapsed() ? item.name : null" (click)="closeMobileMenu()">
               <span class="nav-ico" [class]="toneOf(item)">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath(item.icon)" /></svg>
@@ -73,7 +74,7 @@
                 <!-- a page with its own pages (Organisations -> Create / Approval Queue) -->
                 <div class="nav-entry sub" [class.is-open]="isExpanded(child)" [class.has-current]="hasActiveChild(child)">
                   @if (child.route) {
-                    <a class="nav-child has-kids" [routerLink]="child.route" routerLinkActive="active" ariaCurrentWhenActive="page"
+                    <a class="nav-child has-kids" [routerLink]="child.route" [class.active]="isCurrent(child)" [attr.aria-current]="isCurrent(child) ? 'page' : null"
                        [attr.target]="targetOf(child)" (click)="openOrGo(child, $event)">
                       <span class="nav-child-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath(child.icon)" /></svg></span>
                       <span class="nav-text">{{ child.name }}</span>
@@ -92,7 +93,7 @@
                 @if (isExpanded(child)) {
                   <div class="nav-children deep">
                     @for (grand of childrenOf(child); track grand.id) {
-                      <a class="nav-child" [routerLink]="grand.route" routerLinkActive="active" ariaCurrentWhenActive="page"
+                      <a class="nav-child" [routerLink]="grand.route" [class.active]="isCurrent(grand)" [attr.aria-current]="isCurrent(grand) ? 'page' : null"
                          [attr.target]="targetOf(grand)" (click)="closeMobileMenu()">
                         <span class="nav-child-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath(grand.icon)" /></svg></span>
                         <span class="nav-text">{{ grand.name }}</span>
@@ -101,7 +102,7 @@
                   </div>
                 }
               } @else {
-                <a class="nav-child" [routerLink]="child.route" routerLinkActive="active" ariaCurrentWhenActive="page"
+                <a class="nav-child" [routerLink]="child.route" [class.active]="isCurrent(child)" [attr.aria-current]="isCurrent(child) ? 'page' : null"
                    [attr.target]="targetOf(child)" (click)="closeMobileMenu()">
                   <span class="nav-child-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="iconPath(child.icon)" /></svg></span>
                   <span class="nav-text">{{ child.name }}</span>

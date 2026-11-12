@@ -250,8 +250,7 @@
     @if (a.status === 'disable-requested') {
       <p class="ta-alert tone-danger">
         <svg class="w-ico" viewBox="0 0 24 24" aria-hidden="true"><path [attr.d]="icon('alert')" /></svg>
-        A request to disable this asset is awaiting your approval. Approving stops its scans and clicks,
-        and takes {{ campaignName(a.campaign) }} off the public donation form while the code stays disabled.
+        A request to disable this asset is awaiting your approval. Approving stops its scans and clicks.
       </p>
     } @else if (a.status === 'submitted') {
       <p class="ta-alert tone-info">
@@ -321,11 +320,7 @@
 
     <footer class="w-drawer-foot">
       @if (rowAction(a); as act) {
-        <!-- TS-250: disabling ONE code takes the whole campaign off the donation form (the payments
-             service's rule), which nobody was told until the dropdown came up one short. -->
-        <span class="w-help">{{ act === 'requestDisable' || act === 'approveDisable'
-          ? 'Stops scans and clicks once approved, and takes ' + campaignName(a.campaign) + ' off the public donation form while it stays disabled.'
-          : '' }}</span>
+        <span class="w-help">{{ act === 'requestDisable' ? 'Stops scans and clicks once approved.' : '' }}</span>
         <span class="w-spacer"></span>
         <button type="button" [class]="'w-btn ' + (act === 'approveDisable' || act === 'requestDisable' ? 'w-btn-danger' : 'w-btn-primary')"
                 (click)="doAction(a, act)">

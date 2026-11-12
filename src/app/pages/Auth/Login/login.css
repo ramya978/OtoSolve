@@ -81,7 +81,6 @@ justify-content: center;
 
 /* ---- right: form panel ---- */
 .lg-form-side {
-  min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -593,10 +592,7 @@ html[data-mode="dark"] .lg-card {
   display: block;
 }
 
-/* The column may shrink below its content's natural width, and both modes (code, recovery) use
-   the full column, so switching between them does not move the layout (TS-227). */
-.mfa { margin-top: 4px; min-width: 0; width: 100%; }
-.mfa > form { width: 100%; }
+.mfa { margin-top: 4px; }
 
 /* ---- Header -------------------------------------------------------------------------- */
 
@@ -646,28 +642,12 @@ html[data-mode="dark"] .lg-card {
 }
 .mfa-label.is-left { text-align: left; margin-bottom: 6px; }
 
-/* The fieldset only groups the six boxes for assistive technology; it draws nothing. */
-.otp-group { border: 0; margin: 0; padding: 0; min-width: 0; }
-.otp-group > legend { width: 100%; padding: 0; }
-
-/* SIX EQUAL COLUMNS THAT SHRINK WITH THE CARD (TS-227). Fixed 52px boxes (352px with the gaps)
-   were wider than the card on 1280-1800px screens, where --lg-k scales the card down to about
-   318px inside; the row pushed the column past the card's edge and overflow:hidden cut off the
-   sixth box, the logo and the buttons below. The boxes now take their share of the width, up to
-   the old 52px, and keep their shape. */
-.otp-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: clamp(5px, 1.6vw, 8px);
-  width: 100%;
-  max-width: 352px;
-  margin: 0 auto 16px;
-}
+.otp-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
 
 .otp-box {
-  /* Squares read as "one character each" without a label saying so. */
-  width: 100%; min-width: 0; height: auto; aspect-ratio: 52 / 60; padding: 0; box-sizing: border-box;
-  text-align: center; font-size: clamp(18px, 5vw, 24px); font-weight: 600; color: var(--mfa-text);
+  /* Fixed squares read as "one character each" without a label saying so. */
+  width: 52px; height: 60px; padding: 0;
+  text-align: center; font-size: 24px; font-weight: 600; color: var(--mfa-text);
   background: #fff;
   border: 1.5px solid var(--mfa-box-border);
   border-radius: 10px;
@@ -681,6 +661,11 @@ html[data-mode="dark"] .lg-card {
 .otp-box:focus { border-color: var(--mfa-primary); box-shadow: 0 0 0 3px var(--mfa-primary-soft); }
 .otp-box:disabled { background: #f3f4f6; opacity: 0.7; }
 
+/* Six 52px boxes overflow a small phone, so they shrink rather than wrap. */
+@media (max-width: 420px) {
+  .otp-row { gap: 6px; }
+  .otp-box { width: 42px; height: 52px; font-size: 20px; }
+}
 
 .mfa-note { text-align: center; font-size: 13px; color: var(--mfa-muted); margin: 0 0 16px; line-height: 1.5; }
 .mfa-note.is-left { text-align: left; margin-top: 8px; }
@@ -707,12 +692,6 @@ html[data-mode="dark"] .lg-card {
 
 /* ---- Links and secondary buttons ------------------------------------------------------- */
 
-/* THE PRIMARY ACTION IS NEVER SMALLER THAN THE SECONDARY ONES (TS-227). .lg-submit scales with
-   --lg-k (34px tall, 11.6px text at 1366px wide) while the buttons under it did not, so "Use a
-   recovery code instead" looked more important than "Verify and sign in". 44px is also the
-   minimum comfortable touch target. */
-.mfa .lg-submit { height: auto; min-height: 44px; font-size: 15px; }
-
 .mfa-link {
   display: block; width: 100%; margin-top: 10px; padding: 6px;
   background: none; border: 0; cursor: pointer;
@@ -721,9 +700,6 @@ html[data-mode="dark"] .lg-card {
 .mfa-link:hover:not(:disabled) { text-decoration: underline; }
 .mfa-link:disabled { opacity: 0.6; cursor: default; }
 .mfa-link.is-danger { color: #b42318; margin-top: 2px; }
-/* Under the code it replaces, above the trust-device box; quieter while the cooldown runs. */
-.mfa-link.is-resend { margin: -6px 0 12px; }
-.mfa-link.is-resend:disabled { color: var(--mfa-muted); opacity: 1; }
 
 .mfa-trouble { border-top: 1px solid var(--mfa-line); margin-top: 18px; padding-top: 16px; }
 .mfa-trouble-h { font-size: 13px; color: var(--mfa-muted); margin: 0 0 10px; }
@@ -731,7 +707,7 @@ html[data-mode="dark"] .lg-card {
 
 .mfa-btn-outline {
   display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
-  width: 100%; min-height: 40px; padding: 9px 12px;
+  width: 100%; padding: 9px 12px;
   background: #fff; border: 1px solid var(--mfa-box-border); border-radius: 8px;
   font: inherit; font-size: 14px; color: var(--mfa-text); cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
