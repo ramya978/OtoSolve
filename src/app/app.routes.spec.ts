@@ -2,10 +2,12 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRouteSnapshot, Route, Router, RouterStateSnapshot, UrlTree, provideRouter } from '@angular/router';
 import { firstValueFrom, isObservable, of } from 'rxjs';
+import { environment } from '../environments/environment';
 import { routes } from './app.routes';
 import { GRANTS, menuGuard } from './Shared/Auth/auth.guard';
 import { NavigationService } from './Shared/services/navigation.service';
 import { MenuPage } from './Shared/layout/menu-page';
+import { ATTENDANCE_MENUS } from './Shared/layout/menu.data';
 
 const route = (path: string): Route | undefined => routes.find((r) => r.path === path);
 const grants = (path: string) => route(path)?.data?.[GRANTS];
@@ -50,6 +52,19 @@ describe('route table (NEW-03, NEW-04, NEW-08, NEW-17)', () => {
       .map(async (r) => ({ path: r.path, component: await r.loadComponent!() })));
     expect(loaded.filter((r) => r.component === MenuPage).map((r) => r.path)).toEqual([]);
   }, 60_000); // imports every page
+
+  it('registers the Attendance pages exactly when the build shows their menus (NEW-04)', () => {
+    // The sidebar adds these five groups under the same flag (Sidebar.menu); a link it draws with
+    // no route behind it falls through to `**` and bounces the person back to the Dashboard.
+    const links = ATTENDANCE_MENUS.flatMap((group) => group.children).map((page) => page.route!.replace(/^\//, ''));
+    expect(links).toHaveLength(25);
+
+    const registered = links.filter((path) => route(path)?.loadComponent !== undefined);
+    expect(registered).toEqual(environment.features.attendance ? links : []);
+
+    // No server menu names an Attendance page, so the menu guard must not ask for one.
+    for (const path of registered) expect(grants(path), path).toBe('any');
+  });
 
   it('guards every workspace page with the sign-in and the menu guards', () => {
     const unguarded = routes

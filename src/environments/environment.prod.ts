@@ -38,8 +38,16 @@ export const environment = {
    * pages cannot be opened by URL and its code is not downloaded.
    */
   features: {
-    /** Attendance and shifts. Off in production: the module keeps sample data in the browser and has no API yet (NEW-04). */
-    attendance: false,
+    /**
+     * Attendance and shifts. ON: the docker-compose stack ships this build and its Attendance,
+     * Leave & Holidays, Shifts & Rules, Attendance Reports and My Workspace menus must open.
+     *
+     * With this false (NEW-04) the module's routes were never registered, so every Attendance link
+     * fell through to the `**` route and bounced back to the Dashboard. The module still keeps its
+     * data in the browser and has no API of its own; set this false to take it out of a build -
+     * the sidebar groups (Sidebar.menu) and the routes (app.routes.ts) follow this one flag together.
+     */
+    attendance: true,
   },
 
   sessionIdleMinutes: 30,
